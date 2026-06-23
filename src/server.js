@@ -10,13 +10,16 @@ const billingRoutes = require('./routes/billing');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-if (process.env.NODE_ENV === 'production') {
-  const required = ['DATABASE_URL', 'JWT_SECRET', 'REFRESH_TOKEN_SECRET', 'CLIENT_URL'];
-  const missing = required.filter((key) => !process.env[key]);
-  if (missing.length) throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
-  if (process.env.JWT_SECRET.length < 64 || process.env.REFRESH_TOKEN_SECRET.length < 64) {
-    throw new Error('JWT secrets must each be at least 64 characters in production.');
-  }
+const requiredConfig = ['DATABASE_URL', 'JWT_SECRET', 'REFRESH_TOKEN_SECRET', 'CLIENT_URL'];
+const missingConfig = requiredConfig.filter((key) => !process.env[key]);
+const weakSecrets = ['JWT_SECRET', 'REFRESH_TOKEN_SECRET']
+  .filter((key) => process.env[key] && process.env[key].length < 64);
+
+if (process.env.NODE_ENV === 'production' && (missingConfig.length || weakSecrets.length)) {
+  console.error('YP Labs configuration incomplete.', {
+    missing: missingConfig,
+    weakSecrets,
+  });
 }
 
 // ── Security middleware ──
@@ -63,6 +66,12 @@ app.get('/api/health', (req, res) => {
 });
 
 app.get('/api/ready', async (req, res) => {
+  if (missingConfig.length || weakSecrets.length) {
+    return res.status(503).json({
+      status: 'not_ready',
+      configuration: { missing: missingConfig, weakSecrets },
+    });
+  }
   const { query } = require('./config/db');
   try {
     await query('SELECT 1');
