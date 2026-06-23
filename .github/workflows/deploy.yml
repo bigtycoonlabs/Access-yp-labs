@@ -1,4 +1,4 @@
-name: YP Labs — CI & Deploy
+name: YP Labs CI
 
 on:
   push:
@@ -12,10 +12,10 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Use Node 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
 
@@ -29,20 +29,3 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL_TEST }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           REFRESH_TOKEN_SECRET: ${{ secrets.REFRESH_TOKEN_SECRET }}
-
-  # ── Deploy to Railway (production) ─────────────────
-  deploy:
-    name: Deploy to Railway
-    runs-on: ubuntu-latest
-    needs: test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Deploy
-        run: railway up --service yp-labs
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
