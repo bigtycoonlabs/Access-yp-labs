@@ -1,4 +1,4 @@
-# YP Labs — Access YP Labs Platform
+# YP Labs Platform
 
 > **A Set Up Your Place LLC Technology Company**  
 > Enterprise housing technology platform — custom software, AI concierge, mobile apps, SOPs, and VA staffing for professional flexible housing operators.
@@ -42,6 +42,17 @@ yp-labs/
 ```
 
 ---
+
+## Production Features
+
+- Public service site with a server-validated project configurator
+- Account activation after project submission
+- Role-aware client and staff workspace
+- Project milestones, messaging, document delivery, client requests, and appointments
+- Signed Cloudinary file uploads
+- Stripe Checkout with verified, idempotent webhooks
+- PostgreSQL persistence and project-level authorization
+- Health endpoint at `/api/health`
 
 ## Quick Start (Local Dev)
 
@@ -100,12 +111,7 @@ Every push to `main` that passes tests automatically deploys to Railway via the 
 | `REFRESH_TOKEN_SECRET` | ✅ | Min 64-char random string |
 | `STRIPE_SECRET_KEY` | ✅ | Stripe secret key |
 | `STRIPE_WEBHOOK_SECRET` | ✅ | Stripe webhook signing secret |
-| `R2_ACCESS_KEY_ID` | ✅ | Cloudflare R2 / S3 key |
-| `R2_SECRET_ACCESS_KEY` | ✅ | Cloudflare R2 / S3 secret |
-| `R2_BUCKET_NAME` | ✅ | Storage bucket name |
-| `SMTP_PASS` | ✅ | SendGrid API key or SMTP password |
-| `DROPBOX_SIGN_API_KEY` | When contracts live | Dropbox Sign for embedded e-signatures |
-| `PUSHER_KEY` | When realtime messaging live | Pusher or Supabase Realtime |
+| `CLOUDINARY_URL` | For uploads | Signed Cloudinary SDK connection URL |
 
 ---
 
@@ -176,6 +182,22 @@ Every push to `main` that passes tests automatically deploys to Railway via the 
 | `staff` | All clients, project updates, file uploads, milestone management, appointments |
 | `admin` | All staff access + user management |
 | `master_staff` | Full platform access including admin controls |
+
+Create the first staff account by registering normally, then promote it directly in PostgreSQL:
+
+```sql
+UPDATE users SET role = 'master_staff' WHERE email = 'admin@accessyplabs.com';
+```
+
+## Stripe Webhook
+
+Create a Stripe webhook for `checkout.session.completed` at:
+
+```text
+https://YOUR_DOMAIN/api/billing/webhook
+```
+
+Set its signing secret as `STRIPE_WEBHOOK_SECRET`. Checkout payments update the matching payment plan only after the signed webhook is accepted.
 
 ---
 
