@@ -52,7 +52,7 @@ yp-labs/
 - Signed Cloudinary file uploads
 - Stripe Checkout with verified, idempotent webhooks
 - PostgreSQL persistence and project-level authorization
-- Health endpoint at `/api/health`
+- Liveness endpoint at `/api/health` and database readiness at `/api/ready`
 
 ## Quick Start (Local Dev)
 

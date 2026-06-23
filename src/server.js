@@ -58,7 +58,11 @@ app.use('/api/appointments', require('./routes/appointments'));
 app.use('/api/billing',    billingRoutes);
 app.use('/api/clients',    require('./routes/clients'));
 
-app.get('/api/health', async (req, res) => {
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', service: 'yp-labs' });
+});
+
+app.get('/api/ready', async (req, res) => {
   const { query } = require('./config/db');
   try {
     await query('SELECT 1');
