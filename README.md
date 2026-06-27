@@ -1,7 +1,7 @@
 # YP Labs Platform
 
 > **A Set Up Your Place LLC Technology Company**  
-> Enterprise housing technology platform — custom software, AI concierge, mobile apps, SOPs, and VA staffing for professional flexible housing operators.
+> Arbo + Equity arbitrage access platform — education, setup guidance, workspace access, and market-category onboarding for brokers, exchanges, crypto venues, pairs, and equity markets.
 
 ---
 
@@ -10,9 +10,9 @@
 ```
 yp-labs/
 ├── public/                  # Static frontend (no build step required)
-│   ├── index.html           # Main marketing site (accessyplabs.com)
+│   ├── index.html           # Main marketing site + setup wizard (accessyplabs.com)
 │   ├── dashboard.html       # Client + Staff Admin dashboard
-│   └── wizard.html          # Business Printer wizard (standalone)
+│   └── wizard.html          # Redirect to the setup wizard
 ├── src/                     # Node/Express backend
 │   ├── server.js            # Entry point
 │   ├── config/
@@ -45,14 +45,23 @@ yp-labs/
 
 ## Production Features
 
-- Public service site with a server-validated project configurator
+- Public arbitrage access site with a server-validated setup wizard
 - Account activation after project submission
 - Role-aware client and staff workspace
-- Project milestones, messaging, document delivery, client requests, and appointments
+- Setup milestones, messaging, document delivery, client requests, and appointments
 - Signed Cloudinary file uploads
 - Stripe Checkout with verified, idempotent webhooks
 - PostgreSQL persistence and project-level authorization
 - Liveness endpoint at `/api/health` and database readiness at `/api/ready`
+
+## Current Product Direction
+
+YP Labs is now positioned as one unified Arbo + Equity arbitrage access platform. The public site and wizard intentionally remove separate service-cart tracks and route every user into one access plan:
+
+- **One access price:** `$997`
+- **One setup path:** beginner-friendly wizard followed by workspace onboarding
+- **Education categories:** brokers, exchanges, crypto venues, trading pairs, and equity markets
+- **Purpose:** help users understand what they are connecting to, how the categories differ, and what readiness steps are needed before activation
 
 ## Quick Start (Local Dev)
 
@@ -128,7 +137,7 @@ Every push to `main` that passes tests automatically deploys to Railway via the 
 ### Wizard
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| POST | `/api/wizard/submit` | None | Submit wizard → creates project |
+| POST | `/api/wizard/submit` | None | Submit setup wizard → creates access setup |
 
 ### Projects
 | Method | Endpoint | Auth | Description |
