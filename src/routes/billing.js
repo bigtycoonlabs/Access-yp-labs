@@ -67,8 +67,8 @@ billing.post('/:projectId/checkout', authenticate, requireProjectAccess, async (
       'line_items[0][price_data][currency]': 'usd',
       'line_items[0][price_data][unit_amount]': Math.round(Number(amount) * 100),
       'line_items[0][price_data][product_data][name]': plan.plan_type === 'financed'
-        ? 'YP Labs project installment'
-        : 'YP Labs project payment',
+        ? 'YP Labs Arbo + Equity access installment'
+        : 'YP Labs Arbo + Equity access',
       'metadata[project_id]': req.params.projectId,
       'metadata[plan_type]': plan.plan_type,
     }, `yp-labs-${req.params.projectId}-${plan.installments_paid}`);
