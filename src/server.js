@@ -60,6 +60,7 @@ app.use('/api/requests',   require('./routes/requests'));
 app.use('/api/appointments', require('./routes/appointments'));
 app.use('/api/billing',    billingRoutes);
 app.use('/api/clients',    require('./routes/clients'));
+app.use('/api/admin',      require('./routes/admin'));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'yp-labs' });
