@@ -147,6 +147,12 @@ CREATE TABLE IF NOT EXISTS payment_plans (
   id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   project_id            UUID UNIQUE NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   plan_type             VARCHAR(20) NOT NULL CHECK (plan_type IN ('one_time','financed')),
+  billing_interval      VARCHAR(20) NOT NULL DEFAULT 'one_time'
+                        CHECK (billing_interval IN ('one_time','monthly','annual')),
+  subscription_tier     VARCHAR(80),
+  monthly_amount        NUMERIC(10,2),
+  growth_adjustment_rate NUMERIC(8,4),
+  discount_code_id      UUID,
   subtotal              NUMERIC(10,2) NOT NULL,
   financed_total        NUMERIC(10,2),
   installment_amount    NUMERIC(10,2),
@@ -165,6 +171,49 @@ CREATE TABLE IF NOT EXISTS stripe_events (
   id          VARCHAR(255) PRIMARY KEY,
   event_type  VARCHAR(255) NOT NULL,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ── ADMIN / AUDIT / PRICING CONTROLS ───────────────
+CREATE TABLE IF NOT EXISTS login_activity (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id     UUID REFERENCES users(id) ON DELETE SET NULL,
+  email       VARCHAR(255),
+  success     BOOLEAN NOT NULL DEFAULT FALSE,
+  ip_address  INET,
+  user_agent  TEXT,
+  reason      VARCHAR(255),
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS discount_codes (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code            VARCHAR(80) UNIQUE NOT NULL,
+  description     TEXT,
+  discount_type   VARCHAR(20) NOT NULL CHECK (discount_type IN ('percent','amount')),
+  discount_value  NUMERIC(10,2) NOT NULL,
+  max_redemptions INTEGER,
+  redemptions     INTEGER NOT NULL DEFAULT 0,
+  starts_at       TIMESTAMPTZ,
+  expires_at      TIMESTAMPTZ,
+  active          BOOLEAN NOT NULL DEFAULT TRUE,
+  created_by      UUID REFERENCES users(id),
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS platform_performance (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id         UUID REFERENCES users(id) ON DELETE CASCADE,
+  project_id      UUID REFERENCES projects(id) ON DELETE SET NULL,
+  period_start    DATE NOT NULL,
+  period_end      DATE NOT NULL,
+  reported_profit NUMERIC(12,2) NOT NULL DEFAULT 0,
+  platform_fee    NUMERIC(12,2) NOT NULL DEFAULT 0,
+  growth_rate     NUMERIC(8,4),
+  notes           TEXT,
+  created_by      UUID REFERENCES users(id),
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ
 );
 
 -- ── CONTRACTS ──────────────────────────────────────
