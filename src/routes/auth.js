@@ -7,6 +7,30 @@ const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
+async function recordLoginActivity(req, { userId = null, email, success, reason = null }) {
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS login_activity (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        email VARCHAR(255),
+        success BOOLEAN NOT NULL DEFAULT FALSE,
+        ip_address INET,
+        user_agent TEXT,
+        reason VARCHAR(255),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await query(
+      `INSERT INTO login_activity (user_id, email, success, ip_address, user_agent, reason)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [userId, email || null, success, req.ip || null, req.get('user-agent') || null, reason]
+    );
+  } catch (error) {
+    console.error('Login activity logging failed:', error.message);
+  }
+}
+
 const generateTokens = (user) => {
   const payload = { id: user.id, email: user.email, role: user.role, name: user.name };
   const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
@@ -67,15 +91,20 @@ router.post('/login', [
       [email]
     );
     if (!result.rows.length || !result.rows[0].password_hash) {
+      await recordLoginActivity(req, { email, success: false, reason: 'unknown_or_incomplete_account' });
       return res.status(401).json({ error: 'Invalid credentials.' });
     }
 
     const user = result.rows[0];
     const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) return res.status(401).json({ error: 'Invalid credentials.' });
+    if (!valid) {
+      await recordLoginActivity(req, { userId: user.id, email, success: false, reason: 'bad_password' });
+      return res.status(401).json({ error: 'Invalid credentials.' });
+    }
 
     const tokens = generateTokens(user);
     delete user.password_hash;
+    await recordLoginActivity(req, { userId: user.id, email: user.email, success: true });
     res.json({ user, ...tokens });
   } catch (err) {
     console.error(err);
