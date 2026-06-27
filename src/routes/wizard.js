@@ -7,8 +7,8 @@ const router = express.Router();
 
 // POST /api/wizard/submit
 router.post('/submit', [
-  body('track').isIn(['A', 'B']),
-  body('payment_plan').isIn(['one_time', 'financed']),
+  body('track').isIn(['A', 'arbitrage_access']),
+  body('payment_plan').equals('one_time'),
   body('contact.name').trim().notEmpty(),
   body('contact.email').isEmail().normalizeEmail(),
   body('contact.phone').optional({ checkFalsy: true }).trim().isLength({ max: 50 }),
