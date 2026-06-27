@@ -1,905 +1,198 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Access YP Labs — Enterprise Housing Technology</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
-
-:root {
-  --bg:#0A1220; --panel:#0F1A2E; --panel-alt:#13203A; --panel-hover:#172540;
-  --line:#1E3050; --line-faint:rgba(79,211,236,0.07);
-  --cyan:#4FD3EC; --cyan-dim:rgba(79,211,236,0.15); --cyan-glow:rgba(79,211,236,0.3);
-  --amber:#E8A23D; --amber-dim:rgba(232,162,61,0.15);
-  --green:#3DD68C; --red:#F2617A;
-  --text:#E9EEF5; --text-muted:#7A8FA8; --text-faint:#3D5470;
-  --radius:4px;
-}
-*{box-sizing:border-box;margin:0;padding:0;}
-html{scroll-behavior:smooth;}
-body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;
-  background-image:repeating-linear-gradient(0deg,var(--line-faint) 0,var(--line-faint) 1px,transparent 1px,transparent 48px),
-  repeating-linear-gradient(90deg,var(--line-faint) 0,var(--line-faint) 1px,transparent 1px,transparent 48px);}
-.d{font-family:'Space Grotesk',sans-serif;}
-.m{font-family:'IBM Plex Mono',monospace;}
-a{color:inherit;text-decoration:none;}
-button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
-textarea,input{font-family:inherit;}
-:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;}
-
-/* ── NAV ── */
-.nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;
-  padding:0 40px;height:64px;background:rgba(10,18,32,0.92);backdrop-filter:blur(12px);
-  border-bottom:1px solid var(--line);}
-.nav-brand{display:flex;flex-direction:column;}
-.nav-brand-name{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;letter-spacing:.03em;}
-.nav-brand-sub{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;color:var(--text-faint);text-transform:uppercase;margin-top:2px;}
-.nav-links{display:flex;align-items:center;gap:4px;}
-.nav-link{padding:8px 14px;border-radius:var(--radius);font-size:13px;color:var(--text-muted);transition:color .15s;}
-.nav-link:hover{color:var(--text);}
-.nav-link.ext{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-faint);border:1px solid var(--line);padding:6px 12px;}
-.nav-link.ext:hover{border-color:var(--cyan);color:var(--cyan);}
-.nav-cta{padding:9px 18px;border-radius:var(--radius);background:var(--cyan);color:#071220;font-size:13px;font-weight:600;transition:opacity .15s;}
-.nav-cta:hover{opacity:.85;}
-.nav-right{display:flex;align-items:center;gap:8px;}
-@media(max-width:768px){
-  .nav{padding:0 20px;}
-  .nav-links{display:none;}
-  .nav-link.ext{display:none;}
-}
-
-/* ── HERO ── */
-.hero{max-width:1100px;margin:0 auto;padding:100px 40px 80px;}
-.hero-tag{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border:1px solid var(--line);border-radius:999px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);margin-bottom:32px;}
-.hero-tag-dot{width:6px;height:6px;border-radius:50%;background:var(--cyan);animation:pulse 2s infinite;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
-.hero-h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(34px,5vw,60px);font-weight:700;line-height:1.1;letter-spacing:-.02em;margin-bottom:24px;max-width:820px;}
-.hero-h1 span{color:var(--cyan);}
-.hero-sub{font-size:17px;color:var(--text-muted);line-height:1.7;max-width:600px;margin-bottom:40px;}
-.hero-actions{display:flex;gap:12px;flex-wrap:wrap;}
-.btn-primary{display:inline-flex;align-items:center;gap:8px;padding:13px 24px;border-radius:var(--radius);background:var(--cyan);color:#071220;font-size:14px;font-weight:600;}
-.btn-primary:hover{opacity:.85;}
-.btn-ghost{display:inline-flex;align-items:center;gap:8px;padding:13px 24px;border-radius:var(--radius);border:1px solid var(--line);color:var(--text-muted);font-size:14px;}
-.btn-ghost:hover{border-color:var(--cyan);color:var(--cyan);}
-.hero-stats{display:flex;gap:40px;margin-top:64px;padding-top:40px;border-top:1px solid var(--line);flex-wrap:wrap;}
-.hero-stat-num{font-family:'Space Grotesk',sans-serif;font-size:32px;font-weight:700;color:var(--cyan);}
-.hero-stat-label{font-size:13px;color:var(--text-muted);margin-top:4px;}
-@media(max-width:768px){.hero{padding:60px 20px 48px;}.hero-stats{gap:24px;}}
-
-/* ── SECTION SHELL ── */
-.section{padding:80px 40px;}
-.section-inner{max-width:1100px;margin:0 auto;}
-.section-tag{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--cyan);margin-bottom:16px;}
-.section-title{font-family:'Space Grotesk',sans-serif;font-size:clamp(26px,3.5vw,40px);font-weight:700;line-height:1.15;margin-bottom:16px;}
-.section-sub{font-size:15px;color:var(--text-muted);line-height:1.7;max-width:680px;margin-bottom:48px;}
-@media(max-width:768px){.section{padding:60px 20px;}}
-
-/* ── CAPABILITIES MATRIX ── */
-.capabilities-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);}
-.cap-card{background:var(--panel);padding:28px;transition:background .15s;}
-.cap-card:hover{background:var(--panel-alt);}
-.cap-icon{width:44px;height:44px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;background:var(--cyan-dim);color:var(--cyan);font-size:18px;margin-bottom:20px;}
-.cap-title{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:600;margin-bottom:8px;}
-.cap-desc{font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:16px;}
-.cap-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--text-faint);}
-
-/* ── VA NETWORK ── */
-.regions-grid{display:flex;flex-wrap:wrap;gap:10px;margin:32px 0;}
-.region-tag{padding:8px 16px;border-radius:999px;border:1px solid var(--line);font-size:13px;color:var(--text-muted);}
-.va-features{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin-top:32px;}
-.va-feature{padding:24px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);}
-.va-feature-title{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;margin-bottom:8px;}
-.va-feature-desc{font-size:13px;color:var(--text-muted);line-height:1.6;}
-
-/* ── WORKFLOW ── */
-.workflow{display:flex;flex-direction:column;gap:0;max-width:680px;margin:40px auto;}
-.wf-step{display:flex;gap:20px;padding:0 0 32px;}
-.wf-step:last-child{padding-bottom:0;}
-.wf-left{display:flex;flex-direction:column;align-items:center;}
-.wf-num{width:40px;height:40px;border-radius:50%;border:1px solid var(--cyan);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--cyan);flex-shrink:0;}
-.wf-line{flex:1;width:1px;background:var(--line);margin:8px 0;}
-.wf-step:last-child .wf-line{display:none;}
-.wf-content{padding-top:8px;}
-.wf-title{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:600;margin-bottom:6px;}
-.wf-desc{font-size:13px;color:var(--text-muted);line-height:1.6;}
-
-/* ── AYP BRIDGE ── */
-.bridge-card{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
-.bridge-panel{padding:36px;background:var(--panel);}
-.bridge-panel.highlight{background:var(--panel-alt);}
-.bridge-label{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--text-faint);margin-bottom:16px;}
-.bridge-title{font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:600;margin-bottom:12px;}
-.bridge-desc{font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:20px;}
-@media(max-width:640px){.bridge-card{grid-template-columns:1fr;}}
-
-/* ── FOOTER ── */
-.footer{padding:48px 40px;border-top:1px solid var(--line);}
-.footer-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr;gap:40px;}
-.footer-brand-name{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;margin-bottom:8px;}
-.footer-desc{font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:16px;}
-.footer-address{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-faint);line-height:1.8;}
-.footer-col-title{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint);margin-bottom:16px;}
-.footer-link{display:block;font-size:13px;color:var(--text-muted);padding:5px 0;}
-.footer-link:hover{color:var(--cyan);}
-.footer-bottom{max-width:1100px;margin:32px auto 0;padding-top:24px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
-.footer-legal{font-size:12px;color:var(--text-faint);}
-@media(max-width:768px){.footer{padding:40px 20px;}.footer-inner{grid-template-columns:1fr;gap:24px;}}
-
-/* ── WIZARD OVERLAY ── */
-.overlay{position:fixed;inset:0;background:rgba(5,10,18,0.92);backdrop-filter:blur(8px);z-index:200;display:none;overflow-y:auto;}
-.overlay.open{display:block;}
-.overlay-inner{max-width:860px;margin:0 auto;padding:40px 24px 80px;}
-
-/* WIZARD INTERNALS */
-.wiz-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:40px;}
-.wiz-brand{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;}
-.wiz-close{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:14px;}
-.wiz-close:hover{border-color:var(--red);color:var(--red);}
-
-.wiz-layout{display:flex;gap:0;}
-.wiz-rail{width:220px;flex-shrink:0;padding-right:24px;display:flex;flex-direction:column;}
-@media(max-width:768px){.wiz-rail{display:none;}}
-.rail-step{display:flex;gap:12px;}
-.rail-dc{display:flex;flex-direction:column;align-items:center;}
-.rail-dot{width:28px;height:28px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-faint);flex-shrink:0;}
-.rail-dot.done{background:var(--cyan);border-color:var(--cyan);color:#071220;}
-.rail-dot.active{border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 0 4px var(--cyan-dim);}
-.rail-vline{width:1px;flex:1;background:var(--line);margin:6px 0;}
-.rail-vline.done{background:var(--cyan);}
-.rail-lc{padding:2px 0 28px;}
-.rail-code{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--text-faint);}
-.rail-lbl{font-size:13px;color:var(--text-muted);}
-.rail-lbl.active{color:var(--text);font-weight:600;}
-
-.wiz-main{flex:1;min-width:0;}
-.mob-prog{margin-bottom:24px;}
-.mob-prog-lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px;}
-.mob-prog-bar{display:flex;gap:6px;}
-.mob-seg{height:3px;flex:1;border-radius:2px;background:var(--line);}
-.mob-seg.on{background:var(--cyan);}
-
-.step-h{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:600;margin-bottom:6px;}
-.step-sub{font-size:14px;color:var(--text-muted);margin-bottom:28px;line-height:1.6;}
-
-.sel-list{display:flex;flex-direction:column;gap:10px;}
-.sel-card{width:100%;display:flex;align-items:center;gap:14px;text-align:left;padding:14px 18px;border-radius:var(--radius);background:var(--panel);border:1px solid var(--line);transition:border-color .15s,background .15s;}
-.sel-card:hover{border-color:rgba(79,211,236,.4);}
-.sel-card.on{background:var(--panel-alt);border-color:var(--cyan);}
-.sel-icon{width:38px;height:38px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;background:var(--panel-alt);color:var(--text-muted);font-size:15px;flex-shrink:0;}
-.sel-card.on .sel-icon{background:var(--cyan-dim);color:var(--cyan);}
-.sel-body{flex:1;}
-.sel-title{font-size:14px;font-weight:600;}
-.sel-sub{font-size:12px;color:var(--text-muted);margin-top:2px;}
-.sel-price{font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--amber);margin-right:8px;flex-shrink:0;}
-.sel-chk{width:20px;height:20px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;}
-.sel-card.on .sel-chk{background:var(--cyan);border-color:var(--cyan);color:#071220;}
-
-.field-lbl{display:block;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
-.field-ta{width:100%;padding:12px 14px;border-radius:var(--radius);background:var(--panel);border:1px solid var(--line);color:var(--text);font-size:14px;resize:vertical;}
-.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px;}
-.field-input{width:100%;padding:12px 14px;border-radius:var(--radius);background:var(--panel);border:1px solid var(--line);color:var(--text);font-size:14px;}
-.field-input:focus,.field-ta:focus{outline:2px solid rgba(79,211,236,.25);border-color:var(--cyan);}
-.submit-error{margin-top:12px;color:#ff8f8f;font-size:13px;}
-@media(max-width:600px){.contact-grid{grid-template-columns:1fr}}
-.field-block{margin-bottom:24px;}
-.swatch-row{display:flex;gap:10px;margin-top:8px;}
-.swatch{width:30px;height:30px;border-radius:50%;border:2px solid transparent;cursor:pointer;}
-.swatch.on{box-shadow:0 0 0 2px var(--bg), 0 0 0 4px var(--text);}
-
-/* pricing step */
-.breakdown-box{border-radius:var(--radius);background:var(--panel);border:1px solid var(--line);padding:20px;margin-bottom:20px;}
-.bd-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);}
-.bd-row:last-of-type{border-bottom:none;}
-.bd-row-lbl{font-size:14px;}
-.bd-row-amt{font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--text-muted);}
-.bd-total{display:flex;justify-content:space-between;padding-top:12px;margin-top:8px;border-top:1px solid var(--line);}
-.bd-total-lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);}
-.bd-total-amt{font-family:'IBM Plex Mono',monospace;font-size:20px;color:var(--amber);}
-
-.plan-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;}
-@media(max-width:640px){.plan-grid{grid-template-columns:1fr;}}
-.plan-card{text-align:left;padding:18px;border-radius:var(--radius);background:var(--panel);border:1px solid var(--line);transition:border-color .15s,background .15s;}
-.plan-card.on{background:var(--panel-alt);border-color:var(--cyan);}
-.plan-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
-.plan-icon{font-size:14px;color:var(--cyan);}
-.plan-tag{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);}
-.plan-amount{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;margin-bottom:4px;}
-.plan-amount small{font-size:13px;color:var(--text-muted);font-family:'IBM Plex Sans',sans-serif;font-weight:400;}
-.plan-note{font-size:12px;color:var(--text-muted);line-height:1.5;}
-.plan-hosting{margin-top:8px;padding:6px 10px;border-radius:var(--radius);background:var(--amber-dim);font-size:12px;color:var(--amber);}
-
-.disclaimer{padding:14px;border-radius:var(--radius);background:rgba(232,162,61,0.08);border:1px solid rgba(232,162,61,0.2);font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:20px;}
-.disclaimer strong{color:var(--amber);}
-
-/* nav row */
-.wiz-nav{display:flex;align-items:center;justify-content:space-between;margin-top:28px;}
-.btn-wiz-ghost{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:var(--radius);color:var(--text-muted);font-size:14px;}
-.btn-wiz-ghost:hover{color:var(--text);}
-.btn-wiz-primary{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:var(--radius);background:var(--cyan);color:#071220;font-size:14px;font-weight:600;}
-.btn-wiz-primary:disabled{background:var(--line);color:var(--text-faint);cursor:not-allowed;opacity:.6;}
-.btn-wiz-primary:not(:disabled):hover{opacity:.85;}
-
-/* entry track */
-.track-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px;}
-@media(max-width:640px){.track-grid{grid-template-columns:1fr;}}
-.track-card{text-align:left;padding:24px;border-radius:var(--radius);background:var(--panel);border:1px solid var(--line);cursor:pointer;transition:border-color .15s,background .15s;}
-.track-card:hover{border-color:var(--cyan);background:var(--panel-alt);}
-.track-opt{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--amber);margin-bottom:14px;}
-.track-title{font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:600;margin-bottom:10px;}
-.track-desc{font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:16px;}
-.track-sla{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;color:var(--cyan);}
-
-/* done screen */
-.done-wrap{max-width:680px;}
-.done-check{width:56px;height:56px;border-radius:50%;background:var(--cyan-dim);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--cyan);margin-bottom:24px;}
-.done-title{font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:700;margin-bottom:12px;}
-.done-sub{font-size:14px;color:var(--text-muted);line-height:1.7;margin-bottom:32px;}
-.pipeline{display:flex;flex-wrap:wrap;align-items:center;gap:0;margin-bottom:36px;}
-.pip-pill{padding:6px 14px;border-radius:999px;font-size:12px;display:flex;align-items:center;gap:8px;border:1px solid var(--line);color:var(--text-faint);}
-.pip-pill.now{background:var(--cyan-dim);border-color:var(--cyan);color:var(--cyan);}
-.pip-dot{width:7px;height:7px;border-radius:50%;background:currentColor;}
-.pip-line{width:14px;height:1px;background:var(--line);}
-
-/* corner marks */
-.corner{position:fixed;z-index:6;pointer-events:none;opacity:.25;}
-.corner.tl{top:14px;left:14px;} .corner.tr{top:14px;right:14px;}
-.corner.bl{bottom:14px;left:14px;} .corner.br{bottom:14px;right:14px;}
-@media(max-width:768px){.corner{display:none;}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="YP Labs arbitrage access system for brokers, exchanges, crypto markets, and pair education.">
+  <title>YP Labs | Arbitrage Access System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+    :root{--bg:#08111f;--panel:#0e1a2b;--panel2:#13243a;--line:#243852;--text:#eef5fb;--muted:#8da3bb;--faint:#536a82;--cyan:#4fd3ec;--green:#54d990;--amber:#e8a23d;--red:#ff7b88;--r:7px}
+    *{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}body{background:var(--bg);color:var(--text);font-family:"IBM Plex Sans",system-ui,sans-serif;background-image:linear-gradient(rgba(79,211,236,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(79,211,236,.035) 1px,transparent 1px);background-size:44px 44px}a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}button{cursor:pointer;border:0;background:none;color:inherit}.d{font-family:"Space Grotesk",system-ui,sans-serif}.m{font-family:"IBM Plex Mono",monospace}.nav{position:sticky;top:0;z-index:20;height:66px;display:flex;align-items:center;justify-content:space-between;padding:0 34px;background:rgba(8,17,31,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}.brand{font-weight:800;font-size:18px;letter-spacing:.02em}.brand small{display:block;color:var(--faint);font:10px "IBM Plex Mono";letter-spacing:.14em;text-transform:uppercase;margin-top:2px}.navlinks{display:flex;gap:6px;align-items:center}.navlinks a{padding:8px 12px;border-radius:var(--r);font-size:13px;color:var(--muted)}.navlinks a:hover{color:var(--text);background:var(--panel)}.cta,.btn{display:inline-flex;align-items:center;gap:9px;border-radius:var(--r);padding:12px 18px;font-weight:700}.cta,.btn.primary{background:var(--cyan);color:#06111d}.btn.ghost{border:1px solid var(--line);color:var(--muted);background:transparent}.btn.ghost:hover{border-color:var(--cyan);color:var(--cyan)}.hero{max-width:1160px;margin:auto;padding:92px 30px 70px}.tag{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:99px;padding:7px 13px;color:var(--cyan);font-size:11px;letter-spacing:.13em;text-transform:uppercase;margin-bottom:28px}.dot{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 18px var(--cyan)}h1{font-size:clamp(38px,6vw,68px);line-height:1.03;max-width:940px;letter-spacing:-.03em}h1 span{color:var(--cyan)}.hero p{max-width:720px;color:var(--muted);font-size:18px;line-height:1.7;margin:24px 0 34px}.actions{display:flex;gap:12px;flex-wrap:wrap}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-top:60px}.stat{background:rgba(14,26,43,.94);padding:22px}.stat strong{display:block;font:700 30px "Space Grotesk";color:var(--cyan)}.stat span{color:var(--muted);font-size:13px}.section{padding:78px 30px}.inner{max-width:1160px;margin:auto}.section.alt{background:rgba(14,26,43,.72);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.kicker{color:var(--cyan);font-size:11px;letter-spacing:.16em;text-transform:uppercase;margin-bottom:14px}.title{font-size:clamp(28px,4vw,44px);line-height:1.12;margin-bottom:16px}.sub{max-width:760px;color:var(--muted);font-size:16px;line-height:1.7;margin-bottom:36px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:24px}.card .icon{width:42px;height:42px;border-radius:var(--r);display:grid;place-items:center;background:rgba(79,211,236,.13);color:var(--cyan);margin-bottom:18px}.card h3{font-size:18px;margin-bottom:9px}.card p,.card li{color:var(--muted);line-height:1.6;font-size:14px}.card ul{list-style:none;display:grid;gap:9px}.pillrow{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.pill{border:1px solid var(--line);border-radius:99px;padding:8px 12px;color:var(--muted);font-size:13px;background:rgba(8,17,31,.65)}.price{display:grid;grid-template-columns:1.1fr .9fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}.price>div{background:var(--panel);padding:30px}.amount{font:700 54px "Space Grotesk";color:var(--cyan);margin:10px 0}.note{padding:14px;border:1px solid rgba(84,217,144,.25);background:rgba(84,217,144,.07);border-radius:var(--r);color:var(--muted);line-height:1.6;font-size:14px}.steps{display:grid;gap:0;max-width:760px}.step{display:grid;grid-template-columns:48px 1fr;gap:18px;padding-bottom:28px}.num{width:42px;height:42px;border:1px solid var(--cyan);color:var(--cyan);border-radius:50%;display:grid;place-items:center;font-size:12px}.step h3{margin:7px 0 6px}.step p{color:var(--muted);line-height:1.6}.footer{border-top:1px solid var(--line);padding:36px 30px;color:var(--muted)}.foot-inner{max-width:1160px;margin:auto;display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap}.overlay{position:fixed;inset:0;z-index:50;display:none;overflow:auto;background:rgba(4,9,17,.93);backdrop-filter:blur(12px)}.overlay.open{display:block}.wizard{max-width:920px;margin:auto;padding:38px 22px 70px}.wizhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:26px}.close{width:38px;height:38px;border:1px solid var(--line);border-radius:50%;color:var(--muted)}.close:hover{color:var(--red);border-color:var(--red)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:26px}.progress{display:flex;gap:7px;margin-bottom:26px}.bar{height:4px;flex:1;background:var(--line);border-radius:9px}.bar.on{background:var(--cyan)}.choices{display:grid;gap:10px}.choice{text-align:left;display:grid;grid-template-columns:42px 1fr auto;gap:14px;align-items:center;padding:15px;border:1px solid var(--line);background:var(--panel2);border-radius:var(--r)}.choice.on{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(79,211,236,.12)}.choice i{color:var(--cyan)}.choice h4{font-size:15px}.choice p{color:var(--muted);font-size:13px;margin-top:3px;line-height:1.45}.check{width:21px;height:21px;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center}.choice.on .check{background:var(--cyan);color:#06111d;border-color:var(--cyan)}.fieldgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{display:grid;gap:7px;margin-bottom:14px}.field span{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}.input{width:100%;padding:12px;background:#091423;border:1px solid var(--line);border-radius:var(--r);color:var(--text)}textarea.input{resize:vertical}.input:focus{outline:2px solid rgba(79,211,236,.18);border-color:var(--cyan)}.wiznav{display:flex;justify-content:space-between;gap:12px;margin-top:22px}.error{color:#ff9a9a;font-size:13px;margin-top:10px}.done{text-align:left;max-width:680px;margin:auto}.done .big{font-size:32px;margin-bottom:12px}@media(max-width:860px){.nav{padding:0 18px}.navlinks{display:none}.hero,.section{padding-left:20px;padding-right:20px}.stats,.grid,.price{grid-template-columns:1fr}.fieldgrid{grid-template-columns:1fr}h1{font-size:40px}.amount{font-size:42px}}
+  </style>
 </head>
 <body>
+  <nav class="nav">
+    <a class="brand d" href="/">YP LABS<small>Arbo + Equity Access</small></a>
+    <div class="navlinks">
+      <a href="#system">System</a>
+      <a href="#markets">Markets</a>
+      <a href="#setup">Setup</a>
+      <a href="#price">Price</a>
+      <a href="/dashboard.html">Workspace</a>
+    </div>
+    <button class="cta" onclick="openWizard()">Get Access</button>
+  </nav>
 
-<!-- Corner Registration Marks -->
-<svg class="corner tl" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" stroke="#4FD3EC" fill="none"/><line x1="12" y1="0" x2="12" y2="8" stroke="#4FD3EC"/><line x1="12" y1="16" x2="12" y2="24" stroke="#4FD3EC"/><line x1="0" y1="12" x2="8" y2="12" stroke="#4FD3EC"/><line x1="16" y1="12" x2="24" y2="12" stroke="#4FD3EC"/></svg>
-<svg class="corner tr" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" stroke="#4FD3EC" fill="none"/><line x1="12" y1="0" x2="12" y2="8" stroke="#4FD3EC"/><line x1="12" y1="16" x2="12" y2="24" stroke="#4FD3EC"/><line x1="0" y1="12" x2="8" y2="12" stroke="#4FD3EC"/><line x1="16" y1="12" x2="24" y2="12" stroke="#4FD3EC"/></svg>
-<svg class="corner bl" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" stroke="#4FD3EC" fill="none"/><line x1="12" y1="0" x2="12" y2="8" stroke="#4FD3EC"/><line x1="12" y1="16" x2="12" y2="24" stroke="#4FD3EC"/><line x1="0" y1="12" x2="8" y2="12" stroke="#4FD3EC"/><line x1="16" y1="12" x2="24" y2="12" stroke="#4FD3EC"/></svg>
-<svg class="corner br" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" stroke="#4FD3EC" fill="none"/><line x1="12" y1="0" x2="12" y2="8" stroke="#4FD3EC"/><line x1="12" y1="16" x2="12" y2="24" stroke="#4FD3EC"/><line x1="0" y1="12" x2="8" y2="12" stroke="#4FD3EC"/><line x1="16" y1="12" x2="24" y2="12" stroke="#4FD3EC"/></svg>
+  <main>
+    <section class="hero">
+      <div class="tag m"><span class="dot"></span> One platform for arbitrage access and education</div>
+      <h1 class="d">Learn, connect, and operate inside one <span>arbitrage system.</span></h1>
+      <p>YP Labs unifies the Arbo and Equity experience into a guided access platform. Users can understand what arbitrage is, identify the difference between brokers, exchanges, crypto venues, and trading pairs, then complete a simple setup path before connecting.</p>
+      <div class="actions">
+        <button class="btn primary" onclick="openWizard()"><i class="fa-solid fa-route"></i> Start setup wizard</button>
+        <a class="btn ghost" href="#markets"><i class="fa-solid fa-layer-group"></i> Learn the market types</a>
+      </div>
+      <div class="stats">
+        <div class="stat"><strong>1</strong><span>single access price</span></div>
+        <div class="stat"><strong>4</strong><span>connection categories explained</span></div>
+        <div class="stat"><strong>24/7</strong><span>self-guided learning path</span></div>
+        <div class="stat"><strong>All</strong><span>experience levels supported</span></div>
+      </div>
+    </section>
 
-<!-- ══════════════════════════════════════════
-     NAV
-══════════════════════════════════════════ -->
-<nav class="nav">
-  <div class="nav-brand">
-    <div class="nav-brand-name d">YP LABS</div>
-    <div class="nav-brand-sub m">A Set Up Your Place LLC Technology Company</div>
-  </div>
-  <div class="nav-links">
-    <a class="nav-link" href="#capabilities">Capabilities</a>
-    <a class="nav-link" href="#staffing">VA Network</a>
-    <a class="nav-link" href="#workflow">How It Works</a>
-    <a class="nav-link ext" href="https://accessyourplace.com" target="_blank" rel="noopener">
-      <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;"></i> Access Your Place
-    </a>
-    <a class="nav-link ext" href="https://accessypflow.com" target="_blank" rel="noopener">
-      <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;"></i> YP Flow
-    </a>
-  </div>
-  <div class="nav-right">
-    <button class="nav-cta" onclick="openWizard()">Launch Business Printer</button>
-  </div>
-</nav>
+    <section class="section alt" id="system">
+      <div class="inner">
+        <div class="kicker m">Purpose</div>
+        <h2 class="title d">A plain-language bridge into arbitrage.</h2>
+        <p class="sub">The platform is built for people who need clear steps before they connect accounts or evaluate opportunities. It avoids fragmented tools and separates education, setup, and access into one guided flow.</p>
+        <div class="grid">
+          <article class="card"><div class="icon"><i class="fa-solid fa-compass"></i></div><h3 class="d">Identify your starting point</h3><p>New users, active traders, business owners, and experienced operators get different explanations without needing separate products.</p></article>
+          <article class="card"><div class="icon"><i class="fa-solid fa-scale-balanced"></i></div><h3 class="d">Understand arbitrage</h3><p>Arbitrage is explained as price, timing, spread, and access differences across markets. The platform focuses on recognition and setup, not hype.</p></article>
+          <article class="card"><div class="icon"><i class="fa-solid fa-plug-circle-check"></i></div><h3 class="d">Prepare to connect</h3><p>The wizard collects your experience level, market interest, account readiness, and support needs so the workspace can guide the next step.</p></article>
+        </div>
+      </div>
+    </section>
 
-<!-- ══════════════════════════════════════════
-     HERO
-══════════════════════════════════════════ -->
-<section class="hero">
-  <div class="hero-tag m">
-    <span class="hero-tag-dot"></span>
-    Enterprise Infrastructure · Deployed in 14 Business Days
-  </div>
-  <h1 class="hero-h1 d">Scaling the Infrastructure of <span>Flexible Housing.</span></h1>
-  <p class="hero-sub">Online travel agencies fluctuate. Single-platform strategies are inherently fragile. YP Labs builds the technology, the workflows, and the digital footprints that empower professional operators to move faster, scale their portfolios, and open doors.</p>
-  <div class="hero-actions">
-    <button class="btn-primary" onclick="openWizard()"><i class="fa-solid fa-print"></i> Launch Business Printer</button>
-    <a class="btn-ghost" href="#capabilities"><i class="fa-solid fa-table-cells-large"></i> View Capabilities</a>
-  </div>
-  <div class="hero-stats">
-    <div><div class="hero-stat-num d">14</div><div class="hero-stat-label">Business-day full deployment</div></div>
-    <div><div class="hero-stat-num d">24–72<span style="font-size:18px;color:var(--text-muted)">hr</span></div><div class="hero-stat-label">À la carte fulfillment</div></div>
-    <div><div class="hero-stat-num d">7</div><div class="hero-stat-label">Infrastructure layers</div></div>
-    <div><div class="hero-stat-num d">7+</div><div class="hero-stat-label">Global staffing regions</div></div>
-  </div>
-</section>
+    <section class="section" id="markets">
+      <div class="inner">
+        <div class="kicker m">Market Map</div>
+        <h2 class="title d">Brokers, exchanges, crypto, and pairs are not the same thing.</h2>
+        <p class="sub">The setup experience differentiates each category so users of different ages and backgrounds can recognize what they are connecting to and why it matters.</p>
+        <div class="grid">
+          <article class="card"><div class="icon"><i class="fa-solid fa-user-tie"></i></div><h3 class="d">Brokers</h3><p>Brokers act as account providers or intermediaries. They may offer stocks, forex, options, funds, or other instruments, and they often control order routing, margin, and account rules.</p></article>
+          <article class="card"><div class="icon"><i class="fa-solid fa-building-columns"></i></div><h3 class="d">Exchanges</h3><p>Exchanges are marketplaces where orders meet. Pricing, liquidity, fees, hours, and regional access can vary from venue to venue.</p></article>
+          <article class="card"><div class="icon"><i class="fa-brands fa-bitcoin"></i></div><h3 class="d">Crypto Venues</h3><p>Crypto platforms operate around wallets, tokens, stablecoins, on-chain transfers, centralized exchanges, and decentralized liquidity pools.</p></article>
+          <article class="card"><div class="icon"><i class="fa-solid fa-code-compare"></i></div><h3 class="d">Pairs</h3><p>Pairs compare two assets or currencies, such as BTC/USD, ETH/USDT, EUR/USD, or asset-to-asset routes. Pair selection changes fees, spreads, and liquidity.</p></article>
+          <article class="card"><div class="icon"><i class="fa-solid fa-chart-line"></i></div><h3 class="d">Equity Markets</h3><p>Equity access focuses on public-company shares, ETFs, market hours, broker account types, and the difference between cash and margin accounts.</p></article>
+          <article class="card"><div class="icon"><i class="fa-solid fa-triangle-exclamation"></i></div><h3 class="d">Risk and readiness</h3><p>The system explains that price differences can close quickly and that fees, delays, rules, and account limitations can remove an apparent opportunity.</p></article>
+        </div>
+        <div class="pillrow">
+          <span class="pill">Beginner education</span><span class="pill">Broker comparison</span><span class="pill">Exchange readiness</span><span class="pill">Crypto routing basics</span><span class="pill">Pair identification</span><span class="pill">Equity account setup</span>
+        </div>
+      </div>
+    </section>
 
-<!-- ══════════════════════════════════════════
-     MISSION STATEMENT
-══════════════════════════════════════════ -->
-<section style="padding:0 40px 80px;">
-  <div style="max-width:1100px;margin:0 auto;padding:48px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);">
-    <div class="section-tag m">Core Value · 10</div>
-    <p style="font-family:'Space Grotesk',sans-serif;font-size:clamp(18px,2.5vw,26px);font-weight:600;line-height:1.5;max-width:860px;">
-      <span style="color:var(--cyan);">Housing Can't Wait.</span> There are people who need us right now. To serve the unique demographic of individuals who need safe, flexible living spaces, the entire industry must professionalize and accelerate. While traditional agencies waste 30 to 90 days on development, YP Labs delivers complete, institutional-grade business systems within <strong>14 business days.</strong>
-    </p>
-  </div>
-</section>
+    <section class="section alt" id="setup">
+      <div class="inner">
+        <div class="kicker m">Setup Wizard</div>
+        <h2 class="title d">A guided path before access.</h2>
+        <p class="sub">The wizard is designed to reduce confusion. It asks simple questions, explains terms in context, and places each user into the right onboarding lane.</p>
+        <div class="steps">
+          <div class="step"><div class="num m">01</div><div><h3 class="d">Choose your experience level</h3><p>New, learning, active, or advanced. The workspace adapts explanations based on that answer.</p></div></div>
+          <div class="step"><div class="num m">02</div><div><h3 class="d">Pick your market interest</h3><p>Brokerage, exchange, crypto, pairs, equity, or all markets. This controls the first setup checklist.</p></div></div>
+          <div class="step"><div class="num m">03</div><div><h3 class="d">Confirm account readiness</h3><p>The system identifies whether you already have accounts, need help choosing platforms, or need beginner education first.</p></div></div>
+          <div class="step"><div class="num m">04</div><div><h3 class="d">Get one access plan</h3><p>No disconnected feature paths or confusing product tiers. One YP Labs access price unlocks the arbitrage system workflow.</p></div></div>
+        </div>
+      </div>
+    </section>
 
-<!-- ══════════════════════════════════════════
-     CAPABILITIES
-══════════════════════════════════════════ -->
-<section class="section" id="capabilities">
-  <div class="section-inner">
-    <div class="section-tag m">Spec 03 · Full-Stack Capabilities Matrix</div>
-    <h2 class="section-title d">Every Layer. One System.</h2>
-    <p class="section-sub">Built for rental arbitrage operators, corporate housing providers, shared-living pioneers, and co-hosts managing portfolios across the United States.</p>
-    <div class="capabilities-grid">
-      <div class="cap-card">
-        <div class="cap-icon"><i class="fa-solid fa-globe"></i></div>
-        <div class="cap-title d">Marketing Website</div>
-        <div class="cap-desc">Conversion-focused branded sites built to capture corporate clients, showcase listings, and establish institutional authority online.</div>
-        <span class="cap-badge m"><i class="fa-solid fa-clock" style="font-size:9px;"></i> 14 Business Days</span>
+    <section class="section" id="price">
+      <div class="inner">
+        <div class="kicker m">Single Price</div>
+        <h2 class="title d">One access price for the arbitrage system.</h2>
+        <div class="price">
+          <div>
+            <div class="kicker m">YP Labs Arbitrage Access</div>
+            <div class="amount">$997</div>
+            <p class="sub" style="margin-bottom:0">Includes the guided setup wizard, learning workspace, market-category explanations, connection readiness checklist, and access routing for the Arbo + Equity platform.</p>
+          </div>
+          <div>
+            <ul class="card" style="padding:0;border:0;background:transparent">
+              <li><i class="fa-solid fa-check" style="color:var(--green);margin-right:8px"></i>One product path</li>
+              <li><i class="fa-solid fa-check" style="color:var(--green);margin-right:8px"></i>One checkout amount</li>
+              <li><i class="fa-solid fa-check" style="color:var(--green);margin-right:8px"></i>Beginner-friendly education</li>
+              <li><i class="fa-solid fa-check" style="color:var(--green);margin-right:8px"></i>Broker, exchange, crypto, and pair setup guidance</li>
+            </ul>
+            <div class="note" style="margin-top:18px"><strong style="color:var(--green)">No charge during setup.</strong> Submitting the wizard creates your access request. Payment is confirmed in the workspace before activation.</div>
+          </div>
+        </div>
       </div>
-      <div class="cap-card">
-        <div class="cap-icon"><i class="fa-solid fa-calendar-check"></i></div>
-        <div class="cap-title d">Direct Booking Engine</div>
-        <div class="cap-desc">Custom booking platforms wired directly to your PMS and channel managers via secure API keys, eliminating OTA dependency.</div>
-        <span class="cap-badge m"><i class="fa-solid fa-clock" style="font-size:9px;"></i> 14 Business Days</span>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="foot-inner">
+      <div><strong class="d" style="color:var(--text)">YP Labs</strong><br>Arbo + Equity arbitrage access platform.</div>
+      <div>Education and setup support. Not financial advice.</div>
+    </div>
+  </footer>
+
+  <div class="overlay" id="wizardOverlay">
+    <div class="wizard">
+      <div class="wizhead">
+        <div><strong class="d">YP Labs Setup Wizard</strong><div class="m" style="font-size:11px;color:var(--faint);letter-spacing:.12em;text-transform:uppercase">Arbitrage access request</div></div>
+        <button class="close" onclick="closeWizard()"><i class="fa-solid fa-xmark"></i></button>
       </div>
-      <div class="cap-card">
-        <div class="cap-icon"><i class="fa-solid fa-robot"></i></div>
-        <div class="cap-title d">Omnichannel AI Concierge</div>
-        <div class="cap-desc">Intelligent voice and text automation engines built to capture leads, handle tenant booking intake, and schedule appointments 24/7.</div>
-        <span class="cap-badge m"><i class="fa-solid fa-clock" style="font-size:9px;"></i> 14 Business Days</span>
-      </div>
-      <div class="cap-card">
-        <div class="cap-icon"><i class="fa-solid fa-mobile-screen-button"></i></div>
-        <div class="cap-title d">React Native Mobile App</div>
-        <div class="cap-desc">Bespoke iOS and Android applications custom-built, compiled, and branded to your corporate housing company. Direct corporate bookings, no platform fees.</div>
-        <span class="cap-badge m"><i class="fa-solid fa-clock" style="font-size:9px;"></i> 14 Business Days</span>
-      </div>
-      <div class="cap-card">
-        <div class="cap-icon"><i class="fa-solid fa-code"></i></div>
-        <div class="cap-title d">Web Application Portals</div>
-        <div class="cap-desc">Corporate client intake portals, backend vendor management interfaces, and specialized operational hubs built to your workflow.</div>
-        <span class="cap-badge m"><i class="fa-solid fa-clock" style="font-size:9px;"></i> 14 Business Days</span>
-      </div>
-      <div class="cap-card">
-        <div class="cap-icon"><i class="fa-solid fa-file-lines"></i></div>
-        <div class="cap-title d">SOPs & Employee Manuals</div>
-        <div class="cap-desc">Branded, institutional-grade standard operating procedures and employee handbooks that systematize every layer of your operation.</div>
-        <span class="cap-badge m"><i class="fa-solid fa-clock" style="font-size:9px;"></i> 14 Business Days</span>
-      </div>
-      <div class="cap-card">
-        <div class="cap-icon"><i class="fa-solid fa-users"></i></div>
-        <div class="cap-title d">VA Training Dashboard</div>
-        <div class="cap-desc">Onboarding and compliance portals for your virtual assistant team, pre-loaded with your custom SOPs and handbook content.</div>
-        <span class="cap-badge m"><i class="fa-solid fa-clock" style="font-size:9px;"></i> 14 Business Days</span>
-      </div>
-      <div class="cap-card" style="background:var(--panel-alt);">
-        <div class="cap-icon" style="background:var(--amber-dim);color:var(--amber);"><i class="fa-solid fa-diagram-project"></i></div>
-        <div class="cap-title d">API Channel Integration</div>
-        <div class="cap-desc">Direct API key configurations mapping your custom platform seamlessly to property management systems and channel managers at scale.</div>
-        <span class="cap-badge m"><i class="fa-solid fa-clock" style="font-size:9px;"></i> 14 Business Days</span>
-      </div>
+      <div class="panel" id="wizardContent"></div>
     </div>
   </div>
-</section>
 
-<!-- ══════════════════════════════════════════
-     PRICING TRANSPARENCY
-══════════════════════════════════════════ -->
-<section class="section" style="background:var(--panel);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
-  <div class="section-inner">
-    <div class="section-tag m">Spec 04 · Service Pricing</div>
-    <h2 class="section-title d">Transparent Pricing. No Surprises.</h2>
-    <p class="section-sub">All packages are auto-calculated inside the Business Printer wizard. No payment is collected at the wizard — a specialist confirms your final scope and sets up payment in your client dashboard.</p>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;">
-      <div style="padding:28px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);">
-        <div class="m" style="font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--text-faint);margin-bottom:16px;">Full Blueprint Package</div>
-        <div class="d" style="font-size:36px;font-weight:700;color:var(--cyan);">$6,000</div>
-        <div style="font-size:13px;color:var(--text-muted);margin-top:8px;line-height:1.6;">Complete end-to-end enterprise build. Centralized dashboards, automated data routers, and full-stack infrastructure.</div>
-        <div style="margin-top:16px;padding:10px 14px;background:var(--cyan-dim);border-radius:var(--radius);font-size:12px;color:var(--cyan);">14 business-day deployment</div>
-      </div>
-      <div style="padding:28px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);">
-        <div class="m" style="font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--text-faint);margin-bottom:16px;">Native Mobile App</div>
-        <div class="d" style="font-size:36px;font-weight:700;color:var(--amber);">$1,500</div>
-        <div style="font-size:13px;color:var(--text-muted);margin-top:8px;line-height:1.6;">Per app. Bespoke iOS and Android applications branded to your corporate housing company with direct booking capability.</div>
-        <div style="margin-top:16px;padding:10px 14px;background:var(--amber-dim);border-radius:var(--radius);font-size:12px;color:var(--amber);">Per application</div>
-      </div>
-      <div style="padding:28px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);">
-        <div class="m" style="font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--text-faint);margin-bottom:16px;">Web Application Portal</div>
-        <div class="d" style="font-size:36px;font-weight:700;color:var(--text);">$1,000</div>
-        <div style="font-size:13px;color:var(--text-muted);margin-top:8px;line-height:1.6;">Base rate. Customized digital interaction hubs, intake portals, and specialized backend vendor management interfaces.</div>
-        <div style="margin-top:16px;padding:10px 14px;background:var(--panel-alt);border-radius:var(--radius);font-size:12px;color:var(--text-muted);">Base rate — scoped with specialist</div>
-      </div>
-      <div style="padding:28px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);">
-        <div class="m" style="font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--text-faint);margin-bottom:16px;">Hosting & Server Maintenance</div>
-        <div class="d" style="font-size:36px;font-weight:700;color:var(--text);">$60<span style="font-size:18px;color:var(--text-muted);font-family:'IBM Plex Sans',sans-serif;font-weight:400;">/mo</span></div>
-        <div style="font-size:13px;color:var(--text-muted);margin-top:8px;line-height:1.6;">Flat monthly maintenance fee on enterprise servers. Applies to both upfront and financed payment arrangements.</div>
-        <div style="margin-top:16px;padding:10px 14px;background:var(--panel-alt);border-radius:var(--radius);font-size:12px;color:var(--text-muted);">Both payment options</div>
-      </div>
-    </div>
-    <div style="margin-top:20px;padding:18px 20px;background:rgba(61,214,140,0.06);border:1px solid rgba(61,214,140,0.2);border-radius:var(--radius);font-size:13px;color:var(--text-muted);line-height:1.6;">
-      <strong style="color:var(--green);">Financing available:</strong> All development costs can be broken into a <strong style="color:var(--text);">3-month installment plan</strong> directly through YP Labs, accompanied by the $60/mo hosting fee. A YP Labs specialist confirms your final arrangement in your client dashboard before any charge is made.
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════
-     VA STAFFING
-══════════════════════════════════════════ -->
-<section class="section" id="staffing">
-  <div class="section-inner">
-    <div class="section-tag m">Spec 05 · Global Virtual Assistant Network</div>
-    <h2 class="section-title d">Human Capital at Scale.</h2>
-    <p class="section-sub">YP Labs eliminates the administrative burden by connecting operators directly to a highly trained, vetted global workforce — pre-equipped with your custom employee handbook before day one.</p>
-    <div class="regions-grid">
-      <div class="region-tag">🇺🇸 United States</div>
-      <div class="region-tag">🇬🇧 United Kingdom</div>
-      <div class="region-tag">🇵🇭 Philippines</div>
-      <div class="region-tag">🇮🇳 India</div>
-      <div class="region-tag">🌍 Africa</div>
-      <div class="region-tag">🇨🇦 Canada</div>
-      <div class="region-tag">🌎 Latin America</div>
-    </div>
-    <div class="va-features">
-      <div class="va-feature">
-        <div class="va-feature-title d"><i class="fa-solid fa-shield-halved" style="color:var(--cyan);margin-right:8px;"></i>Vetted & Pre-Trained</div>
-        <div class="va-feature-desc">All global VAs are fluent, fast learners, and arrive pre-equipped with your custom YP Labs Employee Handbook to ensure immediate task compliance.</div>
-      </div>
-      <div class="va-feature">
-        <div class="va-feature-title d"><i class="fa-solid fa-sliders" style="color:var(--cyan);margin-right:8px;"></i>Full Compensation Autonomy</div>
-        <div class="va-feature-desc">The client retains full control over financial offers. Network standards include a baseline of $5.00 USD/hr or structured profit-sharing arrangements.</div>
-      </div>
-      <div class="va-feature">
-        <div class="va-feature-title d"><i class="fa-solid fa-plug-circle-check" style="color:var(--cyan);margin-right:8px;"></i>Turnkey Integration</div>
-        <div class="va-feature-desc">VAs are enrolled directly into your VA Training Dashboard and cleared for deployment only after completing your custom handbook compliance track.</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════
-     WORKFLOW
-══════════════════════════════════════════ -->
-<section class="section" id="workflow" style="background:var(--panel);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
-  <div class="section-inner">
-    <div class="section-tag m">Spec 06 · Post-Intake Workflow</div>
-    <h2 class="section-title d">The Human-in-the-Loop Guarantee.</h2>
-    <p class="section-sub">Custom AI software and proprietary technologies power our speed — but our human, US-based staff executes the work. A dedicated infrastructure specialist is assigned to your company from day one.</p>
-    <div class="workflow">
-      <div class="wf-step">
-        <div class="wf-left"><div class="wf-num m">01</div><div class="wf-line"></div></div>
-        <div class="wf-content"><div class="wf-title d">Onboarding Wizard Completed</div><div class="wf-desc">You complete the Business Printer wizard, select your package and payment preference. No charge is made at this stage.</div></div>
-      </div>
-      <div class="wf-step">
-        <div class="wf-left"><div class="wf-num m">02</div><div class="wf-line"></div></div>
-        <div class="wf-content"><div class="wf-title d">Dashboard Generation & AI Initialization</div><div class="wf-desc">Your client dashboard is instantly created. You can track your project status, view onboarding progress, and communicate with the team — all in one place.</div></div>
-      </div>
-      <div class="wf-step">
-        <div class="wf-left"><div class="wf-num m">03</div><div class="wf-line"></div></div>
-        <div class="wf-content"><div class="wf-title d">Dedicated Specialist Call</div><div class="wf-desc">A US-based infrastructure specialist contacts you to finalize scope, confirm pricing, and walk through your payment arrangement. Your contract is signed directly inside your dashboard.</div></div>
-      </div>
-      <div class="wf-step">
-        <div class="wf-left"><div class="wf-num m">04</div><div class="wf-line"></div></div>
-        <div class="wf-content"><div class="wf-title d">Human-in-the-Loop Assembly</div><div class="wf-desc">Your specialist assembles, tests, and polishes every deliverable. Daily milestone updates are visible in your dashboard and delivered via email.</div></div>
-      </div>
-      <div class="wf-step">
-        <div class="wf-left"><div class="wf-num m">05</div><div class="wf-line"></div></div>
-        <div class="wf-content"><div class="wf-title d">Complete System Deployment</div><div class="wf-desc">Your full infrastructure is delivered and deployed within 14 business days. All assets, credentials, and documentation are accessible through your dashboard.</div></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════
-     AYP BRIDGE
-══════════════════════════════════════════ -->
-<section class="section">
-  <div class="section-inner">
-    <div class="section-tag m">Spec 07 · Enterprise Ecosystem</div>
-    <h2 class="section-title d">The Set Up Your Place LLC Family.</h2>
-    <p class="section-sub">YP Labs is one arm of a fully integrated enterprise ecosystem. If you need the physical properties to go along with your new technology infrastructure, we connect you at zero cost.</p>
-    <div class="bridge-card">
-      <div class="bridge-panel highlight">
-        <div class="bridge-label m">Access Your Place</div>
-        <div class="bridge-title d">Need properties to go with your platform?</div>
-        <div class="bridge-desc">Access Your Place provides dedicated Acquisition Manager Consultants to guide you through corporate lease negotiations and property procurement.</div>
-        <a href="https://accessyourplace.com" target="_blank" rel="noopener" class="btn-primary" style="display:inline-flex;font-size:13px;padding:10px 18px;">
-          <i class="fa-solid fa-arrow-up-right-from-square"></i> Visit Access Your Place
-        </a>
-      </div>
-      <div class="bridge-panel">
-        <div class="bridge-label m">Access YP Flow</div>
-        <div class="bridge-title d">Stabilize your operational capital.</div>
-        <div class="bridge-desc">YP Flow deploys algorithmic trading software engines to protect and stabilize operational capital reserves against real estate vacancy curves.</div>
-        <a href="https://accessypflow.com" target="_blank" rel="noopener" class="btn-ghost" style="display:inline-flex;font-size:13px;padding:10px 18px;">
-          <i class="fa-solid fa-arrow-up-right-from-square"></i> Visit YP Flow
-        </a>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════
-     FOOTER
-══════════════════════════════════════════ -->
-<footer class="footer">
-  <div class="footer-inner">
-    <div>
-      <div class="footer-brand-name d">Access YP Labs</div>
-      <div class="footer-desc">An independent infrastructure development firm owned and operated by Set Up Your Place LLC. Our mission is to professionalize, automate, and accelerate the flexible housing sector to meet the immediate needs of everyday people.</div>
-      <div class="footer-address m">
-        1150 NW 72nd Ave, Tower I<br>Suite 455<br>Miami, FL 33126
-      </div>
-    </div>
-    <div>
-      <div class="footer-col-title">Platform</div>
-      <a class="footer-link" href="#capabilities">Capabilities Matrix</a>
-      <a class="footer-link" href="#staffing">VA Network</a>
-      <a class="footer-link" href="#workflow">How It Works</a>
-      <a class="footer-link" href="#" onclick="openWizard();return false;">Business Printer Wizard</a>
-    </div>
-    <div>
-      <div class="footer-col-title">Enterprise Ecosystem</div>
-      <a class="footer-link" href="https://accessyourplace.com" target="_blank" rel="noopener">Access Your Place ↗</a>
-      <a class="footer-link" href="https://accessypflow.com" target="_blank" rel="noopener">Access YP Flow ↗</a>
-      <div class="footer-col-title" style="margin-top:24px;">Support</div>
-      <a class="footer-link" href="mailto:success@accessyourplace.com">success@accessyourplace.com</a>
-    </div>
-  </div>
-  <div class="footer-bottom">
-    <div class="footer-legal">© 2025 Set Up Your Place LLC. All rights reserved. Access YP Labs operates under a non-negotiable No-Refund Policy once custom production commences.</div>
-    <div class="footer-legal m" style="color:var(--text-faint);">accessyplabs.com</div>
-  </div>
-</footer>
-
-<!-- ══════════════════════════════════════════
-     BUSINESS PRINTER WIZARD OVERLAY
-══════════════════════════════════════════ -->
-<div class="overlay" id="wizardOverlay">
-  <div class="overlay-inner">
-    <div class="wiz-header">
-      <div class="wiz-brand d">YP Labs <span class="m" style="font-size:12px;color:var(--text-faint);font-weight:400;margin-left:8px;">Business Printer · Wizard</span></div>
-      <button class="wiz-close" onclick="closeWizard()"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div id="wizardContent"></div>
-  </div>
-</div>
-
-<script>
-/* ─── DATA ─── */
-const HOUSING_TYPES = [
-  { id:"str_corporate", label:"Short-Term / Corporate Rental", icon:"fa-building" },
-  { id:"group_home",    label:"Group Home / Shared Living / Roommate-Style", icon:"fa-users" },
-  { id:"sober_living",  label:"Sober Living", icon:"fa-house-medical" },
-  { id:"cohost_vpm",    label:"Cohost / Virtual Property Management", icon:"fa-diagram-project" },
-  { id:"hybrid",        label:"Hybrid Mixed Portfolio", icon:"fa-globe" },
-];
-const CHANNELS = [
-  { id:"direct",         label:"Direct Booking Platform", note:"Included" },
-  { id:"ota",            label:"Online Travel Agencies (OTAs)", note:"Included" },
-  { id:"hybrid_channel", label:"Hybrid Model — OTA + Direct (API-linked)", note:"Channel integration" },
-  { id:"local",          label:"Local Corporate Marketing", note:"Included" },
-  { id:"social",         label:"Google / Social Media Funnels", note:"Included" },
-];
-const ALA_CARTE = [
-  { id:"marketing_site",  label:"Marketing Website",                     price:0,    note:"Included in Full Blueprint",  icon:"fa-globe",                    sla:"72 hrs" },
-  { id:"booking_engine",  label:"Direct Booking Engine + PMS Integration",price:0,   note:"Included in Full Blueprint",  icon:"fa-calendar-check",           sla:"72 hrs" },
-  { id:"ai_concierge",    label:"AI Hospitality Concierge",               price:0,    note:"Included in Full Blueprint",  icon:"fa-robot",                    sla:"72 hrs" },
-  { id:"mobile_app",      label:"React Native Mobile App (iOS/Android)",  price:1500, note:"$1,500 per app",              icon:"fa-mobile-screen-button",     sla:"72 hrs" },
-  { id:"web_portal",      label:"Web Application Portal",                 price:1000, note:"$1,000 base rate",            icon:"fa-code",                     sla:"48 hrs" },
-  { id:"sop_manual",      label:"SOPs & Employee Manual",                 price:0,    note:"Included in Full Blueprint",  icon:"fa-file-lines",               sla:"24 hrs" },
-  { id:"va_dashboard",    label:"VA Training Dashboard",                  price:0,    note:"Included in Full Blueprint",  icon:"fa-users",                    sla:"48 hrs" },
-];
-// À la carte standalone prices (outside Full Blueprint)
-const ALC_PRICES = {
-  marketing_site: 1200, booking_engine: 1500, ai_concierge: 1800,
-  mobile_app: 1500, web_portal: 1000, sop_manual: 750, va_dashboard: 950,
-};
-const BLUEPRINT_BASE = 6000;
-const HOSTING_MONTHLY = 60;
-const INSTALL_MONTHS = 3;
-const SWATCHES = ["#4FD3EC","#E8A23D","#7C8CF8","#5FD79A","#F2789B","#C9CEDA"];
-const STEPS_A = [
-  {key:"identity",   code:"01", label:"Core Identity"},
-  {key:"channels",   code:"02", label:"Distribution"},
-  {key:"brand",      code:"03", label:"Brand Architecture"},
-  {key:"pricing",    code:"04", label:"Pricing & Payment"},
-];
-const STEPS_B = [
-  {key:"catalog",  code:"01", label:"Service Catalog"},
-  {key:"pricing",  code:"02", label:"Pricing & Payment"},
-];
-const PIPELINE = ["Awaiting specialist contact","Onboarding","Awaiting payment","In production","Delivered"];
-
-/* ─── STATE ─── */
-let S = {
-  track:null, step:0, submitted:false,
-  housingType:null, channel:null, mission:"", brandColor:null,
-  cart:[], paymentPlan:"one_time", submitting:false, submitError:"",
-  contact:{name:"",email:"",phone:"",business_name:""}, submission:null, accountCreated:false, accountError:"",
-};
-
-const fmt = n => "$" + Math.round(n).toLocaleString();
-const esc = v => String(v??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
-const steps = () => S.track==="A" ? STEPS_A : S.track==="B" ? STEPS_B : [];
-const stepKey = () => steps()[S.step]?.key;
-
-function breakdown(){
-  if(S.track==="A"){
-    const items = [{label:"Full Architecture Tech Package", amount:BLUEPRINT_BASE}];
-    return items;
-  }
-  return S.cart.map(id=>{
-    const item = ALA_CARTE.find(c=>c.id===id);
-    return {label:`${item.label} (${item.sla})`, amount:ALC_PRICES[id]||0};
-  });
-}
-function subtotal(){ return breakdown().reduce((s,i)=>s+i.amount,0); }
-function installAmt(){ return Math.round((subtotal()+HOSTING_MONTHLY*INSTALL_MONTHS)/INSTALL_MONTHS); }
-
-function canContinue(){
-  const k = stepKey();
-  if(k==="identity") return !!S.housingType;
-  if(k==="channels") return !!S.channel;
-  if(k==="catalog") return S.cart.length>0;
-  return true;
-}
-
-/* ─── ACTIONS ─── */
-function openWizard(){ document.getElementById("wizardOverlay").classList.add("open"); document.body.style.overflow="hidden"; render(); }
-function closeWizard(){ document.getElementById("wizardOverlay").classList.remove("open"); document.body.style.overflow=""; }
-function pickTrack(t){ S.track=t; S.step=0; render(); }
-function pickHousing(id){ S.housingType=id; render(); }
-function pickChannel(id){ S.channel=id; render(); }
-function pickColor(c){ S.brandColor=c; render(); }
-function updateMission(v){ S.mission=v; }
-function toggleCart(id){ S.cart=S.cart.includes(id)?S.cart.filter(x=>x!==id):[...S.cart,id]; render(); }
-function pickPlan(p){ S.paymentPlan=p; render(); }
-function goNext(){ if(canContinue()) { S.step=Math.min(S.step+1,steps().length-1); render(); } }
-function goBack(){ if(S.step===0){S.track=null;}else{S.step--;} render(); }
-function updateContact(key,value){ S.contact[key]=value; S.submitError=""; }
-function canSubmit(){ return S.contact.name.trim() && /^\S+@\S+\.\S+$/.test(S.contact.email); }
-async function confirm(){
-  if(!canSubmit() || S.submitting) return;
-  S.submitting=true; S.submitError=""; render();
-  try{
-    const response=await fetch('/api/wizard/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      track:S.track,housing_type:S.housingType,channel:S.channel,mission:S.mission,
-      brand_color:S.brandColor,cart:S.cart,payment_plan:S.paymentPlan,contact:S.contact
-    })});
-    const data=await response.json();
-    if(!response.ok) throw new Error(data.error || data.errors?.[0]?.msg || 'Submission failed.');
-    S.submission=data; S.submitted=true;
-  }catch(error){ S.submitError=error.message; }
-  finally{ S.submitting=false; render(); }
-}
-function startOver(){ S=Object.assign({},{ track:null,step:0,submitted:false,housingType:null,channel:null,mission:"",brandColor:null,cart:[],paymentPlan:"one_time",submitting:false,submitError:"",contact:{name:"",email:"",phone:"",business_name:""},submission:null }); render(); }
-async function createAccount(){
-  const password=document.getElementById('newPassword').value;
-  S.accountError='';
-  try{
-    const response=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:S.contact.name,email:S.contact.email,password})});
-    const data=await response.json();
-    if(!response.ok) throw new Error(data.error||data.errors?.[0]?.msg||'Account setup failed.');
-    S.accountCreated=true;
-  }catch(error){S.accountError=error.message}
-  render();
-}
-
-/* ─── RENDER HELPERS ─── */
-function selCard({id,active,onclick,icon,title,subtitle,priceHtml=""}){
-  return `<button class="sel-card${active?" on":""}" onclick="${onclick}">
-    ${icon?`<div class="sel-icon"><i class="fa-solid ${icon}"></i></div>`:""}
-    <div class="sel-body"><div class="sel-title">${title}</div>${subtitle?`<div class="sel-sub">${subtitle}</div>`:""}</div>
-    ${priceHtml}
-    <div class="sel-chk">${active?'<i class="fa-solid fa-check"></i>':""}</div>
-  </button>`;
-}
-
-function renderRail(){
-  const ss=steps(),idx=S.step;
-  return `<div class="wiz-rail">${ss.map((s,i)=>{
-    const done=i<idx,active=i===idx;
-    return `<div class="rail-step">
-      <div class="rail-dc">
-        <div class="rail-dot m${done?" done":active?" active":""}">${done?'<i class="fa-solid fa-check"></i>':s.code}</div>
-        ${i<ss.length-1?`<div class="rail-vline${done?" done":""}"></div>`:""}
-      </div>
-      <div class="rail-lc">
-        <div class="rail-code m">Spec ${s.code}</div>
-        <div class="rail-lbl${active?" active":""}">${s.label}</div>
-      </div>
-    </div>`;
-  }).join("")}</div>`;
-}
-
-function renderMobProg(){
-  const ss=steps(),idx=S.step;
-  return `<div class="mob-prog">
-    <div class="mob-prog-lbl m">Spec ${ss[idx].code} · ${idx+1} of ${ss.length}</div>
-    <div class="mob-prog-bar">${ss.map((_,i)=>`<div class="mob-seg${i<=idx?" on":""}"></div>`).join("")}</div>
-  </div>`;
-}
-
-function renderNav(){
-  const key=stepKey(),back=S.step===0?"Change track":"Back",isPricing=key==="pricing";
-  return `<div class="wiz-nav">
-    <button class="btn-wiz-ghost" onclick="goBack()"><i class="fa-solid fa-arrow-left"></i> ${back}</button>
-    ${isPricing
-      ?`<button class="btn-wiz-primary" ${canSubmit()&&!S.submitting?"":"disabled"} onclick="confirm()">${S.submitting?'Submitting...':'Submit project request'} <i class="fa-solid fa-check"></i></button>`
-      :`<button class="btn-wiz-primary" ${canContinue()?"":"disabled"} onclick="goNext()">Continue <i class="fa-solid fa-arrow-right"></i></button>`
+  <script>
+    const ACCESS_PRICE=997;
+    const steps=["experience","market","readiness","contact"];
+    const options={
+      experience:[
+        ["new","New to arbitrage","I need simple explanations before I connect anything.","fa-solid fa-seedling"],
+        ["learning","Learning the markets","I understand some terms but need a guided setup.","fa-solid fa-book-open"],
+        ["active","Active trader or operator","I already use brokers, exchanges, or crypto platforms.","fa-solid fa-chart-simple"],
+        ["advanced","Advanced user","I want faster setup around markets, pairs, and access routes.","fa-solid fa-gauge-high"]
+      ],
+      market:[
+        ["all","All market types","Show brokers, exchanges, crypto, pairs, and equity together.","fa-solid fa-layer-group"],
+        ["brokers","Brokers","I need help understanding or comparing broker account access.","fa-solid fa-user-tie"],
+        ["exchanges","Exchanges","I want to learn venue differences, liquidity, and order access.","fa-solid fa-building-columns"],
+        ["crypto","Crypto","I want wallet, token, stablecoin, and exchange guidance.","fa-brands fa-bitcoin"],
+        ["pairs","Pairs","I want to understand BTC/USD, ETH/USDT, forex, or asset pairs.","fa-solid fa-code-compare"],
+        ["equity","Equity","I want stock, ETF, broker, and market-hours guidance.","fa-solid fa-chart-line"]
+      ],
+      readiness:[
+        ["need_education","Teach me first","I need beginner education before account connection.","fa-solid fa-graduation-cap"],
+        ["need_accounts","Help me choose accounts","I need help identifying brokers or exchanges.","fa-solid fa-list-check"],
+        ["have_accounts","I already have accounts","I am ready to organize my setup path.","fa-solid fa-plug-circle-check"],
+        ["team_setup","Set up for a team","I need a workflow other people can understand too.","fa-solid fa-users"]
+      ]
+    };
+    let state={step:0,experience:"",market:"",readiness:"",notes:"",contact:{name:"",email:"",phone:"",business_name:""},submitted:false,submitting:false,error:""};
+    const $=s=>document.querySelector(s);
+    const esc=v=>String(v??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[c]));
+    function openWizard(){document.body.style.overflow="hidden";$("#wizardOverlay").classList.add("open");render()}
+    function closeWizard(){document.body.style.overflow="";$("#wizardOverlay").classList.remove("open")}
+    function select(key,val){state[key]=val;state.error="";render()}
+    function updateContact(k,v){state.contact[k]=v;state.error=""}
+    function updateNotes(v){state.notes=v}
+    function canNext(){const k=steps[state.step];if(k==="contact")return state.contact.name.trim()&&/^\S+@\S+\.\S+$/.test(state.contact.email);return !!state[k]}
+    function next(){if(!canNext())return;if(state.step<steps.length-1){state.step++;render()}else submit()}
+    function back(){if(state.step>0){state.step--;render()}else closeWizard()}
+    function progress(){return `<div class="progress">${steps.map((_,i)=>`<div class="bar${i<=state.step?" on":""}"></div>`).join("")}</div>`}
+    function choiceList(key){return `<div class="choices">${options[key].map(([id,title,sub,icon])=>`<button class="choice${state[key]===id?" on":""}" onclick="select('${key}','${id}')"><i class="${icon}"></i><div><h4>${title}</h4><p>${sub}</p></div><span class="check">${state[key]===id?'<i class="fa-solid fa-check"></i>':""}</span></button>`).join("")}</div>`}
+    function nav(label){return `<div class="wiznav"><button class="btn ghost" onclick="back()"><i class="fa-solid fa-arrow-left"></i> Back</button><button class="btn primary" ${canNext()&&!state.submitting?"":"disabled"} onclick="next()">${state.submitting?"Submitting...":label} <i class="fa-solid fa-arrow-right"></i></button></div>`}
+    function renderStep(){
+      const k=steps[state.step];
+      if(k==="experience")return `<h2 class="title d" style="font-size:28px">What is your experience level?</h2><p class="sub">This helps the platform explain terms at the right pace.</p>${choiceList("experience")}${nav("Continue")}`;
+      if(k==="market")return `<h2 class="title d" style="font-size:28px">What do you want to connect or learn?</h2><p class="sub">Choose the category that best matches your current goal.</p>${choiceList("market")}${nav("Continue")}`;
+      if(k==="readiness")return `<h2 class="title d" style="font-size:28px">How ready are you to connect?</h2><p class="sub">This sets your first checklist inside the workspace.</p>${choiceList("readiness")}<label class="field" style="margin-top:16px"><span>Optional context</span><textarea class="input" rows="3" oninput="updateNotes(this.value)" placeholder="Tell us what you are trying to understand or set up.">${esc(state.notes)}</textarea></label>${nav("Continue")}`;
+      return `<h2 class="title d" style="font-size:28px">Request access</h2><p class="sub">One access price: <strong style="color:var(--cyan)">$${ACCESS_PRICE}</strong>. No payment is collected from this form.</p><div class="fieldgrid"><label class="field"><span>Name *</span><input class="input" value="${esc(state.contact.name)}" oninput="updateContact('name',this.value)" autocomplete="name"></label><label class="field"><span>Email *</span><input class="input" type="email" value="${esc(state.contact.email)}" oninput="updateContact('email',this.value)" autocomplete="email"></label><label class="field"><span>Phone</span><input class="input" type="tel" value="${esc(state.contact.phone)}" oninput="updateContact('phone',this.value)" autocomplete="tel"></label><label class="field"><span>Business or account name</span><input class="input" value="${esc(state.contact.business_name)}" oninput="updateContact('business_name',this.value)" autocomplete="organization"></label></div><div class="note">Submitting creates your workspace request for the Arbo + Equity arbitrage access system. Activation and payment happen after confirmation.</div>${state.error?`<div class="error">${esc(state.error)}</div>`:""}${nav("Submit request")}`;
     }
-  </div>`;
-}
-
-function renderEntry(){
-  return `<div>
-    <div class="m" style="font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--cyan);margin-bottom:16px;">Spec 00 · Entry Protocol</div>
-    <h2 class="step-h d">Select your track</h2>
-    <p class="step-sub">Build a full system from scratch, or add individual tools to what you've already got. Pricing calculates automatically — nothing is charged until a specialist confirms your scope.</p>
-    <div class="track-grid">
-      <div class="track-card" onclick="pickTrack('A')">
-        <div class="track-opt m">Option A</div>
-        <div class="track-title d">Full Blueprint Package</div>
-        <p class="track-desc">Complete end-to-end enterprise build. Site, booking engine, AI concierge, mobile app, portals, SOPs, and VA training — one system.</p>
-        <div class="track-sla m">$6,000 · 14 BUSINESS DAYS</div>
-      </div>
-      <div class="track-card" onclick="pickTrack('B')">
-        <div class="track-opt m">Option B</div>
-        <div class="track-title d">À La Carte Add-ons</div>
-        <p class="track-desc">Already operating? Select individual infrastructure components to enhance and extend your existing business.</p>
-        <div class="track-sla m">PRICED PER SERVICE · 24–72 HRS</div>
-      </div>
-    </div>
-  </div>`;
-}
-
-function renderIdentity(){
-  return `<div>
-    <h2 class="step-h d">What type of housing company are you scaling?</h2>
-    <p class="step-sub">Your housing model determines how your Full Blueprint system is structured and deployed.</p>
-    <div class="sel-list">${HOUSING_TYPES.map(h=>selCard({
-      id:h.id, active:S.housingType===h.id, onclick:`pickHousing('${h.id}')`,
-      icon:h.icon, title:h.label
-    })).join("")}</div>
-  </div>`;
-}
-
-function renderChannels(){
-  return `<div>
-    <h2 class="step-h d">What's your primary booking strategy?</h2>
-    <p class="step-sub">This determines how your direct booking engine and channel manager API integrations are configured.</p>
-    <div class="sel-list">${CHANNELS.map(c=>selCard({
-      id:c.id, active:S.channel===c.id, onclick:`pickChannel('${c.id}')`,
-      title:c.label, subtitle:c.note
-    })).join("")}</div>
-  </div>`;
-}
-
-function renderBrand(){
-  return `<div>
-    <h2 class="step-h d">Brand architecture</h2>
-    <p class="step-sub">Quick directional inputs for your specialist. The full brand kit is finalized on your onboarding call.</p>
-    <div class="field-block">
-      <label class="field-lbl m">Company mission statement (optional)</label>
-      <textarea class="field-ta" rows="3" placeholder="What does your company stand for?" oninput="updateMission(this.value)">${esc(S.mission)}</textarea>
-    </div>
-    <div class="field-block">
-      <label class="field-lbl m">Target brand color</label>
-      <div class="swatch-row">${SWATCHES.map(c=>`<button class="swatch${S.brandColor===c?" on":""}" style="background:${c}" onclick="pickColor('${c}')"></button>`).join("")}</div>
-    </div>
-  </div>`;
-}
-
-function renderCatalog(){
-  return `<div>
-    <h2 class="step-h d">Build your à la carte cart</h2>
-    <p class="step-sub">Select one or more services. Each item has its own fulfillment window and is priced independently.</p>
-    <div class="sel-list">${ALA_CARTE.map(item=>selCard({
-      id:item.id, active:S.cart.includes(item.id), onclick:`toggleCart('${item.id}')`,
-      icon:item.icon, title:item.label, subtitle:item.sla+" fulfillment",
-      priceHtml:`<span class="sel-price m">${fmt(ALC_PRICES[item.id])}</span>`
-    })).join("")}</div>
-  </div>`;
-}
-
-function renderPricing(){
-  const bd=breakdown(), sub=subtotal();
-  const installTotal = sub+(HOSTING_MONTHLY*INSTALL_MONTHS);
-  const installAmt = Math.round(installTotal/INSTALL_MONTHS);
-  return `<div>
-    <h2 class="step-h d">Pricing breakdown & payment arrangement</h2>
-    <p class="step-sub">Itemized from your selections. Confirming does not charge your card — your specialist finalizes payment setup in your dashboard.</p>
-    <div class="breakdown-box">
-      ${bd.length===0?`<p style="font-size:14px;color:var(--text-faint);">No items selected.</p>`:
-        bd.map(item=>`<div class="bd-row"><span class="bd-row-lbl">${item.label}</span><span class="bd-row-amt">${fmt(item.amount)}</span></div>`).join("")}
-      <div class="bd-total">
-        <span class="bd-total-lbl m">Subtotal</span>
-        <span class="bd-total-amt">${fmt(sub)}</span>
-      </div>
-    </div>
-    <div class="plan-grid">
-      <button class="plan-card${S.paymentPlan==="one_time"?" on":""}" onclick="pickPlan('one_time')">
-        <div class="plan-head"><i class="fa-solid fa-credit-card plan-icon"></i><span class="plan-tag m">One-time · Paid in full</span></div>
-        <div class="plan-amount d">${fmt(sub)}</div>
-        <div class="plan-note">100% upfront. No financing fee.</div>
-        <div class="plan-hosting">+ $${HOSTING_MONTHLY}/mo hosting & server maintenance</div>
-      </button>
-      <button class="plan-card${S.paymentPlan==="financed"?" on":""}" onclick="pickPlan('financed')">
-        <div class="plan-head"><i class="fa-solid fa-money-bill-wave plan-icon"></i><span class="plan-tag m">90-day financing · direct via YP Labs</span></div>
-        <div class="plan-amount d">${fmt(installAmt)}<small> /mo × ${INSTALL_MONTHS}</small></div>
-        <div class="plan-note">${fmt(installTotal)} total including $${HOSTING_MONTHLY}/mo hosting per month.</div>
-        <div class="plan-hosting">Installment mirrors your build schedule</div>
-      </button>
-    </div>
-    <div class="disclaimer"><strong>No charge today.</strong> Confirming your arrangement queues your project and notifies a YP Labs specialist to reach out. Payment and contract signing happen inside your client dashboard — <strong>all custom production work falls under a strict No-Refund Policy once commenced.</strong></div>
-    <div class="contact-grid">
-      <label class="field-block"><span class="field-lbl m">Your name *</span><input class="field-input" autocomplete="name" value="${esc(S.contact.name)}" oninput="updateContact('name',this.value)"></label>
-      <label class="field-block"><span class="field-lbl m">Business email *</span><input class="field-input" type="email" autocomplete="email" value="${esc(S.contact.email)}" oninput="updateContact('email',this.value)"></label>
-      <label class="field-block"><span class="field-lbl m">Phone</span><input class="field-input" type="tel" autocomplete="tel" value="${esc(S.contact.phone)}" oninput="updateContact('phone',this.value)"></label>
-      <label class="field-block"><span class="field-lbl m">Business name</span><input class="field-input" autocomplete="organization" value="${esc(S.contact.business_name)}" oninput="updateContact('business_name',this.value)"></label>
-    </div>
-    ${S.submitError?`<div class="submit-error" role="alert">${esc(S.submitError)}</div>`:""}
-  </div>`;
-}
-
-function renderDone(){
-  const bd=breakdown(), sub=subtotal();
-  const installTotal = sub+(HOSTING_MONTHLY*INSTALL_MONTHS);
-  const installAmt = Math.round(installTotal/INSTALL_MONTHS);
-  return `<div class="done-wrap">
-    <div class="done-check"><i class="fa-solid fa-circle-check"></i></div>
-    <h2 class="done-title d">You're in the queue.</h2>
-    <p class="done-sub">${S.track==="A"
-      ?"A YP Labs specialist will contact you within one business day to finalize your Full Blueprint scope. Nothing has been charged."
-      :"A YP Labs specialist will confirm your à la carte selections within one business day. Nothing has been charged."}</p>
-    <div class="breakdown-box" style="margin-bottom:28px;">
-      <div class="m" style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-faint);margin-bottom:12px;">Selected arrangement</div>
-      ${bd.map(item=>`<div class="bd-row"><span class="bd-row-lbl">${item.label}</span><span class="bd-row-amt">${fmt(item.amount)}</span></div>`).join("")}
-      <div class="bd-total">
-        <span style="font-size:14px;">${S.paymentPlan==="one_time"?"Pay in full + $"+HOSTING_MONTHLY+"/mo hosting":"90-day financing — " + INSTALL_MONTHS + " installments"}</span>
-        <span class="bd-total-amt">${S.paymentPlan==="one_time"?fmt(sub):fmt(installAmt)+"/mo"}</span>
-      </div>
-    </div>
-    <div class="m" style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:14px;">Project status pipeline</div>
-    <div class="pipeline">
-      ${PIPELINE.map((s,i)=>`
-        <div class="pip-pill${i===0?" now":""}"><span class="pip-dot"></span>${s}</div>
-        ${i<PIPELINE.length-1?'<div class="pip-line"></div>':""}
-      `).join("")}
-    </div>
-    ${S.accountCreated
-      ?`<div class="disclaimer"><strong>Your workspace account is ready.</strong> <a href="/dashboard.html" style="color:var(--cyan)">Sign in to your dashboard</a> to follow delivery.</div>`
-      :`<div class="field-block" style="max-width:480px;margin:24px auto;text-align:left"><label class="field-lbl m" for="newPassword">Create your workspace password</label><input class="field-input" id="newPassword" type="password" minlength="8" autocomplete="new-password" placeholder="At least 8 characters"><button class="btn-wiz-primary" style="margin-top:10px" onclick="createAccount()">Create workspace account</button>${S.accountError?`<div class="submit-error">${esc(S.accountError)}</div>`:''}</div>`}
-    <button class="btn-wiz-ghost" onclick="startOver()"><i class="fa-solid fa-arrow-left"></i> Start a new request</button>
-  </div>`;
-}
-
-function renderWizard(){
-  const ss=steps(), key=stepKey();
-  let content="";
-  if(key==="identity") content=renderIdentity();
-  else if(key==="channels") content=renderChannels();
-  else if(key==="brand") content=renderBrand();
-  else if(key==="catalog") content=renderCatalog();
-  else if(key==="pricing") content=renderPricing();
-  return `<div class="wiz-layout">
-    ${renderRail()}
-    <div class="wiz-main">
-      ${renderMobProg()}
-      ${content}
-      ${renderNav()}
-    </div>
-  </div>`;
-}
-
-function render(){
-  const el = document.getElementById("wizardContent");
-  if(!S.track && !S.submitted) el.innerHTML=renderEntry();
-  else if(S.track && !S.submitted) el.innerHTML=renderWizard();
-  else el.innerHTML=renderDone();
-}
-
-// Close on overlay background click
-document.getElementById("wizardOverlay").addEventListener("click",function(e){
-  if(e.target===this) closeWizard();
-});
-// Escape key
-document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeWizard(); });
-if(location.hash==="#build") openWizard();
-</script>
+    async function submit(){
+      if(state.submitting)return;state.submitting=true;state.error="";render();
+      try{
+        const response=await fetch("/api/wizard/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({track:"A",housing_type:state.experience,channel:state.market,mission:`Readiness: ${state.readiness}. Notes: ${state.notes}`,brand_color:null,cart:[],payment_plan:"one_time",contact:state.contact})});
+        const data=await response.json();
+        if(!response.ok)throw new Error(data.error||data.errors?.[0]?.msg||"Submission failed.");
+        state.submitted=true;
+      }catch(error){state.error=error.message}
+      finally{state.submitting=false;render()}
+    }
+    function reset(){state={step:0,experience:"",market:"",readiness:"",notes:"",contact:{name:"",email:"",phone:"",business_name:""},submitted:false,submitting:false,error:""};render()}
+    function render(){
+      if(state.submitted){$("#wizardContent").innerHTML=`<div class="done"><div class="tag m"><span class="dot"></span> Request received</div><h2 class="big d">Your access request is in.</h2><p class="sub">A YP Labs specialist can now review your setup path and prepare the workspace around your experience level, market interest, and readiness.</p><div class="note"><strong style="color:var(--green)">Next:</strong> create or sign into your workspace when credentials are ready. Payment is confirmed before activation.</div><div class="actions" style="margin-top:22px"><a class="btn primary" href="/dashboard.html">Go to workspace</a><button class="btn ghost" onclick="reset()">Start another request</button></div></div>`;return}
+      $("#wizardContent").innerHTML=progress()+renderStep();
+    }
+    $("#wizardOverlay").addEventListener("click",e=>{if(e.target.id==="wizardOverlay")closeWizard()});
+    document.addEventListener("keydown",e=>{if(e.key==="Escape")closeWizard()});
+    if(location.hash==="#build"||location.hash==="#access")openWizard();
+  </script>
 </body>
 </html>
