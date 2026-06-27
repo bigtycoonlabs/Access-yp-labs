@@ -11,7 +11,8 @@
 yp-labs/
 ├── public/                  # Static frontend (no build step required)
 │   ├── index.html           # Main marketing site + setup wizard (accessyplabs.com)
-│   ├── dashboard.html       # Client + Staff Admin dashboard
+│   ├── dashboard.html       # Client + Staff dashboard
+│   ├── admin.html           # Admin dashboard
 │   └── wizard.html          # Redirect to the setup wizard
 ├── src/                     # Node/Express backend
 │   ├── server.js            # Entry point
@@ -29,10 +30,12 @@ yp-labs/
 │       ├── requests.js      # Staff→client action requests
 │       ├── appointments.js  # Lead/client appointment scheduling
 │       ├── billing.js       # Payment plan tracking
-│       └── clients.js       # Staff CRM view
+│       ├── clients.js       # Staff CRM view
+│       └── admin.js         # Admin controls, audit, discounts, performance
 ├── docs/
 │   ├── schema.sql           # Full PostgreSQL schema — run this first
-│   └── tech-stack-plan.md   # Architecture decisions & phased roadmap
+│   ├── tech-stack-plan.md   # Architecture decisions & phased roadmap
+│   └── migrations/          # Incremental database updates
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml       # CI (test) + deploy to Railway on merge to main
@@ -48,6 +51,8 @@ yp-labs/
 - Public arbitrage access site with a server-validated setup wizard
 - Account activation after project submission
 - Role-aware client and staff workspace
+- Admin dashboard at `/admin.html` for admin/master_staff users
+- Admin APIs for account management, login activity, password reset, discount codes, and performance tracking
 - Setup milestones, messaging, document delivery, client requests, and appointments
 - Signed Cloudinary file uploads
 - Stripe Checkout with verified, idempotent webhooks
@@ -62,6 +67,12 @@ YP Labs is now positioned as one unified Arbo + Equity arbitrage access platform
 - **One setup path:** beginner-friendly wizard followed by workspace onboarding
 - **Education categories:** brokers, exchanges, crypto venues, trading pairs, and equity markets
 - **Purpose:** help users understand what they are connecting to, how the categories differ, and what readiness steps are needed before activation
+
+## Integration Status
+
+The platform has secure auth, workspace, admin, and Stripe checkout foundations. It does **not** yet include live trading execution, exchange account linking, GoDaddy terminal processing, Cash App payments, or live institutional market-data feeds. Those require approved provider accounts, API keys, compliance review, webhook setup, and production credentials.
+
+Current admin integration readiness flags are exposed at `/api/admin/overview`.
 
 ## Quick Start (Local Dev)
 
@@ -180,6 +191,17 @@ Every push to `main` that passes tests automatically deploys to Railway via the 
 | GET | `/api/clients` | Staff | All clients with project info |
 | GET | `/api/clients/:id` | Staff | Single client |
 | PATCH | `/api/clients/:id` | Staff | Update CRM fields |
+
+### Admin
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/api/admin/overview` | Admin | User, billing, performance, and integration readiness summary |
+| GET | `/api/admin/users` | Admin | All users with role, status, billing, login, and performance details |
+| PATCH | `/api/admin/users/:id` | Admin | Update user role, status, and profile fields |
+| POST | `/api/admin/users/:id/reset-password` | Admin | Generate a temporary password |
+| GET | `/api/admin/login-activity` | Admin | Recent successful and failed login attempts |
+| GET/POST/PATCH | `/api/admin/discounts` | Admin | Manage discount codes |
+| GET/POST | `/api/admin/performance` | Admin | Track reported profit, platform fees, and growth rates |
 
 ---
 
