@@ -1,43 +1,29 @@
 const SERVICE_CATALOG = Object.freeze({
-  marketing_site: { label: 'Marketing Website', price: 1200, sla_hours: 72 },
-  booking_engine: { label: 'Direct Booking Engine + PMS Integration', price: 1500, sla_hours: 72 },
-  ai_concierge: { label: 'AI Hospitality Concierge', price: 1800, sla_hours: 72 },
-  mobile_app: { label: 'React Native Mobile App (iOS/Android)', price: 1500, sla_hours: 72 },
-  web_portal: { label: 'Web Application Portal', price: 1000, sla_hours: 48 },
-  sop_manual: { label: 'SOPs & Employee Manual', price: 750, sla_hours: 24 },
-  va_dashboard: { label: 'VA Training Dashboard', price: 950, sla_hours: 48 },
+  arbitrage_access: {
+    label: 'YP Labs Arbo + Equity Arbitrage Access',
+    price: 997,
+    sla_hours: 24,
+  },
 });
 
-const BLUEPRINT_BASE = 6000;
-const HOSTING_MONTHLY = 60;
-const INSTALL_MONTHS = 3;
+const ARBITRAGE_ACCESS_PRICE = 997;
+const HOSTING_MONTHLY = 0;
+const INSTALL_MONTHS = 1;
 
 function calculateQuote({ track, cart = [], payment_plan }) {
-  const lineItems = [];
+  if (!['A', 'arbitrage_access'].includes(track)) throw new Error('Invalid access track.');
+  if (payment_plan !== 'one_time') throw new Error('Invalid payment plan.');
 
-  if (track === 'A') {
-    lineItems.push({
-      type: 'full_blueprint',
-      label: 'Full Architecture Tech Package',
-      amount: BLUEPRINT_BASE,
-      sla_hours: 14 * 8,
-    });
-  } else if (track === 'B') {
-    [...new Set(cart)].forEach((serviceId) => {
-      const service = SERVICE_CATALOG[serviceId];
-      if (!service) return;
-      lineItems.push({ type: serviceId, ...service, amount: service.price });
-    });
-  } else {
-    throw new Error('Invalid project track.');
-  }
-
-  if (!lineItems.length) throw new Error('Select at least one service.');
+  const access = SERVICE_CATALOG.arbitrage_access;
+  const lineItems = [{
+    type: 'arbitrage_access',
+    label: access.label,
+    amount: access.price,
+    sla_hours: access.sla_hours,
+  }];
 
   const subtotal = lineItems.reduce((sum, item) => sum + item.amount, 0);
-  const financedTotal = payment_plan === 'financed'
-    ? subtotal + (HOSTING_MONTHLY * INSTALL_MONTHS)
-    : null;
+  const financedTotal = null;
 
   return {
     lineItems,
@@ -51,7 +37,7 @@ function calculateQuote({ track, cart = [], payment_plan }) {
 
 module.exports = {
   SERVICE_CATALOG,
-  BLUEPRINT_BASE,
+  ARBITRAGE_ACCESS_PRICE,
   HOSTING_MONTHLY,
   INSTALL_MONTHS,
   calculateQuote,
