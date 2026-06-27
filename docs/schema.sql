@@ -49,14 +49,7 @@ CREATE TABLE IF NOT EXISTS service_catalog (
 );
 
 INSERT INTO service_catalog (service_type, name, price, sla_hours) VALUES
-  ('full_blueprint',  'Full Architecture Tech Package',         6000.00, 112),
-  ('marketing_site',  'Marketing Website',                      1200.00,  72),
-  ('booking_engine',  'Direct Booking Engine + PMS Integration',1500.00,  72),
-  ('ai_concierge',    'AI Hospitality Concierge',               1800.00,  72),
-  ('mobile_app',      'React Native Mobile App (iOS/Android)',  1500.00,  72),
-  ('web_portal',      'Web Application Portal',                 1000.00,  48),
-  ('sop_manual',      'SOPs & Employee Manual',                  750.00,  24),
-  ('va_dashboard',    'VA Training Dashboard',                   950.00,  48)
+  ('arbitrage_access', 'YP Labs Arbo + Equity Arbitrage Access', 997.00, 24)
 ON CONFLICT (service_type) DO NOTHING;
 
 -- ── PROJECTS ───────────────────────────────────────
@@ -74,7 +67,7 @@ CREATE TABLE IF NOT EXISTS projects (
   subtotal              NUMERIC(10,2) NOT NULL DEFAULT 0,
   financed_total        NUMERIC(10,2),
   installment_amount    NUMERIC(10,2),
-  hosting_monthly       NUMERIC(10,2) NOT NULL DEFAULT 60.00,
+  hosting_monthly       NUMERIC(10,2) NOT NULL DEFAULT 0.00,
   assigned_specialist   VARCHAR(255),
   internal_notes        TEXT,
   created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
