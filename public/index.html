@@ -3,196 +3,37 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="YP Labs arbitrage access system for brokers, exchanges, crypto markets, and pair education.">
-  <title>YP Labs | Arbitrage Access System</title>
+  <meta name="description" content="YP Labs builds React and React Native infrastructure for furnished rental, corporate housing, and flexible housing operators.">
+  <title>YP Labs | Flexible Housing Technology Infrastructure</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
-    :root{--bg:#08111f;--panel:#0e1a2b;--panel2:#13243a;--line:#243852;--text:#eef5fb;--muted:#8da3bb;--faint:#536a82;--cyan:#4fd3ec;--green:#54d990;--amber:#e8a23d;--red:#ff7b88;--r:7px}
-    *{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}body{background:var(--bg);color:var(--text);font-family:"IBM Plex Sans",system-ui,sans-serif;background-image:linear-gradient(rgba(79,211,236,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(79,211,236,.035) 1px,transparent 1px);background-size:44px 44px}a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}button{cursor:pointer;border:0;background:none;color:inherit}.d{font-family:"Space Grotesk",system-ui,sans-serif}.m{font-family:"IBM Plex Mono",monospace}.nav{position:sticky;top:0;z-index:20;height:66px;display:flex;align-items:center;justify-content:space-between;padding:0 34px;background:rgba(8,17,31,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}.brand{font-weight:800;font-size:18px;letter-spacing:.02em}.brand small{display:block;color:var(--faint);font:10px "IBM Plex Mono";letter-spacing:.14em;text-transform:uppercase;margin-top:2px}.navlinks{display:flex;gap:6px;align-items:center}.navlinks a{padding:8px 12px;border-radius:var(--r);font-size:13px;color:var(--muted)}.navlinks a:hover{color:var(--text);background:var(--panel)}.cta,.btn{display:inline-flex;align-items:center;gap:9px;border-radius:var(--r);padding:12px 18px;font-weight:700}.cta,.btn.primary{background:var(--cyan);color:#06111d}.btn.ghost{border:1px solid var(--line);color:var(--muted);background:transparent}.btn.ghost:hover{border-color:var(--cyan);color:var(--cyan)}.hero{max-width:1160px;margin:auto;padding:92px 30px 70px}.tag{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:99px;padding:7px 13px;color:var(--cyan);font-size:11px;letter-spacing:.13em;text-transform:uppercase;margin-bottom:28px}.dot{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 18px var(--cyan)}h1{font-size:clamp(38px,6vw,68px);line-height:1.03;max-width:940px;letter-spacing:-.03em}h1 span{color:var(--cyan)}.hero p{max-width:720px;color:var(--muted);font-size:18px;line-height:1.7;margin:24px 0 34px}.actions{display:flex;gap:12px;flex-wrap:wrap}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-top:60px}.stat{background:rgba(14,26,43,.94);padding:22px}.stat strong{display:block;font:700 30px "Space Grotesk";color:var(--cyan)}.stat span{color:var(--muted);font-size:13px}.section{padding:78px 30px}.inner{max-width:1160px;margin:auto}.section.alt{background:rgba(14,26,43,.72);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.kicker{color:var(--cyan);font-size:11px;letter-spacing:.16em;text-transform:uppercase;margin-bottom:14px}.title{font-size:clamp(28px,4vw,44px);line-height:1.12;margin-bottom:16px}.sub{max-width:760px;color:var(--muted);font-size:16px;line-height:1.7;margin-bottom:36px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:24px}.card .icon{width:42px;height:42px;border-radius:var(--r);display:grid;place-items:center;background:rgba(79,211,236,.13);color:var(--cyan);margin-bottom:18px}.card h3{font-size:18px;margin-bottom:9px}.card p,.card li{color:var(--muted);line-height:1.6;font-size:14px}.card ul{list-style:none;display:grid;gap:9px}.pillrow{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.pill{border:1px solid var(--line);border-radius:99px;padding:8px 12px;color:var(--muted);font-size:13px;background:rgba(8,17,31,.65)}.price{display:grid;grid-template-columns:1.1fr .9fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}.price>div{background:var(--panel);padding:30px}.amount{font:700 54px "Space Grotesk";color:var(--cyan);margin:10px 0}.note{padding:14px;border:1px solid rgba(84,217,144,.25);background:rgba(84,217,144,.07);border-radius:var(--r);color:var(--muted);line-height:1.6;font-size:14px}.steps{display:grid;gap:0;max-width:760px}.step{display:grid;grid-template-columns:48px 1fr;gap:18px;padding-bottom:28px}.num{width:42px;height:42px;border:1px solid var(--cyan);color:var(--cyan);border-radius:50%;display:grid;place-items:center;font-size:12px}.step h3{margin:7px 0 6px}.step p{color:var(--muted);line-height:1.6}.footer{border-top:1px solid var(--line);padding:36px 30px;color:var(--muted)}.foot-inner{max-width:1160px;margin:auto;display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap}.overlay{position:fixed;inset:0;z-index:50;display:none;overflow:auto;background:rgba(4,9,17,.93);backdrop-filter:blur(12px)}.overlay.open{display:block}.wizard{max-width:920px;margin:auto;padding:38px 22px 70px}.wizhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:26px}.close{width:38px;height:38px;border:1px solid var(--line);border-radius:50%;color:var(--muted)}.close:hover{color:var(--red);border-color:var(--red)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:26px}.progress{display:flex;gap:7px;margin-bottom:26px}.bar{height:4px;flex:1;background:var(--line);border-radius:9px}.bar.on{background:var(--cyan)}.choices{display:grid;gap:10px}.choice{text-align:left;display:grid;grid-template-columns:42px 1fr auto;gap:14px;align-items:center;padding:15px;border:1px solid var(--line);background:var(--panel2);border-radius:var(--r)}.choice.on{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(79,211,236,.12)}.choice i{color:var(--cyan)}.choice h4{font-size:15px}.choice p{color:var(--muted);font-size:13px;margin-top:3px;line-height:1.45}.check{width:21px;height:21px;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center}.choice.on .check{background:var(--cyan);color:#06111d;border-color:var(--cyan)}.fieldgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{display:grid;gap:7px;margin-bottom:14px}.field span{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}.input{width:100%;padding:12px;background:#091423;border:1px solid var(--line);border-radius:var(--r);color:var(--text)}textarea.input{resize:vertical}.input:focus{outline:2px solid rgba(79,211,236,.18);border-color:var(--cyan)}.wiznav{display:flex;justify-content:space-between;gap:12px;margin-top:22px}.error{color:#ff9a9a;font-size:13px;margin-top:10px}.done{text-align:left;max-width:680px;margin:auto}.done .big{font-size:32px;margin-bottom:12px}@media(max-width:860px){.nav{padding:0 18px}.navlinks{display:none}.hero,.section{padding-left:20px;padding-right:20px}.stats,.grid,.price{grid-template-columns:1fr}.fieldgrid{grid-template-columns:1fr}h1{font-size:40px}.amount{font-size:42px}}
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+    :root{--bg:#08111f;--panel:#0e1a2b;--panel2:#13243a;--line:#243852;--text:#eef5fb;--muted:#8da3bb;--cyan:#4fd3ec;--green:#54d990;--amber:#e8a23d;--red:#ff7b88;--r:7px}
+    *{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}body{background:var(--bg);color:var(--text);font-family:"IBM Plex Sans",system-ui,sans-serif;background-image:linear-gradient(rgba(79,211,236,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(79,211,236,.035) 1px,transparent 1px);background-size:44px 44px}a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}button{cursor:pointer;border:0;background:none;color:inherit}.d{font-family:"Space Grotesk",system-ui,sans-serif}.m{font-family:"IBM Plex Mono",monospace}.nav{position:sticky;top:0;z-index:20;height:66px;display:flex;align-items:center;justify-content:space-between;padding:0 34px;background:rgba(8,17,31,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}.brand{font-weight:800;font-size:18px;letter-spacing:.02em}.brand small{display:block;color:var(--muted);font:10px "IBM Plex Mono";letter-spacing:.14em;text-transform:uppercase;margin-top:2px}.navlinks{display:flex;gap:6px;align-items:center}.navlinks a{padding:8px 12px;border-radius:var(--r);font-size:13px;color:var(--muted)}.navlinks a:hover{color:var(--text);background:var(--panel)}.cta,.btn{display:inline-flex;align-items:center;gap:9px;border-radius:var(--r);padding:12px 18px;font-weight:700}.cta,.btn.primary{background:var(--cyan);color:#06111d}.btn.ghost{border:1px solid var(--line);color:var(--muted);background:transparent}.btn.ghost:hover{border-color:var(--cyan);color:var(--cyan)}.hero{max-width:1160px;margin:auto;padding:92px 30px 70px}.tag{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:99px;padding:7px 13px;color:var(--cyan);font-size:11px;letter-spacing:.13em;text-transform:uppercase;margin-bottom:28px}.dot{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 18px var(--cyan)}h1{font-size:clamp(38px,6vw,68px);line-height:1.03;max-width:980px;letter-spacing:-.03em}h1 span{color:var(--cyan)}.hero p{max-width:760px;color:var(--muted);font-size:18px;line-height:1.7;margin:24px 0 34px}.actions{display:flex;gap:12px;flex-wrap:wrap}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-top:60px}.stat{background:rgba(14,26,43,.94);padding:22px}.stat strong{display:block;font:700 30px "Space Grotesk";color:var(--cyan)}.stat span{color:var(--muted);font-size:13px}.section{padding:78px 30px}.inner{max-width:1160px;margin:auto}.section.alt{background:rgba(14,26,43,.72);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.kicker{color:var(--cyan);font-size:11px;letter-spacing:.16em;text-transform:uppercase;margin-bottom:14px}.title{font-size:clamp(28px,4vw,44px);line-height:1.12;margin-bottom:16px}.sub{max-width:820px;color:var(--muted);font-size:16px;line-height:1.7;margin-bottom:36px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:24px}.card .icon{width:42px;height:42px;border-radius:var(--r);display:grid;place-items:center;background:rgba(79,211,236,.13);color:var(--cyan);margin-bottom:18px}.card h3{font-size:18px;margin-bottom:9px}.card p,.card li{color:var(--muted);line-height:1.6;font-size:14px}.card ul{list-style:none;display:grid;gap:9px}.price{display:grid;grid-template-columns:1.1fr .9fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}.price>div{background:var(--panel);padding:30px}.amount{font:700 54px "Space Grotesk";color:var(--cyan);margin:10px 0}.pillrow{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.pill{border:1px solid var(--line);border-radius:99px;padding:8px 12px;color:var(--muted);font-size:13px;background:rgba(8,17,31,.65)}.footer{border-top:1px solid var(--line);padding:36px 30px;color:var(--muted)}.foot-inner{max-width:1160px;margin:auto;display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap}.overlay{position:fixed;inset:0;z-index:50;display:none;overflow:auto;background:rgba(4,9,17,.93);backdrop-filter:blur(12px)}.overlay.open{display:block}.wizard{max-width:920px;margin:auto;padding:38px 22px 70px}.wizhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:26px}.close{width:38px;height:38px;border:1px solid var(--line);border-radius:50%;color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:26px}.progress{display:flex;gap:7px;margin-bottom:26px}.bar{height:4px;flex:1;background:var(--line);border-radius:9px}.bar.on{background:var(--cyan)}.choices{display:grid;gap:10px}.choice{text-align:left;display:grid;grid-template-columns:42px 1fr auto;gap:14px;align-items:center;padding:15px;border:1px solid var(--line);background:var(--panel2);border-radius:var(--r)}.choice.on{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(79,211,236,.12)}.choice i{color:var(--cyan)}.choice h4{font-size:15px}.choice p{color:var(--muted);font-size:13px;margin-top:3px;line-height:1.45}.check{width:21px;height:21px;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center}.choice.on .check{background:var(--cyan);color:#06111d;border-color:var(--cyan)}.fieldgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{display:grid;gap:7px;margin-bottom:14px}.field span{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}.input{width:100%;padding:12px;background:#091423;border:1px solid var(--line);border-radius:var(--r);color:var(--text)}textarea.input{resize:vertical}.wiznav{display:flex;justify-content:space-between;gap:12px;margin-top:22px}.error{color:#ff9a9a;font-size:13px;margin-top:10px}.done{max-width:680px;margin:auto}.done .big{font-size:32px;margin-bottom:12px}@media(max-width:860px){.nav{padding:0 18px}.navlinks{display:none}.hero,.section{padding-left:20px;padding-right:20px}.stats,.grid,.price{grid-template-columns:1fr}.fieldgrid{grid-template-columns:1fr}h1{font-size:40px}.amount{font-size:42px}}
   </style>
 </head>
 <body>
-  <nav class="nav">
-    <a class="brand d" href="/">YP LABS<small>Arbo + Equity Access</small></a>
-    <div class="navlinks">
-      <a href="#system">System</a>
-      <a href="#markets">Markets</a>
-      <a href="#setup">Setup</a>
-      <a href="#price">Price</a>
-      <a href="/dashboard.html">Workspace</a>
-    </div>
-    <button class="cta" onclick="openWizard()">Get Access</button>
-  </nav>
-
+  <nav class="nav"><a class="brand d" href="/">YP LABS<small>Housing technology infrastructure</small></a><div class="navlinks"><a href="#platforms">Platforms</a><a href="#operators">Operators</a><a href="#pricing">Pricing</a><a href="/dashboard.html">Workspace</a></div><button class="cta" onclick="openWizard()">Start Build Request</button></nav>
   <main>
-    <section class="hero">
-      <div class="tag m"><span class="dot"></span> One platform for arbitrage access and education</div>
-      <h1 class="d">Learn, connect, and operate inside one <span>arbitrage system.</span></h1>
-      <p>YP Labs unifies the Arbo and Equity experience into a guided access platform. Users can understand what arbitrage is, identify the difference between brokers, exchanges, crypto venues, and trading pairs, then complete a simple setup path before connecting.</p>
-      <div class="actions">
-        <button class="btn primary" onclick="openWizard()"><i class="fa-solid fa-route"></i> Start setup wizard</button>
-        <a class="btn ghost" href="#markets"><i class="fa-solid fa-layer-group"></i> Learn the market types</a>
-      </div>
-      <div class="stats">
-        <div class="stat"><strong>1</strong><span>single access price</span></div>
-        <div class="stat"><strong>4</strong><span>connection categories explained</span></div>
-        <div class="stat"><strong>24/7</strong><span>self-guided learning path</span></div>
-        <div class="stat"><strong>All</strong><span>experience levels supported</span></div>
-      </div>
-    </section>
-
-    <section class="section alt" id="system">
-      <div class="inner">
-        <div class="kicker m">Purpose</div>
-        <h2 class="title d">A plain-language bridge into arbitrage.</h2>
-        <p class="sub">The platform is built for people who need clear steps before they connect accounts or evaluate opportunities. It avoids fragmented tools and separates education, setup, and access into one guided flow.</p>
-        <div class="grid">
-          <article class="card"><div class="icon"><i class="fa-solid fa-compass"></i></div><h3 class="d">Identify your starting point</h3><p>New users, active traders, business owners, and experienced operators get different explanations without needing separate products.</p></article>
-          <article class="card"><div class="icon"><i class="fa-solid fa-scale-balanced"></i></div><h3 class="d">Understand arbitrage</h3><p>Arbitrage is explained as price, timing, spread, and access differences across markets. The platform focuses on recognition and setup, not hype.</p></article>
-          <article class="card"><div class="icon"><i class="fa-solid fa-plug-circle-check"></i></div><h3 class="d">Prepare to connect</h3><p>The wizard collects your experience level, market interest, account readiness, and support needs so the workspace can guide the next step.</p></article>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="markets">
-      <div class="inner">
-        <div class="kicker m">Market Map</div>
-        <h2 class="title d">Brokers, exchanges, crypto, and pairs are not the same thing.</h2>
-        <p class="sub">The setup experience differentiates each category so users of different ages and backgrounds can recognize what they are connecting to and why it matters.</p>
-        <div class="grid">
-          <article class="card"><div class="icon"><i class="fa-solid fa-user-tie"></i></div><h3 class="d">Brokers</h3><p>Brokers act as account providers or intermediaries. They may offer stocks, forex, options, funds, or other instruments, and they often control order routing, margin, and account rules.</p></article>
-          <article class="card"><div class="icon"><i class="fa-solid fa-building-columns"></i></div><h3 class="d">Exchanges</h3><p>Exchanges are marketplaces where orders meet. Pricing, liquidity, fees, hours, and regional access can vary from venue to venue.</p></article>
-          <article class="card"><div class="icon"><i class="fa-brands fa-bitcoin"></i></div><h3 class="d">Crypto Venues</h3><p>Crypto platforms operate around wallets, tokens, stablecoins, on-chain transfers, centralized exchanges, and decentralized liquidity pools.</p></article>
-          <article class="card"><div class="icon"><i class="fa-solid fa-code-compare"></i></div><h3 class="d">Pairs</h3><p>Pairs compare two assets or currencies, such as BTC/USD, ETH/USDT, EUR/USD, or asset-to-asset routes. Pair selection changes fees, spreads, and liquidity.</p></article>
-          <article class="card"><div class="icon"><i class="fa-solid fa-chart-line"></i></div><h3 class="d">Equity Markets</h3><p>Equity access focuses on public-company shares, ETFs, market hours, broker account types, and the difference between cash and margin accounts.</p></article>
-          <article class="card"><div class="icon"><i class="fa-solid fa-triangle-exclamation"></i></div><h3 class="d">Risk and readiness</h3><p>The system explains that price differences can close quickly and that fees, delays, rules, and account limitations can remove an apparent opportunity.</p></article>
-        </div>
-        <div class="pillrow">
-          <span class="pill">Beginner education</span><span class="pill">Broker comparison</span><span class="pill">Exchange readiness</span><span class="pill">Crypto routing basics</span><span class="pill">Pair identification</span><span class="pill">Equity account setup</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="section alt" id="setup">
-      <div class="inner">
-        <div class="kicker m">Setup Wizard</div>
-        <h2 class="title d">A guided path before access.</h2>
-        <p class="sub">The wizard is designed to reduce confusion. It asks simple questions, explains terms in context, and places each user into the right onboarding lane.</p>
-        <div class="steps">
-          <div class="step"><div class="num m">01</div><div><h3 class="d">Choose your experience level</h3><p>New, learning, active, or advanced. The workspace adapts explanations based on that answer.</p></div></div>
-          <div class="step"><div class="num m">02</div><div><h3 class="d">Pick your market interest</h3><p>Brokerage, exchange, crypto, pairs, equity, or all markets. This controls the first setup checklist.</p></div></div>
-          <div class="step"><div class="num m">03</div><div><h3 class="d">Confirm account readiness</h3><p>The system identifies whether you already have accounts, need help choosing platforms, or need beginner education first.</p></div></div>
-          <div class="step"><div class="num m">04</div><div><h3 class="d">Get one access plan</h3><p>No disconnected feature paths or confusing product tiers. One YP Labs access price unlocks the arbitrage system workflow.</p></div></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="price">
-      <div class="inner">
-        <div class="kicker m">Single Price</div>
-        <h2 class="title d">One access price for the arbitrage system.</h2>
-        <div class="price">
-          <div>
-            <div class="kicker m">YP Labs Arbitrage Access</div>
-            <div class="amount">$997</div>
-            <p class="sub" style="margin-bottom:0">Includes the guided setup wizard, learning workspace, market-category explanations, connection readiness checklist, and access routing for the Arbo + Equity platform.</p>
-          </div>
-          <div>
-            <ul class="card" style="padding:0;border:0;background:transparent">
-              <li><i class="fa-solid fa-check" style="color:var(--green);margin-right:8px"></i>One product path</li>
-              <li><i class="fa-solid fa-check" style="color:var(--green);margin-right:8px"></i>One checkout amount</li>
-              <li><i class="fa-solid fa-check" style="color:var(--green);margin-right:8px"></i>Beginner-friendly education</li>
-              <li><i class="fa-solid fa-check" style="color:var(--green);margin-right:8px"></i>Broker, exchange, crypto, and pair setup guidance</li>
-            </ul>
-            <div class="note" style="margin-top:18px"><strong style="color:var(--green)">No charge during setup.</strong> Submitting the wizard creates your access request. Payment is confirmed in the workspace before activation.</div>
-          </div>
-        </div>
-      </div>
-    </section>
+    <section class="hero"><div class="tag m"><span class="dot"></span> Built for furnished rental and corporate housing operators</div><h1 class="d">React and React Native infrastructure for <span>professional flexible housing operators.</span></h1><p>YP Labs designs and builds the technical operating layer for furnished rental, corporate housing, mid-term rental, shared-living, and serviced accommodation companies. We help operators replace scattered tools with branded web apps, mobile apps, booking workflows, AI concierge systems, SOP portals, and internal staff infrastructure.</p><div class="actions"><button class="btn primary" onclick="openWizard()"><i class="fa-solid fa-route"></i> Start the setup wizard</button><a class="btn ghost" href="#platforms"><i class="fa-solid fa-layer-group"></i> View platform modules</a></div><div class="stats"><div class="stat"><strong>React</strong><span>web portals and operator dashboards</span></div><div class="stat"><strong>Native</strong><span>iOS and Android applications</span></div><div class="stat"><strong>AI</strong><span>guest and operations automation</span></div><div class="stat"><strong>SOP</strong><span>training and staffing systems</span></div></div></section>
+    <section class="section alt" id="platforms"><div class="inner"><div class="kicker m">What YP Labs Builds</div><h2 class="title d">Infrastructure for operators who need to scale beyond spreadsheets and disconnected tools.</h2><p class="sub">The platform is configured around the operating needs of housing companies: direct bookings, property intake, guest communication, owner reporting, staff training, vendor coordination, and portfolio visibility.</p><div class="grid"><article class="card"><div class="icon"><i class="fa-solid fa-globe"></i></div><h3 class="d">Marketing websites</h3><p>Conversion-focused sites for corporate housing and furnished rental brands, built to support direct booking and lead capture.</p></article><article class="card"><div class="icon"><i class="fa-solid fa-calendar-check"></i></div><h3 class="d">Booking engines</h3><p>Direct booking workflows, property displays, inquiry intake, and PMS-ready architecture for operator-owned demand.</p></article><article class="card"><div class="icon"><i class="fa-solid fa-robot"></i></div><h3 class="d">AI concierge</h3><p>Guest support, stay instructions, FAQs, check-in flows, and internal response automation for hospitality teams.</p></article><article class="card"><div class="icon"><i class="fa-solid fa-mobile-screen"></i></div><h3 class="d">React Native apps</h3><p>Branded iOS and Android experiences for guests, clients, housing coordinators, owners, or internal staff.</p></article><article class="card"><div class="icon"><i class="fa-solid fa-table-columns"></i></div><h3 class="d">Operator portals</h3><p>Dashboards for requests, properties, tasks, documents, client communication, and staff coordination.</p></article><article class="card"><div class="icon"><i class="fa-solid fa-people-group"></i></div><h3 class="d">SOP and VA systems</h3><p>Training dashboards, employee manuals, and process libraries for remote teams and local field operators.</p></article></div></div></section>
+    <section class="section" id="operators"><div class="inner"><div class="kicker m">Who It Serves</div><h2 class="title d">Furnished rental, corporate housing, and flexible housing operators.</h2><p class="sub">YP Labs supports operators building inventory through master leases, management agreements, co-hosting, corporate accounts, relocation demand, insurance housing, healthcare placements, student housing, and shared living.</p><div class="pillrow"><span class="pill">Corporate housing providers</span><span class="pill">Furnished rental operators</span><span class="pill">Mid-term rental brands</span><span class="pill">Serviced accommodation teams</span><span class="pill">Shared-living operators</span><span class="pill">Co-hosting companies</span><span class="pill">Relocation housing providers</span></div></div></section>
+    <section class="section alt" id="pricing"><div class="inner"><div class="kicker m">Engagement Models</div><h2 class="title d">Start with the full blueprint or select individual infrastructure modules.</h2><div class="price"><div><h3 class="d">Full Architecture Tech Package</h3><div class="amount">$6,000</div><p class="sub" style="margin-bottom:0">Complete platform planning and implementation path for operators who need the full system designed together.</p></div><div><h3 class="d">A la carte modules</h3><ul><li>Marketing Website — $1,200</li><li>Direct Booking Engine + PMS Integration — $1,500</li><li>AI Hospitality Concierge — $1,800</li><li>React Native Mobile App — $1,500</li><li>Web Application Portal — $1,000</li><li>SOPs & Employee Manual — $750</li><li>VA Training Dashboard — $950</li></ul></div></div></div></section>
   </main>
-
-  <footer class="footer">
-    <div class="foot-inner">
-      <div><strong class="d" style="color:var(--text)">YP Labs</strong><br>Arbo + Equity arbitrage access platform.</div>
-      <div>Education and setup support. Not financial advice.</div>
-    </div>
-  </footer>
-
-  <div class="overlay" id="wizardOverlay">
-    <div class="wizard">
-      <div class="wizhead">
-        <div><strong class="d">YP Labs Setup Wizard</strong><div class="m" style="font-size:11px;color:var(--faint);letter-spacing:.12em;text-transform:uppercase">Arbitrage access request</div></div>
-        <button class="close" onclick="closeWizard()"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <div class="panel" id="wizardContent"></div>
-    </div>
-  </div>
-
-  <script>
-    const ACCESS_PRICE=997;
-    const steps=["experience","market","readiness","contact"];
-    const options={
-      experience:[
-        ["new","New to arbitrage","I need simple explanations before I connect anything.","fa-solid fa-seedling"],
-        ["learning","Learning the markets","I understand some terms but need a guided setup.","fa-solid fa-book-open"],
-        ["active","Active trader or operator","I already use brokers, exchanges, or crypto platforms.","fa-solid fa-chart-simple"],
-        ["advanced","Advanced user","I want faster setup around markets, pairs, and access routes.","fa-solid fa-gauge-high"]
-      ],
-      market:[
-        ["all","All market types","Show brokers, exchanges, crypto, pairs, and equity together.","fa-solid fa-layer-group"],
-        ["brokers","Brokers","I need help understanding or comparing broker account access.","fa-solid fa-user-tie"],
-        ["exchanges","Exchanges","I want to learn venue differences, liquidity, and order access.","fa-solid fa-building-columns"],
-        ["crypto","Crypto","I want wallet, token, stablecoin, and exchange guidance.","fa-brands fa-bitcoin"],
-        ["pairs","Pairs","I want to understand BTC/USD, ETH/USDT, forex, or asset pairs.","fa-solid fa-code-compare"],
-        ["equity","Equity","I want stock, ETF, broker, and market-hours guidance.","fa-solid fa-chart-line"]
-      ],
-      readiness:[
-        ["need_education","Teach me first","I need beginner education before account connection.","fa-solid fa-graduation-cap"],
-        ["need_accounts","Help me choose accounts","I need help identifying brokers or exchanges.","fa-solid fa-list-check"],
-        ["have_accounts","I already have accounts","I am ready to organize my setup path.","fa-solid fa-plug-circle-check"],
-        ["team_setup","Set up for a team","I need a workflow other people can understand too.","fa-solid fa-users"]
-      ]
-    };
-    let state={step:0,experience:"",market:"",readiness:"",notes:"",contact:{name:"",email:"",phone:"",business_name:""},submitted:false,submitting:false,error:""};
-    const $=s=>document.querySelector(s);
-    const esc=v=>String(v??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[c]));
-    function openWizard(){document.body.style.overflow="hidden";$("#wizardOverlay").classList.add("open");render()}
-    function closeWizard(){document.body.style.overflow="";$("#wizardOverlay").classList.remove("open")}
-    function select(key,val){state[key]=val;state.error="";render()}
-    function updateContact(k,v){state.contact[k]=v;state.error=""}
-    function updateNotes(v){state.notes=v}
-    function canNext(){const k=steps[state.step];if(k==="contact")return state.contact.name.trim()&&/^\S+@\S+\.\S+$/.test(state.contact.email);return !!state[k]}
-    function next(){if(!canNext())return;if(state.step<steps.length-1){state.step++;render()}else submit()}
-    function back(){if(state.step>0){state.step--;render()}else closeWizard()}
-    function progress(){return `<div class="progress">${steps.map((_,i)=>`<div class="bar${i<=state.step?" on":""}"></div>`).join("")}</div>`}
-    function choiceList(key){return `<div class="choices">${options[key].map(([id,title,sub,icon])=>`<button class="choice${state[key]===id?" on":""}" onclick="select('${key}','${id}')"><i class="${icon}"></i><div><h4>${title}</h4><p>${sub}</p></div><span class="check">${state[key]===id?'<i class="fa-solid fa-check"></i>':""}</span></button>`).join("")}</div>`}
-    function nav(label){return `<div class="wiznav"><button class="btn ghost" onclick="back()"><i class="fa-solid fa-arrow-left"></i> Back</button><button class="btn primary" ${canNext()&&!state.submitting?"":"disabled"} onclick="next()">${state.submitting?"Submitting...":label} <i class="fa-solid fa-arrow-right"></i></button></div>`}
-    function renderStep(){
-      const k=steps[state.step];
-      if(k==="experience")return `<h2 class="title d" style="font-size:28px">What is your experience level?</h2><p class="sub">This helps the platform explain terms at the right pace.</p>${choiceList("experience")}${nav("Continue")}`;
-      if(k==="market")return `<h2 class="title d" style="font-size:28px">What do you want to connect or learn?</h2><p class="sub">Choose the category that best matches your current goal.</p>${choiceList("market")}${nav("Continue")}`;
-      if(k==="readiness")return `<h2 class="title d" style="font-size:28px">How ready are you to connect?</h2><p class="sub">This sets your first checklist inside the workspace.</p>${choiceList("readiness")}<label class="field" style="margin-top:16px"><span>Optional context</span><textarea class="input" rows="3" oninput="updateNotes(this.value)" placeholder="Tell us what you are trying to understand or set up.">${esc(state.notes)}</textarea></label>${nav("Continue")}`;
-      return `<h2 class="title d" style="font-size:28px">Request access</h2><p class="sub">One access price: <strong style="color:var(--cyan)">$${ACCESS_PRICE}</strong>. No payment is collected from this form.</p><div class="fieldgrid"><label class="field"><span>Name *</span><input class="input" value="${esc(state.contact.name)}" oninput="updateContact('name',this.value)" autocomplete="name"></label><label class="field"><span>Email *</span><input class="input" type="email" value="${esc(state.contact.email)}" oninput="updateContact('email',this.value)" autocomplete="email"></label><label class="field"><span>Phone</span><input class="input" type="tel" value="${esc(state.contact.phone)}" oninput="updateContact('phone',this.value)" autocomplete="tel"></label><label class="field"><span>Business or account name</span><input class="input" value="${esc(state.contact.business_name)}" oninput="updateContact('business_name',this.value)" autocomplete="organization"></label></div><div class="note">Submitting creates your workspace request for the Arbo + Equity arbitrage access system. Activation and payment happen after confirmation.</div>${state.error?`<div class="error">${esc(state.error)}</div>`:""}${nav("Submit request")}`;
-    }
-    async function submit(){
-      if(state.submitting)return;state.submitting=true;state.error="";render();
-      try{
-        const response=await fetch("/api/wizard/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({track:"A",housing_type:state.experience,channel:state.market,mission:`Readiness: ${state.readiness}. Notes: ${state.notes}`,brand_color:null,cart:[],payment_plan:"one_time",contact:state.contact})});
-        const data=await response.json();
-        if(!response.ok)throw new Error(data.error||data.errors?.[0]?.msg||"Submission failed.");
-        state.submitted=true;
-      }catch(error){state.error=error.message}
-      finally{state.submitting=false;render()}
-    }
-    function reset(){state={step:0,experience:"",market:"",readiness:"",notes:"",contact:{name:"",email:"",phone:"",business_name:""},submitted:false,submitting:false,error:""};render()}
-    function render(){
-      if(state.submitted){$("#wizardContent").innerHTML=`<div class="done"><div class="tag m"><span class="dot"></span> Request received</div><h2 class="big d">Your access request is in.</h2><p class="sub">A YP Labs specialist can now review your setup path and prepare the workspace around your experience level, market interest, and readiness.</p><div class="note"><strong style="color:var(--green)">Next:</strong> create or sign into your workspace when credentials are ready. Payment is confirmed before activation.</div><div class="actions" style="margin-top:22px"><a class="btn primary" href="/dashboard.html">Go to workspace</a><button class="btn ghost" onclick="reset()">Start another request</button></div></div>`;return}
-      $("#wizardContent").innerHTML=progress()+renderStep();
-    }
-    $("#wizardOverlay").addEventListener("click",e=>{if(e.target.id==="wizardOverlay")closeWizard()});
-    document.addEventListener("keydown",e=>{if(e.key==="Escape")closeWizard()});
-    if(location.hash==="#build"||location.hash==="#access")openWizard();
-  </script>
+  <footer class="footer"><div class="foot-inner"><div>© YP Labs. A Set Up Your Place LLC technology company.</div><div>Built for the flexible housing sector.</div></div></footer>
+  <div class="overlay" id="wizard"><div class="wizard"><div class="wizhead"><a class="brand d" href="/">YP LABS<small>Build Request</small></a><button class="close" onclick="closeWizard()">×</button></div><div class="panel" id="wiz"></div></div></div>
+<script>
+const services=[['marketing_site','Marketing Website','$1,200'],['booking_engine','Direct Booking Engine + PMS Integration','$1,500'],['ai_concierge','AI Hospitality Concierge','$1,800'],['mobile_app','React Native Mobile App (iOS/Android)','$1,500'],['web_portal','Web Application Portal','$1,000'],['sop_manual','SOPs & Employee Manual','$750'],['va_dashboard','VA Training Dashboard','$950']];
+const housing=[['corporate_housing','Corporate housing provider','Longer-stay furnished housing for business, relocation, insurance, or healthcare demand.'],['furnished_rental','Furnished rental operator','Short, mid-term, or flexible stays across managed furnished units.'],['shared_living','Shared-living operator','Room-based or community-style housing with shared operations.'],['cohost','Co-hosting or management company','Operating assets for owners or partners.']];
+let S={step:0,track:null,housing_type:null,channel:null,mission:'',brand_color:'#4fd3ec',cart:[],payment_plan:'one_time',contact:{name:'',email:'',phone:'',business_name:''},submitting:false,done:false,error:''};
+function openWizard(){document.getElementById('wizard').classList.add('open');render()}function closeWizard(){document.getElementById('wizard').classList.remove('open')}
+function pick(k,v){S[k]=v;render()}function toggle(id){S.cart=S.cart.includes(id)?S.cart.filter(x=>x!==id):[...S.cart,id];render()}function canNext(){if(S.step===0)return !!S.track;if(S.step===1)return !!S.housing_type;if(S.step===2)return S.track==='A'||S.cart.length>0;if(S.step===3)return !!S.payment_plan;if(S.step===4)return S.contact.name&&S.contact.email;return true}
+function next(){if(!canNext())return;S.step++;render()}function back(){S.step=Math.max(0,S.step-1);render()}
+function progress(){return `<div class="progress">${[0,1,2,3,4].map(i=>`<div class="bar ${i<=S.step?'on':''}"></div>`).join('')}</div>`}
+function choice(active,icon,title,body,on){return `<button class="choice ${active?'on':''}" onclick="${on}"><i class="${icon}"></i><div><h4>${title}</h4><p>${body}</p></div><span class="check">${active?'✓':''}</span></button>`}
+function render(){const w=document.getElementById('wiz');if(S.done){w.innerHTML=`<div class="done"><div class="tag m"><span class="dot"></span> Request received</div><h2 class="big d">Your YP Labs build request is in.</h2><p class="sub">A specialist will review the operator profile and contact you within one business day.</p><a class="btn primary" href="/dashboard.html">Go to workspace</a></div>`;return}let html=progress();if(S.step===0)html+=`<h2 class="title d">What do you need built?</h2><p class="sub">Choose the engagement model that matches your current stage.</p><div class="choices">${choice(S.track==='A','fa-solid fa-diagram-project','Full Architecture Tech Package','A complete infrastructure blueprint and build path for your housing operation.',"pick('track','A')")}${choice(S.track==='B','fa-solid fa-list-check','Select individual modules','Pick the specific website, app, automation, portal, or training pieces you need now.',"pick('track','B')")}</div>`;if(S.step===1)html+=`<h2 class="title d">What type of housing company are you scaling?</h2><div class="choices">${housing.map(h=>choice(S.housing_type===h[0],'fa-solid fa-building',h[1],h[2],`pick('housing_type','${h[0]}')`)).join('')}</div>`;if(S.step===2)html+=S.track==='A'?`<h2 class="title d">Full package selected.</h2><p class="sub">The full package includes platform architecture, direct booking infrastructure, automation planning, dashboard workflows, and implementation guidance.</p><div class="card"><h3>Included starting scope</h3><p>Web, mobile, booking, AI concierge, SOP, and staff-system planning are reviewed together so the final build is not fragmented.</p></div>`:`<h2 class="title d">Select your modules.</h2><div class="choices">${services.map(s=>choice(S.cart.includes(s[0]),'fa-solid fa-cube',s[1],s[2],`toggle('${s[0]}')`)).join('')}</div>`;if(S.step===3)html+=`<h2 class="title d">Payment preference</h2><div class="choices">${choice(S.payment_plan==='one_time','fa-solid fa-credit-card','One-time payment','Pay the approved project amount at activation.',"pick('payment_plan','one_time')")}${choice(S.payment_plan==='financed','fa-solid fa-calendar-days','Three-installment plan','Split the project into three payments with hosting included.',"pick('payment_plan','financed')")}</div><label class="field" style="margin-top:16px"><span>Primary booking channel today</span><input class="input" value="${S.channel||''}" oninput="S.channel=this.value" placeholder="Direct, Airbnb, Furnished Finder, corporate accounts, etc."></label><label class="field"><span>Mission / build notes</span><textarea class="input" rows="4" oninput="S.mission=this.value" placeholder="Describe the operation, units, market, and what needs to work better.">${S.mission}</textarea></label>`;if(S.step===4)html+=`<h2 class="title d">Contact and company details</h2><div class="fieldgrid"><label class="field"><span>Name</span><input class="input" value="${S.contact.name}" oninput="S.contact.name=this.value" required></label><label class="field"><span>Email</span><input class="input" type="email" value="${S.contact.email}" oninput="S.contact.email=this.value" required></label><label class="field"><span>Phone</span><input class="input" value="${S.contact.phone}" oninput="S.contact.phone=this.value"></label><label class="field"><span>Business name</span><input class="input" value="${S.contact.business_name}" oninput="S.contact.business_name=this.value"></label></div>`;html+=`<div class="wiznav"><button class="btn ghost" onclick="${S.step?'back()':'closeWizard()'}">${S.step?'Back':'Cancel'}</button>${S.step<4?`<button class="btn primary" ${canNext()?'':'disabled'} onclick="next()">Continue</button>`:`<button class="btn primary" ${S.submitting?'disabled':''} onclick="submitWizard()">${S.submitting?'Submitting...':'Submit build request'}</button>`}</div>${S.error?`<div class="error">${S.error}</div>`:''}`;w.innerHTML=html}
+async function submitWizard(){if(!canNext())return;S.submitting=true;S.error='';render();try{const res=await fetch('/api/wizard/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({track:S.track,housing_type:S.housing_type,channel:S.channel,mission:S.mission,brand_color:S.brand_color,cart:S.cart,payment_plan:S.payment_plan,contact:S.contact})});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||data.errors?.[0]?.msg||'Submission failed.');S.done=true}catch(e){S.error=e.message}finally{S.submitting=false;render()}}
+if(location.hash==='#wizard')openWizard();
+</script>
 </body>
 </html>
