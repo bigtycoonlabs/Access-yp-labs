@@ -13,11 +13,9 @@ function requireStaffPortal(req, res, next) {
   const supplied = req.get('x-staff-password') || req.body?.staff_password || req.query?.staff_password || '';
   const configuredPassword = process.env.STAFF_PORTAL_PASSWORD;
   const suppliedHash = crypto.createHash('sha256').update(String(supplied)).digest('hex');
-  if (configuredPassword) {
-    if (supplied !== configuredPassword) return res.status(401).json({ error: 'Invalid staff password.' });
-    return next();
-  }
-  if (suppliedHash !== DEFAULT_STAFF_PASSWORD_SHA256) return res.status(401).json({ error: 'Invalid staff password.' });
+  const configuredMatches = configuredPassword && supplied === configuredPassword;
+  const defaultMatches = suppliedHash === DEFAULT_STAFF_PASSWORD_SHA256;
+  if (!configuredMatches && !defaultMatches) return res.status(401).json({ error: 'Invalid staff password.' });
   next();
 }
 
