@@ -130,3 +130,19 @@ test('agent runs reversible actions and rejects bad enums', () => {
   assert.strictEqual(agent.planToolInvocation('generate_concept', { prompt: 'a tutoring service' }).action, 'execute');
   assert.strictEqual(agent.planToolInvocation('list_on_marketplace', { concept_id: 'x', format: 'barter', price: 5000 }).action, 'reject');
 });
+
+// ---- Clay model provider selection ----
+const provider = require('../src/services/clay/provider');
+
+test('provider prefers OpenAI, falls back to Anthropic, else unavailable', () => {
+  const save = { o: process.env.OPENAI_API_KEY, a: process.env.ANTHROPIC_API_KEY };
+  delete process.env.OPENAI_API_KEY; delete process.env.ANTHROPIC_API_KEY;
+  assert.strictEqual(provider.available(), false);
+  assert.strictEqual(provider.providerName(), null);
+  process.env.ANTHROPIC_API_KEY = 'x';
+  assert.strictEqual(provider.providerName(), 'anthropic');
+  process.env.OPENAI_API_KEY = 'y';
+  assert.strictEqual(provider.providerName(), 'openai');
+  if (save.o) process.env.OPENAI_API_KEY = save.o; else delete process.env.OPENAI_API_KEY;
+  if (save.a) process.env.ANTHROPIC_API_KEY = save.a; else delete process.env.ANTHROPIC_API_KEY;
+});

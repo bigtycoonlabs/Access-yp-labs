@@ -3,17 +3,7 @@
 // every run in generations with an honest result_status, and never fabricates.
 const { CATEGORIES, ASSET_PLAN, MODES, REDIRECTS, SOCIAL_ASSET_PLAN } = require('./tools');
 const { classifySection, assessCoverage } = require('./interpreter');
-
-const MODEL = process.env.CLAY_MODEL || 'claude-sonnet-4-5';
-
-// Lazy-load the SDK so the server still boots without it installed.
-let Anthropic = null;
-try { Anthropic = require('@anthropic-ai/sdk'); } catch (_) { /* optional */ }
-
-function client() {
-  if (!Anthropic || !process.env.ANTHROPIC_API_KEY) return null;
-  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-}
+const provider = require('./provider');
 
 const SYSTEM_PROMPT = `You are Clay, the idea printer for Access YP Labs — a neutral marketplace and launchpad for pre-proven, remote/digital/micro businesses ("Shape it with Clay. Fire it in The Kiln.").
 
@@ -71,8 +61,7 @@ async function generate({ mode, category, prompt }) {
       message: 'I need a bit more to work with — what kind of business are you imagining?' };
   }
 
-  const anthropic = client();
-  if (!anthropic) {
+  if (!provider.available()) {
     // Honest degradation: we could not run, so we say exactly that.
     return { result_status: 'unavailable',
       message: 'Clay could not run right now (generation service is not configured). Nothing was fabricated.' };
@@ -85,19 +74,14 @@ async function generate({ mode, category, prompt }) {
     prompt || '(no prompt provided)',
   ].join('\n');
 
-  let raw;
-  try {
-    const resp = await anthropic.messages.create({
-      model: MODEL,
-      max_tokens: 8000,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userMsg }],
-    });
-    raw = (resp.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
-  } catch (err) {
+  const out = await provider.complete({ system: SYSTEM_PROMPT, user: userMsg, json: true, maxTokens: 8000 });
+  if (!out.ok) {
     return { result_status: 'unavailable',
-      message: `Clay could not reach the generation service: ${err.message}. Nothing was fabricated.` };
+      message: out.reason === 'unavailable'
+        ? 'Clay could not run right now (generation service is not configured). Nothing was fabricated.'
+        : `Clay could not reach the generation service: ${out.error}. Nothing was fabricated.` };
   }
+  const raw = out.text;
 
   const parsed = parseModelJson(raw);
   if (!parsed) {
@@ -158,8 +142,7 @@ Respond with a SINGLE valid JSON object and nothing else (no markdown fences):
 }
 
 async function generateSocial({ concept, platforms, goal, count }) {
-  const anthropic = client();
-  if (!anthropic) {
+  if (!provider.available()) {
     return { result_status: 'unavailable',
       message: 'Clay could not run right now (generation service is not configured). Nothing was fabricated.' };
   }
@@ -169,18 +152,14 @@ async function generateSocial({ concept, platforms, goal, count }) {
     concept.risk_summary ? `Known risk to respect and not overstate: ${concept.risk_summary}` : null,
   ].filter(Boolean).join('\n');
 
-  let raw;
-  try {
-    const resp = await anthropic.messages.create({
-      model: MODEL, max_tokens: 6000,
-      system: socialSystemPrompt(platforms, goal, count),
-      messages: [{ role: 'user', content: ctx }],
-    });
-    raw = (resp.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
-  } catch (err) {
+  const out = await provider.complete({ system: socialSystemPrompt(platforms, goal, count), user: ctx, json: true, maxTokens: 6000 });
+  if (!out.ok) {
     return { result_status: 'unavailable',
-      message: `Clay could not reach the generation service: ${err.message}. Nothing was fabricated.` };
+      message: out.reason === 'unavailable'
+        ? 'Clay could not run right now (generation service is not configured). Nothing was fabricated.'
+        : `Clay could not reach the generation service: ${out.error}. Nothing was fabricated.` };
   }
+  const raw = out.text;
 
   const parsed = parseModelJson(raw);
   if (!parsed) {
@@ -206,28 +185,24 @@ async function generateSocial({ concept, platforms, goal, count }) {
 // image rendering is wired; degrades honestly with no key. (HTML demos are
 // described deterministically client-side; this covers rendered pixels.)
 async function describeMedia({ imageBase64, mediaType }) {
-  const anthropic = client();
-  if (!anthropic) {
+  if (!provider.available()) {
     return { status: 'unavailable', description: '',
       message: 'The description service is not configured. Nothing was fabricated.' };
   }
   if (!imageBase64) return { status: 'empty', description: '', message: 'No image was provided to describe.' };
-  try {
-    const resp = await anthropic.messages.create({
-      model: MODEL, max_tokens: 700,
-      system: 'You describe images plainly and truthfully for a blind user who is verifying an AI-generated image. Describe only what is actually visible: subject, layout, colours, any text shown (quote it exactly), and overall mood. Never invent details and never judge quality. If the image is unclear or empty, say so honestly.',
-      messages: [{ role: 'user', content: [
-        { type: 'image', source: { type: 'base64', media_type: mediaType || 'image/png', data: imageBase64 } },
-        { type: 'text', text: 'Describe this image for someone who cannot see it.' },
-      ] }],
-    });
-    const description = (resp.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
-    return description
-      ? { status: 'answered', description }
-      : { status: 'empty', description: '', message: 'No description was produced.' };
-  } catch (err) {
-    return { status: 'unavailable', description: '', message: `Could not describe the image: ${err.message}.` };
+  const out = await provider.describeImage({
+    imageBase64, mediaType: mediaType || 'image/png',
+    system: 'You describe images plainly and truthfully for a blind user who is verifying an AI-generated image. Describe only what is actually visible: subject, layout, colours, any text shown (quote it exactly), and overall mood. Never invent details and never judge quality. If the image is unclear or empty, say so honestly.',
+    prompt: 'Describe this image for someone who cannot see it.',
+  });
+  if (!out.ok) {
+    return { status: 'unavailable', description: '',
+      message: out.reason === 'unavailable' ? 'The description service is not configured.' : `Could not describe the image: ${out.error}.` };
   }
+  const description = (out.text || '').trim();
+  return description
+    ? { status: 'answered', description }
+    : { status: 'empty', description: '', message: 'No description was produced.' };
 }
 
-module.exports = { generate, generateSocial, describeMedia, MODEL };
+module.exports = { generate, generateSocial, describeMedia, modelName: provider.modelName, available: provider.available, providerName: provider.providerName };

@@ -8,14 +8,7 @@
 // anything runs. If Clay can't help, it says so; it never fabricates.
 
 const spine = require('./spine');
-
-const MODEL = process.env.CLAY_MODEL || 'claude-sonnet-4-5';
-let Anthropic = null;
-try { Anthropic = require('@anthropic-ai/sdk'); } catch (_) { /* optional */ }
-function client() {
-  if (!Anthropic || !process.env.ANTHROPIC_API_KEY) return null;
-  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-}
+const provider = require('./provider');
 
 const PARAM_TYPES = {
   concept_id: 'string', listing_id: 'string', prompt: 'string', category: 'string',
@@ -64,12 +57,12 @@ You have tools. Use them to actually help. But you must respect these rules abso
 - If a request is under-specified for an irreversible action, ask for the missing details before proposing it.
 - If you cannot do something, say so plainly. Never invent results, traction, or data.`;
 
-// Run one chat exchange. Executes reversible tools via injected executors;
-// returns a confirmation request (without acting) for irreversible ones.
-// `executors` maps tool name -> async (params) => resultObject.
+// Run one chat exchange over the normalized provider. Executes reversible tools
+// via injected executors; returns a confirmation request (without acting) for
+// irreversible ones. `messages` is the normalized transcript; `executors` maps
+// tool name -> async (params) => resultObject.
 async function runChat({ messages, executors = {}, maxSteps = 4 }) {
-  const anthropic = client();
-  if (!anthropic) {
+  if (!provider.available()) {
     return { status: 'unavailable',
       reply: 'Clay could not run right now (generation service is not configured). Nothing was fabricated.' };
   }
@@ -77,45 +70,44 @@ async function runChat({ messages, executors = {}, maxSteps = 4 }) {
   const convo = messages.slice();
 
   for (let step = 0; step < maxSteps; step++) {
-    let resp;
-    try {
-      resp = await anthropic.messages.create({ model: MODEL, max_tokens: 4000, system: SYSTEM, tools, messages: convo });
-    } catch (err) {
-      return { status: 'unavailable', reply: `Clay could not reach the generation service: ${err.message}. Nothing was fabricated.` };
+    const resp = await provider.chat({ system: SYSTEM, messages: convo, tools });
+    if (!resp.ok) {
+      return { status: 'unavailable',
+        reply: resp.reason === 'unavailable'
+          ? 'Clay could not run right now (generation service is not configured). Nothing was fabricated.'
+          : `Clay could not reach the generation service: ${resp.error}. Nothing was fabricated.` };
     }
-    const toolUses = (resp.content || []).filter((b) => b.type === 'tool_use');
-    const text = (resp.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+    const toolCalls = resp.tool_calls || [];
+    const text = (resp.text || '').trim();
 
-    if (!toolUses.length) {
-      convo.push({ role: 'assistant', content: resp.content });
+    if (!toolCalls.length) {
+      convo.push({ role: 'assistant', text });
       return { status: 'answered', reply: text || '(no reply)', messages: convo };
     }
 
-    convo.push({ role: 'assistant', content: resp.content });
-    const results = [];
-    for (const tu of toolUses) {
-      const plan = planToolInvocation(tu.name, tu.input || {});
+    convo.push({ role: 'assistant', text, tool_calls: toolCalls });
+    for (const tc of toolCalls) {
+      const plan = planToolInvocation(tc.name, tc.input || {});
       if (plan.action === 'reject') {
-        results.push({ type: 'tool_result', tool_use_id: tu.id, is_error: true, content: plan.reason });
+        convo.push({ role: 'tool', tool_call_id: tc.id, content: 'Rejected: ' + plan.reason });
       } else if (plan.action === 'confirm') {
         // Stop and ask the human — do NOT execute.
         return {
           status: 'confirmation_required',
           reply: text || plan.reason,
-          confirmation: { tool: tu.name, params: tu.input || {}, reason: plan.reason },
+          confirmation: { tool: tc.name, params: tc.input || {}, reason: plan.reason },
           messages: convo,
         };
       } else {
-        const exec = executors[tu.name];
+        const exec = executors[tc.name];
         let out;
-        try { out = exec ? await exec(tu.input || {}) : { note: 'This action is not available in chat yet.' }; }
+        try { out = exec ? await exec(tc.input || {}) : { note: 'This action is not available in chat yet.' }; }
         catch (e) { out = { error: e.message }; }
-        results.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(out).slice(0, 4000) });
+        convo.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(out).slice(0, 4000) });
       }
     }
-    convo.push({ role: 'user', content: results });
   }
   return { status: 'answered', reply: 'Clay reached its step limit for this turn. Ask me to continue.', messages: convo };
 }
 
-module.exports = { toolSchemas, planToolInvocation, runChat, MODEL };
+module.exports = { toolSchemas, planToolInvocation, runChat };

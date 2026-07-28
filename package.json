@@ -23,6 +23,7 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "node-html-parser": "^6.1.13",
+    "openai": "^4.104.0",
     "pg": "^8.11.3",
     "stripe": "^16.12.0"
   },

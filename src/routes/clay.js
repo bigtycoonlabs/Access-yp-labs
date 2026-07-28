@@ -274,8 +274,9 @@ router.post('/chat/confirm', authenticate, [
 
 // GET /api/clay/status — is generation actually available right now? (honest)
 router.get('/status', authenticate, (req, res) => {
-  const available = !!process.env.ANTHROPIC_API_KEY;
-  res.json({ available, model: clay.MODEL, image_rendering: image.configured(),
+  const available = clay.available();
+  res.json({ available, provider: clay.providerName(), model: clay.modelName(),
+    image_rendering: image.configured(),
     message: available ? 'Clay is ready.' : 'Clay generation is not configured yet.' });
 });
 

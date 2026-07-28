@@ -52,7 +52,14 @@ app.use('/api/consultants',   require('./routes/consultants'));
 app.use('/api/moderation',    require('./routes/moderation'));
 app.use('/api/reports',       require('./routes/reports'));
 
-app.get('/api/health', (req, res) => res.json({ status: 'ok', service: 'yp-labs', platform: 'the-kiln' }));
+app.get('/api/health', (req, res) => res.json({
+  status: 'ok', service: 'yp-labs', platform: 'the-kiln',
+  clay: {
+    configured: !!(process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY),
+    provider: process.env.OPENAI_API_KEY ? 'openai' : (process.env.ANTHROPIC_API_KEY ? 'anthropic' : null),
+  },
+  image_rendering: !!(process.env.IMAGE_API_KEY && process.env.IMAGE_API_URL),
+}));
 app.get('/api/ready', async (req, res) => {
   if (missingConfig.length || weakSecrets.length) {
     return res.status(503).json({ status: 'not_ready', configuration: { missing: missingConfig, weakSecrets } });
