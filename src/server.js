@@ -50,6 +50,7 @@ app.use('/api/watches',       require('./routes/watches'));
 app.use('/api/orders',        require('./routes/orders'));
 app.use('/api/consultants',   require('./routes/consultants'));
 app.use('/api/moderation',    require('./routes/moderation'));
+app.use('/api/reports',       require('./routes/reports'));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', service: 'yp-labs', platform: 'the-kiln' }));
 app.get('/api/ready', async (req, res) => {

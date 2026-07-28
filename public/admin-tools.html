@@ -1,0 +1,121 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Moderation tools — The Kiln</title><link rel="stylesheet" href="/css/kiln.css"/>
+<style>.row{border:1px solid var(--line);border-radius:10px;background:#fff;padding:14px 16px;margin:10px 0;}
+.row .actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;}</style>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs · The Kiln</a>
+  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/moderation.html">Review queue</a></nav>
+</div></header>
+<main id="main" class="wrap">
+  <h1>Moderation tools</h1>
+  <div id="gate" role="status" aria-live="polite" class="muted">Checking access…</div>
+  <div id="console" hidden>
+    <div id="result" role="alert" aria-live="assertive"></div>
+
+    <section aria-labelledby="rep-h"><h2 id="rep-h">Open reports</h2><div id="reports" class="stack"></div></section>
+
+    <section aria-labelledby="usr-h"><h2 id="usr-h">Find a user</h2>
+      <div class="stack">
+        <div><label for="uq">Search by name or email</label><input id="uq" type="search"/></div>
+        <button type="button" class="btn secondary" id="usearch">Search</button>
+        <div id="users" class="stack"></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="act-h" id="admin-only" hidden><h2 id="act-h">Direct actions (admin)</h2>
+      <div class="stack">
+        <div><label for="takedown">Take down a listing by ID</label>
+          <input id="takedown" type="text" placeholder="listing id"/>
+          <button type="button" class="btn secondary" id="takedownbtn">Take down</button></div>
+        <div><label for="removec">Remove a concept by ID</label>
+          <input id="removec" type="text" placeholder="concept id"/>
+          <button type="button" class="btn secondary" id="removecbtn">Remove concept</button></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="log-h"><h2 id="log-h">Recent moderation activity</h2><div id="events" class="stack"></div></section>
+  </div>
+</main>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script>
+<script>
+const gate=document.getElementById('gate'),result=document.getElementById('result');
+let me=null;
+function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+function nice(s){return String(s||'').replace(/_/g,' ');}
+function say(m,k){result.innerHTML='<div class="msg '+(k||'ok')+'">'+m+'</div>';announce(m,true);}
+function isAdmin(){return me&&['admin','master_staff'].includes(me.role);}
+
+async function act(promise,msg){try{await promise;say(msg);loadReports();loadEvents();}catch(e){say(e.message,'err');}}
+
+async function loadReports(){
+  const c=document.getElementById('reports');c.innerHTML='';
+  try{
+    const {reports}=await Kiln.api('/moderation/reports');
+    if(!reports.length){c.appendChild(el('p','muted','No open reports.'));return;}
+    reports.forEach(r=>{
+      const row=el('div','row');
+      row.appendChild(el('h3',null,nice(r.target_type)+' reported'));
+      row.appendChild(el('p','muted','Reason: '+r.reason+(r.details?(' — '+r.details):'')+' · by '+(r.reporter_name||'unknown')));
+      row.appendChild(el('p','muted','Target ID: '+r.target_id));
+      const a=el('div','actions');
+      const dismiss=el('button','btn secondary','Dismiss');dismiss.type='button';
+      dismiss.addEventListener('click',()=>act(Kiln.api('/moderation/reports/'+r.id+'/dismiss',{method:'POST'}),'Report dismissed.'));
+      a.appendChild(dismiss);
+      if(r.target_type==='listing'){const b=el('button','btn','Take down listing');b.type='button';
+        b.addEventListener('click',()=>act(Kiln.api('/moderation/listings/'+r.target_id+'/takedown',{method:'POST',body:{reason:r.reason}}),'Listing taken down.'));a.appendChild(b);}
+      if(r.target_type==='user'&&isAdmin()){const b=el('button','btn','Suspend user');b.type='button';
+        b.addEventListener('click',()=>act(Kiln.api('/moderation/users/'+r.target_id+'/suspend',{method:'POST',body:{reason:r.reason}}),'User suspended.'));a.appendChild(b);}
+      if(r.target_type==='concept'&&isAdmin()){const b=el('button','btn','Remove concept');b.type='button';
+        b.addEventListener('click',()=>act(Kiln.api('/moderation/concepts/'+r.target_id+'/remove',{method:'POST',body:{reason:r.reason}}),'Concept removed.'));a.appendChild(b);}
+      row.appendChild(a);c.appendChild(row);
+    });
+  }catch(e){c.appendChild(el('p','msg err',e.message));}
+}
+
+async function searchUsers(){
+  const c=document.getElementById('users');c.innerHTML='';
+  try{
+    const {users}=await Kiln.api('/moderation/users?q='+encodeURIComponent(document.getElementById('uq').value));
+    if(!users.length){c.appendChild(el('p','muted','No matching users.'));return;}
+    users.forEach(u=>{
+      const row=el('div','row');
+      row.appendChild(el('h3',null,(u.name||'(no name)')+' — '+u.role));
+      row.appendChild(el('p','muted',u.email+' · '+u.status));
+      const a=el('div','actions');
+      if(u.status!=='suspended'){const b=el('button','btn secondary','Suspend');b.type='button';
+        b.addEventListener('click',()=>act(Kiln.api('/moderation/users/'+u.id+'/suspend',{method:'POST',body:{}}),'User suspended.').then(searchUsers));a.appendChild(b);}
+      else{const b=el('button','btn','Reinstate');b.type='button';
+        b.addEventListener('click',()=>act(Kiln.api('/moderation/users/'+u.id+'/reinstate',{method:'POST',body:{}}),'User reinstated.').then(searchUsers));a.appendChild(b);}
+      row.appendChild(a);c.appendChild(row);
+    });
+  }catch(e){c.appendChild(el('p','msg err',e.message));}
+}
+
+async function loadEvents(){
+  const c=document.getElementById('events');c.innerHTML='';
+  try{
+    const {events}=await Kiln.api('/moderation/events');
+    if(!events.length){c.appendChild(el('p','muted','No recorded actions yet.'));return;}
+    events.slice(0,40).forEach(ev=>{
+      c.appendChild(el('p',null,new Date(ev.created_at).toLocaleString()+' · '+(ev.moderator_name||'staff')+' · '+nice(ev.action)+' · '+nice(ev.target_type)+(ev.reason?(' ('+ev.reason+')'):'')));
+    });
+  }catch(e){c.appendChild(el('p','msg err',e.message));}
+}
+
+async function init(){
+  if(!Kiln.isLoggedIn()){location.replace('/login.html');return;}
+  try{me=(await Kiln.api('/auth/me')).user;}catch(_){location.replace('/login.html');return;}
+  if(!['staff','admin','master_staff'].includes(me.role)){gate.textContent='This area is for platform staff only.';announce('This area is for platform staff only.',true);return;}
+  gate.textContent='';document.getElementById('console').hidden=false;
+  if(isAdmin())document.getElementById('admin-only').hidden=false;
+  document.getElementById('usearch').addEventListener('click',searchUsers);
+  document.getElementById('takedownbtn').addEventListener('click',()=>{const id=document.getElementById('takedown').value.trim();if(id)act(Kiln.api('/moderation/listings/'+id+'/takedown',{method:'POST',body:{}}),'Listing taken down.');});
+  document.getElementById('removecbtn').addEventListener('click',()=>{const id=document.getElementById('removec').value.trim();if(id&&window.confirm('Remove this concept permanently?'))act(Kiln.api('/moderation/concepts/'+id+'/remove',{method:'POST',body:{}}),'Concept removed.');});
+  loadReports();loadEvents();
+}
+init();
+</script>
+</body></html>

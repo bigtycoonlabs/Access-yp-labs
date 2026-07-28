@@ -205,6 +205,8 @@
       const g = document.getElementById('global');
       const a = el('a', 'btn secondary', 'Open the review queue'); a.href = '/moderation.html';
       g.appendChild(a);
+      const at = el('a', 'btn secondary', 'Moderation tools'); at.href = '/admin-tools.html';
+      at.style.marginLeft = '8px'; g.appendChild(at);
       if (['admin', 'master_staff'].includes(me.role)) {
         const a2 = el('a', 'btn secondary', 'Consultant applications'); a2.href = '/admin-consultants.html';
         a2.style.marginLeft = '8px'; g.appendChild(a2);

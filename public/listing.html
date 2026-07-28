@@ -51,6 +51,14 @@ async function load(){
     const actions=el('div','actions');actions.style.display='flex';actions.style.gap='10px';actions.style.flexWrap='wrap';
     const watch=el('button','btn secondary','Add to watchlist');watch.type='button';
     watch.addEventListener('click',async()=>{try{await Kiln.api('/watches/'+id,{method:'POST'});announce('Added to your watchlist.',true);watch.textContent='On your watchlist';watch.disabled=true;}catch(e){announce(e.message,true);}});
+    const report=el('button','btn secondary','Report this listing');report.type='button';
+    report.addEventListener('click',async()=>{
+      const reason=window.prompt('Why are you reporting this listing? (policy concern, fraud, etc.)');
+      if(!reason)return;
+      try{await Kiln.api('/reports',{method:'POST',body:{target_type:'listing',target_id:id,reason}});announce('Thank you — staff will review this.',true);}
+      catch(e){announce(e.message,true);}
+    });
+    actions.appendChild(report);
 
     if(isAuction && !closed){
       // Bid form
