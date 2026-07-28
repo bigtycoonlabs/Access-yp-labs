@@ -59,6 +59,7 @@ app.get('/api/health', (req, res) => res.json({
     provider: process.env.OPENAI_API_KEY ? 'openai' : (process.env.ANTHROPIC_API_KEY ? 'anthropic' : null),
   },
   image_rendering: !!(process.env.IMAGE_API_KEY && process.env.IMAGE_API_URL),
+  video_rendering: !!(process.env.VIDEO_API_KEY && process.env.VIDEO_API_URL),
 }));
 app.get('/api/ready', async (req, res) => {
   if (missingConfig.length || weakSecrets.length) {

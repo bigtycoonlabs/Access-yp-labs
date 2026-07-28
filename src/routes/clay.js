@@ -8,6 +8,7 @@ const spine = require('../services/clay/spine');
 const clay = require('../services/clay');
 const agent = require('../services/clay/agent');
 const image = require('../services/image');
+const video = require('../services/video');
 const describe = require('../lib/describe');
 const { sendEmail } = require('../services/email');
 const protect = require('../lib/protect');
@@ -333,11 +334,29 @@ router.post('/fix-demo', authenticate, [body('concept_id').isUUID()], asyncHandl
     before: before.a11y, after: after.a11y, asset_id: ins.rows[0].id });
 }));
 
+// POST /api/clay/render-video  { concept_id, prompt }
+// Renders a short video from a script/prompt IF a video provider is configured;
+// honest 'unavailable' otherwise. (Rendered video isn't auto-described — that
+// needs frame extraction; use the video script/storyboard for the spoken version.)
+router.post('/render-video', authenticate, [
+  body('concept_id').isUUID(),
+  body('prompt').isString().isLength({ min: 3 }),
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  const { concept_id, prompt } = req.body;
+  const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, req.user.id]);
+  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  const rendered = await video.renderVideo({ prompt });
+  if (rendered.status !== 'answered') return res.status(200).json({ status: rendered.status, message: rendered.message });
+  res.status(200).json({ status: 'answered', url: rendered.url, message: 'Video rendered.' });
+}));
+
 // GET /api/clay/status — is generation actually available right now? (honest)
 router.get('/status', authenticate, (req, res) => {
   const available = clay.available();
   res.json({ available, provider: clay.providerName(), model: clay.modelName(),
-    image_rendering: image.configured(),
+    image_rendering: image.configured(), video_rendering: video.configured(),
     message: available ? 'Clay is ready.' : 'Clay generation is not configured yet.' });
 });
 

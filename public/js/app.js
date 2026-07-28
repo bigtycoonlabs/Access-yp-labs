@@ -112,6 +112,11 @@
         imgBtn.addEventListener('click', () => openImageRender(container, data.concept.id));
         actions.appendChild(imgBtn);
       }
+      if ((data.assets || []).some((a) => a.type === 'video_script')) {
+        const vidBtn = el('button', 'btn secondary', 'Render a video'); vidBtn.type = 'button';
+        vidBtn.addEventListener('click', () => openVideoRender(container, data.concept.id));
+        actions.appendChild(vidBtn);
+      }
       const consultBtn = el('a', 'btn secondary', 'Book a consultant about this');
       consultBtn.href = '/consultants.html?concept=' + encodeURIComponent(data.concept.id);
       actions.appendChild(consultBtn);
@@ -189,6 +194,29 @@
   }
 
   // ---- inline listing form (baseline gate + acknowledgments) ----
+  // ---- render a short video from a script (dormant until a provider key is set) ----
+  function openVideoRender(container, conceptId) {
+    const f = el('div', 'panel');
+    f.appendChild(el('h3', null, 'Render a video'));
+    f.appendChild(el('p', 'muted', 'Paste your video script or a short prompt. If video rendering isn’t set up yet, Clay will tell you plainly. Note: a rendered video isn’t auto-described — use your video script for the spoken version.'));
+    const ta = document.createElement('textarea'); ta.setAttribute('aria-label', 'Video script or prompt'); f.appendChild(ta);
+    const go = el('button', 'btn', 'Render'); go.type = 'button';
+    const out = el('div'); out.setAttribute('role', 'region'); out.setAttribute('aria-live', 'polite');
+    go.addEventListener('click', async () => {
+      const prompt = ta.value.trim();
+      if (prompt.length < 3) { announce('Please enter a longer script or prompt.', true); return; }
+      go.disabled = true; announce('Rendering…'); out.innerHTML = '';
+      try {
+        const data = await Kiln.api('/clay/render-video', { method: 'POST', body: { concept_id: conceptId, prompt } });
+        if (data.status !== 'answered') { out.appendChild(el('p', 'msg err', data.message)); announce(data.message, true); go.disabled = false; return; }
+        const a = el('a', 'btn secondary', 'Open rendered video'); a.href = data.url; a.target = '_blank'; out.appendChild(a);
+        announce(data.message || 'Video rendered.', true); go.disabled = false;
+      } catch (e) { out.appendChild(el('p', 'msg err', e.message)); announce(e.message, true); go.disabled = false; }
+    });
+    f.appendChild(go); f.appendChild(out); container.appendChild(f);
+    focusEl(f.querySelector('h3'), 'Video render opened.');
+  }
+
   // ---- render a photo from a prompt (dormant until a provider key is set) ----
   function openImageRender(container, conceptId) {
     const f = el('div', 'panel');
