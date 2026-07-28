@@ -6,6 +6,7 @@ const { asyncHandler, ApiError } = require('../lib/http');
 const { MODES, CATEGORIES, PLATFORMS, SOCIAL_GOALS } = require('../services/clay/tools');
 const spine = require('../services/clay/spine');
 const clay = require('../services/clay');
+const image = require('../services/image');
 const { sendEmail } = require('../services/email');
 const protect = require('../lib/protect');
 const router = express.Router();
@@ -167,10 +168,47 @@ router.post('/social', authenticate, [
   });
 }));
 
+// POST /api/clay/render-image  { concept_id, prompt }
+// Renders a photo/image from a prompt IF an image provider is configured, then
+// has Clay DESCRIBE it in plain words for accessibility and verification. Until
+// a provider key is set this returns an honest 'unavailable' — nothing faked.
+router.post('/render-image', authenticate, [
+  body('concept_id').isUUID(),
+  body('prompt').isString().isLength({ min: 3 }),
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  const { concept_id, prompt } = req.body;
+  const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, req.user.id]);
+  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+
+  const rendered = await image.renderImage({ prompt });
+  if (rendered.status !== 'answered') {
+    return res.status(200).json({ status: rendered.status, message: rendered.message });
+  }
+  // Accessibility: describe the actual rendered pixels so a blind builder can
+  // verify the image matches the intent before using it.
+  let description = '';
+  if (rendered.image_base64) {
+    const d = await clay.describeMedia({ imageBase64: rendered.image_base64, mediaType: rendered.media_type });
+    description = d.description || '';
+  }
+  res.status(200).json({
+    status: 'answered',
+    image_base64: rendered.image_base64 || null,
+    url: rendered.url || null,
+    media_type: rendered.media_type,
+    description,
+    message: description
+      ? 'Image rendered. Here is a plain description so you can verify it: ' + description
+      : 'Image rendered.',
+  });
+}));
+
 // GET /api/clay/status — is generation actually available right now? (honest)
 router.get('/status', authenticate, (req, res) => {
   const available = !!process.env.ANTHROPIC_API_KEY;
-  res.json({ available, model: clay.MODEL,
+  res.json({ available, model: clay.MODEL, image_rendering: image.configured(),
     message: available ? 'Clay is ready.' : 'Clay generation is not configured yet.' });
 });
 

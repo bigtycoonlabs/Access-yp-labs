@@ -107,6 +107,11 @@
       const socialBtn = el('button', 'btn secondary', 'Generate social content'); socialBtn.type = 'button';
       socialBtn.addEventListener('click', () => openSocialForm(container, data.concept.id));
       actions.appendChild(socialBtn);
+      if ((data.assets || []).some((a) => a.type === 'image_prompt' || a.type === 'example_image')) {
+        const imgBtn = el('button', 'btn secondary', 'Render a photo'); imgBtn.type = 'button';
+        imgBtn.addEventListener('click', () => openImageRender(container, data.concept.id));
+        actions.appendChild(imgBtn);
+      }
       const consultBtn = el('a', 'btn secondary', 'Book a consultant about this');
       consultBtn.href = '/consultants.html?concept=' + encodeURIComponent(data.concept.id);
       actions.appendChild(consultBtn);
@@ -184,6 +189,37 @@
   }
 
   // ---- inline listing form (baseline gate + acknowledgments) ----
+  // ---- render a photo from a prompt (dormant until a provider key is set) ----
+  function openImageRender(container, conceptId) {
+    const f = el('div', 'panel');
+    f.appendChild(el('h3', null, 'Render a photo'));
+    f.appendChild(el('p', 'muted', 'Describe the image, or paste one of Clay’s image prompts. Clay will describe the result in words so you can verify it. If rendering isn’t set up yet, Clay will tell you plainly.'));
+    const ta = document.createElement('textarea'); ta.setAttribute('aria-label', 'Image prompt'); f.appendChild(ta);
+    const go = el('button', 'btn', 'Render'); go.type = 'button';
+    const out = el('div'); out.setAttribute('role', 'region'); out.setAttribute('aria-live', 'polite');
+    go.addEventListener('click', async () => {
+      const prompt = ta.value.trim();
+      if (prompt.length < 3) { announce('Please enter a longer prompt.', true); return; }
+      go.disabled = true; announce('Rendering…'); out.innerHTML = '';
+      try {
+        const data = await Kiln.api('/clay/render-image', { method: 'POST', body: { concept_id: conceptId, prompt } });
+        if (data.status !== 'answered') { out.appendChild(el('p', 'msg err', data.message)); announce(data.message, true); go.disabled = false; return; }
+        if (data.image_base64) {
+          const img = document.createElement('img');
+          img.src = 'data:' + (data.media_type || 'image/png') + ';base64,' + data.image_base64;
+          img.alt = data.description || 'Rendered image'; img.style.maxWidth = '100%'; img.style.borderRadius = '10px';
+          out.appendChild(img);
+        } else if (data.url) {
+          const a = el('a', 'btn secondary', 'Open rendered image'); a.href = data.url; a.target = '_blank'; out.appendChild(a);
+        }
+        if (data.description) out.appendChild(el('p', null, 'Description: ' + data.description));
+        announce(data.message || 'Image rendered.', true); go.disabled = false;
+      } catch (e) { out.appendChild(el('p', 'msg err', e.message)); announce(e.message, true); go.disabled = false; }
+    });
+    f.appendChild(go); f.appendChild(out); container.appendChild(f);
+    focusEl(f.querySelector('h3'), 'Image render opened.');
+  }
+
   // ---- social content generation (posts, photos-as-prompts, video scripts) ----
   var SOCIAL_PLATFORMS = ['instagram', 'facebook', 'x', 'linkedin', 'tiktok', 'youtube_shorts', 'pinterest'];
   var SOCIAL_GOALS = ['awareness', 'launch', 'engagement', 'promotion', 'education'];
