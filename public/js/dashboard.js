@@ -89,7 +89,8 @@
       const { concepts } = await Kiln.api('/concepts');
       if (!concepts.length) { empty(c, 'No concepts yet. Open the laboratory to shape one with Clay.'); return; }
       concepts.forEach((x) => {
-        let meta = nice(x.category) + (x.is_housing ? ' · housing' : '');
+        const claimed = x.origin === 'purchased';
+        let meta = (claimed ? 'Claimed from the Dreamhold · ' : '') + nice(x.category) + (x.is_housing ? ' · housing' : '');
         if (x.access_expires_at) {
           const days = Math.ceil((new Date(x.access_expires_at) - new Date()) / 86400000);
           meta += ' · ' + (days > 0 ? ('access ' + days + ' more day' + (days === 1 ? '' : 's') + ' unless subscribed') : 'access expired — subscribe to keep');
