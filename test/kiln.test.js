@@ -107,3 +107,26 @@ test('describer passes an accessible demo and outlines structure', () => {
   assert.ok(good.items.length >= 3);
   assert.strictEqual(good.title, 'Shop');
 });
+
+// ---- Clay conversational agent (spine-driven safety) ----
+const agent = require('../src/services/clay/agent');
+
+test('agent tool schemas carry enum guardrails', () => {
+  const schemas = agent.toolSchemas();
+  const names = schemas.map((s) => s.name);
+  assert.ok(names.includes('generate_social_content') && names.includes('purchase_concept'));
+  const social = schemas.find((s) => s.name === 'generate_social_content');
+  assert.ok(social.input_schema.properties.platforms.items.enum.includes('instagram'));
+});
+
+test('agent never auto-runs irreversible actions; confirmation unlocks them', () => {
+  assert.strictEqual(agent.planToolInvocation('purchase_concept', { listing_id: 'x' }).action, 'confirm');
+  assert.strictEqual(agent.planToolInvocation('list_on_marketplace', { concept_id: 'x', format: 'flat', price: 5000 }).action, 'confirm');
+  assert.strictEqual(agent.planToolInvocation('remove_concept', { concept_id: 'x' }).action, 'confirm');
+  assert.strictEqual(agent.planToolInvocation('purchase_concept', { listing_id: 'x' }, { confirmed: true }).action, 'execute');
+});
+
+test('agent runs reversible actions and rejects bad enums', () => {
+  assert.strictEqual(agent.planToolInvocation('generate_concept', { prompt: 'a tutoring service' }).action, 'execute');
+  assert.strictEqual(agent.planToolInvocation('list_on_marketplace', { concept_id: 'x', format: 'barter', price: 5000 }).action, 'reject');
+});

@@ -6,6 +6,7 @@ const { asyncHandler, ApiError } = require('../lib/http');
 const { MODES, CATEGORIES, PLATFORMS, SOCIAL_GOALS } = require('../services/clay/tools');
 const spine = require('../services/clay/spine');
 const clay = require('../services/clay');
+const agent = require('../services/clay/agent');
 const image = require('../services/image');
 const { sendEmail } = require('../services/email');
 const protect = require('../lib/protect');
@@ -203,6 +204,72 @@ router.post('/render-image', authenticate, [
       ? 'Image rendered. Here is a plain description so you can verify it: ' + description
       : 'Image rendered.',
   });
+}));
+
+// ---- Conversational, tool-calling Clay (spine-driven) ----
+// Reversible tools execute here; irreversible ones (money/publish/delete) can
+// never run without explicit confirmation via /chat/confirm.
+function buildExecutors(user) {
+  return {
+    generate_concept: async ({ prompt, category }) => {
+      const result = await clay.generate({ mode: 'create', category, prompt });
+      if (result.result_status !== 'answered') return { status: result.result_status, message: result.message };
+      const concept = await persistResult(user.id, result, { conceptId: null, mode: 'create', category, prompt });
+      return { status: 'answered', concept_id: concept.id, title: concept.title, coverage: result.coverage, message: result.message };
+    },
+    enhance_concept: async ({ concept_id, prompt }) => {
+      const result = await clay.generate({ mode: 'enhance', prompt });
+      if (result.result_status !== 'answered') return { status: result.result_status, message: result.message };
+      const concept = await persistResult(user.id, result, { conceptId: concept_id, mode: 'enhance', category: null, prompt });
+      return { status: 'answered', concept_id: concept.id, coverage: result.coverage, message: result.message };
+    },
+    generate_social_content: async ({ concept_id, platforms, goal, count }) => {
+      const c = await query('SELECT id,title,category,risk_summary FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
+      if (!c.rows.length) return { status: 'error', message: 'Concept not found.' };
+      const result = await clay.generateSocial({ concept: c.rows[0], platforms, goal, count: count || 6 });
+      if (result.result_status !== 'answered') return { status: result.result_status, message: result.message };
+      await persistResult(user.id, result, { conceptId: concept_id, mode: 'enhance', category: null, prompt: 'social:' + goal });
+      return { status: 'answered', concept_id, coverage: result.coverage, message: result.message };
+    },
+  };
+}
+
+// POST /api/clay/chat  { messages: [...] }
+router.post('/chat', authenticate, [body('messages').isArray({ min: 1 })], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  const out = await agent.runChat({ messages: req.body.messages, executors: buildExecutors(req.user) });
+  res.json(out);
+}));
+
+// POST /api/clay/chat/confirm  { tool, params }  — run a confirmed action.
+// Money and publishing hand off to the vetted UI flows; delete executes here.
+router.post('/chat/confirm', authenticate, [
+  body('tool').isString(), body('params').isObject(),
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  const { tool, params } = req.body;
+  const plan = agent.planToolInvocation(tool, params, { confirmed: true });
+  if (plan.action === 'reject') throw new ApiError(400, plan.reason);
+
+  if (tool === 'list_on_marketplace') {
+    return res.json({ status: 'handoff', action: 'list', url: '/sell.html',
+      message: 'Opening the listing flow so you can review and publish it yourself.' });
+  }
+  if (tool === 'purchase_concept') {
+    return res.json({ status: 'handoff', action: 'purchase',
+      url: '/listing.html?id=' + encodeURIComponent(params.listing_id || ''),
+      message: 'Opening the listing so you can complete the purchase.' });
+  }
+  if (tool === 'remove_concept') {
+    const r = await query('DELETE FROM concepts WHERE id=$1 AND owner_id=$2 RETURNING id', [params.concept_id, req.user.id]);
+    if (!r.rows.length) throw new ApiError(404, 'Concept not found.');
+    return res.json({ status: 'done', message: 'Concept deleted.' });
+  }
+  const exec = buildExecutors(req.user)[tool];
+  if (exec) return res.json({ status: 'done', result: await exec(params) });
+  throw new ApiError(400, 'Unknown action.');
 }));
 
 // GET /api/clay/status — is generation actually available right now? (honest)

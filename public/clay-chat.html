@@ -1,0 +1,87 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Talk with Clay — The Kiln</title><link rel="stylesheet" href="/css/kiln.css"/>
+<style>
+#log{border:1px solid var(--line);border-radius:12px;background:#fff;padding:12px;min-height:220px;max-height:60vh;overflow:auto;}
+.turn{margin:10px 0;padding:10px 12px;border-radius:10px;}
+.turn.you{background:#f5f5f4;} .turn.clay{background:#fff7ed;border:1px solid var(--line);}
+.turn .who{font-weight:700;display:block;margin-bottom:3px;}
+.confirm{border:2px solid #b45309;border-radius:12px;background:#fffbeb;padding:14px 16px;margin:10px 0;}
+</style>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs · The Kiln</a>
+  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/app.html">Workspace</a></nav>
+</div></header>
+<main id="main" class="wrap">
+  <h1>Talk with Clay</h1>
+  <p class="muted">Clay can shape and refine concepts and social content with you. Clay will always ask before anything irreversible — publishing a listing, buying, or deleting — and hands those to the proper flow so you stay in control.</p>
+  <div id="unavailable" role="status" class="muted"></div>
+  <div id="log" role="log" aria-live="polite" aria-label="Conversation with Clay"></div>
+  <div id="confirmzone" aria-live="assertive"></div>
+  <div class="stack" style="margin-top:12px;">
+    <label for="msg">Your message</label>
+    <textarea id="msg" aria-label="Your message to Clay"></textarea>
+    <button type="button" class="btn" id="send">Send</button>
+  </div>
+</main>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script>
+<script>
+if(!Kiln.isLoggedIn())location.replace('/login.html');
+const log=document.getElementById('log'),confirmzone=document.getElementById('confirmzone'),sendBtn=document.getElementById('send'),msg=document.getElementById('msg');
+let history=[];
+function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+function addTurn(who,text){
+  const d=el('div','turn '+(who==='You'?'you':'clay'));
+  d.appendChild(el('span','who',who+':'));
+  d.appendChild(el('span',null,text));
+  log.appendChild(d);log.scrollTop=log.scrollHeight;
+}
+async function checkStatus(){
+  try{const s=await Kiln.api('/clay/status');
+    if(!s.available){document.getElementById('unavailable').innerHTML='<div class="msg err">Clay’s conversation isn’t configured yet (no generation key). You can still use the one-shot workspace.</div>';}
+  }catch(_){}
+}
+async function send(){
+  const text=msg.value.trim(); if(!text)return;
+  addTurn('You',text); msg.value=''; sendBtn.disabled=true; confirmzone.innerHTML='';
+  history.push({role:'user',content:text});
+  announce('Clay is thinking…');
+  try{
+    const data=await Kiln.api('/clay/chat',{method:'POST',body:{messages:history}});
+    if(data.messages)history=data.messages;
+    if(data.status==='confirmation_required'){
+      if(data.reply)addTurn('Clay',data.reply);
+      renderConfirm(data.confirmation);
+    }else{
+      addTurn('Clay',data.reply||'(no reply)');
+      announce(data.reply||'Clay replied.',true);
+    }
+  }catch(e){ addTurn('Clay','Something went wrong: '+e.message); announce(e.message,true); }
+  sendBtn.disabled=false;
+}
+function renderConfirm(c){
+  const box=el('div','confirm');
+  box.appendChild(el('p',null,'Clay needs your confirmation before doing this:'));
+  box.appendChild(el('p','muted',c.reason||''));
+  const yes=el('button','btn','Yes, confirm');yes.type='button';
+  const no=el('button','btn secondary','No, cancel');no.type='button';no.style.marginLeft='8px';
+  yes.addEventListener('click',async()=>{
+    yes.disabled=true;no.disabled=true;
+    try{
+      const r=await Kiln.api('/clay/chat/confirm',{method:'POST',body:{tool:c.tool,params:c.params}});
+      if(r.status==='handoff'){ addTurn('Clay',r.message||'Opening the right flow…'); announce(r.message||'Opening the right flow.',true); setTimeout(()=>{location.href=r.url;},900); }
+      else { addTurn('Clay',r.message||'Done.'); announce(r.message||'Done.',true); }
+    }catch(e){ addTurn('Clay','Could not complete: '+e.message); announce(e.message,true); }
+    confirmzone.innerHTML='';
+  });
+  no.addEventListener('click',()=>{ confirmzone.innerHTML=''; addTurn('Clay','Okay, I won’t do that.'); announce('Cancelled.',true); });
+  box.appendChild(yes);box.appendChild(no);confirmzone.appendChild(box);
+  focusEl(yes,'Clay needs your confirmation. '+(c.reason||''));
+}
+sendBtn.addEventListener('click',send);
+msg.addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))send();});
+checkStatus();
+</script>
+</body></html>
