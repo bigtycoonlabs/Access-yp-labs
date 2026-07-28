@@ -205,4 +205,21 @@ async function describeMedia({ imageBase64, mediaType }) {
     : { status: 'empty', description: '', message: 'No description was produced.' };
 }
 
-module.exports = { generate, generateSocial, describeMedia, modelName: provider.modelName, available: provider.available, providerName: provider.providerName };
+// Rewrite an HTML demo to fix specific accessibility issues WITHOUT changing its
+// look or behaviour. Returns the corrected document or an honest status.
+async function remediateDemo({ html, issues }) {
+  if (!provider.available()) {
+    return { status: 'unavailable', message: 'Clay could not run right now (generation service is not configured). Nothing was changed.' };
+  }
+  const system = 'You fix the accessibility of an HTML document for screen-reader (VoiceOver) users WITHOUT changing its visual design or its functionality. Keep it a single self-contained document with inline JavaScript only. Return ONLY the corrected, complete HTML document — no explanation and no markdown fences.';
+  const user = `Fix these accessibility issues in the HTML below. Set <html lang>, use semantic landmarks, real button/a/label elements (no click-only divs), a label on every control and field, alt text on every image, visible focus, and 44px targets. Do not change what the demo does.\n\nIssues:\n- ${(issues || []).join('\n- ')}\n\nHTML:\n${html}`;
+  const out = await provider.complete({ system, user, json: false, maxTokens: 8000 });
+  if (!out.ok) {
+    return { status: 'unavailable', message: `Clay could not reach the generation service: ${out.error || 'unavailable'}. Nothing was changed.` };
+  }
+  let fixed = (out.text || '').trim().replace(/^```(?:html)?/i, '').replace(/```$/, '').trim();
+  if (!/<html/i.test(fixed)) return { status: 'empty', message: 'Clay could not produce a corrected demo. Nothing was changed.' };
+  return { status: 'answered', html: fixed };
+}
+
+module.exports = { generate, generateSocial, describeMedia, remediateDemo, modelName: provider.modelName, available: provider.available, providerName: provider.providerName };

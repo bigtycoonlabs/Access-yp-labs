@@ -65,6 +65,18 @@ function renderDescription(desc){
     a.appendChild(el('p','muted','What this demo does right:'));
     const pu=document.createElement('ul');audit.passed.forEach(t=>pu.appendChild(li(t)));a.appendChild(pu);
   }
+  if(!audit.ok){
+    const fix=el('button','btn','Fix accessibility with Clay');fix.type='button';fix.style.marginTop='8px';
+    fix.addEventListener('click',async()=>{
+      fix.disabled=true;announce('Clay is repairing the demo’s accessibility…');
+      try{
+        const r=await Kiln.api('/clay/fix-demo',{method:'POST',body:{concept_id:conceptId}});
+        if(r.status==='answered'){announce(r.message||'Fixed.',true);load();}
+        else{announce(r.message||'Could not fix it right now.',true);fix.disabled=false;}
+      }catch(e){announce(e.message,true);fix.disabled=false;}
+    });
+    a.appendChild(fix);
+  }
 }
 
 function summarySentence(desc){

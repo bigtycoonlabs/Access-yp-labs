@@ -304,6 +304,35 @@ router.post('/chat/confirm', authenticate, [
   throw new ApiError(400, 'Unknown action.');
 }));
 
+// POST /api/clay/fix-demo  { concept_id }  — Clay repairs the demo's accessibility.
+router.post('/fix-demo', authenticate, [body('concept_id').isUUID()], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  const { concept_id } = req.body;
+  const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, req.user.id]);
+  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  const d = await query(
+    `SELECT id, type, title, body FROM assets WHERE concept_id=$1 AND is_current=true
+     AND type IN ('html_demo','built_site') ORDER BY created_at DESC LIMIT 1`, [concept_id]);
+  if (!d.rows.length) throw new ApiError(404, 'This concept has no demo to fix.');
+  const asset = d.rows[0];
+  const before = describe.outline(asset.body);
+  if (before.a11y.ok) return res.json({ status: 'already_ok', message: 'This demo already passes the accessibility check.', a11y: before.a11y });
+
+  const fixed = await clay.remediateDemo({ html: asset.body, issues: before.a11y.issues });
+  if (fixed.status !== 'answered') return res.status(200).json({ status: fixed.status, message: fixed.message });
+  const after = describe.outline(fixed.html);
+
+  const prev = await query('SELECT COALESCE(MAX(version),0) AS maxv FROM assets WHERE concept_id=$1 AND type=$2', [concept_id, asset.type]);
+  await query('UPDATE assets SET is_current=false WHERE concept_id=$1 AND type=$2 AND is_current=true', [concept_id, asset.type]);
+  const ins = await query(
+    `INSERT INTO assets (concept_id, type, title, body, is_baseline, scan_status, version, is_current)
+     VALUES ($1,$2,$3,$4,false,'not_required',$5,true) RETURNING id`,
+    [concept_id, asset.type, asset.title || 'Demo', fixed.html, prev.rows[0].maxv + 1]);
+  res.json({ status: 'answered', message: 'Clay repaired the demo. ' + after.a11y.summary,
+    before: before.a11y, after: after.a11y, asset_id: ins.rows[0].id });
+}));
+
 // GET /api/clay/status — is generation actually available right now? (honest)
 router.get('/status', authenticate, (req, res) => {
   const available = clay.available();
