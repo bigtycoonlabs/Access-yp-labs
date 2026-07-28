@@ -104,9 +104,19 @@ router.post('/:id/release', authenticate, asyncHandler(async (req, res) => {
     const l = await client.query('SELECT concept_id FROM listings WHERE id=$1', [order.listing_id]);
     const conceptId = l.rows[0].concept_id;
 
-    await client.query('UPDATE concepts SET owner_id=$2, updated_at=NOW() WHERE id=$1', [conceptId, order.buyer_id]);
-    await client.query('UPDATE assets SET exclusive_locked=true WHERE concept_id=$1', [conceptId]);
+    // Clean transfer: buyer owns it, with the first month included; assets lock
+    // as exclusive (they can't be resold without new work); listing marks sold.
+    await client.query(
+      `UPDATE concepts SET owner_id=$2, origin='purchased',
+         access_expires_at = now() + interval '30 days', updated_at=NOW() WHERE id=$1`,
+      [conceptId, order.buyer_id]);
+    await client.query('UPDATE assets SET exclusive_locked=true, locked_at=now() WHERE concept_id=$1', [conceptId]);
     await client.query(`UPDATE listings SET status='sold', updated_at=NOW() WHERE id=$1`, [order.listing_id]);
+    // The seller is no longer obligated to pay for a concept they've sold.
+    await client.query(
+      `UPDATE subscriptions SET status='canceled', updated_at=now()
+       WHERE user_id=$1 AND concept_id=$2 AND plan='maker' AND status='active'`,
+      [order.seller_id, conceptId]);
     const done = await client.query(
       `UPDATE orders_transfers SET status='released' WHERE id=$1 RETURNING *`, [order.id]);
     await client.query('COMMIT');

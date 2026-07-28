@@ -6,6 +6,7 @@ const { asyncHandler, ApiError } = require('../lib/http');
 const { MODES, CATEGORIES } = require('../services/clay/tools');
 const clay = require('../services/clay');
 const { sendEmail } = require('../services/email');
+const protect = require('../lib/protect');
 const router = express.Router();
 
 // Persist a full Clay result: concept (create) or new assets (enhance) + a
@@ -33,11 +34,16 @@ async function persistResult(ownerId, result, { conceptId = null, mode, category
       concept = c.rows[0];
     }
     for (const a of (result.assets || [])) {
+      let scanStatus = 'not_required', scanDetail = null;
+      if (protect.needsScan(a.type)) {
+        const sc = protect.scanCode(a.body);
+        scanStatus = sc.status; scanDetail = sc.detail;
+      }
       await client.query(
-        `INSERT INTO assets (concept_id, type, title, body, is_baseline)
-         VALUES ($1,$2,$3,$4,$5)`,
+        `INSERT INTO assets (concept_id, type, title, body, is_baseline, scan_status, scan_detail)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
         [concept.id, a.type, a.label, a.body,
-         ['business_plan', 'marketing_strategy'].includes(a.type)]);
+         ['business_plan', 'marketing_strategy'].includes(a.type), scanStatus, scanDetail]);
     }
     await client.query(
       `INSERT INTO generations (concept_id, prompt, result_status) VALUES ($1,$2,$3)`,

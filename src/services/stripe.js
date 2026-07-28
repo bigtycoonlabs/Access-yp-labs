@@ -72,7 +72,7 @@ function constructEvent(rawBody, signature) {
 
 // Subscription or one-time checkout for platform plans (Clay access).
 // unlimited -> recurring monthly; per_idea -> one-time payment.
-async function createPlanCheckout({ mode, priceCents, planName, userId, plan, email, successUrl, cancelUrl }) {
+async function createPlanCheckout({ mode, priceCents, planName, userId, plan, conceptId, email, successUrl, cancelUrl }) {
   const s = stripe();
   if (!s) return { ok: false, reason: 'stripe_not_configured' };
   const recurring = mode === 'subscription' ? { interval: 'month' } : undefined;
@@ -83,7 +83,7 @@ async function createPlanCheckout({ mode, priceCents, planName, userId, plan, em
       product_data: { name: planName }, recurring }, quantity: 1 }],
     success_url: successUrl,
     cancel_url: cancelUrl,
-    metadata: { kind: 'subscription', user_id: userId, plan },
+    metadata: { kind: 'subscription', user_id: userId, plan, concept_id: conceptId || '' },
   });
   return { ok: true, url: session.url, sessionId: session.id };
 }

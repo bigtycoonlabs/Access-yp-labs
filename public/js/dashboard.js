@@ -56,21 +56,29 @@
   async function loadSubs() {
     const c = document.getElementById('subs'); c.innerHTML = '';
     try {
-      const { subscriptions } = await Kiln.api('/subscriptions');
-      const active = subscriptions.filter((s) => s.status === 'active');
-      if (active.length) {
-        active.forEach((s) => c.appendChild(el('p', null,
-          (s.plan === 'unlimited' ? 'Unlimited plan' : 'Per-idea plan') + ' — ' + money(s.price_cents) + (s.plan === 'unlimited' ? ' / month' : ''))));
-      } else {
-        c.appendChild(el('p', 'muted', 'No active plan. Choose one to generate and own concepts.'));
-        const subscribe = async (plan) => {
-          const r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan } });
-          if (r.url) { location.href = r.url; return; }
-          announce(r.message || 'Billing is not configured yet.', true);
-        };
-        c.appendChild(actionBtn('$2.99 per idea', () => subscribe('per_idea'), true));
-        c.appendChild(actionBtn('$49.99 unlimited / month', () => subscribe('unlimited')));
+      const { subscriptions, staff_exempt } = await Kiln.api('/subscriptions');
+      if (staff_exempt) {
+        c.appendChild(el('p', 'msg ok', 'Staff account — full access to Clay, the marketplace, and every feature. You are never charged.'));
+        return;
       }
+      const active = subscriptions.filter((s) => s.status === 'active');
+      const goSculptor = async () => {
+        const r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'sculptor' } });
+        if (r.url) { location.href = r.url; return; }
+        announce(r.message || 'Billing is not configured yet.', true);
+      };
+      if (active.some((s) => s.plan === 'sculptor')) {
+        c.appendChild(el('p', 'msg ok', 'Sculptor plan active — unlimited concepts ($49.99/month).'));
+        return;
+      }
+      const makers = active.filter((s) => s.plan === 'maker');
+      if (makers.length) {
+        c.appendChild(el('p', null, makers.length + ' concept' + (makers.length > 1 ? 's' : '') + ' on the Maker plan ($2.99/month each).'));
+      } else {
+        c.appendChild(el('p', 'muted', 'No plan yet. Build for free — a plan is asked for only when you download, share, or keep a concept past 30 days.'));
+      }
+      c.appendChild(actionBtn('Go Sculptor — $49.99/month, unlimited', goSculptor));
+      c.appendChild(el('p', 'muted', 'The $2.99 Maker plan is per concept — you\u2019ll be offered it when you download a specific concept.'));
     } catch (e) { fail(c, e); }
   }
 
@@ -81,7 +89,12 @@
       const { concepts } = await Kiln.api('/concepts');
       if (!concepts.length) { empty(c, 'No concepts yet. Open the workspace to shape one with Clay.'); return; }
       concepts.forEach((x) => {
-        const r = row(x.title, nice(x.category) + (x.is_housing ? ' · housing' : ''), x.stage);
+        let meta = nice(x.category) + (x.is_housing ? ' · housing' : '');
+        if (x.access_expires_at) {
+          const days = Math.ceil((new Date(x.access_expires_at) - new Date()) / 86400000);
+          meta += ' · ' + (days > 0 ? ('access ' + days + ' more day' + (days === 1 ? '' : 's') + ' unless subscribed') : 'access expired — subscribe to keep');
+        }
+        const r = row(x.title, meta, x.stage);
         c.appendChild(r);
       });
     } catch (e) { fail(c, e); }

