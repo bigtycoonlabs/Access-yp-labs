@@ -54,7 +54,7 @@ app.use('/api/moderation',    require('./routes/moderation'));
 app.use('/api/reports',       require('./routes/reports'));
 
 app.get('/api/health', (req, res) => res.json({
-  status: 'ok', service: 'yp-labs', platform: 'the-dreamhold',
+  status: 'ok', service: 'yp-labs', platform: 'access-yp-labs', marketplace: 'the-dreamhold',
   clay: {
     configured: !!(process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY),
     provider: process.env.OPENAI_API_KEY ? 'openai' : (process.env.ANTHROPIC_API_KEY ? 'anthropic' : null),
@@ -85,6 +85,6 @@ app.use((err, req, res, next) => {
 });
 
 if (require.main === module) {
-  app.listen(PORT, () => console.log(`YP Labs (The Dreamhold) server running on port ${PORT}`));
+  app.listen(PORT, () => console.log(`Access YP Labs server running on port ${PORT}`));
 }
 module.exports = app;
