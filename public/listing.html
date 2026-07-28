@@ -25,6 +25,7 @@ async function load(){
     statusEl.textContent='';
     detail.appendChild(el('h1',null,listing.title));
     detail.appendChild(el('p','muted',(listing.category||'').replace(/_/g,' ')+' · '+(listing.stage_label||'').replace(/_/g,' ')+' · by '+listing.seller_name));
+    if(listing.working_since){detail.appendChild(el('p','muted','In development since '+new Date(listing.working_since).toLocaleDateString()));}
     if(listing.risk_summary){const r=el('div','panel');r.appendChild(el('h3',null,'Regulatory & licensing risk'));r.appendChild(el('p',null,listing.risk_summary));detail.appendChild(r);}
 
     const isAuction=listing.format==='auction';
@@ -44,6 +45,7 @@ async function load(){
     if(!Kiln.isLoggedIn()){
       const p=el('p');const a=el('a','btn','Sign in to buy, bid, or watch');a.href='/login.html';p.appendChild(a);detail.appendChild(p);return;
     }
+    renderPreviews(detail, id);
 
     // Watch (always available)
     const actions=el('div','actions');actions.style.display='flex';actions.style.gap='10px';actions.style.flexWrap='wrap';
@@ -100,6 +102,40 @@ function openBuy(listing){
   });
   f.appendChild(go);f.appendChild(out);detail.appendChild(f);
   focusEl(f.querySelector('h2'),'Purchase form opened.');
+}
+function b64utf8(b64){const bin=atob(b64);const bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));return new TextDecoder().decode(bytes);}
+async function renderPreviews(container, listingId){
+  let assets=[];
+  try{ const r=await Kiln.api('/listings/'+listingId+'/assets'); assets=r.assets||[]; }catch(_){ return; }
+  if(!assets.length) return;
+  const sec=el('div','panel'); sec.appendChild(el('h2',null,'Preview the materials'));
+  sec.appendChild(el('p','muted','Previews are watermarked. The full, clean materials transfer to you when you buy.'));
+  const acts=el('div','actions'); acts.style.display='flex'; acts.style.gap='8px'; acts.style.flexWrap='wrap';
+  assets.forEach(a=>{
+    const b=el('button','btn secondary','Preview: '+(a.title||a.type)); b.type='button';
+    b.addEventListener('click',()=>showPreview(sec, a.id, a.title||a.type));
+    acts.appendChild(b);
+  });
+  sec.appendChild(acts); container.appendChild(sec);
+}
+async function showPreview(container, assetId, label){
+  announce('Loading watermarked preview of '+label+'…');
+  try{
+    const {preview}=await Kiln.api('/assets/'+assetId+'/preview');
+    const content=b64utf8(preview.content_b64);
+    const wrap=el('div'); wrap.appendChild(el('h3',null,'Preview: '+label+' (watermarked)'));
+    if(preview.format==='html'){
+      const frame=document.createElement('iframe'); frame.setAttribute('sandbox','allow-same-origin');
+      frame.setAttribute('title','Watermarked preview of '+label);
+      frame.style.width='100%'; frame.style.height='420px'; frame.style.border='1px solid var(--line)';
+      frame.srcdoc=content; wrap.appendChild(frame);
+    } else {
+      const body=el('div','asset-body',content); body.setAttribute('tabindex','-1');
+      body.setAttribute('role','region'); body.setAttribute('aria-label','Watermarked preview of '+label);
+      wrap.appendChild(body);
+    }
+    container.appendChild(wrap); focusEl(wrap.querySelector('h3'),'Watermarked preview loaded.');
+  }catch(e){ announce('Could not load preview: '+e.message, true); }
 }
 load();
 </script>

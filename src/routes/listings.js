@@ -119,10 +119,22 @@ router.get('/mine', authenticate, asyncHandler(async (req, res) => {
   res.json({ listings: r.rows });
 }));
 
+// Previewable asset metadata for a live/sold listing (no bodies; previews are
+// fetched per-asset through the watermarked preview endpoint).
+router.get('/:id/assets', asyncHandler(async (req, res) => {
+  const l = await query(`SELECT concept_id FROM listings WHERE id=$1 AND status IN ('live','sold')`, [req.params.id]);
+  if (!l.rows.length) throw new ApiError(404, 'Listing not found.');
+  const a = await query(
+    `SELECT id, type, title FROM assets WHERE concept_id=$1 AND is_current=true ORDER BY created_at`,
+    [l.rows[0].concept_id]);
+  res.json({ assets: a.rows });
+}));
+
 // Single listing (public if live; owner may view any state).
 router.get('/:id', asyncHandler(async (req, res) => {
   const r = await query(
-    `SELECT l.*, c.title, c.category, c.risk_summary, u.name AS seller_name
+    `SELECT l.*, c.title, c.category, c.risk_summary, u.name AS seller_name,
+            CASE WHEN c.show_working_since THEN c.working_since ELSE NULL END AS working_since
      FROM listings l JOIN concepts c ON c.id=l.concept_id JOIN users u ON u.id=l.seller_id
      WHERE l.id=$1`, [req.params.id]);
   if (!r.rows.length) throw new ApiError(404, 'Listing not found.');
