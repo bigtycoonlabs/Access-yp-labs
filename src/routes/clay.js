@@ -369,9 +369,9 @@ function buildPackageEmail(title, coverage, assets){
   const gap = coverage && !coverage.complete ? '<p style="color:#57534e">'+escapeHtml(coverage.gap_description)+'</p>' : '';
   return '<div style="max-width:640px;margin:0 auto">'+
     '<h1 style="font-family:system-ui,sans-serif;color:#1c1917">'+escapeHtml(title)+'</h1>'+
-    '<p style="font-family:system-ui,sans-serif">Your concept package from Clay at Access YP Labs. You also have it in your workspace.</p>'+
+    '<p style="font-family:system-ui,sans-serif">Your concept package from Clay at Access YP Labs. You also have it in your laboratory.</p>'+
     gap + parts.join('') +
-    '<hr/><p style="color:#57534e;font-size:13px;font-family:system-ui,sans-serif">The Kiln is a neutral marketplace. Concepts are pre-proven starting points, not guarantees of income.</p></div>';
+    '<hr/><p style="color:#57534e;font-size:13px;font-family:system-ui,sans-serif">The Dreamhold is a neutral marketplace. Concepts are pre-proven starting points, not guarantees of income.</p></div>';
 }
 
 module.exports = router;

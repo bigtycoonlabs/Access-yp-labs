@@ -1,4 +1,4 @@
-// The Kiln workspace — chat-first, accessible. Talk to Clay, then act inline.
+// The Dreamhold laboratory — chat-first, accessible. Talk to Clay, then act inline.
 (function () {
   if (!Kiln.isLoggedIn()) { location.replace('/login.html'); return; }
 
@@ -101,7 +101,7 @@
         demoBtn.href = '/sandbox.html?concept=' + encodeURIComponent(data.concept.id);
         actions.appendChild(demoBtn);
       }
-      const listBtn = el('button', 'btn', 'List this on The Kiln'); listBtn.type = 'button';
+      const listBtn = el('button', 'btn', 'List this in the Dreamhold'); listBtn.type = 'button';
       listBtn.addEventListener('click', () => openListingForm(container, data.concept.id));
       actions.appendChild(listBtn);
       const socialBtn = el('button', 'btn secondary', 'Generate social content'); socialBtn.type = 'button';
@@ -300,7 +300,7 @@
 
   function openListingForm(container, conceptId) {
     const form = el('div', 'panel');
-    form.appendChild(el('h3', null, 'List this concept on The Kiln'));
+    form.appendChild(el('h3', null, 'List this concept on The Dreamhold'));
     form.appendChild(el('p', 'muted', 'You set the price. $50 minimum. Selling transfers ownership to the buyer.'));
 
     const fmtLabel = el('label'); fmtLabel.textContent = 'Sale format'; fmtLabel.setAttribute('for', 'l-format');

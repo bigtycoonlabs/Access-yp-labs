@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Talk with Clay — The Kiln</title><link rel="stylesheet" href="/css/kiln.css"/>
+<title>Talk with Clay — The Dreamhold</title><link rel="stylesheet" href="/css/kiln.css"/>
 <style>
 #log{border:1px solid var(--line);border-radius:12px;background:#fff;padding:12px;min-height:220px;max-height:60vh;overflow:auto;}
 .turn{margin:10px 0;padding:10px 12px;border-radius:10px;}
@@ -11,8 +11,8 @@
 </head><body>
 <a class="skip" href="#main">Skip to main content</a>
 <header class="site"><div class="wrap bar">
-  <a class="brand" href="/">Access YP Labs · The Kiln</a>
-  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/app.html">Workspace</a></nav>
+  <a class="brand" href="/">Access YP Labs · The Dreamhold</a>
+  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/app.html">Laboratory</a></nav>
 </div></header>
 <main id="main" class="wrap">
   <h1>Talk with Clay</h1>
@@ -40,7 +40,7 @@ function addTurn(who,text){
 }
 async function checkStatus(){
   try{const s=await Kiln.api('/clay/status');
-    if(!s.available){document.getElementById('unavailable').innerHTML='<div class="msg err">Clay’s conversation isn’t configured yet (no generation key). You can still use the one-shot workspace.</div>';}
+    if(!s.available){document.getElementById('unavailable').innerHTML='<div class="msg err">Clay’s conversation isn’t configured yet (no generation key). You can still use the one-shot laboratory.</div>';}
   }catch(_){}
 }
 async function send(){

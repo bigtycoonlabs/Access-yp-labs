@@ -7,7 +7,7 @@ const protect = require('../lib/protect');
 const describe = require('../lib/describe');
 const router = express.Router();
 
-// Current assets for a concept the caller owns (in-workspace VIEW — free).
+// Current assets for a concept the caller owns (in-laboratory VIEW — free).
 router.get('/concept/:conceptId', authenticate, asyncHandler(async (req, res) => {
   const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2',
     [req.params.conceptId, req.user.id]);

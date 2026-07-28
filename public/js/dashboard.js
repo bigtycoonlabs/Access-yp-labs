@@ -1,4 +1,4 @@
-// The Kiln dashboard — management overview with state-aware actions.
+// The Dreamhold dashboard — management overview with state-aware actions.
 (function () {
   if (!Kiln.isLoggedIn()) { location.replace('/login.html'); return; }
   let me = null;
@@ -87,7 +87,7 @@
     const c = document.getElementById('concepts'); c.innerHTML = '';
     try {
       const { concepts } = await Kiln.api('/concepts');
-      if (!concepts.length) { empty(c, 'No concepts yet. Open the workspace to shape one with Clay.'); return; }
+      if (!concepts.length) { empty(c, 'No concepts yet. Open the laboratory to shape one with Clay.'); return; }
       concepts.forEach((x) => {
         let meta = nice(x.category) + (x.is_housing ? ' · housing' : '');
         if (x.access_expires_at) {
@@ -123,7 +123,7 @@
     try {
       const { listings } = await Kiln.api('/listings/mine');
       const mk = el('a', 'btn secondary', 'Create a listing'); mk.href = '/sell.html'; c.appendChild(mk);
-      if (!listings.length) { c.appendChild(el('p','muted','No listings yet. Use “Create a listing”, or from the workspace choose “List this on The Kiln”.')); return; }
+      if (!listings.length) { c.appendChild(el('p','muted','No listings yet. Use “Create a listing”, or from the laboratory choose “List this in the Dreamhold”.')); return; }
       listings.forEach((l) => {
         const price = l.format === 'auction' ? ('auction from ' + money(l.starting_bid_cents)) : money(l.price_cents);
         const r = row(l.title, nice(l.category) + ' · ' + price, l.status);

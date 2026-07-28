@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Live demo — The Kiln</title><link rel="stylesheet" href="/css/kiln.css"/>
+<title>Live demo — The Dreamhold</title><link rel="stylesheet" href="/css/kiln.css"/>
 <style>
 .sandbox-frame{width:100%;height:70vh;min-height:420px;border:2px solid var(--line);border-radius:12px;background:#fff;}
 .describe{border:1px solid var(--line);border-radius:12px;background:#fff;padding:16px 18px;margin:12px 0;}
@@ -11,8 +11,8 @@
 </head><body>
 <a class="skip" href="#main">Skip to main content</a>
 <header class="site"><div class="wrap bar">
-  <a class="brand" href="/">Access YP Labs · The Kiln</a>
-  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/app.html">Workspace</a></nav>
+  <a class="brand" href="/">Access YP Labs · The Dreamhold</a>
+  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/app.html">Laboratory</a></nav>
 </div></header>
 <main id="main" class="wrap">
   <h1 id="title">Live demo</h1>
@@ -31,7 +31,7 @@
 
   <div class="actions" id="actions" hidden style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
     <button type="button" class="btn" id="export">Export this demo (.html)</button>
-    <a class="btn secondary" href="/app.html">Back to the workspace</a>
+    <a class="btn secondary" href="/app.html">Back to the laboratory</a>
   </div>
   <div id="exportmsg" role="alert" aria-live="assertive"></div>
 </main>
@@ -120,7 +120,7 @@ document.getElementById('export').addEventListener('click',async()=>{
     announce('Demo exported as an HTML file.',true);
   }catch(e){
     if(e.status===402&&e.data&&e.data.options){
-      msg.innerHTML='<div class="msg err">Exporting needs an active plan. Building and previewing stay free. Open the workspace to choose Maker or Sculptor.</div>';
+      msg.innerHTML='<div class="msg err">Exporting needs an active plan. Building and previewing stay free. Open the laboratory to choose Maker or Sculptor.</div>';
     }else{ msg.innerHTML='<div class="msg err">'+e.message+'</div>'; }
     announce('Export needs a plan or could not complete.',true);
   }

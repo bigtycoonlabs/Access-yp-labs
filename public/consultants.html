@@ -1,12 +1,12 @@
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Consultants — The Kiln</title><link rel="stylesheet" href="/css/kiln.css"/>
+<title>Consultants — The Dreamhold</title><link rel="stylesheet" href="/css/kiln.css"/>
 <style>.card{border:1px solid var(--line);border-radius:12px;background:#fff;padding:20px;margin:0 0 14px;}</style>
 </head><body>
 <a class="skip" href="#main">Skip to main content</a>
 <header class="site"><div class="wrap bar">
-  <a class="brand" href="/">Access YP Labs · The Kiln</a>
-  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/marketplace.html">Marketplace</a><a href="/app.html">Workspace</a></nav>
+  <a class="brand" href="/">Access YP Labs · The Dreamhold</a>
+  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/marketplace.html">Marketplace</a><a href="/app.html">Laboratory</a></nav>
 </div></header>
 <main id="main" class="wrap">
   <h1>Work with a consultant</h1>
@@ -22,7 +22,7 @@
 const conceptId=new URLSearchParams(location.search).get('concept');
 const listEl=document.getElementById('list'), statusEl=document.getElementById('status'), booking=document.getElementById('booking');
 function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
-if(conceptId){const n=document.getElementById('concept-note');n.hidden=false;n.textContent='This session will be about the concept you selected in your workspace.';}
+if(conceptId){const n=document.getElementById('concept-note');n.hidden=false;n.textContent='This session will be about the concept you selected in your laboratory.';}
 async function load(){
   statusEl.textContent='Loading consultants…';
   try{
