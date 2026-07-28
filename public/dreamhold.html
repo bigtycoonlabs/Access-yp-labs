@@ -1,0 +1,190 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>The Dreamhold — meet Clay at the door</title>
+<style>
+:root{--void:#0b0817;--mist:#1a1430;--dream:#b8a6ff;--dream2:#8ce0ff;--glow:#ffd9a8;--ink:#f2eefb;--line:#332a52;}
+*{box-sizing:border-box;}
+html,body{margin:0;min-height:100%;background:
+  radial-gradient(120% 80% at 20% -10%, rgba(140,224,255,.14), transparent 55%),
+  radial-gradient(120% 90% at 90% 110%, rgba(184,166,255,.18), transparent 55%),
+  var(--void);color:var(--ink);font-family:ui-serif,Georgia,"Times New Roman",serif;}
+.wrap{max-width:640px;margin:0 auto;padding:24px 18px 120px;}
+.kicker{letter-spacing:.3em;text-transform:uppercase;font-family:ui-monospace,monospace;font-size:.68rem;color:var(--dream2);opacity:.85;}
+h1{font-size:clamp(1.6rem,5vw,2.4rem);margin:.3em 0 .2em;}
+.sub{color:#c9c0e6;margin-top:0;}
+#convo{margin:22px 0;display:flex;flex-direction:column;gap:14px;}
+.msg{max-width:90%;padding:13px 16px;border-radius:16px;line-height:1.5;}
+.msg.clay{background:linear-gradient(180deg,rgba(184,166,255,.16),rgba(140,224,255,.10));border:1px solid var(--line);border-bottom-left-radius:5px;}
+.msg.you{align-self:flex-end;background:rgba(255,217,168,.14);border:1px solid rgba(255,217,168,.35);border-bottom-right-radius:5px;}
+.msg .who{display:block;font-family:ui-monospace,monospace;font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;opacity:.7;margin-bottom:4px;}
+#controls{display:flex;flex-direction:column;gap:12px;}
+fieldset{border:1px solid var(--line);border-radius:14px;padding:14px;margin:0;}
+legend{padding:0 8px;color:var(--dream);}
+.opts{display:flex;flex-wrap:wrap;gap:10px;}
+button,.chip{font:inherit;cursor:pointer;min-height:48px;min-width:48px;padding:12px 18px;border-radius:12px;
+  border:1px solid var(--line);background:var(--mist);color:var(--ink);}
+button.primary{border:none;font-weight:700;color:#1a1230;background:linear-gradient(180deg,var(--dream),var(--dream2));}
+.chip[aria-pressed="true"]{background:linear-gradient(180deg,var(--dream),var(--dream2));color:#1a1230;border:none;font-weight:700;}
+button:focus-visible,.chip:focus-visible,input:focus-visible{outline:3px solid var(--glow);outline-offset:2px;}
+label{display:block;margin:10px 0 6px;color:#d7cff0;}
+input{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:#120e26;color:var(--ink);font:inherit;min-height:48px;}
+.msgerr{color:#ffb4b4;}
+a{color:var(--dream2);}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;}
+</style></head>
+<body>
+<div class="wrap">
+  <p class="kicker">Access YP Labs · The Dreamhold</p>
+  <h1>The door to the Dreamhold</h1>
+  <p class="sub">A place that holds the businesses the world dreamed up and never launched. Clay will tune it to you before you go down.</p>
+  <div id="convo" role="log" aria-live="polite" aria-label="Clay"></div>
+  <div id="controls" aria-live="polite"></div>
+</div>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script>
+<script>
+var convo=document.getElementById('convo'), controls=document.getElementById('controls');
+var state={ interests:[], runs_business:false, business_kind:'', launch_budget:'' };
+function el(t,c,x){var n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+function bubble(who,text){
+  var m=el('div','msg '+(who==='Clay'?'clay':'you'));
+  m.appendChild(el('span','who',who));
+  m.appendChild(el('span',null,text));
+  convo.appendChild(m); m.scrollIntoView({block:'end'});
+}
+function clay(text){ bubble('Clay',text); announce(text); }
+function you(text){ bubble('You',text); }
+function clearControls(){ controls.innerHTML=''; }
+function focusFirst(){ var f=controls.querySelector('button,input,.chip'); if(f)f.focus(); }
+
+// ---- flow ----
+function start(){
+  clay('Welcome. You’ve found the Dreamhold — where the business dreams the world never got around to launching are kept. Before you drop in, let me tune it to you, so the right dreams know to lean toward you.');
+  if(Kiln.isLoggedIn()) askInterests(); else askAccount();
+}
+
+function askAccount(){
+  clay('First, this has to be yours to keep. Every dreamer needs an account before they go down. Shall we make one?');
+  clearControls();
+  var wrap=el('div','opts');
+  var mk=el('button','primary','Create my account'); mk.addEventListener('click',accountForm);
+  var have=el('button',null,'I already have one'); have.addEventListener('click',loginForm);
+  wrap.appendChild(mk); wrap.appendChild(have); controls.appendChild(wrap); focusFirst();
+}
+function accountForm(){
+  you('Create my account'); clearControls();
+  var fs=el('fieldset'); fs.appendChild(el('legend',null,'Create your Dreamhold account'));
+  var nn=field('Your name','db-name','text'); var ee=field('Email','db-email','email'); var pp=field('Password (at least 8 characters)','db-pass','password');
+  fs.appendChild(nn.wrap); fs.appendChild(ee.wrap); fs.appendChild(pp.wrap);
+  var err=el('p','msgerr'); err.setAttribute('role','alert');
+  var go=el('button','primary','Create account'); go.style.marginTop='12px';
+  go.addEventListener('click',async function(){
+    err.textContent='';
+    var name=nn.input.value.trim(), email=ee.input.value.trim(), password=pp.input.value;
+    if(!name||!email||password.length<8){ err.textContent='Please enter your name, a valid email, and a password of at least 8 characters.'; announce(err.textContent,true); return; }
+    go.disabled=true;
+    try{
+      var data=await Kiln.api('/auth/register',{method:'POST',auth:false,body:{name,email,password}});
+      Kiln.setTokens({accessToken:data.accessToken,refreshToken:data.refreshToken});
+      you('Account created.'); askInterests();
+    }catch(e){ err.textContent=(e.data&&e.data.error)||e.message||'Could not create the account.'; announce(err.textContent,true); go.disabled=false; }
+  });
+  fs.appendChild(err); fs.appendChild(go); clearControls(); controls.appendChild(fs); focusFirst();
+}
+function loginForm(){
+  you('I already have one'); clearControls();
+  var fs=el('fieldset'); fs.appendChild(el('legend',null,'Sign in'));
+  var ee=field('Email','db-email2','email'); var pp=field('Password','db-pass2','password');
+  fs.appendChild(ee.wrap); fs.appendChild(pp.wrap);
+  var err=el('p','msgerr'); err.setAttribute('role','alert');
+  var go=el('button','primary','Sign in'); go.style.marginTop='12px';
+  go.addEventListener('click',async function(){
+    err.textContent='';
+    try{
+      var data=await Kiln.api('/auth/login',{method:'POST',auth:false,body:{email:ee.input.value.trim(),password:pp.input.value}});
+      Kiln.setTokens({accessToken:data.accessToken,refreshToken:data.refreshToken});
+      you('Signed in.'); askInterests();
+    }catch(e){ err.textContent=(e.data&&e.data.error)||'Could not sign in.'; announce(err.textContent,true); }
+  });
+  fs.appendChild(err); fs.appendChild(go); clearControls(); controls.appendChild(fs); focusFirst();
+}
+function field(label,id,type){
+  var wrap=el('div'); var l=el('label',null,label); l.setAttribute('for',id);
+  var input=document.createElement('input'); input.id=id; input.type=type;
+  wrap.appendChild(l); wrap.appendChild(input); return {wrap,input};
+}
+
+async function askInterests(){
+  clay('What kind of dreams make you lean in? Choose as many as feel right — this is how I know which ones should leap at you.');
+  clearControls();
+  var opts;
+  try{ var o=await Kiln.api('/preferences/options'); opts=o.categories; }
+  catch(e){ opts=[]; }
+  var fs=el('fieldset'); fs.appendChild(el('legend',null,'Ideas you’re most excited to launch'));
+  var box=el('div','opts');
+  opts.forEach(function(cat){
+    var b=el('button','chip',cat.label); b.type='button'; b.setAttribute('aria-pressed','false');
+    b.addEventListener('click',function(){
+      var on=b.getAttribute('aria-pressed')==='true'; b.setAttribute('aria-pressed',String(!on));
+      if(on){ state.interests=state.interests.filter(function(x){return x!==cat.id;}); }
+      else { state.interests.push(cat.id); }
+      announce((on?'Removed ':'Added ')+cat.label,true);
+    });
+    box.appendChild(b);
+  });
+  fs.appendChild(box);
+  var cont=el('button','primary','Continue'); cont.style.marginTop='12px';
+  cont.addEventListener('click',function(){ you(state.interests.length?('I love '+state.interests.length+' kind(s) of these.'):'I’ll stay open to anything.'); askBusiness(); });
+  fs.appendChild(cont); controls.appendChild(fs); focusFirst();
+}
+
+function askBusiness(){
+  clay('Do you already run a business? It helps me know what you’re working with — no wrong answer.');
+  clearControls();
+  var wrap=el('div','opts');
+  var yes=el('button',null,'Yes, I run one'); var no=el('button',null,'Not yet');
+  yes.addEventListener('click',function(){ state.runs_business=true; you('Yes, I run one.'); businessKind(); });
+  no.addEventListener('click',function(){ state.runs_business=false; state.business_kind=''; you('Not yet.'); askBudget(); });
+  wrap.appendChild(yes); wrap.appendChild(no); controls.appendChild(wrap); focusFirst();
+}
+function businessKind(){
+  clearControls();
+  var fs=el('fieldset'); fs.appendChild(el('legend',null,'What kind of business?'));
+  var f=field('A few words is plenty','db-kind','text'); fs.appendChild(f.wrap);
+  var go=el('button','primary','Continue'); go.style.marginTop='12px';
+  go.addEventListener('click',function(){ state.business_kind=f.input.value.trim(); if(state.business_kind)you(state.business_kind); askBudget(); });
+  fs.appendChild(go); controls.appendChild(fs); focusFirst();
+}
+
+async function askBudget(){
+  clay('And when a dream is ready to launch, what could you put behind it? A rough ceiling is all I need.');
+  clearControls();
+  var budgets=[];
+  try{ var o=await Kiln.api('/preferences/options'); budgets=o.budgets; }catch(e){}
+  var fs=el('fieldset'); fs.appendChild(el('legend',null,'Your launch budget'));
+  var box=el('div','opts');
+  budgets.forEach(function(b){
+    var btn=el('button',null,b.label); btn.type='button';
+    btn.addEventListener('click',function(){ state.launch_budget=b.id; you(b.label); finish(); });
+    box.appendChild(btn);
+  });
+  fs.appendChild(box); controls.appendChild(fs); focusFirst();
+}
+
+async function finish(){
+  clay('Tuning your Dreamhold…'); clearControls();
+  try{
+    await Kiln.api('/preferences',{method:'PUT',body:{
+      interests:state.interests, runs_business:state.runs_business,
+      business_kind:state.business_kind, launch_budget:state.launch_budget, onboarded:true }});
+    try{ localStorage.setItem('dreamhold_onboarded','1'); }catch(e){}
+  }catch(e){ clay('I couldn’t save your tuning just now, but you can still go in and I’ll pick it up later.'); }
+  clay('It’s tuned. Somewhere down there, a few dreams already turned toward you. Go on — drop in.');
+  var wrap=el('div','opts');
+  var enter=el('button','primary','Enter the Dreamhold'); enter.addEventListener('click',function(){ location.href='/enter.html'; });
+  var leap=el('button',null,'Show me the dreams leaping for me'); leap.addEventListener('click',function(){ location.href='/marketplace.html?entered=1&leaping=1'; });
+  wrap.appendChild(enter); wrap.appendChild(leap); controls.appendChild(wrap); focusFirst();
+}
+
+start();
+</script>
+</body></html>

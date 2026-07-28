@@ -6,11 +6,14 @@
 .filters{display:flex;gap:12px;flex-wrap:wrap;align-items:end;} .filters>div{flex:1;min-width:180px;}</style>
 </head><body>
 <script>
-// Entering the marketplace is an experience, not a menu click: first arrival
-// goes through the descent. Returning visitors (or ?entered=1) go straight in.
+// Entering the Dreamhold is an experience with a door. Not onboarded (no account
+// or not tuned yet) -> the door (Clay onboarding). Onboarded but new session ->
+// the drift. Arriving with ?entered=1 -> straight in.
 (function(){try{
   var p=new URLSearchParams(location.search);
-  if(!p.get('entered') && !localStorage.getItem('kiln_descended')){ location.replace('/enter.html'); }
+  if(p.get('entered')){ sessionStorage.setItem('descended','1'); return; }
+  if(!localStorage.getItem('dreamhold_onboarded')){ location.replace('/dreamhold.html'); return; }
+  if(!sessionStorage.getItem('descended')){ location.replace('/enter.html'); }
 }catch(e){}})();
 </script>
 <a class="skip" href="#main">Skip to main content</a>
