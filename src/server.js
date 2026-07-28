@@ -38,6 +38,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 // The Dreamhold / Clay API surface
 app.use('/api/auth',          require('./routes/auth'));
 app.use('/api/profiles',      require('./routes/profiles'));
+ app.use('/api/preferences',   require('./routes/preferences'));
 app.use('/api/subscriptions', require('./routes/subscriptions'));
 app.use('/api/concepts',      require('./routes/concepts'));
 app.use('/api/clay',          require('./routes/clay'));
