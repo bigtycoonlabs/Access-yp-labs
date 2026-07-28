@@ -181,8 +181,39 @@ async function finish(){
   clay('It’s tuned. Somewhere down there, a few dreams already turned toward you. Go on — drop in.');
   var wrap=el('div','opts');
   var enter=el('button','primary','Enter the Dreamhold'); enter.addEventListener('click',function(){ location.href='/enter.html'; });
-  var leap=el('button',null,'Show me the dreams leaping for me'); leap.addEventListener('click',function(){ location.href='/marketplace.html?entered=1&leaping=1'; });
+  var leap=el('button',null,'Show me a few dreams leaping for me'); leap.addEventListener('click',showLeaping);
   wrap.appendChild(enter); wrap.appendChild(leap); controls.appendChild(wrap); focusFirst();
+}
+
+function money(c){ return '$'+((c||0)/100).toFixed(2); }
+async function showLeaping(){
+  you('Show me a few dreams leaping for me'); clearControls();
+  clay('Let me see which ones already turned toward you…');
+  var listings=[];
+  try{ var r=await Kiln.api('/listings/leaping'); listings=(r.listings||[]).slice(0,3); }catch(e){}
+  if(!listings.length){
+    clay('None are leaping just yet — the Dreamhold is young. But it’s full of dreams to wander. Go on in.');
+  } else {
+    clay('These turned toward you first:');
+    var box=el('div'); box.setAttribute('role','list'); box.style.display='flex'; box.style.flexDirection='column'; box.style.gap='12px';
+    listings.forEach(function(l){
+      var card=el('div'); card.setAttribute('role','listitem');
+      card.style.cssText='border:1px solid var(--line);border-radius:14px;padding:14px;background:rgba(184,166,255,.08);';
+      card.appendChild(el('p','',(l.category||'').replace(/_/g,' ')+' · a dream leaning toward you'));
+      var h=el('h3',null,l.title); h.style.margin='4px 0'; card.appendChild(h);
+      var price=l.format==='auction'?('Auction from '+money(l.starting_bid_cents)):money(l.price_cents);
+      var p=el('p',null,price); p.style.margin='4px 0 10px'; card.appendChild(p);
+      var a=el('a',null,'View this dream'); a.href='/listing.html?id='+encodeURIComponent(l.id);
+      a.style.cssText='display:inline-block;min-height:44px;padding:10px 16px;border-radius:10px;background:linear-gradient(180deg,var(--dream),var(--dream2));color:#1a1230;font-weight:700;text-decoration:none;';
+      card.appendChild(a); box.appendChild(card);
+    });
+    controls.appendChild(box);
+    announce(listings.length+' dreams are leaping for you.');
+  }
+  var wrap=el('div','opts'); wrap.style.marginTop='14px';
+  var enter=el('button','primary','Enter the Dreamhold'); enter.addEventListener('click',function(){ location.href='/enter.html'; });
+  var all=el('button',null,'Wander the whole Dreamhold'); all.addEventListener('click',function(){ location.href='/marketplace.html?entered=1'; });
+  wrap.appendChild(enter); wrap.appendChild(all); controls.appendChild(wrap); focusFirst();
 }
 
 start();
