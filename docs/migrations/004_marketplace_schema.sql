@@ -1,62 +1,12 @@
 -- =====================================================================
--- ACCESS YP LABS — "THE KILN" — yp_labs schema (final state)
--- Set Up Your Place LLC. Isolated schema; no cross-schema references.
--- Retained tables (from prior platform): users, login_activity,
---   staff_invites, stripe_events, discount_codes, service_catalog.
--- New marketplace tables + enums below. See docs/migrations for history.
+-- YP LABS — Concept Marketplace ("The Kiln" / Clay) — Additive Migration v1
+-- Set Up Your Place LLC d/b/a Access YP Labs
+-- Adds the new marketplace/Clay model INTO the existing yp_labs schema.
+-- REUSES existing yp_labs.users (does NOT create a second users table).
+-- Additive + idempotent. Touches nothing outside yp_labs. Drops nothing.
 -- =====================================================================
-CREATE SCHEMA IF NOT EXISTS yp_labs;
+
 SET search_path TO yp_labs, public;
-
--- ---------- Retained infrastructure tables ----------
-CREATE TABLE IF NOT EXISTS yp_labs.users (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  email varchar(255) UNIQUE NOT NULL,
-  password_hash text,
-  name varchar(255),
-  role varchar(32) NOT NULL DEFAULT 'member'
-    CHECK (role IN ('member','consultant','client','staff','admin','master_staff')),
-  status varchar(32) NOT NULL DEFAULT 'active'
-    CHECK (status IN ('pending','active','suspended')),
-  phone varchar(64), business_name varchar(255), referral_source varchar(255),
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE TABLE IF NOT EXISTS yp_labs.login_activity (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES yp_labs.users(id) ON DELETE SET NULL,
-  email varchar(255), success boolean NOT NULL DEFAULT false,
-  ip_address inet, user_agent text, reason varchar(255),
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE TABLE IF NOT EXISTS yp_labs.staff_invites (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  email varchar(255), name varchar(255), temporary_password varchar(255),
-  status varchar(32), created_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE TABLE IF NOT EXISTS yp_labs.stripe_events (
-  id varchar(255) PRIMARY KEY, event_type varchar(255),
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE TABLE IF NOT EXISTS yp_labs.discount_codes (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  code varchar(64) UNIQUE, description text, discount_type varchar(32),
-  discount_value numeric, max_redemptions integer, redemptions integer DEFAULT 0,
-  starts_at timestamptz, expires_at timestamptz, active boolean DEFAULT true,
-  created_by uuid, created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE TABLE IF NOT EXISTS yp_labs.service_catalog (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  service_type varchar(64), name varchar(255), price numeric,
-  sla_hours integer, active boolean DEFAULT true,
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-
--- ---------- Marketplace enums + tables ----------
-
--- ---------- Marketplace enums + tables ----------
-
 
 -- ---------- ENUM TYPES ----------
 DO $$ BEGIN

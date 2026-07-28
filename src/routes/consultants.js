@@ -1,0 +1,149 @@
+const express = require('express');
+const { body, validationResult } = require('express-validator');
+const { query } = require('../config/db');
+const { authenticate, authorize } = require('../middleware/auth');
+const { asyncHandler, ApiError } = require('../lib/http');
+const { CONSULT_FEE_CENTS, CONSULT_PLATFORM_CENTS, CONSULT_CONSULTANT_CENTS, CONSULT_WINDOW_HOURS } = require('../lib/money');
+const router = express.Router();
+
+// Apply to become a consultant (application-gated; staff auto-enroll separately).
+router.post('/apply', authenticate, [
+  body('entrepreneur_history').isString().notEmpty(),
+  body('marketplace_track').isString(),
+  body('concepts_to_market').isString(),
+  body('prior_businesses').isString(),
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  const { entrepreneur_history, marketplace_track, concepts_to_market, prior_businesses } = req.body;
+  const r = await query(
+    `INSERT INTO consultant_applications
+       (user_id, entrepreneur_history, marketplace_track, concepts_to_market, prior_businesses)
+     VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+    [req.user.id, entrepreneur_history, marketplace_track, concepts_to_market, prior_businesses]);
+  res.status(201).json({ application: r.rows[0] });
+}));
+
+// Admin approves an application -> creates/enables a consultant.
+router.post('/applications/:id/approve', authenticate, authorize('admin', 'master_staff'),
+  asyncHandler(async (req, res) => {
+    const a = await query(`UPDATE consultant_applications SET status='approved' WHERE id=$1 RETURNING *`, [req.params.id]);
+    if (!a.rows.length) throw new ApiError(404, 'Application not found.');
+    await query(
+      `INSERT INTO consultants (user_id, approved, badge, rate_display)
+       VALUES ($1,true,true,'$150 / 90-min session')
+       ON CONFLICT (user_id) DO UPDATE SET approved=true, badge=true`, [a.rows[0].user_id]);
+    await query(`UPDATE users SET role='consultant' WHERE id=$1 AND role='member'`, [a.rows[0].user_id]);
+    res.json({ approved: true, user_id: a.rows[0].user_id });
+  }));
+
+// Public directory of approved consultants.
+router.get('/', asyncHandler(async (req, res) => {
+  const r = await query(
+    `SELECT c.user_id, u.name, c.rate_display, c.successful_launches, c.badge
+     FROM consultants c JOIN users u ON u.id=c.user_id WHERE c.approved=true
+     ORDER BY c.successful_launches DESC`);
+  res.json({ consultants: r.rows });
+}));
+
+// Client requests an engagement about one of their concepts.
+router.post('/engagements', authenticate, [
+  body('consultant_id').isUUID(),
+  body('concept_id').optional().isUUID(),
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  const { consultant_id, concept_id } = req.body;
+  const c = await query('SELECT approved FROM consultants WHERE user_id=$1', [consultant_id]);
+  if (!c.rows.length || !c.rows[0].approved) throw new ApiError(404, 'Consultant not available.');
+  const r = await query(
+    `INSERT INTO consultant_engagements (client_id, consultant_id, concept_id, state)
+     VALUES ($1,$2,$3,'requested') RETURNING *`,
+    [req.user.id, consultant_id, concept_id || null]);
+  res.status(201).json({ engagement: r.rows[0] });
+}));
+
+async function loadEngagement(id, userId, role) {
+  const r = await query('SELECT * FROM consultant_engagements WHERE id=$1', [id]);
+  if (!r.rows.length) throw new ApiError(404, 'Engagement not found.');
+  const e = r.rows[0];
+  const party = role === 'consultant' ? e.consultant_id : e.client_id;
+  if (party !== userId) throw new ApiError(403, 'Not your engagement.');
+  return e;
+}
+
+// Consultant accepts.
+router.post('/engagements/:id/accept', authenticate, asyncHandler(async (req, res) => {
+  await loadEngagement(req.params.id, req.user.id, 'consultant');
+  const r = await query(
+    `UPDATE consultant_engagements SET state='accepted' WHERE id=$1 AND state='requested' RETURNING *`,
+    [req.params.id]);
+  if (!r.rows.length) throw new ApiError(400, 'Engagement is not awaiting acceptance.');
+  res.json({ engagement: r.rows[0] });
+}));
+
+// HARD GATE: consultant signs the NDA before the concept is ever shared.
+router.post('/engagements/:id/nda', authenticate, asyncHandler(async (req, res) => {
+  await loadEngagement(req.params.id, req.user.id, 'consultant');
+  const r = await query(
+    `UPDATE consultant_engagements SET state='nda_signed', nda_signed_at=NOW()
+     WHERE id=$1 AND state='accepted' RETURNING *`, [req.params.id]);
+  if (!r.rows.length) throw new ApiError(400, 'Engagement must be accepted before signing the NDA.');
+  res.json({ engagement: r.rows[0], note: 'NDA signed. The concept can now be shared with the consultant.' });
+}));
+
+// Client pays $150. Concept unlocks only after NDA is signed.
+router.post('/engagements/:id/pay', authenticate, asyncHandler(async (req, res) => {
+  const e = await loadEngagement(req.params.id, req.user.id, 'client');
+  if (!e.nda_signed_at) throw new ApiError(400, 'Consultant must sign the NDA before payment unlocks the concept.');
+  const r = await query(
+    `UPDATE consultant_engagements
+       SET state='paid', fee_cents=$2, platform_cut_cents=$3, consultant_cut_cents=$4
+     WHERE id=$1 AND state='nda_signed' RETURNING *`,
+    [req.params.id, CONSULT_FEE_CENTS, CONSULT_PLATFORM_CENTS, CONSULT_CONSULTANT_CENTS]);
+  if (!r.rows.length) throw new ApiError(400, 'Engagement is not ready for payment.');
+  res.json({ engagement: r.rows[0], concept_unlocked: true });
+}));
+
+// Consultant delivers the session: opens the 12-hour continuation window.
+// The delivering consultant always earns $120 on delivery.
+router.post('/engagements/:id/deliver', authenticate, asyncHandler(async (req, res) => {
+  await loadEngagement(req.params.id, req.user.id, 'consultant');
+  const r = await query(
+    `UPDATE consultant_engagements
+       SET state='session_delivered', session_delivered_at=NOW(),
+           window_expires_at = NOW() + ($2 || ' hours')::interval
+     WHERE id=$1 AND state='paid' RETURNING *`,
+    [req.params.id, String(CONSULT_WINDOW_HOURS)]);
+  if (!r.rows.length) throw new ApiError(400, 'Engagement must be paid before a session is delivered.');
+  res.json({ engagement: r.rows[0], consultant_earns_cents: CONSULT_CONSULTANT_CENTS });
+}));
+
+// Client continues free with the same consultant within the 12-hour window.
+router.post('/engagements/:id/continue', authenticate, asyncHandler(async (req, res) => {
+  const e = await loadEngagement(req.params.id, req.user.id, 'client');
+  if (e.state !== 'session_delivered') throw new ApiError(400, 'No delivered session to continue.');
+  if (!e.window_expires_at || new Date(e.window_expires_at) < new Date()) {
+    throw new ApiError(400, 'The free continuation window has closed. A new session requires a fresh $150.');
+  }
+  const r = await query(`UPDATE consultant_engagements SET state='continued' WHERE id=$1 RETURNING *`, [req.params.id]);
+  res.json({ engagement: r.rows[0] });
+}));
+
+// Client confirms a launch resulted — builds the consultant's portfolio.
+router.post('/engagements/:id/confirm-launch', authenticate, asyncHandler(async (req, res) => {
+  const e = await loadEngagement(req.params.id, req.user.id, 'client');
+  const r = await query(
+    `UPDATE consultant_engagements SET launch_confirmed=true WHERE id=$1 RETURNING *`, [req.params.id]);
+  await query('UPDATE consultants SET successful_launches=successful_launches+1 WHERE user_id=$1', [e.consultant_id]);
+  res.json({ engagement: r.rows[0] });
+}));
+
+router.get('/engagements', authenticate, asyncHandler(async (req, res) => {
+  const r = await query(
+    `SELECT * FROM consultant_engagements WHERE client_id=$1 OR consultant_id=$1 ORDER BY created_at DESC`,
+    [req.user.id]);
+  res.json({ engagements: r.rows });
+}));
+
+module.exports = router;
