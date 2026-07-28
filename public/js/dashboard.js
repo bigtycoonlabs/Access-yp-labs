@@ -120,7 +120,8 @@
     const c = document.getElementById('listings'); c.innerHTML = '';
     try {
       const { listings } = await Kiln.api('/listings/mine');
-      if (!listings.length) { empty(c, 'No listings yet. From the workspace, choose “List this on The Kiln”.'); return; }
+      const mk = el('a', 'btn secondary', 'Create a listing'); mk.href = '/sell.html'; c.appendChild(mk);
+      if (!listings.length) { c.appendChild(el('p','muted','No listings yet. Use “Create a listing”, or from the workspace choose “List this on The Kiln”.')); return; }
       listings.forEach((l) => {
         const price = l.format === 'auction' ? ('auction from ' + money(l.starting_bid_cents)) : money(l.price_cents);
         const r = row(l.title, nice(l.category) + ' · ' + price, l.status);

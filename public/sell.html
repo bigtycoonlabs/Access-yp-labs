@@ -1,0 +1,148 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sell a concept — The Kiln</title><link rel="stylesheet" href="/css/kiln.css"/>
+<style>.check{font-weight:400;display:flex;align-items:center;gap:10px;margin:8px 0;}.check input{width:auto;min-height:auto;}
+fieldset{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:0;}legend{font-weight:700;padding:0 6px;}</style>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs · The Kiln</a>
+  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/app.html">Workspace</a><a href="/marketplace.html">Marketplace</a></nav>
+</div></header>
+<main id="main" class="wrap">
+  <h1>Sell a concept on The Kiln</h1>
+  <p class="muted">A listing needs a real package: a business plan, a marketing strategy, and at least one build path. You can have Clay build these for you, or add your own. Nothing lists until you submit it and staff review it.</p>
+  <div id="feedback" role="alert" aria-live="assertive"></div>
+
+  <section aria-labelledby="s1"><h2 id="s1">1. Choose your project</h2>
+    <div class="stack">
+      <div><label for="project">Your projects</label>
+        <select id="project"><option value="">— select a project —</option></select></div>
+      <div class="actions">
+        <button type="button" class="btn secondary" id="newproj">Create a new empty project (add your own materials)</button>
+        <a class="btn secondary" href="/app.html">Build a new one in Clay</a>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="s2" id="sec2" hidden><h2 id="s2">2. Materials</h2>
+    <p class="muted">Have Clay build these automatically in the <a href="/app.html">workspace</a>, or add your own below. A business plan, a marketing strategy, and one build path are required.</p>
+    <div class="stack">
+      <fieldset><legend>Business plan</legend>
+        <label for="bp" class="sr-only">Business plan text</label>
+        <textarea id="bp" aria-label="Business plan text"></textarea>
+        <button type="button" class="btn" data-type="business_plan">Save business plan</button></fieldset>
+      <fieldset><legend>Marketing strategy</legend>
+        <textarea id="ms" aria-label="Marketing strategy text"></textarea>
+        <button type="button" class="btn" data-type="marketing_strategy">Save marketing strategy</button></fieldset>
+      <fieldset><legend>Build path</legend>
+        <label for="bptype">Type</label>
+        <select id="bptype">
+          <option value="build_instructions">Build instructions</option>
+          <option value="website_prompt">Website prompt</option>
+          <option value="code_file">Code file</option>
+          <option value="html_demo">HTML demo</option>
+        </select>
+        <label for="bpbody">Content</label>
+        <textarea id="bpbody" aria-label="Build path content"></textarea>
+        <p class="muted">Code files are scanned for malware before they can be listed or downloaded.</p>
+        <button type="button" class="btn" id="savebuild">Save build path</button></fieldset>
+    </div>
+  </section>
+
+  <section aria-labelledby="s3" id="sec3" hidden><h2 id="s3">3. Create your listing</h2>
+    <div class="stack">
+      <div><label for="format">Format</label>
+        <select id="format"><option value="flat">Fixed price</option><option value="auction">Auction</option></select></div>
+      <div id="flatwrap"><label for="price">Price in US dollars (minimum $50)</label>
+        <input id="price" type="number" min="50" step="1" value="50"/></div>
+      <div id="aucwrap" hidden>
+        <label for="startbid">Starting bid in US dollars (minimum $50)</label>
+        <input id="startbid" type="number" min="50" step="1" value="50"/>
+        <label for="close">Auction closes</label><input id="close" type="datetime-local"/></div>
+      <div><label for="working">Optionally, when did you start this project?</label>
+        <input id="working" type="date"/>
+        <label class="check"><input type="checkbox" id="showworking"/> Show buyers how long I've worked on it</label></div>
+      <label class="check"><input type="checkbox" id="risk"/> I have disclosed the concept's risks.</label>
+      <label class="check"><input type="checkbox" id="ownership"/> I understand a sale transfers ownership to the buyer.</label>
+      <button type="button" class="btn" id="createlisting">Create listing</button>
+      <div id="postcreate"></div>
+    </div>
+  </section>
+</main>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script>
+<script>
+if(!Kiln.isLoggedIn())location.replace('/login.html');
+const fb=document.getElementById('feedback');
+let conceptId='';
+function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+function show(m,k){fb.innerHTML='<div class="msg '+(k||'err')+'">'+m+'</div>';announce(m,true);}
+function pickProject(id){conceptId=id;document.getElementById('sec2').hidden=!id;document.getElementById('sec3').hidden=!id;
+  if(id){announce('Project selected. Add materials or create your listing.',true);}}
+
+async function loadProjects(){
+  try{
+    const {concepts}=await Kiln.api('/concepts');
+    const sel=document.getElementById('project');
+    concepts.forEach(c=>{const o=el('option',null,c.title);o.value=c.id;sel.appendChild(o);});
+  }catch(e){show(e.message);}
+}
+document.getElementById('project').addEventListener('change',e=>pickProject(e.target.value));
+document.getElementById('newproj').addEventListener('click',async()=>{
+  const title=window.prompt('Name your project:'); if(!title)return;
+  try{const {concept}=await Kiln.api('/concepts',{method:'POST',body:{title,mode:'create'}});
+    const sel=document.getElementById('project');const o=el('option',null,concept.title);o.value=concept.id;sel.appendChild(o);sel.value=concept.id;pickProject(concept.id);
+    show('Project created. Add your materials below.','ok');
+  }catch(e){show(e.message);}
+});
+
+async function uploadAsset(type,body,title){
+  if(!body||!body.trim()){show('Please enter some content first.');return;}
+  try{const r=await Kiln.api('/concepts/'+conceptId+'/assets',{method:'POST',body:{type,body,title}});
+    show(r.message||'Saved.', r.scan&&r.scan.status==='flagged'?'err':'ok');
+  }catch(e){show(e.message);}
+}
+document.querySelectorAll('button[data-type]').forEach(b=>b.addEventListener('click',()=>{
+  const type=b.getAttribute('data-type');const src=type==='business_plan'?'bp':'ms';
+  uploadAsset(type,document.getElementById(src).value);
+}));
+document.getElementById('savebuild').addEventListener('click',()=>{
+  uploadAsset(document.getElementById('bptype').value,document.getElementById('bpbody').value);
+});
+
+document.getElementById('format').addEventListener('change',e=>{
+  const auc=e.target.value==='auction';
+  document.getElementById('flatwrap').hidden=auc;document.getElementById('aucwrap').hidden=!auc;
+});
+
+document.getElementById('createlisting').addEventListener('click',async()=>{
+  if(!conceptId){show('Choose a project first.');return;}
+  const risk=document.getElementById('risk').checked, own=document.getElementById('ownership').checked;
+  if(!risk||!own){show('Please confirm the risk disclosure and ownership transfer.');return;}
+  const working=document.getElementById('working').value;
+  if(working){try{await Kiln.api('/concepts/'+conceptId,{method:'PATCH',body:{working_since:working,show_working_since:document.getElementById('showworking').checked}});}catch(_){}}
+  const format=document.getElementById('format').value;
+  const body={concept_id:conceptId,format,risk_disclosed:true,ownership_ack:true};
+  if(format==='flat'){body.price_cents=parseInt(document.getElementById('price').value,10)*100;}
+  else{body.starting_bid_cents=parseInt(document.getElementById('startbid').value,10)*100;
+    const c=document.getElementById('close').value; if(c)body.auction_close_at=new Date(c).toISOString();}
+  const btn=document.getElementById('createlisting');btn.disabled=true;announce('Creating your listing…');
+  try{
+    const {listing}=await Kiln.api('/listings',{method:'POST',body});
+    show('Listing created as a draft.','ok');
+    const pc=document.getElementById('postcreate');pc.innerHTML='';
+    const submit=el('button','btn','Submit for staff review');submit.type='button';
+    submit.addEventListener('click',async()=>{submit.disabled=true;
+      try{await Kiln.api('/listings/'+listing.id+'/submit',{method:'POST'});show('Submitted for review. Staff will approve it before it goes live.','ok');}
+      catch(e){show(e.message);submit.disabled=false;}});
+    pc.appendChild(submit);btn.disabled=false;
+  }catch(e){
+    btn.disabled=false;
+    if(e.status===422){show('This concept needs a business plan, a marketing strategy, and a build path. Add them in section 2, or build them in Clay, then try again.');document.getElementById('sec2').hidden=false;}
+    else if(e.status===409){show(e.message);}
+    else show(e.message);
+  }
+});
+loadProjects();
+</script>
+</body></html>
