@@ -16,11 +16,13 @@ async function conceptEntitlement(user, conceptId) {
   if (c.owner_id !== user.id) return { entitled: false, reason: 'not_owner', http: 403 };
 
   const sculptor = await query(
-    `SELECT 1 FROM subscriptions WHERE user_id=$1 AND plan='sculptor' AND status='active' LIMIT 1`, [user.id]);
+    `SELECT 1 FROM subscriptions WHERE user_id=$1 AND plan='sculptor' AND status='active'
+       AND (current_period_end IS NULL OR current_period_end > now()) LIMIT 1`, [user.id]);
   if (sculptor.rows.length) return { entitled: true, reason: 'sculptor' };
 
   const maker = await query(
-    `SELECT 1 FROM subscriptions WHERE user_id=$1 AND plan='maker' AND status='active' AND concept_id=$2 LIMIT 1`,
+    `SELECT 1 FROM subscriptions WHERE user_id=$1 AND plan='maker' AND status='active' AND concept_id=$2
+       AND (current_period_end IS NULL OR current_period_end > now()) LIMIT 1`,
     [user.id, conceptId]);
   if (maker.rows.length) return { entitled: true, reason: 'maker' };
 

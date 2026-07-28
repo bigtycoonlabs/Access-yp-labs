@@ -117,6 +117,13 @@ router.post('/:id/release', authenticate, asyncHandler(async (req, res) => {
       `UPDATE subscriptions SET status='canceled', updated_at=now()
        WHERE user_id=$1 AND concept_id=$2 AND plan='maker' AND status='active'`,
       [order.seller_id, conceptId]);
+    // The purchase includes one month of Clay Maker on the bought concept, so the
+    // buyer can enhance and export it immediately. It's complimentary (no Stripe)
+    // and expires after 30 days via current_period_end.
+    await client.query(
+      `INSERT INTO subscriptions (user_id, plan, status, concept_id, price_cents, current_period_end, stripe_subscription_id)
+       VALUES ($1,'maker','active',$2,0, now() + interval '30 days', NULL)`,
+      [order.buyer_id, conceptId]);
     const done = await client.query(
       `UPDATE orders_transfers SET status='released' WHERE id=$1 RETURNING *`, [order.id]);
     await client.query('COMMIT');
