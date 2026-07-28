@@ -46,6 +46,7 @@ async function load(){
       const p=el('p');const a=el('a','btn','Sign in to buy, bid, or watch');a.href='/login.html';p.appendChild(a);detail.appendChild(p);return;
     }
     renderPreviews(detail, id);
+    renderDemoDescription(detail, id);
 
     // Watch (always available)
     const actions=el('div','actions');actions.style.display='flex';actions.style.gap='10px';actions.style.flexWrap='wrap';
@@ -110,6 +111,18 @@ function openBuy(listing){
   });
   f.appendChild(go);f.appendChild(out);detail.appendChild(f);
   focusEl(f.querySelector('h2'),'Purchase form opened.');
+}
+async function renderDemoDescription(container, listingId){
+  let desc=null;
+  try{ const r=await Kiln.api('/listings/'+listingId+'/demo-description'); desc=r.description; }catch(_){ return; }
+  if(!desc) return;
+  const sec=el('div','panel'); sec.appendChild(el('h2',null,'What the demo contains'));
+  sec.appendChild(el('p','muted','A plain, screen-reader-friendly description of the interactive demo, so you know what you are buying.'));
+  const ul=document.createElement('ul');
+  (desc.items||[]).forEach(t=>{const li=document.createElement('li');li.textContent=t;ul.appendChild(li);});
+  sec.appendChild(ul);
+  if(desc.a11y){ sec.appendChild(el('p', desc.a11y.ok?'msg ok':'muted', desc.a11y.summary||'')); }
+  container.appendChild(sec);
 }
 function b64utf8(b64){const bin=atob(b64);const bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));return new TextDecoder().decode(bytes);}
 async function renderPreviews(container, listingId){

@@ -3,6 +3,7 @@ const { body, validationResult } = require('express-validator');
 const { query } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
+const describe = require('../lib/describe');
 const { isAboveFloor, PRICE_FLOOR_CENTS } = require('../lib/money');
 const router = express.Router();
 
@@ -128,6 +129,19 @@ router.get('/:id/assets', asyncHandler(async (req, res) => {
     `SELECT id, type, title FROM assets WHERE concept_id=$1 AND is_current=true ORDER BY created_at`,
     [l.rows[0].concept_id]);
   res.json({ assets: a.rows });
+}));
+
+// Accessible description of a listing's demo for buyers — structure + a11y
+// audit only, never the clean HTML. Lets blind buyers understand the demo
+// before purchase without exposing the deliverable.
+router.get('/:id/demo-description', asyncHandler(async (req, res) => {
+  const l = await query(`SELECT concept_id FROM listings WHERE id=$1 AND status IN ('live','sold')`, [req.params.id]);
+  if (!l.rows.length) throw new ApiError(404, 'Listing not found.');
+  const a = await query(
+    `SELECT body FROM assets WHERE concept_id=$1 AND is_current=true
+     AND type IN ('html_demo','built_site') ORDER BY created_at DESC LIMIT 1`, [l.rows[0].concept_id]);
+  if (!a.rows.length) return res.json({ description: null });
+  res.json({ description: describe.outline(a.rows[0].body) });
 }));
 
 // Single listing (public if live; owner may view any state).
