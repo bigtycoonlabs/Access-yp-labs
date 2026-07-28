@@ -27,12 +27,20 @@ router.post('/', authenticate, [
   const listing = l.rows[0];
   if (listing.seller_id === req.user.id) throw new ApiError(400, 'You cannot buy your own listing.');
 
-  // Settle price: flat = price; auction = current high bid.
+  // Settle price: flat = price; auction = highest bid, restricted to the winner.
   let amount = listing.price_cents;
   if (listing.format === 'auction') {
-    const h = await query('SELECT MAX(amount_cents) AS m FROM bids WHERE listing_id=$1', [listing_id]);
-    amount = h.rows[0].m;
-    if (!amount) throw new ApiError(400, 'Auction has no bids to settle.');
+    if (listing.auction_close_at && new Date(listing.auction_close_at) > new Date()) {
+      throw new ApiError(400, 'This auction is still open. It must close before the winner can complete the purchase.');
+    }
+    const h = await query(
+      `SELECT bidder_id, amount_cents FROM bids WHERE listing_id=$1
+       ORDER BY amount_cents DESC, created_at ASC LIMIT 1`, [listing_id]);
+    if (!h.rows.length) throw new ApiError(400, 'Auction has no bids to settle.');
+    if (h.rows[0].bidder_id !== req.user.id) {
+      throw new ApiError(403, 'Only the winning bidder can complete this auction purchase.');
+    }
+    amount = h.rows[0].amount_cents;
   }
   const fee = platformFeeCents(amount);
 

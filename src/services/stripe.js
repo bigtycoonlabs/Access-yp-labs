@@ -69,4 +69,23 @@ function constructEvent(rawBody, signature) {
   }
 }
 
-module.exports = { configured, constructEvent, createConnectedAccount, createAccountLink, retrieveAccount, createEscrowCheckout };
+
+// Subscription or one-time checkout for platform plans (Clay access).
+// unlimited -> recurring monthly; per_idea -> one-time payment.
+async function createPlanCheckout({ mode, priceCents, planName, userId, plan, email, successUrl, cancelUrl }) {
+  const s = stripe();
+  if (!s) return { ok: false, reason: 'stripe_not_configured' };
+  const recurring = mode === 'subscription' ? { interval: 'month' } : undefined;
+  const session = await s.checkout.sessions.create({
+    mode,
+    customer_email: email || undefined,
+    line_items: [{ price_data: { currency: 'usd', unit_amount: priceCents,
+      product_data: { name: planName }, recurring }, quantity: 1 }],
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    metadata: { kind: 'subscription', user_id: userId, plan },
+  });
+  return { ok: true, url: session.url, sessionId: session.id };
+}
+
+module.exports = { configured, constructEvent, createPlanCheckout, createConnectedAccount, createAccountLink, retrieveAccount, createEscrowCheckout };

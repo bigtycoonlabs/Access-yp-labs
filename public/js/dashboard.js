@@ -63,8 +63,13 @@
           (s.plan === 'unlimited' ? 'Unlimited plan' : 'Per-idea plan') + ' — ' + money(s.price_cents) + (s.plan === 'unlimited' ? ' / month' : ''))));
       } else {
         c.appendChild(el('p', 'muted', 'No active plan. Choose one to generate and own concepts.'));
-        c.appendChild(actionBtn('$2.99 per idea', () => run(Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'per_idea' } }), 'Per-idea plan started.', loadSubs), true));
-        c.appendChild(actionBtn('$49.99 unlimited / month', () => run(Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'unlimited' } }), 'Unlimited plan started.', loadSubs)));
+        const subscribe = async (plan) => {
+          const r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan } });
+          if (r.url) { location.href = r.url; return; }
+          announce(r.message || 'Billing is not configured yet.', true);
+        };
+        c.appendChild(actionBtn('$2.99 per idea', () => subscribe('per_idea'), true));
+        c.appendChild(actionBtn('$49.99 unlimited / month', () => subscribe('unlimited')));
       }
     } catch (e) { fail(c, e); }
   }
@@ -176,7 +181,9 @@
         a2.style.marginLeft = '8px'; g.appendChild(a2);
       }
     }
-    if (new URLSearchParams(location.search).get('onboard') === 'done') announce('Payout setup returned. Refreshing status.', true);
+    const q = new URLSearchParams(location.search);
+    if (q.get('onboard') === 'done') announce('Payout setup returned. Refreshing status.', true);
+    if (q.get('sub') === 'done') announce('Thanks — your plan is being activated.', true);
     loadPayouts(); loadSubs(); loadConcepts(); loadListings(); loadOrders(); loadEngagements(); loadWatches();
     document.getElementById('signout').addEventListener('click', (e) => { e.preventDefault(); Kiln.clearTokens(); location.href = '/'; });
   })();

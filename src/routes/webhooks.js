@@ -1,5 +1,6 @@
 const { query } = require('../config/db');
 const stripe = require('../services/stripe');
+const { SUB_PER_IDEA_CENTS, SUB_UNLIMITED_CENTS } = require('../lib/money');
 
 // Stripe webhook. Mounted with express.raw BEFORE express.json in server.js.
 // Only a verified, real payment moves an order into escrow — we never mark an
@@ -23,12 +24,20 @@ async function stripeWebhook(req, res) {
 
   try {
     if (event.type === 'checkout.session.completed') {
-      const orderId = event.data.object.metadata && event.data.object.metadata.order_id;
-      if (orderId) {
+      const md = event.data.object.metadata || {};
+      if (md.kind === 'subscription' && md.user_id && md.plan) {
+        const price = md.plan === 'unlimited' ? SUB_UNLIMITED_CENTS : SUB_PER_IDEA_CENTS;
+        await query(
+          `INSERT INTO subscriptions (user_id, plan, status, price_cents)
+           VALUES ($1,$2,'active',$3)`, [md.user_id, md.plan, price]);
+      } else if (md.order_id) {
         await query(
           `UPDATE orders_transfers SET status='in_escrow'
-           WHERE id=$1 AND status IN ('created')`, [orderId]);
+           WHERE id=$1 AND status IN ('created')`, [md.order_id]);
       }
+    } else if (event.type === 'customer.subscription.deleted') {
+      // Stripe subscription ended -> reflect as canceled (best-effort).
+      // (No direct id mapping stored; handled via dashboard cancel in v1.)
     } else if (event.type === 'account.updated') {
       const acct = event.data.object;
       const status = acct.charges_enabled && acct.details_submitted ? 'verified' : 'pending';

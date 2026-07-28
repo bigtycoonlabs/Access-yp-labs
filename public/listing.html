@@ -16,7 +16,7 @@
 <script>
 const id=new URLSearchParams(location.search).get('id');
 const statusEl=document.getElementById('status'), detail=document.getElementById('detail');
-function money(c){return '$'+(c/100).toFixed(2);}
+function money(c){return '$'+((c||0)/100).toFixed(2);}
 function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
 async function load(){
   if(!id){statusEl.textContent='No listing specified.';return;}
@@ -26,16 +26,54 @@ async function load(){
     detail.appendChild(el('h1',null,listing.title));
     detail.appendChild(el('p','muted',(listing.category||'').replace(/_/g,' ')+' · '+(listing.stage_label||'').replace(/_/g,' ')+' · by '+listing.seller_name));
     if(listing.risk_summary){const r=el('div','panel');r.appendChild(el('h3',null,'Regulatory & licensing risk'));r.appendChild(el('p',null,listing.risk_summary));detail.appendChild(r);}
-    const price=listing.format==='auction'?('Auction — current from '+money(listing.starting_bid_cents)):money(listing.price_cents);
-    detail.appendChild(el('p','price',price));
+
+    const isAuction=listing.format==='auction';
+    const closed=isAuction && listing.auction_close_at && new Date(listing.auction_close_at)<new Date();
+    let highBid=0, winnerIsMe=false;
+    if(isAuction){
+      try{ const {bids}=await Kiln.api('/bids/'+id,{auth:false}); if(bids.length) highBid=bids[0].amount_cents; }catch(_){}
+      const base=Math.max(listing.starting_bid_cents||0, highBid);
+      detail.appendChild(el('p','price', highBid? ('Current high bid '+money(highBid)) : ('Auction — starting at '+money(listing.starting_bid_cents))));
+      if(listing.auction_close_at){
+        detail.appendChild(el('p','muted', (closed?'Auction closed on ':'Auction closes ')+new Date(listing.auction_close_at).toLocaleString()));
+      }
+    }else{
+      detail.appendChild(el('p','price', money(listing.price_cents)));
+    }
 
     if(!Kiln.isLoggedIn()){
-      const p=el('p');const a=el('a','btn','Sign in to buy or watch');a.href='/login.html';p.appendChild(a);detail.appendChild(p);return;
+      const p=el('p');const a=el('a','btn','Sign in to buy, bid, or watch');a.href='/login.html';p.appendChild(a);detail.appendChild(p);return;
     }
+
+    // Watch (always available)
     const actions=el('div','actions');actions.style.display='flex';actions.style.gap='10px';actions.style.flexWrap='wrap';
     const watch=el('button','btn secondary','Add to watchlist');watch.type='button';
     watch.addEventListener('click',async()=>{try{await Kiln.api('/watches/'+id,{method:'POST'});announce('Added to your watchlist.',true);watch.textContent='On your watchlist';watch.disabled=true;}catch(e){announce(e.message,true);}});
-    const buy=el('button','btn','Buy this concept');buy.type='button';
+
+    if(isAuction && !closed){
+      // Bid form
+      const bidWrap=el('div','panel');bidWrap.appendChild(el('h2',null,'Place a bid'));
+      const bl=el('label',null,'Your bid in US dollars (must beat the current high)');bl.setAttribute('for','bid');
+      const bi=el('input');bi.id='bid';bi.type='number';bi.min='50';bi.step='1';
+      const minNext=Math.max(50, Math.floor((Math.max(listing.starting_bid_cents||0, highBid))/100)+1);
+      bi.value=String(minNext);
+      const bb=el('button','btn','Place bid');bb.type='button';
+      const bout=el('div');bout.setAttribute('role','alert');bout.setAttribute('aria-live','assertive');
+      bb.addEventListener('click',async()=>{
+        bout.textContent='';const d=parseInt(bi.value,10);
+        if(!d||d<50){bout.appendChild(el('p','msg err','Bid must be at least $50.'));announce('Bid must be at least $50.',true);return;}
+        bb.disabled=true;announce('Placing your bid…');
+        try{await Kiln.api('/bids/'+id,{method:'POST',body:{amount_cents:d*100}});
+          announce('Bid placed at '+money(d*100)+'.',true);location.reload();
+        }catch(e){bout.appendChild(el('p','msg err',e.message));announce(e.message,true);bb.disabled=false;}
+      });
+      [bl,bi,bb,bout].forEach(n=>bidWrap.appendChild(n));detail.appendChild(bidWrap);
+      actions.appendChild(watch);detail.appendChild(actions);
+      return;
+    }
+
+    // Flat listing, or closed auction: allow purchase (backend gates auction winner).
+    const buy=el('button','btn', isAuction?'Complete auction purchase (winner only)':'Buy this concept');buy.type='button';
     buy.addEventListener('click',()=>openBuy(listing));
     actions.appendChild(buy);actions.appendChild(watch);detail.appendChild(actions);
   }catch(e){statusEl.textContent='Could not load this listing: '+e.message;}

@@ -1,0 +1,53 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Your profile — The Kiln</title><link rel="stylesheet" href="/css/kiln.css"/>
+<style>.check{font-weight:400;display:flex;align-items:center;gap:10px;margin:10px 0;}
+.check input{width:auto;min-height:auto;}</style>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs · The Kiln</a>
+  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/app.html">Workspace</a></nav>
+</div></header>
+<main id="main" class="wrap">
+  <h1>Your profile</h1>
+  <p class="muted">Your About Me and what you show publicly. Your contact details are never shown to other members — don't put an email or phone number in About Me.</p>
+  <div id="feedback" role="alert" aria-live="assertive"></div>
+  <div class="panel"><div class="stack">
+    <div><label for="about">About me</label><textarea id="about"></textarea></div>
+    <label class="check"><input type="checkbox" id="show_concepts"/> Show my concepts publicly</label>
+    <label class="check"><input type="checkbox" id="show_completed"/> Show my completed work publicly</label>
+    <label class="check"><input type="checkbox" id="show_listings"/> Show my live listings publicly</label>
+    <button type="button" class="btn" id="save">Save profile</button>
+  </div></div>
+</main>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script>
+<script>
+if(!Kiln.isLoggedIn())location.replace('/login.html');
+const fb=document.getElementById('feedback');
+function show(m,k){fb.innerHTML='<div class="msg '+(k||'err')+'">'+m+'</div>';announce(m,true);}
+async function load(){
+  try{
+    const {profile}=await Kiln.api('/profiles/me');
+    if(profile){
+      document.getElementById('about').value=profile.about_me||'';
+      document.getElementById('show_concepts').checked=!!profile.show_concepts;
+      document.getElementById('show_completed').checked=profile.show_completed!==false;
+      document.getElementById('show_listings').checked=profile.show_listings!==false;
+    }
+  }catch(e){show(e.message);}
+}
+document.getElementById('save').addEventListener('click',async()=>{
+  const btn=document.getElementById('save');btn.disabled=true;announce('Saving your profile…');
+  try{
+    await Kiln.api('/profiles/me',{method:'PUT',body:{
+      about_me:document.getElementById('about').value,
+      show_concepts:document.getElementById('show_concepts').checked,
+      show_completed:document.getElementById('show_completed').checked,
+      show_listings:document.getElementById('show_listings').checked}});
+    show('Profile saved.','ok');
+  }catch(e){show(e.message);}finally{btn.disabled=false;}
+});
+load();
+</script>
+</body></html>

@@ -5,6 +5,7 @@ const { authenticate } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { MODES, CATEGORIES } = require('../services/clay/tools');
 const clay = require('../services/clay');
+const { sendEmail } = require('../services/email');
 const router = express.Router();
 
 // Persist a full Clay result: concept (create) or new assets (enhance) + a
@@ -81,12 +82,25 @@ router.post('/generate', authenticate, [
 
   const concept = await persistResult(req.user.id, result, { conceptId: concept_id, mode, category, prompt });
   const assets = await query('SELECT id,type,title,is_baseline FROM assets WHERE concept_id=$1 ORDER BY created_at', [concept.id]);
+
+  // Dual-channel delivery: email the package too. Best-effort; if it doesn't
+  // send, we say so honestly rather than claiming a delivery that didn't happen.
+  let emailed = { sent: false };
+  try {
+    emailed = await sendEmail({
+      to: req.user.email,
+      subject: 'Your concept from Clay: ' + (result.title || 'new concept'),
+      html: buildPackageEmail(result.title || concept.title, result.coverage, result.assets),
+    });
+  } catch (e) { emailed = { sent: false, reason: e.message }; }
+
   res.status(201).json({
     status: 'answered',
     concept,
     assets: assets.rows,
     coverage: result.coverage,
-    message: result.message,
+    emailed: emailed.sent,
+    message: result.message + (emailed.sent ? ' A copy was emailed to you.' : ''),
   });
 }));
 
@@ -96,5 +110,19 @@ router.get('/status', authenticate, (req, res) => {
   res.json({ available, model: clay.MODEL,
     message: available ? 'Clay is ready.' : 'Clay generation is not configured yet.' });
 });
+
+
+function escapeHtml(t){return String(t==null?'':t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function buildPackageEmail(title, coverage, assets){
+  const parts = (assets||[]).map(a =>
+    '<h2 style="color:#7c2d12;font-family:system-ui,sans-serif">'+escapeHtml(a.label||a.type)+'</h2>'+
+    '<div style="white-space:pre-wrap;font-family:system-ui,sans-serif;font-size:15px;line-height:1.6">'+escapeHtml(a.body)+'</div>');
+  const gap = coverage && !coverage.complete ? '<p style="color:#57534e">'+escapeHtml(coverage.gap_description)+'</p>' : '';
+  return '<div style="max-width:640px;margin:0 auto">'+
+    '<h1 style="font-family:system-ui,sans-serif;color:#1c1917">'+escapeHtml(title)+'</h1>'+
+    '<p style="font-family:system-ui,sans-serif">Your concept package from Clay at Access YP Labs. You also have it in your workspace.</p>'+
+    gap + parts.join('') +
+    '<hr/><p style="color:#57534e;font-size:13px;font-family:system-ui,sans-serif">The Kiln is a neutral marketplace. Concepts are pre-proven starting points, not guarantees of income.</p></div>';
+}
 
 module.exports = router;
