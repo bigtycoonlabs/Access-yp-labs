@@ -18,6 +18,26 @@ const id=new URLSearchParams(location.search).get('id');
 const statusEl=document.getElementById('status'), detail=document.getElementById('detail');
 function money(c){return '$'+((c||0)/100).toFixed(2);}
 function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+async function loadPreview(container){
+  const box=el('div','panel'); box.appendChild(el('h2',null,'What’s inside this dream'));
+  const body=el('div'); box.appendChild(body); container.appendChild(box);
+  body.textContent='Loading preview…';
+  try{
+    const {description}=await Kiln.api('/listings/'+id+'/demo-description',{auth:false});
+    body.textContent='';
+    if(!description){ body.appendChild(el('p','muted','The seller hasn’t attached a previewable demo yet — the full package still transfers when you claim it.')); return; }
+    if(description.title){ body.appendChild(el('p',null,'Demo: '+description.title)); }
+    if(description.items&&description.items.length){
+      const ul=el('ul'); description.items.forEach(function(it){ ul.appendChild(el('li',null,it)); }); body.appendChild(ul);
+    }
+    if(description.a11y){
+      const a=description.a11y;
+      body.appendChild(el('p', a.ok?'msg ok':'muted', a.summary));
+      if(a.issues&&a.issues.length){ const ul=el('ul'); a.issues.forEach(function(is){ ul.appendChild(el('li',null,is)); }); body.appendChild(ul); }
+      announce(a.summary,true);
+    }
+  }catch(e){ body.textContent=''; body.appendChild(el('p','muted','A preview isn’t available for this listing.')); }
+}
 async function load(){
   if(!id){statusEl.textContent='No listing specified.';return;}
   try{
@@ -41,6 +61,8 @@ async function load(){
     }else{
       detail.appendChild(el('p','price', money(listing.price_cents)));
     }
+
+    loadPreview(detail);
 
     if(!Kiln.isLoggedIn()){
       const p=el('p');const a=el('a','btn','Sign in to buy, bid, or watch');a.href='/login.html';p.appendChild(a);detail.appendChild(p);return;
@@ -84,7 +106,7 @@ async function load(){
     }
 
     // Flat listing, or closed auction: allow purchase (backend gates auction winner).
-    const buy=el('button','btn', isAuction?'Complete auction purchase (winner only)':'Buy this concept');buy.type='button';
+    const buy=el('button','btn', isAuction?'Complete auction purchase (winner only)':'Claim this dream');buy.type='button';
     buy.addEventListener('click',()=>openBuy(listing));
     actions.appendChild(buy);actions.appendChild(watch);detail.appendChild(actions);
   }catch(e){statusEl.textContent='Could not load this listing: '+e.message;}
