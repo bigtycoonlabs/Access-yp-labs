@@ -17,6 +17,22 @@ const { classifySection, assessCoverage, STATUSES } = require('./interpreter');
 // guardrails on those params, whether it is irreversible, and whether it needs
 // explicit human confirmation before Clay may act.
 const TOOLS = {
+  list_my_concepts: {
+    irreversible: false, requires_confirmation: false, required: [], enums: {},
+    summary: 'List the concepts the current user owns (read-only).',
+  },
+  get_concept: {
+    irreversible: false, requires_confirmation: false, required: ['concept_id'], enums: {},
+    summary: 'Read one of the user\'s concepts and which materials it has (read-only).',
+  },
+  search_marketplace: {
+    irreversible: false, requires_confirmation: false, required: [], optional: ['query'], enums: { category: CATEGORIES },
+    summary: 'Search live marketplace listings by keyword and/or category (read-only).',
+  },
+  get_listing: {
+    irreversible: false, requires_confirmation: false, required: ['listing_id'], enums: {},
+    summary: 'Read a live listing\'s details, including an accessible demo description (read-only).',
+  },
   generate_concept: {
     irreversible: false, requires_confirmation: false,
     required: ['prompt'],
@@ -31,7 +47,7 @@ const TOOLS = {
   },
   generate_social_content: {
     irreversible: false, requires_confirmation: false,
-    required: ['concept_id'],
+    required: ['concept_id'], optional: ['count'],
     enums: { platforms: PLATFORMS, goal: SOCIAL_GOALS },
     summary: 'Generate posts, image prompts, video scripts, templates, and a calendar. Free.',
   },

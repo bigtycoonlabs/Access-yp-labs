@@ -8,6 +8,7 @@ const spine = require('../services/clay/spine');
 const clay = require('../services/clay');
 const agent = require('../services/clay/agent');
 const image = require('../services/image');
+const describe = require('../lib/describe');
 const { sendEmail } = require('../services/email');
 const protect = require('../lib/protect');
 const router = express.Router();
@@ -211,6 +212,37 @@ router.post('/render-image', authenticate, [
 // never run without explicit confirmation via /chat/confirm.
 function buildExecutors(user) {
   return {
+    list_my_concepts: async () => {
+      const r = await query('SELECT id, title, category, stage FROM concepts WHERE owner_id=$1 ORDER BY created_at DESC LIMIT 50', [user.id]);
+      return { concepts: r.rows };
+    },
+    get_concept: async ({ concept_id }) => {
+      const c = await query('SELECT id, title, category, stage, risk_summary FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
+      if (!c.rows.length) return { error: 'Concept not found.' };
+      const a = await query("SELECT type, title FROM assets WHERE concept_id=$1 AND is_current=true ORDER BY created_at", [concept_id]);
+      return { concept: c.rows[0], materials: a.rows };
+    },
+    search_marketplace: async ({ query: q, category }) => {
+      const clauses = ["l.status='live'"]; const args = [];
+      if (category) { args.push(category); clauses.push(`c.category=$${args.length}`); }
+      if (q) { args.push('%' + q + '%'); clauses.push(`(c.title ILIKE $${args.length} OR c.risk_summary ILIKE $${args.length})`); }
+      const r = await query(
+        `SELECT l.id, c.title, c.category, l.format, l.price_cents, l.starting_bid_cents
+         FROM listings l JOIN concepts c ON c.id=l.concept_id
+         WHERE ${clauses.join(' AND ')} ORDER BY l.created_at DESC LIMIT 25`, args);
+      return { listings: r.rows };
+    },
+    get_listing: async ({ listing_id }) => {
+      const r = await query(
+        `SELECT l.id, l.format, l.price_cents, l.starting_bid_cents, c.title, c.category, c.risk_summary
+         FROM listings l JOIN concepts c ON c.id=l.concept_id WHERE l.id=$1 AND l.status='live'`, [listing_id]);
+      if (!r.rows.length) return { error: 'Listing not found.' };
+      const d = await query(
+        `SELECT body FROM assets WHERE concept_id=(SELECT concept_id FROM listings WHERE id=$1)
+         AND is_current=true AND type IN ('html_demo','built_site') ORDER BY created_at DESC LIMIT 1`, [listing_id]);
+      const demo = d.rows.length ? describe.outline(d.rows[0].body) : null;
+      return { listing: r.rows[0], demo_description: demo ? { items: demo.items, accessibility: demo.a11y.summary } : null };
+    },
     generate_concept: async ({ prompt, category }) => {
       const result = await clay.generate({ mode: 'create', category, prompt });
       if (result.result_status !== 'answered') return { status: result.result_status, message: result.message };

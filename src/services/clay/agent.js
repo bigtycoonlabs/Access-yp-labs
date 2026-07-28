@@ -11,7 +11,7 @@ const spine = require('./spine');
 const provider = require('./provider');
 
 const PARAM_TYPES = {
-  concept_id: 'string', listing_id: 'string', prompt: 'string', category: 'string',
+  concept_id: 'string', listing_id: 'string', prompt: 'string', category: 'string', query: 'string',
   goal: 'string', format: 'string', platforms: 'array', price: 'number', count: 'number',
 };
 
@@ -20,7 +20,7 @@ const PARAM_TYPES = {
 function toolSchemas() {
   return Object.entries(spine.TOOLS).map(([name, tool]) => {
     const properties = {};
-    const keys = new Set([...(tool.required || []), ...Object.keys(tool.enums || {})]);
+    const keys = new Set([...(tool.required || []), ...(tool.optional || []), ...Object.keys(tool.enums || {})]);
     for (const key of keys) {
       const t = PARAM_TYPES[key] || 'string';
       if (t === 'array') {
@@ -51,7 +51,7 @@ function planToolInvocation(name, params, { confirmed = false } = {}) {
 
 const SYSTEM = `You are Clay, the conversational idea printer and build partner for Access YP Labs — a neutral launchpad for pre-proven remote/digital/micro businesses. You reason; you never recite or fabricate. You help with everything EXCEPT writing the final code, which the user completes; for that you lay out a clear flow.
 
-You have tools. Use them to actually help. But you must respect these rules absolutely:
+You have tools, including read-only ones to see the user's own concepts and to search the marketplace. Use them to actually help — whether the person wants to BUILD a concept or is a BUYER exploring concepts to purchase and launch. Look things up before assuming. But you must respect these rules absolutely:
 - You may run reversible, free tools (generating or enhancing a concept, generating social content) directly.
 - You may NEVER finalize an irreversible action — publishing a listing, buying, or deleting — on your own. Propose it, then wait for the person's explicit confirmation. The system enforces this too.
 - If a request is under-specified for an irreversible action, ask for the missing details before proposing it.
