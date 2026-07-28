@@ -2,156 +2,144 @@
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Descend — The Kiln</title>
 <style>
-:root{--ember:#ff6a1a;--ember2:#ffb347;--ash:#e7e2dd;--void:#0a0705;}
+:root{--ember:#ff6a1a;--ember2:#ffb347;--ash:#f0ebe5;--void:#080604;}
 *{box-sizing:border-box;}
 html,body{margin:0;height:100%;background:var(--void);color:var(--ash);
   font-family:ui-serif,Georgia,"Times New Roman",serif;overflow:hidden;}
-.stage{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  text-align:center;padding:24px;z-index:2;}
-.heat{position:fixed;inset:0;z-index:0;pointer-events:none;
-  background:
-    radial-gradient(120% 90% at 50% 120%, rgba(255,106,26,.55), rgba(255,60,0,.15) 40%, transparent 62%),
-    radial-gradient(80% 60% at 50% 130%, rgba(255,179,71,.5), transparent 60%),
-    var(--void);
-  transition:opacity 1.2s ease, transform 1.2s ease;}
-.stage.scene-descend ~ .heat, body.scene-descend .heat{transform:translateY(-6%) scale(1.15);}
-.embers{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;}
-.ember{position:absolute;bottom:-20px;width:6px;height:6px;border-radius:50%;
-  background:radial-gradient(circle,var(--ember2),var(--ember) 60%,transparent);
-  opacity:0;animation:rise linear infinite;}
-@keyframes rise{0%{opacity:0;transform:translateY(0) translateX(0) scale(1);}
-  10%{opacity:.9;}90%{opacity:.7;}100%{opacity:0;transform:translateY(-105vh) translateX(var(--drift,20px)) scale(.4);}}
-.kicker{letter-spacing:.32em;text-transform:uppercase;font-family:ui-monospace,monospace;font-size:.72rem;
-  color:var(--ember2);opacity:.8;margin-bottom:22px;}
-.line{font-size:clamp(1.5rem,4.4vw,2.9rem);line-height:1.35;max-width:18ch;margin:0 auto;
-  opacity:0;transform:translateY(14px);transition:opacity .9s ease,transform .9s ease;text-wrap:balance;}
-.line.show{opacity:1;transform:none;}
-.controls{position:fixed;left:0;right:0;bottom:26px;z-index:3;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;padding:0 16px;}
-button{font:inherit;font-size:1.05rem;min-height:48px;min-width:48px;padding:12px 22px;border-radius:999px;cursor:pointer;
-  border:1px solid rgba(255,179,71,.5);background:rgba(20,12,8,.7);color:var(--ash);backdrop-filter:blur(4px);}
-button.primary{background:linear-gradient(180deg,var(--ember2),var(--ember));color:#1a0d05;border:none;font-weight:700;}
+.heat{position:fixed;left:50%;bottom:-30vh;width:120vw;height:80vh;transform:translateX(-50%) scale(.5);
+  z-index:0;pointer-events:none;border-radius:50%;filter:blur(30px);opacity:.85;
+  background:radial-gradient(circle at 50% 60%, var(--ember2), var(--ember) 45%, rgba(255,40,0,.35) 68%, transparent 78%);}
+body.plunge .heat{animation:plunge 1.9s cubic-bezier(.5,0,.9,.6) forwards;}
+@keyframes plunge{
+  0%{transform:translateX(-50%) scale(.5);bottom:-30vh;opacity:.85;}
+  70%{opacity:1;}
+  100%{transform:translateX(-50%) scale(3.4);bottom:-10vh;opacity:1;filter:blur(6px);}}
+.flash{position:fixed;inset:0;z-index:4;background:radial-gradient(circle,#fff,var(--ember2) 40%,transparent 75%);
+  opacity:0;pointer-events:none;}
+body.impact .flash{animation:flash .5s ease-out forwards;}
+@keyframes flash{0%{opacity:0;}25%{opacity:.9;}100%{opacity:0;}}
+.streaks{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;opacity:0;}
+body.plunge .streaks{opacity:1;}
+.streak{position:absolute;bottom:-10vh;width:3px;height:70px;border-radius:3px;
+  background:linear-gradient(to top,transparent,var(--ember2),transparent);}
+body.plunge .streak{animation:streak var(--sd,.7s) linear forwards;}
+@keyframes streak{from{transform:translateY(0) scaleY(1);opacity:0;}
+  15%{opacity:.9;}to{transform:translateY(-130vh) scaleY(2.4);opacity:0;}}
+.stage{position:fixed;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:24px;}
+.kicker{letter-spacing:.34em;text-transform:uppercase;font-family:ui-monospace,monospace;font-size:.7rem;
+  color:var(--ember2);opacity:.85;margin-bottom:26px;}
+.line{font-size:clamp(1.6rem,5vw,3rem);line-height:1.3;max-width:16ch;margin:0 auto 30px;opacity:0;
+  transition:opacity .5s ease;text-wrap:balance;}
+.line.show{opacity:1;}
+button{font:inherit;font-size:1.1rem;min-height:52px;min-width:52px;padding:14px 30px;border-radius:999px;cursor:pointer;
+  border:none;font-weight:700;color:#1a0d05;background:linear-gradient(180deg,var(--ember2),var(--ember));
+  box-shadow:0 0 40px rgba(255,106,26,.4);}
 button:focus-visible{outline:3px solid #fff;outline-offset:3px;}
-.skip{position:fixed;top:16px;right:16px;z-index:3;font-size:.9rem;min-height:44px;}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;}
-a.textlink{color:var(--ember2);}
 @media (prefers-reduced-motion: reduce){
-  .ember{display:none;} .heat{transition:opacity .6s ease;} .line{transition:opacity .5s ease;transform:none;}
+  body.plunge .heat{animation:none;transform:translateX(-50%) scale(2.6);bottom:-10vh;transition:transform 1.2s ease,opacity 1.2s ease;}
+  .streaks{display:none;} body.impact .flash{animation:none;opacity:0;}
 }
 </style></head>
 <body>
-<a class="sr-only" href="#enterbtn">Skip to the entrance</a>
 <div class="heat" aria-hidden="true"></div>
-<div class="embers" id="embers" aria-hidden="true"></div>
+<div class="streaks" id="streaks" aria-hidden="true"></div>
+<div class="flash" aria-hidden="true"></div>
 
-<main class="stage" id="stage" role="main">
-  <p class="kicker" id="kicker">Access YP Labs</p>
-  <p class="line show" id="line" aria-hidden="true">A door you weren’t given. You found it anyway.</p>
+<main class="stage" role="main">
+  <p class="kicker">Access YP Labs</p>
+  <p class="line show" id="line" aria-hidden="true">Below every safe marketplace is a hotter one.</p>
+  <button id="go">Descend into The Kiln</button>
 </main>
 
-<!-- The equally-strange experience for screen readers: a paced, spoken descent. -->
-<div class="sr-only" role="status" aria-live="polite" id="narr"></div>
-
-<div class="controls" id="controls">
-  <button class="primary" id="enterbtn">Descend into The Kiln</button>
-  <button id="soundbtn" aria-pressed="false">Sound off</button>
-</div>
-<button class="skip" id="skipbtn">Skip the descent</button>
+<!-- Equally strange for screen readers: a short, spoken descent. -->
+<div class="sr-only" role="status" aria-live="assertive" id="narr"></div>
 
 <script>
 var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-var line=document.getElementById('line'), narr=document.getElementById('narr'),
-    stage=document.getElementById('stage'), enterBtn=document.getElementById('enterbtn'),
-    skipBtn=document.getElementById('skipbtn'), soundBtn=document.getElementById('soundbtn');
+var go=document.getElementById('go'), line=document.getElementById('line'), narr=document.getElementById('narr');
 
-// The descent script. Each beat is one line of the experience, paced so it feels
-// like falling and surfacing — the SAME arc whether you see it or hear it.
-var beats = [
-  {t:'Below every safe, sensible marketplace, there is a hotter one.', scene:'door'},
-  {t:'So you go down. Headfirst. Into the heat, where raw ideas are still glowing.', scene:'descend'},
-  {t:'This is the part where most people turn back.', scene:'descend'},
-  {t:'You don’t.', scene:'descend'},
-  {t:'You surface inside a marketplace that, by every reasonable rule, should not exist.', scene:'emerge'},
-  {t:'Unproven. Unpolished. Untested by anyone but the people brave enough to be first.', scene:'emerge'},
-  {t:'And the ideas here notice you. They lean toward you, as if they’ve been waiting for the right hands.', scene:'emerge'},
-  {t:'Welcome. Something in here already has your name on it.', scene:'emerge', last:true}
-];
-
-// Ambient embers (decorative; hidden from AT; disabled for reduced motion).
+// build upward ember streaks (you fall; the sparks rush up past you)
 if(!reduce){
-  var box=document.getElementById('embers');
-  for(var i=0;i<34;i++){
-    var e=document.createElement('div');e.className='ember';
-    e.style.left=(Math.random()*100)+'%';
-    e.style.animationDuration=(5+Math.random()*7)+'s';
-    e.style.animationDelay=(Math.random()*7)+'s';
-    e.style.setProperty('--drift',(Math.random()*80-40)+'px');
-    e.style.width=e.style.height=(4+Math.random()*6)+'px';
-    box.appendChild(e);
+  var box=document.getElementById('streaks');
+  for(var i=0;i<26;i++){
+    var s=document.createElement('div');s.className='streak';
+    s.style.left=(Math.random()*100)+'%';
+    s.style.setProperty('--sd',(0.5+Math.random()*0.6)+'s');
+    s.style.animationDelay=(Math.random()*0.5)+'s';
+    box.appendChild(s);
   }
 }
 
-// Optional generated ambience (low drone + faint crackle), off by default, so it
-// never competes with a screen reader unless the user chooses it.
-var audioOn=false, actx=null, drone=null, crackle=null;
-function startSound(){
-  try{
-    actx = new (window.AudioContext||window.webkitAudioContext)();
-    var o=actx.createOscillator(), g=actx.createGain();
-    o.type='sine'; o.frequency.value=54; g.gain.value=0.05; o.connect(g); g.connect(actx.destination); o.start();
-    drone={o:o,g:g};
-    var buf=actx.createBuffer(1, actx.sampleRate*2, actx.sampleRate), d=buf.getChannelData(0);
-    for(var i=0;i<d.length;i++){ d[i]=(Math.random()*2-1)*Math.pow(Math.random(),8)*0.5; }
-    var src=actx.createBufferSource(); src.buffer=buf; src.loop=true;
-    var cg=actx.createGain(); cg.gain.value=0.06; src.connect(cg); cg.connect(actx.destination); src.start();
-    crackle={src:src,g:cg};
-  }catch(e){ /* audio optional */ }
-}
-function stopSound(){ try{ if(drone)drone.o.stop(); if(crackle)crackle.src.stop(); if(actx)actx.close(); }catch(e){} actx=drone=crackle=null; }
-soundBtn.addEventListener('click',function(){
-  audioOn=!audioOn; soundBtn.textContent=audioOn?'Sound on':'Sound off'; soundBtn.setAttribute('aria-pressed',String(audioOn));
-  if(audioOn)startSound(); else stopSound();
-});
+// A ~3s sound with SHAPE: a falling whoosh, an impact when you hit the heat,
+// and a warm low pad as you surface. Built on the button gesture so it's allowed.
+function playDescent(){
+  var actx; try{ actx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return; }
+  var now=actx.currentTime;
+  var master=actx.createGain(); master.gain.value=0.9; master.connect(actx.destination);
 
-function setScene(s){ document.body.className='scene-'+s; }
-function goInside(){ if(audioOn)stopSound(); location.href='/marketplace.html?entered=1'; }
+  // falling whoosh — pitch sweeps down as you plunge
+  var w=actx.createOscillator(); w.type='sawtooth';
+  w.frequency.setValueAtTime(420,now); w.frequency.exponentialRampToValueAtTime(46,now+2.0);
+  var wf=actx.createBiquadFilter(); wf.type='lowpass';
+  wf.frequency.setValueAtTime(2000,now); wf.frequency.exponentialRampToValueAtTime(280,now+2.0);
+  var wg=actx.createGain();
+  wg.gain.setValueAtTime(0.0001,now); wg.gain.exponentialRampToValueAtTime(0.26,now+0.28);
+  wg.gain.exponentialRampToValueAtTime(0.05,now+2.0);
+  w.connect(wf); wf.connect(wg); wg.connect(master); w.start(now); w.stop(now+2.2);
 
-var running=false;
-function runDescent(){
-  if(running)return; running=true;
-  enterBtn.disabled=true; enterBtn.textContent='Descending…';
-  var i=0;
-  function step(){
-    if(i>=beats.length){ finish(); return; }
-    var b=beats[i];
-    setScene(b.scene);
-    // visual line
-    line.classList.remove('show'); 
-    setTimeout(function(){ line.textContent=b.t; line.classList.add('show'); },220);
-    // spoken beat (paced — this IS the experience for AT)
-    narr.textContent=b.t;
-    i++;
-    setTimeout(step, reduce?2600:2900);
-  }
-  step();
-}
-function finish(){
-  setScene('emerge');
-  line.textContent='Step inside.'; line.classList.add('show');
-  var go=document.createElement('button'); go.className='primary'; go.id='stepin'; go.textContent='Step inside The Kiln';
-  go.addEventListener('click',goInside);
-  var c=document.getElementById('controls'); c.innerHTML=''; c.appendChild(go);
-  narr.textContent='You have arrived. Step inside The Kiln.';
-  go.focus();
-}
-function skipAll(){ if(running){running=false;} finish(); }
+  // airy rush — filtered noise, gentle, not static
+  var nb=actx.createBuffer(1,Math.floor(actx.sampleRate*3),actx.sampleRate), nd=nb.getChannelData(0);
+  for(var i=0;i<nd.length;i++){ nd[i]=(Math.random()*2-1); }
+  var n=actx.createBufferSource(); n.buffer=nb;
+  var nf=actx.createBiquadFilter(); nf.type='lowpass';
+  nf.frequency.setValueAtTime(900,now); nf.frequency.exponentialRampToValueAtTime(200,now+2.0);
+  var ng=actx.createGain();
+  ng.gain.setValueAtTime(0.0001,now); ng.gain.linearRampToValueAtTime(0.09,now+0.5);
+  ng.gain.linearRampToValueAtTime(0.015,now+2.4);
+  n.connect(nf); nf.connect(ng); ng.connect(master); n.start(now); n.stop(now+3.0);
 
-enterBtn.addEventListener('click',runDescent);
-skipBtn.addEventListener('click',skipAll);
-// keyboard: Enter/Space on the primary begins; Escape skips
-document.addEventListener('keydown',function(e){
-  if(e.key==='Escape'){ skipAll(); }
-});
-// Returning visitors get a gentle offer to skip (we still let them re-descend).
-try{ if(localStorage.getItem('kiln_descended')){ skipBtn.textContent='Skip — you’ve been here before'; } localStorage.setItem('kiln_descended','1'); }catch(e){}
+  // impact boom — you hit the heat (~1.9s)
+  var b=actx.createOscillator(); b.type='sine';
+  b.frequency.setValueAtTime(74,now+1.85); b.frequency.exponentialRampToValueAtTime(38,now+2.5);
+  var bg=actx.createGain();
+  bg.gain.setValueAtTime(0.0001,now+1.85); bg.gain.exponentialRampToValueAtTime(0.55,now+1.96);
+  bg.gain.exponentialRampToValueAtTime(0.001,now+2.9);
+  b.connect(bg); bg.connect(master); b.start(now+1.85); b.stop(now+3.0);
+
+  // warm arrival pad — you surface (~2.0s in)
+  [88,132].forEach(function(f,idx){
+    var o=actx.createOscillator(); o.type='sine'; o.frequency.value=f;
+    var g=actx.createGain();
+    g.gain.setValueAtTime(0.0001,now+2.0); g.gain.linearRampToValueAtTime(idx?0.05:0.08,now+2.5);
+    g.gain.linearRampToValueAtTime(0.0001,now+3.4);
+    o.connect(g); g.connect(master); o.start(now+2.0); o.stop(now+3.5);
+  });
+  setTimeout(function(){ try{actx.close();}catch(e){} }, 3600);
+}
+
+var started=false;
+function descend(){
+  if(started)return; started=true;
+  go.style.display='none';
+  playDescent();
+  document.body.classList.add('plunge');
+  line.classList.remove('show');
+  setTimeout(function(){ line.textContent='Down. Headfirst. Into the heat.'; line.classList.add('show'); },200);
+  narr.textContent='You go down, headfirst, into the heat where raw ideas are still glowing.';
+  // impact + surface
+  setTimeout(function(){
+    document.body.classList.add('impact');
+    line.classList.remove('show');
+    setTimeout(function(){ line.textContent='You surface where you shouldn’t.'; line.classList.add('show'); },140);
+    narr.textContent='You surface inside a marketplace that should not exist. Something in here already has your name on it.';
+  }, 1850);
+  // arrive
+  setTimeout(function(){ location.href='/marketplace.html?entered=1'; }, 3100);
+  try{ localStorage.setItem('kiln_descended','1'); }catch(e){}
+}
+go.addEventListener('click',descend);
+go.focus();
 </script>
 </body></html>
