@@ -5,6 +5,14 @@
 .card h3{margin:0 0 4px;} .price{font-weight:700;color:var(--clay-dark);font-size:19px;}
 .filters{display:flex;gap:12px;flex-wrap:wrap;align-items:end;} .filters>div{flex:1;min-width:180px;}</style>
 </head><body>
+<script>
+// Entering the marketplace is an experience, not a menu click: first arrival
+// goes through the descent. Returning visitors (or ?entered=1) go straight in.
+(function(){try{
+  var p=new URLSearchParams(location.search);
+  if(!p.get('entered') && !localStorage.getItem('kiln_descended')){ location.replace('/enter.html'); }
+}catch(e){}})();
+</script>
 <a class="skip" href="#main">Skip to main content</a>
 <header class="site"><div class="wrap bar">
   <a class="brand" href="/">Access YP Labs · The Kiln</a>
