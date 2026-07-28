@@ -119,6 +119,33 @@
   }
 
   // ---------- Listings ----------
+  function buildEditor(l, host) {
+    function labeled(labelText, node, id) {
+      const w = el('div'); const lab = el('label', null, labelText); lab.setAttribute('for', id);
+      node.id = id; w.appendChild(lab); w.appendChild(node); return w;
+    }
+    const fSel = document.createElement('select');
+    [['flat', 'Flat price'], ['auction', 'Auction']].forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; if (v === l.format) o.selected = true; fSel.appendChild(o); });
+    const cur = l.format === 'auction' ? l.starting_bid_cents : l.price_cents;
+    const pIn = document.createElement('input'); pIn.type = 'number'; pIn.min = '50'; pIn.step = '1'; pIn.value = cur ? (cur / 100) : '';
+    const sSel = document.createElement('select');
+    [['concept', 'Concept'], ['in_build', 'In build'], ['prepared_to_start', 'Prepared to start']].forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; if (v === l.stage_label) o.selected = true; sSel.appendChild(o); });
+    const tIn = document.createElement('input'); tIn.type = 'text'; tIn.value = l.completion_target || '';
+    host.appendChild(labeled('Format', fSel, 'ef-' + l.id));
+    host.appendChild(labeled('Price or starting bid (US dollars, at least $50)', pIn, 'ep-' + l.id));
+    host.appendChild(labeled('Stage', sSel, 'es-' + l.id));
+    host.appendChild(labeled('Completion target (optional)', tIn, 'et-' + l.id));
+    host.appendChild(actionBtn('Save changes', async () => {
+      const dollars = parseFloat(pIn.value);
+      if (!(dollars >= 50)) { announce('Price or starting bid must be at least $50.', true); return; }
+      const body = { format: fSel.value, stage_label: sSel.value, completion_target: tIn.value };
+      const cents = Math.round(dollars * 100);
+      if (fSel.value === 'flat') body.price_cents = cents; else body.starting_bid_cents = cents;
+      await run(Kiln.api('/listings/' + l.id, { method: 'PATCH', body }), 'Listing updated.', loadListings);
+    }));
+    fSel.focus();
+  }
+
   async function loadListings() {
     const c = document.getElementById('listings'); c.innerHTML = '';
     try {
@@ -128,7 +155,12 @@
       listings.forEach((l) => {
         const price = l.format === 'auction' ? ('auction from ' + money(l.starting_bid_cents)) : money(l.price_cents);
         const r = row(l.title, nice(l.category) + ' · ' + price, l.status);
-        if (l.status === 'draft') r.actions.appendChild(actionBtn('Submit for review', () => run(Kiln.api('/listings/' + l.id + '/submit', { method: 'POST' }), 'Submitted for review.', loadListings)));
+        if (l.status === 'draft') {
+          r.actions.appendChild(actionBtn('Submit for review', () => run(Kiln.api('/listings/' + l.id + '/submit', { method: 'POST' }), 'Submitted for review.', loadListings)));
+          const editWrap = el('div', 'stack'); editWrap.style.marginTop = '8px';
+          r.actions.appendChild(actionBtn('Edit', () => { editWrap.innerHTML = ''; buildEditor(l, editWrap); }, true));
+          r.appendChild(editWrap);
+        }
         if (['draft', 'in_review', 'live'].includes(l.status)) r.actions.appendChild(actionBtn('Withdraw', () => run(Kiln.api('/listings/' + l.id + '/withdraw', { method: 'POST' }), 'Listing withdrawn.', loadListings), true));
         c.appendChild(r);
       });

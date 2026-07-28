@@ -94,6 +94,49 @@ router.post('/:id/withdraw', authenticate, asyncHandler(async (req, res) => {
   res.json({ listing: r.rows[0] });
 }));
 
+// Edit a listing — only while it is a DRAFT. A draft is private and can carry no
+// bids, so changing price/terms is safe. To change a live listing, the seller
+// withdraws it (back out of public) and relists; we never rewrite the terms of a
+// listing buyers may already be acting on.
+router.patch('/:id', authenticate, [
+  body('format').optional().isIn(['flat', 'auction']),
+  body('price_cents').optional().isInt({ min: PRICE_FLOOR_CENTS }),
+  body('starting_bid_cents').optional().isInt({ min: PRICE_FLOOR_CENTS }),
+  body('stage_label').optional().isIn(['concept', 'in_build', 'prepared_to_start']),
+  body('completion_target').optional().isString().isLength({ max: 200 }),
+  body('auction_close_at').optional(),
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  const cur = await query('SELECT * FROM listings WHERE id=$1 AND seller_id=$2', [req.params.id, req.user.id]);
+  if (!cur.rows.length) throw new ApiError(404, 'Listing not found.');
+  const l = cur.rows[0];
+  if (l.status !== 'draft') {
+    throw new ApiError(409, 'Only a draft listing can be edited. Withdraw this listing first, then edit and resubmit — that way nobody is acting on terms while they change.');
+  }
+
+  const format = req.body.format || l.format;
+  const price = req.body.price_cents !== undefined ? req.body.price_cents : l.price_cents;
+  const bid = req.body.starting_bid_cents !== undefined ? req.body.starting_bid_cents : l.starting_bid_cents;
+  const stage = req.body.stage_label || l.stage_label;
+  const target = req.body.completion_target !== undefined ? req.body.completion_target : l.completion_target;
+  const closeAt = req.body.auction_close_at !== undefined ? req.body.auction_close_at : l.auction_close_at;
+
+  if (format === 'flat' && !isAboveFloor(price)) throw new ApiError(400, 'Flat price must be at least $50.');
+  if (format === 'auction' && !isAboveFloor(bid)) throw new ApiError(400, 'Starting bid must be at least $50.');
+
+  const r = await query(
+    `UPDATE listings SET format=$3, price_cents=$4, starting_bid_cents=$5, stage_label=$6,
+       completion_target=$7, auction_close_at=$8, updated_at=NOW()
+     WHERE id=$1 AND seller_id=$2 AND status='draft' RETURNING *`,
+    [req.params.id, req.user.id, format,
+     format === 'flat' ? price : null, format === 'auction' ? bid : null,
+     stage, target || null, closeAt || null]);
+  if (!r.rows.length) throw new ApiError(409, 'Listing could not be updated.');
+  res.json({ listing: r.rows[0] });
+}));
+
 // Public marketplace browse — only live listings.
 router.get('/', asyncHandler(async (req, res) => {
   const { category, stage } = req.query;
