@@ -1,14 +1,16 @@
 {
   "name": "yp-labs",
   "version": "2.0.0",
-  "description": "Access YP Labs — The Kiln: a neutral marketplace and launchpad for pre-proven business concepts, powered by Clay (Set Up Your Place LLC)",
+  "description": "Access YP Labs \u2014 The Kiln: a neutral marketplace and launchpad for pre-proven business concepts, powered by Clay (Set Up Your Place LLC)",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "node --test"
   },
-  "engines": { "node": ">=22.0.0 <23.0.0" },
+  "engines": {
+    "node": ">=22.0.0 <23.0.0"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.1",
     "bcryptjs": "^2.4.3",
@@ -20,9 +22,10 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
-    "multer": "^1.4.5-lts.1",
     "pg": "^8.11.3",
     "stripe": "^16.12.0"
   },
-  "devDependencies": { "nodemon": "^3.0.2" }
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
 }
