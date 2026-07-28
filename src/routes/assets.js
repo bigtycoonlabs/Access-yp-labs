@@ -27,6 +27,20 @@ router.get('/concept/:conceptId/history', authenticate, asyncHandler(async (req,
   res.json({ history: r.rows });
 }));
 
+// Current interactive HTML demo for a concept the caller owns (free — viewing
+// your own work-in-progress in the live sandbox is part of building; only
+// export/download is plan-gated).
+router.get('/concept/:conceptId/demo', authenticate, asyncHandler(async (req, res) => {
+  const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2',
+    [req.params.conceptId, req.user.id]);
+  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  const r = await query(
+    `SELECT id, title, body FROM assets WHERE concept_id=$1 AND is_current=true
+     AND type IN ('html_demo','built_site') ORDER BY created_at DESC LIMIT 1`, [req.params.conceptId]);
+  if (!r.rows.length) throw new ApiError(404, 'This concept has no demo yet. Ask Clay to build an HTML demo.');
+  res.json({ demo: r.rows[0] });
+}));
+
 // A single asset (owner view — free).
 router.get('/:id', authenticate, asyncHandler(async (req, res) => {
   const r = await query(

@@ -95,6 +95,8 @@
           meta += ' · ' + (days > 0 ? ('access ' + days + ' more day' + (days === 1 ? '' : 's') + ' unless subscribed') : 'access expired — subscribe to keep');
         }
         const r = row(x.title, meta, x.stage);
+        const demo = el('a', 'btn secondary', 'Live demo'); demo.href = '/sandbox.html?concept=' + x.id;
+        demo.style.marginRight = '8px'; r.actions.appendChild(demo);
         const hist = el('div', 'stack'); hist.style.marginTop = '8px';
         r.actions.appendChild(actionBtn('Version history', async () => {
           hist.innerHTML = '';

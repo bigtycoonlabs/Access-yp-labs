@@ -96,6 +96,11 @@
       const dl = el('button', 'btn', 'Download package'); dl.type = 'button';
       dl.addEventListener('click', () => exportConcept(container, data.concept.id));
       actions.appendChild(dl);
+      if ((data.assets || []).some((a) => a.type === 'html_demo' || a.type === 'built_site')) {
+        const demoBtn = el('a', 'btn', 'Open live demo');
+        demoBtn.href = '/sandbox.html?concept=' + encodeURIComponent(data.concept.id);
+        actions.appendChild(demoBtn);
+      }
       const listBtn = el('button', 'btn', 'List this on The Kiln'); listBtn.type = 'button';
       listBtn.addEventListener('click', () => openListingForm(container, data.concept.id));
       actions.appendChild(listBtn);

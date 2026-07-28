@@ -201,4 +201,33 @@ async function generateSocial({ concept, platforms, goal, count }) {
   };
 }
 
-module.exports = { generate, generateSocial, MODEL };
+// Describe a generated image in plain, speakable words — for accessibility and
+// so a blind builder can verify a render matches the intent. Ready for when
+// image rendering is wired; degrades honestly with no key. (HTML demos are
+// described deterministically client-side; this covers rendered pixels.)
+async function describeMedia({ imageBase64, mediaType }) {
+  const anthropic = client();
+  if (!anthropic) {
+    return { status: 'unavailable', description: '',
+      message: 'The description service is not configured. Nothing was fabricated.' };
+  }
+  if (!imageBase64) return { status: 'empty', description: '', message: 'No image was provided to describe.' };
+  try {
+    const resp = await anthropic.messages.create({
+      model: MODEL, max_tokens: 700,
+      system: 'You describe images plainly and truthfully for a blind user who is verifying an AI-generated image. Describe only what is actually visible: subject, layout, colours, any text shown (quote it exactly), and overall mood. Never invent details and never judge quality. If the image is unclear or empty, say so honestly.',
+      messages: [{ role: 'user', content: [
+        { type: 'image', source: { type: 'base64', media_type: mediaType || 'image/png', data: imageBase64 } },
+        { type: 'text', text: 'Describe this image for someone who cannot see it.' },
+      ] }],
+    });
+    const description = (resp.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+    return description
+      ? { status: 'answered', description }
+      : { status: 'empty', description: '', message: 'No description was produced.' };
+  } catch (err) {
+    return { status: 'unavailable', description: '', message: `Could not describe the image: ${err.message}.` };
+  }
+}
+
+module.exports = { generate, generateSocial, describeMedia, MODEL };

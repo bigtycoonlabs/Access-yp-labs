@@ -1,0 +1,132 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Live demo — The Kiln</title><link rel="stylesheet" href="/css/kiln.css"/>
+<style>
+.sandbox-frame{width:100%;height:70vh;min-height:420px;border:2px solid var(--line);border-radius:12px;background:#fff;}
+.describe{border:1px solid var(--line);border-radius:12px;background:#fff;padding:16px 18px;margin:12px 0;}
+.describe h2{margin-top:0;}
+.describe ul{margin:6px 0 0 0;padding-left:20px;}
+.describe li{margin:4px 0;}
+</style>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs · The Kiln</a>
+  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/app.html">Workspace</a></nav>
+</div></header>
+<main id="main" class="wrap">
+  <h1 id="title">Live demo</h1>
+  <p class="muted">This is a live, clickable prototype of your concept. It runs in a safe sandbox — clicking around here changes nothing on your account.</p>
+  <div id="status" role="status" aria-live="polite" class="muted">Loading your demo…</div>
+
+  <section class="describe" id="describe" hidden aria-labelledby="d-h">
+    <h2 id="d-h">What's on screen</h2>
+    <p class="muted">A plain description of this demo's structure and what you can click, read aloud for you.</p>
+    <div id="outline" tabindex="-1" role="region" aria-label="Demo structure"></div>
+    <button type="button" class="btn secondary" id="reread" style="margin-top:10px;">Read the structure again</button>
+  </section>
+
+  <iframe id="frame" class="sandbox-frame" title="Live interactive demo of your concept" sandbox="allow-scripts" hidden></iframe>
+
+  <div class="actions" id="actions" hidden style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+    <button type="button" class="btn" id="export">Export this demo (.html)</button>
+    <a class="btn secondary" href="/app.html">Back to the workspace</a>
+  </div>
+  <div id="exportmsg" role="alert" aria-live="assertive"></div>
+</main>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script>
+<script>
+if(!Kiln.isLoggedIn())location.replace('/login.html');
+const params=new URLSearchParams(location.search);
+const conceptId=params.get('concept');
+const status=document.getElementById('status');
+let demo=null;
+
+function label(node){
+  const t=(node.getAttribute('aria-label')||node.textContent||node.value||node.getAttribute('placeholder')||node.getAttribute('name')||'').trim();
+  return t.replace(/\s+/g,' ').slice(0,60);
+}
+function li(text){const l=document.createElement('li');l.textContent=text;return l;}
+
+// Deterministic, native description of the demo's structure — parsed from the
+// actual HTML (DOMParser does NOT run scripts), so nothing is fabricated.
+function describe(html){
+  const doc=new DOMParser().parseFromString(html,'text/html');
+  const out=document.getElementById('outline');out.innerHTML='';
+  const ul=document.createElement('ul');
+  const docTitle=(doc.title||'').trim();
+  if(docTitle) ul.appendChild(li('Title: '+docTitle));
+  const headings=[...doc.querySelectorAll('h1,h2,h3')].map(label).filter(Boolean);
+  if(headings.length) ul.appendChild(li(headings.length+' heading'+(headings.length===1?'':'s')+': '+headings.slice(0,6).join(', ')));
+  const links=[...doc.querySelectorAll('a[href]')].map(label).filter(Boolean);
+  if(links.length) ul.appendChild(li(links.length+' link'+(links.length===1?'':'s')+': '+links.slice(0,8).join(', ')));
+  const buttons=[...doc.querySelectorAll('button,[role=button],input[type=button],input[type=submit]')].map(label).filter(Boolean);
+  if(buttons.length) ul.appendChild(li(buttons.length+' button'+(buttons.length===1?'':'s')+': '+buttons.slice(0,8).join(', ')));
+  const fields=[...doc.querySelectorAll('input:not([type=button]):not([type=submit]),textarea,select')];
+  if(fields.length){
+    const names=fields.map(f=>label(f)||f.getAttribute('type')||'field').filter(Boolean);
+    ul.appendChild(li(fields.length+' input field'+(fields.length===1?'':'s')+': '+names.slice(0,8).join(', ')));
+  }
+  const imgs=[...doc.querySelectorAll('img')];
+  if(imgs.length){const withAlt=imgs.filter(i=>(i.getAttribute('alt')||'').trim()).length;
+    ul.appendChild(li(imgs.length+' image'+(imgs.length===1?'':'s')+', '+withAlt+' with a text description'));}
+  const landmarks=['header','nav','main','footer'].filter(t=>doc.querySelector(t));
+  if(landmarks.length) ul.appendChild(li('Sections present: '+landmarks.join(', ')));
+  if(!ul.children.length) ul.appendChild(li('This demo has little detectable structure — it may be mostly styling or canvas-based.'));
+  out.appendChild(ul);
+  return {headings:headings.length,links:links.length,buttons:buttons.length,fields:fields.length,images:imgs.length};
+}
+
+function summarySentence(s){
+  const parts=[];
+  if(s.headings) parts.push(s.headings+' heading'+(s.headings===1?'':'s'));
+  if(s.links) parts.push(s.links+' link'+(s.links===1?'':'s'));
+  if(s.buttons) parts.push(s.buttons+' button'+(s.buttons===1?'':'s'));
+  if(s.fields) parts.push(s.fields+' input field'+(s.fields===1?'':'s'));
+  if(s.images) parts.push(s.images+' image'+(s.images===1?'':'s'));
+  return parts.length? ('Your demo is loaded. It contains '+parts.join(', ')+'. The full structure is described below, and the live prototype is on the page.') : 'Your demo is loaded.';
+}
+
+async function load(){
+  if(!conceptId){status.textContent='No concept was specified.';return;}
+  try{
+    const r=await Kiln.api('/assets/concept/'+conceptId+'/demo');
+    demo=r.demo;
+    document.getElementById('title').textContent='Live demo: '+(demo.title||'your concept');
+    const summary=describe(demo.body);
+    const frame=document.getElementById('frame');
+    frame.srcdoc=demo.body; frame.hidden=false;
+    document.getElementById('describe').hidden=false;
+    document.getElementById('actions').hidden=false;
+    status.textContent='';
+    announce(summarySentence(summary),true);
+  }catch(e){
+    status.innerHTML='<div class="msg err">'+e.message+'</div>';
+    announce(e.message,true);
+  }
+}
+document.getElementById('reread').addEventListener('click',()=>{
+  const out=document.getElementById('outline');
+  announce('Demo structure: '+out.textContent.replace(/\s+/g,' ').trim(),true);
+  focusEl(out);
+});
+document.getElementById('export').addEventListener('click',async()=>{
+  const msg=document.getElementById('exportmsg');msg.innerHTML='';
+  try{
+    const {asset}=await Kiln.api('/assets/'+demo.id+'/download');
+    const blob=new Blob([asset.body],{type:'text/html'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=(asset.title||'demo').replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.html';
+    document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+    msg.innerHTML='<div class="msg ok">Exported. The .html file downloaded — drop it into GitHub, Railway, Vercel, or any editor to keep building.</div>';
+    announce('Demo exported as an HTML file.',true);
+  }catch(e){
+    if(e.status===402&&e.data&&e.data.options){
+      msg.innerHTML='<div class="msg err">Exporting needs an active plan. Building and previewing stay free. Open the workspace to choose Maker or Sculptor.</div>';
+    }else{ msg.innerHTML='<div class="msg err">'+e.message+'</div>'; }
+    announce('Export needs a plan or could not complete.',true);
+  }
+});
+load();
+</script>
+</body></html>
