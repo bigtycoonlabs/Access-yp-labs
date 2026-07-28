@@ -42,9 +42,10 @@ You must respond with a SINGLE valid JSON object and nothing else, matching:
     "customer_research": string,
     "competitor_research": string,
     "regulatory_risk": string,
-    "html_demo": string,               // a complete, self-contained, accessible HTML document
+    "html_demo": string,               // a complete, self-contained, accessible, CLICKABLE/INTERACTIVE HTML document: working navigation, buttons, and simple state via INLINE JavaScript only (no external resources), so it behaves like a live prototype the user can click through
     "example_image": string,           // image-generation BRIEFS (labelled as prompts, not real images)
     "website_prompt": string,          // a prompt the buyer pastes into their own AI to build the site
+    "tech_requirements": string,       // the external services, API keys, and infrastructure this build will actually need. For EACH: name it, mark it needed vs optional, say plainly what it's for, and give the free-vs-paid split (roughly what it costs). Then give the step-by-step FLOW the user follows to finish the build in their own code tool — everything EXCEPT writing the code itself (which the user completes). Be honest: if something can be built natively with no external key, say so.
     "build_instructions": string       // step-by-step build incl. Supabase/Railway/GitHub guidance
   }
 }

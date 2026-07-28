@@ -15,6 +15,7 @@ const ASSET_PLAN = [
   { type: 'html_demo',           label: 'Working HTML demo' },
   { type: 'example_image',       label: 'Example image briefs' },
   { type: 'website_prompt',      label: 'Website build prompt' },
+  { type: 'tech_requirements',   label: 'API keys, services & build flow' },
   { type: 'build_instructions',  label: 'AI build instructions' },
 ];
 
