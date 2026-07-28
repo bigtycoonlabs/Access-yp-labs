@@ -19,6 +19,12 @@ if (process.env.NODE_ENV === 'production' && (missingConfig.length || weakSecret
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+
+// Stripe webhook needs the raw body for signature verification — mount before json.
+app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), (req, res, next) => {
+  Promise.resolve(require('./routes/webhooks').stripeWebhook(req, res)).catch(next);
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 

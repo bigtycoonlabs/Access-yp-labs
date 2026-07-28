@@ -37,6 +37,15 @@ router.post('/applications/:id/approve', authenticate, authorize('admin', 'maste
     res.json({ approved: true, user_id: a.rows[0].user_id });
   }));
 
+// Admin: list submitted applications for review.
+router.get('/applications', authenticate, authorize('admin', 'master_staff'),
+  asyncHandler(async (req, res) => {
+    const r = await query(
+      `SELECT a.*, u.name, u.email FROM consultant_applications a
+       JOIN users u ON u.id=a.user_id WHERE a.status='submitted' ORDER BY a.created_at ASC`);
+    res.json({ applications: r.rows });
+  }));
+
 // Public directory of approved consultants.
 router.get('/', asyncHandler(async (req, res) => {
   const r = await query(

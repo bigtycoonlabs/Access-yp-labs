@@ -171,6 +171,10 @@
       const g = document.getElementById('global');
       const a = el('a', 'btn secondary', 'Open the review queue'); a.href = '/moderation.html';
       g.appendChild(a);
+      if (['admin', 'master_staff'].includes(me.role)) {
+        const a2 = el('a', 'btn secondary', 'Consultant applications'); a2.href = '/admin-consultants.html';
+        a2.style.marginLeft = '8px'; g.appendChild(a2);
+      }
     }
     if (new URLSearchParams(location.search).get('onboard') === 'done') announce('Payout setup returned. Refreshing status.', true);
     loadPayouts(); loadSubs(); loadConcepts(); loadListings(); loadOrders(); loadEngagements(); loadWatches();

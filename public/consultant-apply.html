@@ -1,0 +1,41 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Become a consultant — The Kiln</title><link rel="stylesheet" href="/css/kiln.css"/>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs · The Kiln</a>
+  <nav class="top" aria-label="Primary"><a href="/consultants.html">Consultants</a><a href="/dashboard.html">Dashboard</a></nav>
+</div></header>
+<main id="main" class="wrap">
+  <h1>Become a consultant</h1>
+  <p class="muted">Consultants are experienced entrepreneurs who have taken concepts to market. Sessions are $150 for 90 minutes; you keep $120 of each. Tell us about your background and we'll review your application.</p>
+  <div id="feedback" role="alert" aria-live="assertive"></div>
+  <div class="panel"><div class="stack">
+    <div><label for="hist">Your entrepreneurial history</label>
+      <textarea id="hist" aria-describedby="hist-h"></textarea>
+      <p id="hist-h" class="muted">Businesses you've started or run.</p></div>
+    <div><label for="track">Marketplace or sales track record</label><textarea id="track"></textarea></div>
+    <div><label for="mkt">Concepts you've taken to market</label><textarea id="mkt"></textarea></div>
+    <div><label for="prior">Prior businesses</label><textarea id="prior"></textarea></div>
+    <button type="button" class="btn" id="submit">Submit application</button>
+  </div></div>
+</main>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script>
+<script>
+const fb=document.getElementById('feedback');
+function show(m,k){fb.innerHTML='<div class="msg '+(k||'err')+'">'+m+'</div>';announce(m,true);}
+document.getElementById('submit').addEventListener('click',async()=>{
+  if(!Kiln.isLoggedIn()){show('Please sign in first.');setTimeout(()=>location.href='/login.html',1200);return;}
+  const body={entrepreneur_history:document.getElementById('hist').value.trim(),
+    marketplace_track:document.getElementById('track').value.trim(),
+    concepts_to_market:document.getElementById('mkt').value.trim(),
+    prior_businesses:document.getElementById('prior').value.trim()};
+  if(!body.entrepreneur_history){return show('Please describe your entrepreneurial history.');}
+  const btn=document.getElementById('submit');btn.disabled=true;announce('Submitting your application…');
+  try{await Kiln.api('/consultants/apply',{method:'POST',body});
+    show('Application submitted. We will review it and follow up.','ok');btn.textContent='Submitted';
+  }catch(e){show(e.message);btn.disabled=false;}
+});
+</script>
+</body></html>

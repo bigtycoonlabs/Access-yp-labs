@@ -56,4 +56,17 @@ async function createEscrowCheckout({ amountCents, feeCents, sellerAccountId, or
   return { ok: true, url: session.url, sessionId: session.id };
 }
 
-module.exports = { configured, createConnectedAccount, createAccountLink, retrieveAccount, createEscrowCheckout };
+
+// Verify + parse a webhook event from the raw request body.
+function constructEvent(rawBody, signature) {
+  const s = stripe();
+  if (!s || !process.env.STRIPE_WEBHOOK_SECRET) return { ok: false, reason: 'stripe_not_configured' };
+  try {
+    const event = s.webhooks.constructEvent(rawBody, signature, process.env.STRIPE_WEBHOOK_SECRET);
+    return { ok: true, event };
+  } catch (err) {
+    return { ok: false, reason: 'bad_signature', message: err.message };
+  }
+}
+
+module.exports = { configured, constructEvent, createConnectedAccount, createAccountLink, retrieveAccount, createEscrowCheckout };
