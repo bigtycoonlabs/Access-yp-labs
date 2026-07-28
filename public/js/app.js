@@ -9,6 +9,15 @@
   let mode = 'create';
 
   // ---- small DOM helpers (textContent only for untrusted strings) ----
+  const CATEGORY_WORDS = {
+    digital_product_saas: 'digital products and SaaS',
+    online_service_agency: 'online services',
+    content_creator: 'content and creator businesses',
+    ecommerce_pod: 'e-commerce',
+    ai_product_service: 'AI products',
+    remote_hybrid_physical: 'remote and hybrid ventures',
+    micro_solo: 'micro and solo businesses',
+  };
   function el(tag, cls, text) {
     const n = document.createElement(tag);
     if (cls) n.className = cls;
@@ -34,8 +43,16 @@
       const el2 = document.getElementById('clay-status');
       el2.textContent = s.available ? 'Clay is ready.' : 'Clay generation is not configured yet — you can still browse and manage your work.';
     } catch (_) {}
+    let prefs = null;
+    try { const r = await Kiln.api('/preferences'); prefs = r.preferences; } catch (_) {}
     const m = message('clay', 'Clay');
-    m.appendChild(el('p', null, "I'm Clay. Tell me about a business you want to shape, or an idea you already have — then I'll build a full concept package with you. Choose “Create” to start fresh or “Enhance” to sharpen an idea you already have."));
+    let opening = "I'm Clay. Tell me about a business you want to shape, or an idea you already have — then I'll build a full concept package with you. Choose “Create” to start fresh or “Enhance” to sharpen an idea you already have.";
+    if (prefs && prefs.interests && prefs.interests.length) {
+      const words = prefs.interests.map((i) => CATEGORY_WORDS[i] || i.replace(/_/g, ' '));
+      const list = words.length === 1 ? words[0] : (words.slice(0, -1).join(', ') + ' and ' + words[words.length - 1]);
+      opening = 'Welcome back to your laboratory. You told me you’re drawn to ' + list + ' — want to shape one of those, continue something, or start somewhere new? Choose “Create” to start fresh or “Enhance” to sharpen an idea you already have.';
+    }
+    m.appendChild(el('p', null, opening));
   })();
 
   // ---- mode toggle ----
