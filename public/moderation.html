@@ -1,0 +1,79 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Review queue — The Kiln</title><link rel="stylesheet" href="/css/kiln.css"/>
+<style>.row{border:1px solid var(--line);border-radius:10px;background:#fff;padding:16px;margin:12px 0;}
+.row h3{margin:0 0 4px;} .decide{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-top:12px;}
+.decide>div{min-width:200px;}</style>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs · The Kiln</a>
+  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/marketplace.html">Marketplace</a></nav>
+</div></header>
+<main id="main" class="wrap">
+  <h1>Review queue</h1>
+  <p class="muted">Moderate on policy grounds only. A listing may never be rejected because it competes with another — that is not a reason you can select. You cannot rule on your own listing; the system will recuse you automatically.</p>
+  <div id="gate" role="status" aria-live="polite" class="muted">Checking your access…</div>
+  <div id="queue"></div>
+  <div id="result" role="alert" aria-live="assertive"></div>
+</main>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script>
+<script>
+const REASONS=[['missing_baseline','Missing baseline package'],['running_business','A business already running (we sell pre-proven concepts)'],['fraud','Fraud or misrepresentation'],['missing_risk_disclosure','Risk not disclosed']];
+const gate=document.getElementById('gate'), queueEl=document.getElementById('queue'), result=document.getElementById('result');
+function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+function money(c){return '$'+((c||0)/100).toFixed(2);}
+function nice(s){return String(s||'').replace(/_/g,' ');}
+async function init(){
+  if(!Kiln.isLoggedIn()){location.replace('/login.html');return;}
+  let me; try{ me=(await Kiln.api('/auth/me')).user; }catch(_){ location.replace('/login.html'); return; }
+  if(!['staff','admin','master_staff'].includes(me.role)){
+    gate.textContent='This area is for platform staff only.'; announce('This area is for platform staff only.',true); return;
+  }
+  gate.textContent='';
+  load();
+}
+async function load(){
+  queueEl.innerHTML='';
+  try{
+    const {queue}=await Kiln.api('/moderation/queue');
+    if(!queue.length){queueEl.appendChild(el('p','muted','The review queue is empty.'));announce('The review queue is empty.');return;}
+    announce(queue.length+' listing'+(queue.length>1?'s':'')+' awaiting review.');
+    queue.forEach(l=>{
+      const r=el('div','row');
+      r.appendChild(el('h3',null,l.title));
+      r.appendChild(el('p','muted',nice(l.category)+' · '+nice(l.stage_label)+' · '+money(l.price_cents)+' · by '+l.seller_name));
+      if(l.risk_summary){r.appendChild(el('p',null,'Risk noted: '+l.risk_summary));}
+      const wrap=el('div','decide');
+      const rsWrap=el('div');
+      const rl=el('label',null,'Reason (required to reject)');rl.setAttribute('for','r-'+l.id);
+      const sel=el('select');sel.id='r-'+l.id;sel.appendChild(el('option',null,'— select a policy reason —'));
+      REASONS.forEach(([v,t])=>{const o=el('option',null,t);o.value=v;sel.appendChild(o);});
+      rsWrap.appendChild(rl);rsWrap.appendChild(sel);
+      const approve=el('button','btn','Approve → go live');approve.type='button';
+      approve.addEventListener('click',()=>decide(l.id,'approved',null,approve));
+      const reject=el('button','btn secondary','Reject');reject.type='button';
+      reject.addEventListener('click',()=>{
+        const reason=sel.value; if(!reason){announce('Select a policy reason to reject.',true);sel.focus();return;}
+        decide(l.id,'rejected',reason,reject);
+      });
+      wrap.appendChild(rsWrap);
+      const bwrap=el('div');bwrap.appendChild(approve);bwrap.appendChild(document.createTextNode(' '));bwrap.appendChild(reject);
+      wrap.appendChild(bwrap);
+      r.appendChild(wrap);
+      queueEl.appendChild(r);
+    });
+  }catch(e){queueEl.appendChild(el('p','msg err',e.message));}
+}
+async function decide(id,decision,reason,btn){
+  btn.disabled=true;result.textContent='';
+  try{
+    await Kiln.api('/moderation/'+id+'/decide',{method:'POST',body:{decision,reason}});
+    result.appendChild(el('p','msg ok','Listing '+(decision==='approved'?'approved and live.':'rejected.')));
+    announce('Listing '+(decision==='approved'?'approved.':'rejected.'),true);
+    load();
+  }catch(e){result.appendChild(el('p','msg err',e.message));announce(e.message,true);btn.disabled=false;}
+}
+init();
+</script>
+</body></html>

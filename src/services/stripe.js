@@ -10,12 +10,31 @@ function stripe() {
 }
 const configured = () => !!stripe();
 
-// Create/return a connected account for a seller (KYC handled by Stripe).
+// Create a connected account for a seller (KYC handled by Stripe).
 async function createConnectedAccount(email) {
   const s = stripe();
   if (!s) return { ok: false, reason: 'stripe_not_configured' };
   const acct = await s.accounts.create({ type: 'express', email });
   return { ok: true, accountId: acct.id };
+}
+
+// Hosted onboarding link the seller completes to enable payouts.
+async function createAccountLink({ accountId, refreshUrl, returnUrl }) {
+  const s = stripe();
+  if (!s) return { ok: false, reason: 'stripe_not_configured' };
+  const link = await s.accountLinks.create({
+    account: accountId, refresh_url: refreshUrl, return_url: returnUrl,
+    type: 'account_onboarding',
+  });
+  return { ok: true, url: link.url };
+}
+
+// Sync payout readiness for a connected account.
+async function retrieveAccount(accountId) {
+  const s = stripe();
+  if (!s) return { ok: false, reason: 'stripe_not_configured' };
+  const a = await s.accounts.retrieve(accountId);
+  return { ok: true, charges_enabled: a.charges_enabled, details_submitted: a.details_submitted, payouts_enabled: a.payouts_enabled };
 }
 
 // Escrowed checkout: destination charge with application fee = platform take.
@@ -37,4 +56,4 @@ async function createEscrowCheckout({ amountCents, feeCents, sellerAccountId, or
   return { ok: true, url: session.url, sessionId: session.id };
 }
 
-module.exports = { configured, createConnectedAccount, createEscrowCheckout };
+module.exports = { configured, createConnectedAccount, createAccountLink, retrieveAccount, createEscrowCheckout };

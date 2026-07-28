@@ -36,6 +36,7 @@ app.use('/api/subscriptions', require('./routes/subscriptions'));
 app.use('/api/concepts',      require('./routes/concepts'));
 app.use('/api/clay',          require('./routes/clay'));
 app.use('/api/assets',        require('./routes/assets'));
+app.use('/api/sellers',       require('./routes/sellers'));
 app.use('/api/listings',      require('./routes/listings'));
 app.use('/api/bids',          require('./routes/bids'));
 app.use('/api/watches',       require('./routes/watches'));

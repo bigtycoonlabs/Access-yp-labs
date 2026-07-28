@@ -1,0 +1,30 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dashboard — The Kiln</title><link rel="stylesheet" href="/css/kiln.css"/>
+<style>.row{border:1px solid var(--line);border-radius:10px;background:#fff;padding:14px 16px;margin:10px 0;}
+.row h3{margin:0 0 4px;font-size:18px;} .row .actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;}
+.pill{display:inline-block;font-size:13px;font-weight:700;padding:3px 10px;border-radius:999px;background:#f5f0e8;color:var(--clay-dark);text-transform:uppercase;letter-spacing:.03em;}</style>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs · The Kiln</a>
+  <nav class="top" aria-label="Primary">
+    <a href="/app.html">Workspace</a><a href="/marketplace.html">Marketplace</a>
+    <a href="/consultants.html">Consultants</a><a href="#" id="signout">Sign out</a>
+  </nav>
+</div></header>
+<main id="main" class="wrap">
+  <h1 id="greeting">Your dashboard</h1>
+  <div id="global" role="status" aria-live="polite"></div>
+
+  <section aria-labelledby="pay-h"><h2 id="pay-h">Payouts</h2><div id="payouts" class="stack"></div></section>
+  <section aria-labelledby="sub-h"><h2 id="sub-h">Subscription</h2><div id="subs" class="stack"></div></section>
+  <section aria-labelledby="con-h"><h2 id="con-h">Your concepts</h2><div id="concepts" class="stack"></div></section>
+  <section aria-labelledby="lst-h"><h2 id="lst-h">Your listings</h2><div id="listings" class="stack"></div></section>
+  <section aria-labelledby="ord-h"><h2 id="ord-h">Your orders</h2><div id="orders" class="stack"></div></section>
+  <section aria-labelledby="eng-h"><h2 id="eng-h">Consultant sessions</h2><div id="engagements" class="stack"></div></section>
+  <section aria-labelledby="wat-h"><h2 id="wat-h">Watchlist</h2><div id="watches" class="stack"></div></section>
+</main>
+<footer class="site"><div class="wrap"><p>The Kiln is a neutral marketplace and is not a party to any transaction between members.</p></div></footer>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script><script src="/js/dashboard.js"></script>
+</body></html>

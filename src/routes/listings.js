@@ -98,6 +98,14 @@ router.get('/', asyncHandler(async (req, res) => {
   res.json({ listings: r.rows });
 }));
 
+// A seller's own listings, in any status. Must precede /:id.
+router.get('/mine', authenticate, asyncHandler(async (req, res) => {
+  const r = await query(
+    `SELECT l.*, c.title, c.category FROM listings l JOIN concepts c ON c.id=l.concept_id
+     WHERE l.seller_id=$1 ORDER BY l.updated_at DESC`, [req.user.id]);
+  res.json({ listings: r.rows });
+}));
+
 // Single listing (public if live; owner may view any state).
 router.get('/:id', asyncHandler(async (req, res) => {
   const r = await query(
