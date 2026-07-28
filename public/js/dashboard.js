@@ -233,6 +233,43 @@
     } catch (e) { fail(c, e); }
   }
 
+  async function loadTuning() {
+    const c = document.getElementById('tuning'); c.innerHTML = '';
+    try {
+      const [opts, cur] = await Promise.all([Kiln.api('/preferences/options'), Kiln.api('/preferences')]);
+      const prefs = cur.preferences || { interests: [], runs_business: false, business_kind: '', launch_budget: '' };
+      const selected = new Set(prefs.interests || []);
+      c.appendChild(el('p', null, 'Ideas you’re most excited to launch:'));
+      const chips = el('div'); chips.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;';
+      opts.categories.forEach((cat) => {
+        const b = el('button', 'btn' + (selected.has(cat.id) ? '' : ' secondary'), cat.label); b.type = 'button';
+        b.setAttribute('aria-pressed', String(selected.has(cat.id)));
+        b.addEventListener('click', () => {
+          const on = selected.has(cat.id);
+          if (on) { selected.delete(cat.id); b.className = 'btn secondary'; } else { selected.add(cat.id); b.className = 'btn'; }
+          b.setAttribute('aria-pressed', String(!on));
+          announce((on ? 'Removed ' : 'Added ') + cat.label, true);
+        });
+        chips.appendChild(b);
+      });
+      c.appendChild(chips);
+      function labeled(text, node, id) { const w = el('div'); w.style.marginTop = '10px'; const l = el('label', null, text); l.setAttribute('for', id); node.id = id; w.appendChild(l); w.appendChild(node); return w; }
+      const bSel = document.createElement('select');
+      const none = document.createElement('option'); none.value = ''; none.textContent = 'No preference'; bSel.appendChild(none);
+      opts.budgets.forEach((bt) => { const o = document.createElement('option'); o.value = bt.id; o.textContent = bt.label; if (bt.id === prefs.launch_budget) o.selected = true; bSel.appendChild(o); });
+      c.appendChild(labeled('Launch budget', bSel, 'tune-budget'));
+      const rbSel = document.createElement('select');
+      [['no', 'Not yet'], ['yes', 'Yes']].forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; if ((v === 'yes') === !!prefs.runs_business) o.selected = true; rbSel.appendChild(o); });
+      c.appendChild(labeled('Do you already run a business?', rbSel, 'tune-runs'));
+      const kIn = document.createElement('input'); kIn.type = 'text'; kIn.value = prefs.business_kind || '';
+      c.appendChild(labeled('What kind? (optional)', kIn, 'tune-kind'));
+      c.appendChild(actionBtn('Save tuning', async () => {
+        const body = { interests: Array.from(selected), launch_budget: bSel.value, runs_business: rbSel.value === 'yes', business_kind: kIn.value, onboarded: true };
+        await run(Kiln.api('/preferences', { method: 'PUT', body }), 'Dreamhold tuning saved.', null);
+      }));
+    } catch (e) { fail(c, e); }
+  }
+
   (async function init() {
     try { me = (await Kiln.api('/auth/me')).user; document.getElementById('greeting').textContent = 'Welcome, ' + (me.name || 'there'); }
     catch (_) { location.replace('/login.html'); return; }
@@ -250,7 +287,7 @@
     const q = new URLSearchParams(location.search);
     if (q.get('onboard') === 'done') announce('Payout setup returned. Refreshing status.', true);
     if (q.get('sub') === 'done') announce('Thanks — your plan is being activated.', true);
-    loadPayouts(); loadSubs(); loadConcepts(); loadListings(); loadOrders(); loadEngagements(); loadWatches();
+    loadPayouts(); loadSubs(); loadConcepts(); loadListings(); loadOrders(); loadEngagements(); loadWatches(); loadTuning();
     document.getElementById('signout').addEventListener('click', (e) => { e.preventDefault(); Kiln.clearTokens(); location.href = '/'; });
   })();
 })();
