@@ -89,3 +89,21 @@ test('social asset plan matches controlled vocabulary', () => {
   assert.deepStrictEqual(types, ['content_calendar', 'image_prompt', 'social_post', 'social_template', 'video_script']);
   assert.ok(PLATFORMS.includes('instagram') && SOCIAL_GOALS.includes('launch'));
 });
+
+// ---- HTML demo describer + accessibility audit ----
+const describe_ = require('../src/lib/describe');
+
+test('describer flags real accessibility problems', () => {
+  const bad = describe_.outline('<html><body><div onclick="go()">Go</div><input><img src=x></body></html>');
+  assert.strictEqual(bad.a11y.ok, false);
+  assert.ok(bad.a11y.issues.some((i) => i.includes('lang')));
+  assert.ok(bad.a11y.issues.some((i) => i.includes('divs/spans')));
+  assert.ok(bad.a11y.issues.some((i) => i.toLowerCase().includes('alt')));
+});
+
+test('describer passes an accessible demo and outlines structure', () => {
+  const good = describe_.outline('<html lang="en"><head><title>Shop</title></head><body><header><nav><a href="/">Home</a></nav></header><main><h1>Welcome</h1><label for="e">Email</label><input id="e"><button>Sign up</button><img src="x" alt="a product"></main></body></html>');
+  assert.strictEqual(good.a11y.ok, true);
+  assert.ok(good.items.length >= 3);
+  assert.strictEqual(good.title, 'Shop');
+});

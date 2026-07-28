@@ -1,7 +1,7 @@
 {
   "name": "yp-labs",
   "version": "2.0.0",
-  "description": "Access YP Labs \u2014 The Kiln: a neutral marketplace and launchpad for pre-proven business concepts, powered by Clay (Set Up Your Place LLC)",
+  "description": "Access YP Labs — The Kiln: a neutral marketplace and launchpad for pre-proven business concepts, powered by Clay (Set Up Your Place LLC)",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
@@ -22,6 +22,7 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
+    "node-html-parser": "^6.1.13",
     "pg": "^8.11.3",
     "stripe": "^16.12.0"
   },

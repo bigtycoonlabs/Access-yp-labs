@@ -23,6 +23,7 @@
     <h2 id="d-h">What's on screen</h2>
     <p class="muted">A plain description of this demo's structure and what you can click, read aloud for you.</p>
     <div id="outline" tabindex="-1" role="region" aria-label="Demo structure"></div>
+    <div id="a11y" role="region" aria-label="Accessibility check" style="margin-top:12px;"></div>
     <button type="button" class="btn secondary" id="reread" style="margin-top:10px;">Read the structure again</button>
   </section>
 
@@ -41,50 +42,35 @@ const params=new URLSearchParams(location.search);
 const conceptId=params.get('concept');
 const status=document.getElementById('status');
 let demo=null;
+function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
 
-function label(node){
-  const t=(node.getAttribute('aria-label')||node.textContent||node.value||node.getAttribute('placeholder')||node.getAttribute('name')||'').trim();
-  return t.replace(/\s+/g,' ').slice(0,60);
-}
 function li(text){const l=document.createElement('li');l.textContent=text;return l;}
 
-// Deterministic, native description of the demo's structure — parsed from the
-// actual HTML (DOMParser does NOT run scripts), so nothing is fabricated.
-function describe(html){
-  const doc=new DOMParser().parseFromString(html,'text/html');
+// Render the server-computed outline + accessibility audit (deterministic,
+// nothing fabricated).
+function renderDescription(desc){
   const out=document.getElementById('outline');out.innerHTML='';
   const ul=document.createElement('ul');
-  const docTitle=(doc.title||'').trim();
-  if(docTitle) ul.appendChild(li('Title: '+docTitle));
-  const headings=[...doc.querySelectorAll('h1,h2,h3')].map(label).filter(Boolean);
-  if(headings.length) ul.appendChild(li(headings.length+' heading'+(headings.length===1?'':'s')+': '+headings.slice(0,6).join(', ')));
-  const links=[...doc.querySelectorAll('a[href]')].map(label).filter(Boolean);
-  if(links.length) ul.appendChild(li(links.length+' link'+(links.length===1?'':'s')+': '+links.slice(0,8).join(', ')));
-  const buttons=[...doc.querySelectorAll('button,[role=button],input[type=button],input[type=submit]')].map(label).filter(Boolean);
-  if(buttons.length) ul.appendChild(li(buttons.length+' button'+(buttons.length===1?'':'s')+': '+buttons.slice(0,8).join(', ')));
-  const fields=[...doc.querySelectorAll('input:not([type=button]):not([type=submit]),textarea,select')];
-  if(fields.length){
-    const names=fields.map(f=>label(f)||f.getAttribute('type')||'field').filter(Boolean);
-    ul.appendChild(li(fields.length+' input field'+(fields.length===1?'':'s')+': '+names.slice(0,8).join(', ')));
-  }
-  const imgs=[...doc.querySelectorAll('img')];
-  if(imgs.length){const withAlt=imgs.filter(i=>(i.getAttribute('alt')||'').trim()).length;
-    ul.appendChild(li(imgs.length+' image'+(imgs.length===1?'':'s')+', '+withAlt+' with a text description'));}
-  const landmarks=['header','nav','main','footer'].filter(t=>doc.querySelector(t));
-  if(landmarks.length) ul.appendChild(li('Sections present: '+landmarks.join(', ')));
-  if(!ul.children.length) ul.appendChild(li('This demo has little detectable structure — it may be mostly styling or canvas-based.'));
+  (desc.items||[]).forEach(t=>ul.appendChild(li(t)));
   out.appendChild(ul);
-  return {headings:headings.length,links:links.length,buttons:buttons.length,fields:fields.length,images:imgs.length};
+
+  const a=document.getElementById('a11y');a.innerHTML='';
+  const audit=desc.a11y||{};
+  a.appendChild(el('p', audit.ok?'msg ok':'msg err', audit.summary||''));
+  if((audit.issues||[]).length){
+    a.appendChild(el('p','muted','Issues a screen-reader user would hit:'));
+    const iu=document.createElement('ul');audit.issues.forEach(t=>iu.appendChild(li(t)));a.appendChild(iu);
+  }
+  if((audit.passed||[]).length){
+    a.appendChild(el('p','muted','What this demo does right:'));
+    const pu=document.createElement('ul');audit.passed.forEach(t=>pu.appendChild(li(t)));a.appendChild(pu);
+  }
 }
 
-function summarySentence(s){
-  const parts=[];
-  if(s.headings) parts.push(s.headings+' heading'+(s.headings===1?'':'s'));
-  if(s.links) parts.push(s.links+' link'+(s.links===1?'':'s'));
-  if(s.buttons) parts.push(s.buttons+' button'+(s.buttons===1?'':'s'));
-  if(s.fields) parts.push(s.fields+' input field'+(s.fields===1?'':'s'));
-  if(s.images) parts.push(s.images+' image'+(s.images===1?'':'s'));
-  return parts.length? ('Your demo is loaded. It contains '+parts.join(', ')+'. The full structure is described below, and the live prototype is on the page.') : 'Your demo is loaded.';
+function summarySentence(desc){
+  const a=desc.a11y||{};
+  const base='Your demo is loaded and is on the page. '+(a.summary||'');
+  return base+' The full structure and accessibility check are described above. You can also navigate into the live demo with VoiceOver.';
 }
 
 async function load(){
@@ -93,21 +79,21 @@ async function load(){
     const r=await Kiln.api('/assets/concept/'+conceptId+'/demo');
     demo=r.demo;
     document.getElementById('title').textContent='Live demo: '+(demo.title||'your concept');
-    const summary=describe(demo.body);
+    renderDescription(r.description||{});
     const frame=document.getElementById('frame');
     frame.srcdoc=demo.body; frame.hidden=false;
     document.getElementById('describe').hidden=false;
     document.getElementById('actions').hidden=false;
     status.textContent='';
-    announce(summarySentence(summary),true);
+    announce(summarySentence(r.description||{}),true);
   }catch(e){
     status.innerHTML='<div class="msg err">'+e.message+'</div>';
     announce(e.message,true);
   }
 }
 document.getElementById('reread').addEventListener('click',()=>{
-  const out=document.getElementById('outline');
-  announce('Demo structure: '+out.textContent.replace(/\s+/g,' ').trim(),true);
+  const out=document.getElementById('outline');const a=document.getElementById('a11y');
+  announce('Demo structure: '+out.textContent.replace(/\s+/g,' ').trim()+'. '+a.textContent.replace(/\s+/g,' ').trim(),true);
   focusEl(out);
 });
 document.getElementById('export').addEventListener('click',async()=>{

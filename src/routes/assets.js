@@ -4,6 +4,7 @@ const { authenticate } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { conceptEntitlement, paywall } = require('../lib/entitlement');
 const protect = require('../lib/protect');
+const describe = require('../lib/describe');
 const router = express.Router();
 
 // Current assets for a concept the caller owns (in-workspace VIEW — free).
@@ -38,7 +39,8 @@ router.get('/concept/:conceptId/demo', authenticate, asyncHandler(async (req, re
     `SELECT id, title, body FROM assets WHERE concept_id=$1 AND is_current=true
      AND type IN ('html_demo','built_site') ORDER BY created_at DESC LIMIT 1`, [req.params.conceptId]);
   if (!r.rows.length) throw new ApiError(404, 'This concept has no demo yet. Ask Clay to build an HTML demo.');
-  res.json({ demo: r.rows[0] });
+  const demo = r.rows[0];
+  res.json({ demo, description: describe.outline(demo.body) });
 }));
 
 // A single asset (owner view — free).
