@@ -9,14 +9,22 @@ const router = express.Router();
 const BUILD_PATH_TYPES = ['html_demo', 'website_prompt', 'build_instructions', 'code_file', 'built_site'];
 
 // Baseline gate: a concept can only be listed if it carries a real package —
-// a business plan, a marketing strategy, and at least one build path.
+// a business plan, a marketing strategy, and at least one build path — made of
+// CURRENT, UNLOCKED assets. Assets locked by a prior sale can't be resold; the
+// seller must create new materials (enhance in Clay) before listing again.
 async function meetsBaseline(conceptId) {
-  const r = await query('SELECT type FROM assets WHERE concept_id=$1', [conceptId]);
-  const types = r.rows.map((x) => x.type);
+  const r = await query(
+    'SELECT type, exclusive_locked, is_current FROM assets WHERE concept_id=$1', [conceptId]);
+  const fresh = r.rows.filter((a) => a.is_current && !a.exclusive_locked);
+  const types = fresh.map((x) => x.type);
   const hasPlan = types.includes('business_plan');
   const hasMarketing = types.includes('marketing_strategy');
   const hasBuildPath = types.some((t) => BUILD_PATH_TYPES.includes(t));
-  return { ok: hasPlan && hasMarketing && hasBuildPath, hasPlan, hasMarketing, hasBuildPath };
+  return {
+    ok: hasPlan && hasMarketing && hasBuildPath, hasPlan, hasMarketing, hasBuildPath,
+    hasLocked: r.rows.some((a) => a.exclusive_locked),
+    anyFresh: fresh.length > 0,
+  };
 }
 
 // Create a draft listing from an owned concept.
@@ -42,6 +50,11 @@ router.post('/', authenticate, [
   }
   const base = await meetsBaseline(concept_id);
   if (!base.ok) {
+    if (base.hasLocked && !base.anyFresh) {
+      throw new ApiError(409,
+        'The materials for this concept were sold with it and are locked as exclusive, so they can\u2019t be listed again. Enhance the concept in Clay to create new materials, then list it.',
+        { need_new_assets: true });
+    }
     throw new ApiError(422, 'Concept does not meet the baseline to be listed.', {
       needs: { business_plan: base.hasPlan, marketing_strategy: base.hasMarketing, build_path: base.hasBuildPath },
     });
