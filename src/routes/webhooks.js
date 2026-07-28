@@ -37,6 +37,17 @@ async function stripeWebhook(req, res) {
           `UPDATE orders_transfers SET status='in_escrow'
            WHERE id=$1 AND status IN ('created')`, [md.order_id]);
       }
+    } else if (event.type === 'invoice.payment_failed') {
+      // A failed renewal must revoke access — mark the subscription past_due so
+      // entitlement (which requires status='active') stops covering the concept.
+      const subId = event.data.object.subscription;
+      if (subId) await query(
+        `UPDATE subscriptions SET status='past_due', updated_at=now() WHERE stripe_subscription_id=$1`, [subId]);
+    } else if (event.type === 'invoice.payment_succeeded') {
+      // A successful renewal keeps/reactivates access.
+      const subId = event.data.object.subscription;
+      if (subId) await query(
+        `UPDATE subscriptions SET status='active', updated_at=now() WHERE stripe_subscription_id=$1 AND status<>'canceled'`, [subId]);
     } else if (event.type === 'customer.subscription.deleted') {
       const subId = event.data.object.id;
       if (subId) await query(
