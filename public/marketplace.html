@@ -24,6 +24,12 @@
 <main id="main" class="wrap">
   <h1>The Dreamhold</h1>
   <p class="muted">Pre-proven concepts you can acquire outright. The platform is a neutral third party — we referee, we never play.</p>
+  <section id="leaping" aria-labelledby="leaping-h" hidden style="margin-bottom:24px;">
+    <h2 id="leaping-h">Dreams leaping for you</h2>
+    <p class="muted" id="leaping-sub">Tuned to what you told Clay. These turned toward you first.</p>
+    <div id="leaping-list"></div>
+    <p class="muted">Below, wander the whole Dreamhold by category — including dreams that aren’t leaping yet.</p>
+  </section>
   <div class="panel"><div class="filters">
     <div><label for="f-category">Category</label>
       <select id="f-category"><option value="">All categories</option>
@@ -48,6 +54,28 @@
 const listEl=document.getElementById('listings'), statusEl=document.getElementById('status');
 function money(c){return '$'+(c/100).toFixed(2);}
 function esc(t){const d=document.createElement('div');d.textContent=t==null?'':t;return d.innerHTML;}
+function renderCard(l,into,leaping){
+  const c=document.createElement('article');c.className='card';
+  const price=l.format==='auction'?('Auction from '+money(l.starting_bid_cents)):money(l.price_cents);
+  c.innerHTML=(leaping?'<p class="muted" style="margin:0 0 4px;color:#8ce0ff;">A dream leaning toward you</p>':'')+
+    '<h3>'+esc(l.title)+'</h3>'+
+    '<p class="muted">'+esc((l.category||'').replace(/_/g,' '))+' · '+esc((l.stage_label||'').replace(/_/g,' '))+' · by '+esc(l.seller_name)+'</p>'+
+    (l.risk_summary?'<p class="muted"><strong>Risk noted:</strong> '+esc(l.risk_summary)+'</p>':'')+
+    '<p class="price">'+price+'</p>';
+  const a=document.createElement('a');a.className='btn';a.href='/listing.html?id='+encodeURIComponent(l.id);
+  a.textContent=leaping?'Claim this dream':'View details'; c.appendChild(a); into.appendChild(c);
+}
+async function loadLeaping(){
+  if(!Kiln.isLoggedIn())return;
+  try{
+    const {listings}=await Kiln.api('/listings/leaping');
+    if(!listings||!listings.length)return;
+    const box=document.getElementById('leaping-list'); box.innerHTML='';
+    listings.forEach(l=>renderCard(l,box,true));
+    document.getElementById('leaping').hidden=false;
+    announce(listings.length+' dreams are leaping for you.');
+  }catch(e){/* personalization is a bonus; never blocks browsing */}
+}
 async function load(){
   const cat=document.getElementById('f-category').value, stage=document.getElementById('f-stage').value;
   const qs=new URLSearchParams(); if(cat)qs.set('category',cat); if(stage)qs.set('stage',stage);
@@ -57,19 +85,10 @@ async function load(){
     if(!listings.length){statusEl.textContent='No live listings match right now.';announce('No live listings match right now.');return;}
     statusEl.textContent=listings.length+' listing'+(listings.length>1?'s':'')+'.';
     announce(listings.length+' listings found.');
-    listings.forEach(l=>{
-      const c=document.createElement('article');c.className='card';
-      const price=l.format==='auction'?('Auction from '+money(l.starting_bid_cents)):money(l.price_cents);
-      c.innerHTML='<h3>'+esc(l.title)+'</h3>'+
-        '<p class="muted">'+esc((l.category||'').replace(/_/g,' '))+' · '+esc((l.stage_label||'').replace(/_/g,' '))+' · by '+esc(l.seller_name)+'</p>'+
-        (l.risk_summary?'<p class="muted"><strong>Risk noted:</strong> '+esc(l.risk_summary)+'</p>':'')+
-        '<p class="price">'+price+'</p>';
-      const a=document.createElement('a');a.className='btn';a.href='/listing.html?id='+encodeURIComponent(l.id);
-      a.textContent='View details'; c.appendChild(a); listEl.appendChild(c);
-    });
+    listings.forEach(l=>renderCard(l,listEl,false));
   }catch(e){statusEl.textContent='Could not load listings: '+e.message;announce('Could not load listings.',true);}
 }
 document.getElementById('apply').addEventListener('click',load);
-load();
+loadLeaping(); load();
 </script>
 </body></html>

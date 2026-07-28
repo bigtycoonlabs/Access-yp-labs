@@ -112,6 +112,27 @@ router.get('/', asyncHandler(async (req, res) => {
   res.json({ listings: r.rows });
 }));
 
+// Dreams leaping for you — live listings tuned to the user's interests and
+// budget from onboarding, so the right ones surface first without overwhelm.
+router.get('/leaping', authenticate, asyncHandler(async (req, res) => {
+  const pr = await query('SELECT interests, launch_budget FROM user_preferences WHERE user_id=$1', [req.user.id]);
+  const prefs = pr.rows[0] || { interests: [], launch_budget: '' };
+  const BUDGET_MAX = { under_150: 15000, under_500: 50000, under_1000: 100000, under_5000: 500000, under_10000: 1000000, under_50000: 5000000 };
+  const maxc = BUDGET_MAX[prefs.launch_budget] || null;
+  const interests = prefs.interests || [];
+  const r = await query(
+    `SELECT l.id, l.format, l.price_cents, l.starting_bid_cents, l.auction_close_at,
+            l.stage_label, l.completion_target, l.created_at,
+            c.title, c.category, c.risk_summary, u.name AS seller_name
+     FROM listings l JOIN concepts c ON c.id=l.concept_id JOIN users u ON u.id=l.seller_id
+     WHERE l.status='live'
+       AND ($1::text[] IS NULL OR array_length($1::text[],1) IS NULL OR c.category::text = ANY($1::text[]))
+       AND ($2::int IS NULL OR COALESCE(l.price_cents, l.starting_bid_cents, 0) <= $2)
+     ORDER BY l.created_at DESC LIMIT 8`,
+    [interests.length ? interests : null, maxc]);
+  res.json({ listings: r.rows, tuned: { interests, budget: prefs.launch_budget } });
+}));
+
 // A seller's own listings, in any status. Must precede /:id.
 router.get('/mine', authenticate, asyncHandler(async (req, res) => {
   const r = await query(
