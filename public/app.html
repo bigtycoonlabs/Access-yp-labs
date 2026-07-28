@@ -1,0 +1,61 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Your workspace — The Kiln</title><link rel="stylesheet" href="/css/kiln.css"/>
+<style>
+  .composer{position:sticky;bottom:0;background:var(--sand);padding:16px 0 8px;border-top:1px solid var(--line);}
+  .modes{display:flex;gap:10px;margin:0 0 12px;flex-wrap:wrap;}
+  .mode-btn[aria-pressed="true"]{background:var(--clay-dark);}
+  .mode-btn{background:#fff;color:var(--clay-dark);border:1.5px solid var(--clay);}
+  .log{min-height:40vh;padding:8px 0;}
+  .message{border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:14px 0;background:#fff;}
+  .message.you{background:#f5f0e8;}
+  .message .who{font-weight:700;color:var(--clay-dark);font-size:15px;margin:0 0 6px;text-transform:uppercase;letter-spacing:.04em;}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
+  .asset-body{white-space:pre-wrap;background:#faf7f2;border:1px solid var(--line);border-radius:10px;padding:16px;margin-top:10px;font-size:16px;}
+  .coverage{font-size:15px;color:var(--muted);margin-top:8px;}
+</style>
+</head><body>
+<a class="skip" href="#composer">Skip to the message box</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs · The Kiln</a>
+  <nav class="top" aria-label="Primary">
+    <a href="/marketplace.html">Marketplace</a>
+    <a href="/consultants.html">Consultants</a>
+    <a href="#" id="signout">Sign out</a>
+  </nav>
+</div></header>
+<main id="main" class="wrap">
+  <h1 id="greeting">Your workspace</h1>
+  <p class="muted" id="clay-status" role="status"></p>
+
+  <section aria-label="Conversation with Clay">
+    <div id="log" class="log" role="log" aria-live="polite" aria-relevant="additions" aria-label="Messages"></div>
+  </section>
+
+  <div class="composer" id="composer">
+    <div class="modes" role="group" aria-label="What would you like to do?">
+      <button type="button" class="btn mode-btn" id="mode-create" aria-pressed="true">Create a new concept</button>
+      <button type="button" class="btn mode-btn" id="mode-enhance" aria-pressed="false">Enhance my idea</button>
+    </div>
+    <label for="category">Category <span class="muted">(optional — Clay can decide)</span></label>
+    <select id="category">
+      <option value="">Let Clay decide</option>
+      <option value="digital_product_saas">Digital product / SaaS</option>
+      <option value="online_service_agency">Online service / agency</option>
+      <option value="content_creator">Content / creator</option>
+      <option value="ecommerce_pod">E-commerce / print-on-demand</option>
+      <option value="ai_product_service">AI product / service</option>
+      <option value="remote_hybrid_physical">Remote-operated hybrid</option>
+      <option value="micro_solo">Micro / solo</option>
+    </select>
+    <label for="prompt">Describe your idea or what you want</label>
+    <textarea id="prompt" placeholder="For example: a subscription box for left-handed tools, run entirely online."></textarea>
+    <div class="actions">
+      <button type="button" class="btn" id="send">Send to Clay</button>
+    </div>
+  </div>
+</main>
+<footer class="site"><div class="wrap"><p>The Kiln is a neutral marketplace and is not a party to any transaction between members. Concepts are pre-proven starting points, not guarantees of income.</p></div></footer>
+
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script><script src="/js/app.js"></script>
+</body></html>

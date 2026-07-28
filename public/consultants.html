@@ -1,0 +1,57 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Consultants — The Kiln</title><link rel="stylesheet" href="/css/kiln.css"/>
+<style>.card{border:1px solid var(--line);border-radius:12px;background:#fff;padding:20px;margin:0 0 14px;}</style>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs · The Kiln</a>
+  <nav class="top" aria-label="Primary"><a href="/marketplace.html">Marketplace</a><a href="/app.html">Workspace</a></nav>
+</div></header>
+<main id="main" class="wrap">
+  <h1>Work with a consultant</h1>
+  <p class="muted">Book a 90-minute session for $150 with an experienced entrepreneur. How it works: you request a session, the consultant accepts and <strong>signs an NDA before your concept is ever shared</strong>, you pay $150 to unlock the concept, then you meet. Afterward you have a 12-hour window to keep going, free.</p>
+  <div id="concept-note" class="msg ok" hidden></div>
+  <div id="status" role="status" aria-live="polite" class="muted"></div>
+  <div id="list"></div>
+  <div id="booking" role="alert" aria-live="assertive"></div>
+</main>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script>
+<script>
+const conceptId=new URLSearchParams(location.search).get('concept');
+const listEl=document.getElementById('list'), statusEl=document.getElementById('status'), booking=document.getElementById('booking');
+function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+if(conceptId){const n=document.getElementById('concept-note');n.hidden=false;n.textContent='This session will be about the concept you selected in your workspace.';}
+async function load(){
+  statusEl.textContent='Loading consultants…';
+  try{
+    const {consultants}=await Kiln.api('/consultants',{auth:false});
+    if(!consultants.length){statusEl.textContent='No consultants are available yet.';announce('No consultants are available yet.');return;}
+    statusEl.textContent=consultants.length+' consultant'+(consultants.length>1?'s':'')+' available.';
+    consultants.forEach(c=>{
+      const card=el('article','card');
+      card.appendChild(el('h3',null,c.name));
+      card.appendChild(el('p','muted',(c.rate_display||'$150 / 90-min session')+' · '+(c.successful_launches||0)+' confirmed launches'));
+      if(Kiln.isLoggedIn()){
+        const b=el('button','btn','Request a session');b.type='button';
+        b.addEventListener('click',()=>request(c.user_id,c.name,b));
+        card.appendChild(b);
+      }else{
+        const a=el('a','btn','Sign in to request');a.href='/login.html';card.appendChild(a);
+      }
+      listEl.appendChild(card);
+    });
+  }catch(e){statusEl.textContent='Could not load consultants: '+e.message;}
+}
+async function request(consultantId,name,btn){
+  btn.disabled=true;announce('Requesting a session with '+name+'…');
+  try{
+    const body={consultant_id:consultantId};if(conceptId)body.concept_id=conceptId;
+    await Kiln.api('/consultants/engagements',{method:'POST',body});
+    booking.innerHTML='';booking.appendChild(el('p','msg ok','Session requested with '+name+'. You will be able to continue once they accept and sign the NDA.'));
+    announce('Session requested with '+name+'.',true);btn.textContent='Requested';
+  }catch(e){booking.innerHTML='';booking.appendChild(el('p','msg err',e.message));announce(e.message,true);btn.disabled=false;}
+}
+load();
+</script>
+</body></html>

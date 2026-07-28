@@ -1,0 +1,68 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Listing — The Kiln</title><link rel="stylesheet" href="/css/kiln.css"/>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs · The Kiln</a>
+  <nav class="top" aria-label="Primary"><a href="/marketplace.html">Marketplace</a><a href="/app.html">Workspace</a></nav>
+</div></header>
+<main id="main" class="wrap">
+  <p><a href="/marketplace.html">← Back to marketplace</a></p>
+  <div id="status" role="status" aria-live="polite" class="muted">Loading…</div>
+  <div id="detail"></div>
+</main>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script>
+<script>
+const id=new URLSearchParams(location.search).get('id');
+const statusEl=document.getElementById('status'), detail=document.getElementById('detail');
+function money(c){return '$'+(c/100).toFixed(2);}
+function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+async function load(){
+  if(!id){statusEl.textContent='No listing specified.';return;}
+  try{
+    const {listing}=await Kiln.api('/listings/'+id,{auth:false});
+    statusEl.textContent='';
+    detail.appendChild(el('h1',null,listing.title));
+    detail.appendChild(el('p','muted',(listing.category||'').replace(/_/g,' ')+' · '+(listing.stage_label||'').replace(/_/g,' ')+' · by '+listing.seller_name));
+    if(listing.risk_summary){const r=el('div','panel');r.appendChild(el('h3',null,'Regulatory & licensing risk'));r.appendChild(el('p',null,listing.risk_summary));detail.appendChild(r);}
+    const price=listing.format==='auction'?('Auction — current from '+money(listing.starting_bid_cents)):money(listing.price_cents);
+    detail.appendChild(el('p','price',price));
+
+    if(!Kiln.isLoggedIn()){
+      const p=el('p');const a=el('a','btn','Sign in to buy or watch');a.href='/login.html';p.appendChild(a);detail.appendChild(p);return;
+    }
+    const actions=el('div','actions');actions.style.display='flex';actions.style.gap='10px';actions.style.flexWrap='wrap';
+    const watch=el('button','btn secondary','Add to watchlist');watch.type='button';
+    watch.addEventListener('click',async()=>{try{await Kiln.api('/watches/'+id,{method:'POST'});announce('Added to your watchlist.',true);watch.textContent='On your watchlist';watch.disabled=true;}catch(e){announce(e.message,true);}});
+    const buy=el('button','btn','Buy this concept');buy.type='button';
+    buy.addEventListener('click',()=>openBuy(listing));
+    actions.appendChild(buy);actions.appendChild(watch);detail.appendChild(actions);
+  }catch(e){statusEl.textContent='Could not load this listing: '+e.message;}
+}
+function openBuy(listing){
+  const f=el('div','panel');f.appendChild(el('h2',null,'Complete your purchase'));
+  f.appendChild(el('p','muted','This is a neutral, escrowed transfer. All sales are final — there are no refunds.'));
+  const mk=(txt)=>{const w=el('label');w.style.fontWeight='400';const c=el('input');c.type='checkbox';c.style.width='auto';c.style.minHeight='auto';c.style.marginRight='10px';w.appendChild(c);w.appendChild(document.createTextNode(' '+txt));f.appendChild(w);return c;}
+  const a1=mk('I accept the transfer agreement.');
+  const a2=mk('I acknowledge the risk in this concept.');
+  const a3=mk('I understand this purchase is final and non-refundable.');
+  const out=el('div');out.setAttribute('role','alert');out.setAttribute('aria-live','assertive');
+  const go=el('button','btn','Confirm purchase');go.type='button';
+  go.addEventListener('click',async()=>{
+    out.textContent='';
+    if(!a1.checked||!a2.checked||!a3.checked){const m='Please confirm all three acknowledgments.';out.appendChild(el('p','msg err',m));announce(m,true);return;}
+    go.disabled=true;announce('Creating your order…');
+    try{
+      const {order,checkout}=await Kiln.api('/orders',{method:'POST',body:{listing_id:id,agreement_accepted:true,risk_ack:true,no_refund_ack:true}});
+      if(checkout&&checkout.url){announce('Redirecting to secure checkout.');location.href=checkout.url;return;}
+      out.appendChild(el('p','msg ok','Order created. Payment checkout will open once the seller has completed payout onboarding. Your order id is '+order.id+'.'));
+      announce('Order created. Awaiting seller payout onboarding.',true);
+    }catch(e){out.appendChild(el('p','msg err',e.message));announce(e.message,true);go.disabled=false;}
+  });
+  f.appendChild(go);f.appendChild(out);detail.appendChild(f);
+  focusEl(f.querySelector('h2'),'Purchase form opened.');
+}
+load();
+</script>
+</body></html>

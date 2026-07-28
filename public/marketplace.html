@@ -1,0 +1,64 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>The Kiln — Marketplace</title><link rel="stylesheet" href="/css/kiln.css"/>
+<style>.card{border:1px solid var(--line);border-radius:12px;background:#fff;padding:20px;margin:0 0 14px;}
+.card h3{margin:0 0 4px;} .price{font-weight:700;color:var(--clay-dark);font-size:19px;}
+.filters{display:flex;gap:12px;flex-wrap:wrap;align-items:end;} .filters>div{flex:1;min-width:180px;}</style>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs · The Kiln</a>
+  <nav class="top" aria-label="Primary"><a href="/app.html">Workspace</a><a href="/consultants.html">Consultants</a></nav>
+</div></header>
+<main id="main" class="wrap">
+  <h1>The Kiln marketplace</h1>
+  <p class="muted">Pre-proven concepts you can acquire outright. The platform is a neutral third party — we referee, we never play.</p>
+  <div class="panel"><div class="filters">
+    <div><label for="f-category">Category</label>
+      <select id="f-category"><option value="">All categories</option>
+        <option value="digital_product_saas">Digital product / SaaS</option>
+        <option value="online_service_agency">Online service / agency</option>
+        <option value="content_creator">Content / creator</option>
+        <option value="ecommerce_pod">E-commerce / print-on-demand</option>
+        <option value="ai_product_service">AI product / service</option>
+        <option value="remote_hybrid_physical">Remote-operated hybrid</option>
+        <option value="micro_solo">Micro / solo</option></select></div>
+    <div><label for="f-stage">Stage</label>
+      <select id="f-stage"><option value="">Any stage</option>
+        <option value="concept">Concept</option><option value="in_build">In build</option>
+        <option value="prepared_to_start">Prepared to start</option></select></div>
+    <div><button type="button" class="btn" id="apply">Apply filters</button></div>
+  </div></div>
+  <div id="status" role="status" aria-live="polite" class="muted"></div>
+  <div id="listings"></div>
+</main>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script>
+<script>
+const listEl=document.getElementById('listings'), statusEl=document.getElementById('status');
+function money(c){return '$'+(c/100).toFixed(2);}
+function esc(t){const d=document.createElement('div');d.textContent=t==null?'':t;return d.innerHTML;}
+async function load(){
+  const cat=document.getElementById('f-category').value, stage=document.getElementById('f-stage').value;
+  const qs=new URLSearchParams(); if(cat)qs.set('category',cat); if(stage)qs.set('stage',stage);
+  statusEl.textContent='Loading listings…'; listEl.innerHTML='';
+  try{
+    const {listings}=await Kiln.api('/listings'+(qs.toString()?'?'+qs:''),{auth:false});
+    if(!listings.length){statusEl.textContent='No live listings match right now.';announce('No live listings match right now.');return;}
+    statusEl.textContent=listings.length+' listing'+(listings.length>1?'s':'')+'.';
+    announce(listings.length+' listings found.');
+    listings.forEach(l=>{
+      const c=document.createElement('article');c.className='card';
+      const price=l.format==='auction'?('Auction from '+money(l.starting_bid_cents)):money(l.price_cents);
+      c.innerHTML='<h3>'+esc(l.title)+'</h3>'+
+        '<p class="muted">'+esc((l.category||'').replace(/_/g,' '))+' · '+esc((l.stage_label||'').replace(/_/g,' '))+' · by '+esc(l.seller_name)+'</p>'+
+        (l.risk_summary?'<p class="muted"><strong>Risk noted:</strong> '+esc(l.risk_summary)+'</p>':'')+
+        '<p class="price">'+price+'</p>';
+      const a=document.createElement('a');a.className='btn';a.href='/listing.html?id='+encodeURIComponent(l.id);
+      a.textContent='View details'; c.appendChild(a); listEl.appendChild(c);
+    });
+  }catch(e){statusEl.textContent='Could not load listings: '+e.message;announce('Could not load listings.',true);}
+}
+document.getElementById('apply').addEventListener('click',load);
+load();
+</script>
+</body></html>

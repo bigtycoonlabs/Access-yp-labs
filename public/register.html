@@ -1,0 +1,47 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Create account — The Kiln</title><link rel="stylesheet" href="/css/kiln.css"/>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs · The Kiln</a>
+  <nav class="top" aria-label="Primary"><a href="/login.html">Sign in</a></nav>
+</div></header>
+<main id="main" class="wrap">
+  <h1>Create your account</h1>
+  <p class="muted">Shape a concept with Clay, then sell it or launch it. $2.99 per idea, or $49.99 a month for unlimited.</p>
+  <div id="feedback" role="alert" aria-live="assertive"></div>
+  <div class="panel">
+    <div class="stack">
+      <div><label for="name">Your name</label>
+        <input id="name" type="text" autocomplete="name" required/></div>
+      <div><label for="email">Email address</label>
+        <input id="email" type="email" autocomplete="email" required/></div>
+      <div><label for="password">Password <span class="muted">(at least 8 characters)</span></label>
+        <input id="password" type="password" autocomplete="new-password" minlength="8" required
+          aria-describedby="pw-hint"/>
+        <p id="pw-hint" class="muted">Use at least 8 characters.</p></div>
+      <button class="btn" id="submit" type="button">Create account</button>
+    </div>
+  </div>
+  <p class="muted">Already have an account? <a href="/login.html">Sign in</a>.</p>
+</main>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script>
+<script>
+const fb = document.getElementById('feedback');
+function show(msg, kind){ fb.innerHTML = '<div class="msg '+(kind||'err')+'">'+msg+'</div>'; announce(msg, true); }
+async function submit(){
+  const name = document.getElementById('name').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  if(!name || !email || password.length < 8){ return show('Please enter your name, email, and a password of at least 8 characters.'); }
+  const btn = document.getElementById('submit'); btn.disabled = true; announce('Creating your account…');
+  try{
+    const data = await Kiln.api('/auth/register', { method:'POST', auth:false, body:{ name, email, password } });
+    Kiln.setTokens({ accessToken:data.accessToken, refreshToken:data.refreshToken });
+    announce('Account created. Opening your workspace.'); location.href = '/app.html';
+  }catch(e){ show(e.message); btn.disabled = false; }
+}
+document.getElementById('submit').addEventListener('click', submit);
+</script>
+</body></html>

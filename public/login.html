@@ -1,0 +1,42 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sign in — The Kiln</title><link rel="stylesheet" href="/css/kiln.css"/>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs · The Kiln</a>
+  <nav class="top" aria-label="Primary"><a href="/register.html">Create account</a></nav>
+</div></header>
+<main id="main" class="wrap">
+  <h1>Sign in</h1>
+  <div id="feedback" role="alert" aria-live="assertive"></div>
+  <div class="panel">
+    <div class="stack">
+      <div><label for="email">Email address</label>
+        <input id="email" type="email" autocomplete="email" required/></div>
+      <div><label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required/></div>
+      <button class="btn" id="submit" type="button">Sign in</button>
+    </div>
+  </div>
+  <p class="muted">New here? <a href="/register.html">Create an account</a>.</p>
+</main>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script>
+<script>
+const fb = document.getElementById('feedback');
+function show(msg, kind){ fb.innerHTML = '<div class="msg '+(kind||'err')+'">'+msg+'</div>'; announce(msg, true); }
+async function submit(){
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  if(!email || !password){ return show('Please enter your email and password.'); }
+  const btn = document.getElementById('submit'); btn.disabled = true; announce('Signing in…');
+  try{
+    const data = await Kiln.api('/auth/login', { method:'POST', auth:false, body:{ email, password } });
+    Kiln.setTokens({ accessToken:data.accessToken, refreshToken:data.refreshToken });
+    announce('Signed in. Opening your workspace.'); location.href = '/app.html';
+  }catch(e){ show(e.message); btn.disabled = false; }
+}
+document.getElementById('submit').addEventListener('click', submit);
+document.getElementById('password').addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
+</script>
+</body></html>
