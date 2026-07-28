@@ -39,11 +39,22 @@ async function persistResult(ownerId, result, { conceptId = null, mode, category
         const sc = protect.scanCode(a.body);
         scanStatus = sc.status; scanDetail = sc.detail;
       }
+      // Versioning: a new asset of an existing type supersedes the prior current
+      // one (kept as history: is_current=false) and increments the version.
+      const prev = await client.query(
+        'SELECT COALESCE(MAX(version),0) AS maxv FROM assets WHERE concept_id=$1 AND type=$2',
+        [concept.id, a.type]);
+      const nextVersion = prev.rows[0].maxv + 1;
+      if (nextVersion > 1) {
+        await client.query(
+          'UPDATE assets SET is_current=false WHERE concept_id=$1 AND type=$2 AND is_current=true',
+          [concept.id, a.type]);
+      }
       await client.query(
-        `INSERT INTO assets (concept_id, type, title, body, is_baseline, scan_status, scan_detail)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        `INSERT INTO assets (concept_id, type, title, body, is_baseline, scan_status, scan_detail, version, is_current)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,true)`,
         [concept.id, a.type, a.label, a.body,
-         ['business_plan', 'marketing_strategy'].includes(a.type), scanStatus, scanDetail]);
+         ['business_plan', 'marketing_strategy'].includes(a.type), scanStatus, scanDetail, nextVersion]);
     }
     await client.query(
       `INSERT INTO generations (concept_id, prompt, result_status) VALUES ($1,$2,$3)`,

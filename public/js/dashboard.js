@@ -95,6 +95,21 @@
           meta += ' · ' + (days > 0 ? ('access ' + days + ' more day' + (days === 1 ? '' : 's') + ' unless subscribed') : 'access expired — subscribe to keep');
         }
         const r = row(x.title, meta, x.stage);
+        const hist = el('div', 'stack'); hist.style.marginTop = '8px';
+        r.actions.appendChild(actionBtn('Version history', async () => {
+          hist.innerHTML = '';
+          try {
+            const { history } = await Kiln.api('/assets/concept/' + x.id + '/history');
+            if (!history.length) { hist.appendChild(el('p', 'muted', 'No versions yet.')); return; }
+            history.forEach((h) => {
+              const line = (h.title || nice(h.type)) + ' — v' + h.version +
+                (h.is_current ? ' (current)' : ' (history)') + ' · ' + new Date(h.created_at).toLocaleDateString();
+              hist.appendChild(el('p', h.is_current ? null : 'muted', line));
+            });
+            announce(history.length + ' version records loaded.', true);
+          } catch (e) { hist.appendChild(el('p', 'msg err', e.message)); }
+        }, true));
+        r.appendChild(hist);
         c.appendChild(r);
       });
     } catch (e) { fail(c, e); }
