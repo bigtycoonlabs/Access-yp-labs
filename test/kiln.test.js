@@ -55,3 +55,37 @@ test('coverage reports gaps truthfully', () => {
   assert.deepStrictEqual(cov.present, ['business_plan']);
   assert.deepStrictEqual(cov.missing, ['marketing_strategy']);
 });
+
+// ---- Clay spine (modeled on Arbo) ----
+const spine = require('../src/services/clay/spine');
+const { SOCIAL_ASSET_PLAN, PLATFORMS, SOCIAL_GOALS } = require('../src/services/clay/tools');
+
+test('spine enum guardrails reject out-of-vocabulary values', () => {
+  const bad = spine.validateParams('generate_social_content', { concept_id: 'x', platforms: ['myspace'], goal: 'launch' });
+  assert.strictEqual(bad.ok, false);
+  const good = spine.validateParams('generate_social_content', { concept_id: 'x', platforms: ['instagram'], goal: 'launch' });
+  assert.strictEqual(good.ok, true);
+});
+
+test('spine asking rule: free/reversible actions proceed', () => {
+  const r = spine.shouldAsk('generate_social_content', { concept_id: 'x', platforms: ['x'], goal: 'awareness' });
+  assert.strictEqual(r.ask, false);
+});
+
+test('spine asking rule: irreversible + under-specified always asks', () => {
+  const r = spine.shouldAsk('list_on_marketplace', { concept_id: 'x' }); // missing format + price
+  assert.strictEqual(r.ask, true);
+});
+
+test('spine asking rule: irreversible actions confirm even when fully specified', () => {
+  const r = spine.shouldAsk('purchase_concept', { listing_id: 'x' });
+  assert.strictEqual(r.ask, true);
+  assert.strictEqual(spine.requiresConfirmation('purchase_concept'), true);
+  assert.strictEqual(spine.requiresConfirmation('generate_concept'), false);
+});
+
+test('social asset plan matches controlled vocabulary', () => {
+  const types = SOCIAL_ASSET_PLAN.map((a) => a.type).sort();
+  assert.deepStrictEqual(types, ['content_calendar', 'image_prompt', 'social_post', 'social_template', 'video_script']);
+  assert.ok(PLATFORMS.includes('instagram') && SOCIAL_GOALS.includes('launch'));
+});

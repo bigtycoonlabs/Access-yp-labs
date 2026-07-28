@@ -41,3 +41,9 @@ textarea{min-height:120px;resize:vertical;}
 .muted{color:var(--muted);}
 .stack>*+*{margin-top:14px;}
 footer.site{border-top:1px solid var(--line);color:var(--muted);font-size:15px;padding:24px 0 48px;margin-top:32px;}
+
+/* Checkbox rows + fieldsets (social form, sell flow, acknowledgements) */
+.check{font-weight:400;display:flex;align-items:center;gap:10px;margin:8px 0;}
+.check input{width:auto;min-height:auto;}
+fieldset{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:0 0 10px;}
+legend{font-weight:700;padding:0 6px;}

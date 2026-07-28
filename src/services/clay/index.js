@@ -1,7 +1,7 @@
 // Clay — the conversational idea printer and post-purchase collaborator.
 // Two modes (create / enhance). Produces the full concept package, records
 // every run in generations with an honest result_status, and never fabricates.
-const { CATEGORIES, ASSET_PLAN, MODES, REDIRECTS } = require('./tools');
+const { CATEGORIES, ASSET_PLAN, MODES, REDIRECTS, SOCIAL_ASSET_PLAN } = require('./tools');
 const { classifySection, assessCoverage } = require('./interpreter');
 
 const MODEL = process.env.CLAY_MODEL || 'claude-sonnet-4-5';
@@ -130,4 +130,74 @@ async function generate({ mode, category, prompt }) {
   };
 }
 
-module.exports = { generate, MODEL };
+// ---- Social content generation (native, text-based) ----
+// Clay writes post copy, image-generation PROMPTS (not rendered photos),
+// short-form video SCRIPTS/storyboards (not rendered video), reusable
+// templates, and a posting calendar. Same honesty engine as the concept path.
+function socialSystemPrompt(platforms, goal, count) {
+  return `You are Clay, generating SOCIAL MEDIA CONTENT for a concept on Access YP Labs.
+
+Honesty rules (inherited from Arbo):
+- Never invent engagement numbers, follower counts, testimonials, or results. Any example figure must be labelled clearly as illustrative.
+- "image_prompt" content is PROMPTS to generate a photo/image, not real photographs. "video_script" content is scripts plus a simple shot list / storyboard, not rendered video. State this plainly.
+- Keep every claim truthful to what the concept actually is. Surface no guarantee of income or reach.
+
+Task: produce ready-to-use social content for goal="${goal}" across these platforms: ${platforms.join(', ')}. Provide about ${count} posts total, apportioned sensibly across the platforms, each labelled with its platform and written to that platform's norms (length, tone, hashtags where they fit).
+
+Respond with a SINGLE valid JSON object and nothing else (no markdown fences):
+{
+  "sections": {
+    "social_post": string,        // the posts, each labelled by platform, caption + hashtags
+    "image_prompt": string,       // prompts to generate photos/images (labelled as prompts)
+    "video_script": string,       // short-form video scripts with a simple shot list / storyboard
+    "social_template": string,    // 2-3 reusable post templates with {placeholders}
+    "content_calendar": string    // a simple 2-4 week posting schedule in plain text
+  }
+}`;
+}
+
+async function generateSocial({ concept, platforms, goal, count }) {
+  const anthropic = client();
+  if (!anthropic) {
+    return { result_status: 'unavailable',
+      message: 'Clay could not run right now (generation service is not configured). Nothing was fabricated.' };
+  }
+  const ctx = [
+    `Concept title: ${concept.title || '(untitled)'}`,
+    concept.category ? `Category: ${concept.category}` : null,
+    concept.risk_summary ? `Known risk to respect and not overstate: ${concept.risk_summary}` : null,
+  ].filter(Boolean).join('\n');
+
+  let raw;
+  try {
+    const resp = await anthropic.messages.create({
+      model: MODEL, max_tokens: 6000,
+      system: socialSystemPrompt(platforms, goal, count),
+      messages: [{ role: 'user', content: ctx }],
+    });
+    raw = (resp.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+  } catch (err) {
+    return { result_status: 'unavailable',
+      message: `Clay could not reach the generation service: ${err.message}. Nothing was fabricated.` };
+  }
+
+  const parsed = parseModelJson(raw);
+  if (!parsed) {
+    return { result_status: 'empty', message: 'Clay ran but did not return usable social content. Nothing was saved.' };
+  }
+  const sections = parsed.sections || {};
+  const coverage = assessCoverage(sections);
+  const assets = SOCIAL_ASSET_PLAN
+    .map((a) => ({ type: a.type, label: a.label, body: sections[a.type] || '', status: classifySection(sections[a.type]) }))
+    .filter((a) => a.status === 'answered');
+
+  return {
+    result_status: assets.length ? 'answered' : 'empty',
+    assets, coverage,
+    message: assets.length
+      ? `Clay generated social content. ${coverage.gap_description}`
+      : 'Clay ran but produced no usable social content. Nothing was saved.',
+  };
+}
+
+module.exports = { generate, generateSocial, MODEL };

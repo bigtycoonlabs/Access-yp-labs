@@ -20,6 +20,22 @@ const ASSET_PLAN = [
 
 const MODES = ['create', 'enhance'];
 
+// ---- Social content (posts, photos, videos, templates) controlled vocab ----
+const PLATFORMS = ['instagram', 'facebook', 'x', 'linkedin', 'tiktok', 'youtube_shorts', 'pinterest'];
+const SOCIAL_GOALS = ['awareness', 'launch', 'engagement', 'promotion', 'education'];
+const MARKETPLACE_FORMATS = ['flat', 'auction'];
+
+// Social assets Clay can generate NATIVELY (all text): post copy, image-
+// generation prompts (not rendered photos), short-form video scripts/storyboards
+// (not rendered video), reusable templates, and a posting calendar.
+const SOCIAL_ASSET_PLAN = [
+  { type: 'social_post',      label: 'Social posts' },
+  { type: 'image_prompt',     label: 'Photo / image prompts' },
+  { type: 'video_script',     label: 'Short-form video scripts' },
+  { type: 'social_template',  label: 'Reusable post templates' },
+  { type: 'content_calendar', label: 'Posting calendar' },
+];
+
 // Reasons Clay may redirect instead of generating (honest guardrails).
 const REDIRECTS = {
   NEEDS_CATEGORY: 'needs_category',        // ask which lane before generating
@@ -28,4 +44,7 @@ const REDIRECTS = {
   OUT_OF_CATEGORY: 'out_of_category',      // not a virtual/remote/micro business
 };
 
-module.exports = { CATEGORIES, ASSET_PLAN, MODES, REDIRECTS };
+module.exports = {
+  CATEGORIES, ASSET_PLAN, MODES, REDIRECTS,
+  PLATFORMS, SOCIAL_GOALS, MARKETPLACE_FORMATS, SOCIAL_ASSET_PLAN,
+};

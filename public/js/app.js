@@ -99,6 +99,9 @@
       const listBtn = el('button', 'btn', 'List this on The Kiln'); listBtn.type = 'button';
       listBtn.addEventListener('click', () => openListingForm(container, data.concept.id));
       actions.appendChild(listBtn);
+      const socialBtn = el('button', 'btn secondary', 'Generate social content'); socialBtn.type = 'button';
+      socialBtn.addEventListener('click', () => openSocialForm(container, data.concept.id));
+      actions.appendChild(socialBtn);
       const consultBtn = el('a', 'btn secondary', 'Book a consultant about this');
       consultBtn.href = '/consultants.html?concept=' + encodeURIComponent(data.concept.id);
       actions.appendChild(consultBtn);
@@ -176,6 +179,56 @@
   }
 
   // ---- inline listing form (baseline gate + acknowledgments) ----
+  // ---- social content generation (posts, photos-as-prompts, video scripts) ----
+  var SOCIAL_PLATFORMS = ['instagram', 'facebook', 'x', 'linkedin', 'tiktok', 'youtube_shorts', 'pinterest'];
+  var SOCIAL_GOALS = ['awareness', 'launch', 'engagement', 'promotion', 'education'];
+  function openSocialForm(container, conceptId) {
+    const f = el('div', 'panel');
+    f.appendChild(el('h3', null, 'Generate social content'));
+    f.appendChild(el('p', 'muted', 'Clay writes posts, photo/image prompts, short-form video scripts, reusable templates, and a posting calendar. Building is free; downloading or exporting follows the same plan rules as your other materials.'));
+    const pfs = el('fieldset'); pfs.appendChild(el('legend', null, 'Platforms'));
+    SOCIAL_PLATFORMS.forEach((p) => {
+      const lab = el('label', 'check'); const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.value = p; cb.className = 'social-pf';
+      lab.appendChild(cb); lab.appendChild(document.createTextNode(' ' + p.replace(/_/g, ' ')));
+      pfs.appendChild(lab);
+    });
+    f.appendChild(pfs);
+    const gl = el('label'); gl.textContent = 'Goal'; gl.setAttribute('for', 'social-goal'); f.appendChild(gl);
+    const goal = document.createElement('select'); goal.id = 'social-goal';
+    SOCIAL_GOALS.forEach((g) => { const o = document.createElement('option'); o.value = g; o.textContent = g; goal.appendChild(o); });
+    f.appendChild(goal);
+    const cl = el('label'); cl.textContent = 'About how many posts?'; cl.setAttribute('for', 'social-count'); f.appendChild(cl);
+    const count = document.createElement('input'); count.id = 'social-count'; count.type = 'number'; count.min = '1'; count.max = '30'; count.value = '6'; f.appendChild(count);
+    const go = el('button', 'btn', 'Generate'); go.type = 'button';
+    const out = el('div'); out.setAttribute('role', 'region'); out.setAttribute('aria-live', 'polite');
+    go.addEventListener('click', async () => {
+      const platforms = Array.prototype.slice.call(f.querySelectorAll('.social-pf:checked')).map((c) => c.value);
+      if (!platforms.length) { announce('Choose at least one platform.', true); return; }
+      go.disabled = true; announce('Clay is generating social content…'); out.innerHTML = '';
+      try {
+        const data = await Kiln.api('/clay/social', { method: 'POST',
+          body: { concept_id: conceptId, platforms, goal: goal.value, count: parseInt(count.value, 10) || 6 } });
+        if (data.status !== 'answered') {
+          out.appendChild(el('p', 'msg err', data.message || 'Clay could not generate social content.'));
+          announce(data.message || 'Clay could not generate social content.', true); go.disabled = false; return;
+        }
+        out.appendChild(el('p', null, data.message));
+        if (data.coverage && !data.coverage.complete) out.appendChild(el('p', 'coverage', data.coverage.gap_description));
+        const acts = el('div', 'actions');
+        (data.assets || []).forEach((a) => {
+          const b = el('button', 'btn secondary', 'View: ' + (a.title || a.type)); b.type = 'button';
+          b.addEventListener('click', () => viewAsset(out, a.id, a.title || a.type));
+          acts.appendChild(b);
+        });
+        out.appendChild(acts);
+        announce('Clay generated ' + (data.assets || []).length + ' social content sections.');
+      } catch (e) { out.appendChild(el('p', 'msg err', e.message)); announce(e.message, true); go.disabled = false; }
+    });
+    f.appendChild(go); f.appendChild(out); container.appendChild(f);
+    focusEl(f.querySelector('h3'), 'Social content options opened.');
+  }
+
   function openListingForm(container, conceptId) {
     const form = el('div', 'panel');
     form.appendChild(el('h3', null, 'List this concept on The Kiln'));

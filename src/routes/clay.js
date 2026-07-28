@@ -3,7 +3,8 @@ const { body, validationResult } = require('express-validator');
 const { query, getClient } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
-const { MODES, CATEGORIES } = require('../services/clay/tools');
+const { MODES, CATEGORIES, PLATFORMS, SOCIAL_GOALS } = require('../services/clay/tools');
+const spine = require('../services/clay/spine');
 const clay = require('../services/clay');
 const { sendEmail } = require('../services/email');
 const protect = require('../lib/protect');
@@ -118,6 +119,51 @@ router.post('/generate', authenticate, [
     coverage: result.coverage,
     emailed: emailed.sent,
     message: result.message + (emailed.sent ? ' A copy was emailed to you.' : ''),
+  });
+}));
+
+// POST /api/clay/social  { concept_id, platforms[], goal, count? }
+// Generates social content (posts, image prompts, video scripts, templates,
+// calendar) for a concept you own. Building is free; export/download stays
+// gated like any other asset.
+router.post('/social', authenticate, [
+  body('concept_id').isUUID(),
+  body('platforms').isArray({ min: 1 }),
+  body('platforms.*').isIn(PLATFORMS),
+  body('goal').isIn(SOCIAL_GOALS),
+  body('count').optional().isInt({ min: 1, max: 30 }),
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  const { concept_id, platforms, goal } = req.body;
+  const count = req.body.count || 6;
+
+  // Spine guardrail check (enum membership + required params) before acting.
+  const check = spine.validateParams('generate_social_content', { concept_id, platforms, goal });
+  if (!check.ok) throw new ApiError(400, check.errors.join(' '));
+
+  const c = await query('SELECT id, title, category, risk_summary FROM concepts WHERE id=$1 AND owner_id=$2',
+    [concept_id, req.user.id]);
+  if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
+  const concept = c.rows[0];
+
+  const result = await clay.generateSocial({ concept, platforms, goal, count });
+
+  if (result.result_status !== 'answered') {
+    await query('INSERT INTO generations (concept_id, prompt, result_status) VALUES ($1,$2,$3)',
+      [concept_id, 'social:' + goal, result.result_status]).catch(() => {});
+    return res.status(200).json({ status: result.result_status, message: result.message });
+  }
+
+  await persistResult(req.user.id, result,
+    { conceptId: concept_id, mode: 'enhance', category: null, prompt: 'social:' + goal + ':' + platforms.join(',') });
+  const assets = await query(
+    `SELECT id, type, title FROM assets WHERE concept_id=$1 AND is_current=true
+     AND type IN ('social_post','image_prompt','video_script','social_template','content_calendar')
+     ORDER BY created_at`, [concept_id]);
+  res.status(201).json({
+    status: 'answered', concept_id, assets: assets.rows, coverage: result.coverage,
+    message: result.message,
   });
 }));
 
