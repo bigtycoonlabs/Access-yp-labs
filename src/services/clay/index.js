@@ -181,6 +181,13 @@ async function generate({ mode, category, prompt, operating = false }) {
   if (assets.length && grounding.sources.length) {
     source_check = await selfCheckSources(sections, grounding.sources);
   }
+  // Proof signals persisted on the concept so the marketplace can show them.
+  const research_grounded = grounding.sources.length > 0;
+  const source_count = grounding.sources.length;
+  let claims_verified = null; // null = self-check didn't run; true = clean; false = flagged
+  if (source_check != null) {
+    claims_verified = /all concrete claims are supported/i.test(String(source_check).trim());
+  }
 
   return {
     result_status: assets.length ? 'answered' : 'empty',
@@ -190,6 +197,9 @@ async function generate({ mode, category, prompt, operating = false }) {
     assets,
     coverage,
     source_check,
+    research_grounded,
+    source_count,
+    claims_verified,
     dreamhold_suggestion: (operating && parsed.dreamhold_suggestion && parsed.dreamhold_suggestion.reason)
       ? { reason: String(parsed.dreamhold_suggestion.reason).slice(0, 400),
           category: CATEGORIES.includes(parsed.dreamhold_suggestion.category) ? parsed.dreamhold_suggestion.category : null }

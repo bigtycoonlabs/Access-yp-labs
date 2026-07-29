@@ -31,12 +31,23 @@ async function persistResult(ownerId, result, { conceptId = null, mode, category
         await client.query('UPDATE concepts SET risk_summary=$2, updated_at=NOW() WHERE id=$1',
           [concept.id, result.risk_summary]);
       }
+      // Proof is a high-water mark: refresh it only when THIS run was grounded,
+      // so an ungrounded follow-up edit never erases earned substantiation.
+      if (result.research_grounded) {
+        await client.query(
+          'UPDATE concepts SET research_grounded=true, claims_verified=$2, source_count=$3, updated_at=NOW() WHERE id=$1',
+          [concept.id, (typeof result.claims_verified === 'boolean' ? result.claims_verified : null), result.source_count || 0]);
+      }
     } else {
       const c = await client.query(
-        `INSERT INTO concepts (owner_id, title, mode, category, risk_summary, is_operating)
-         VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+        `INSERT INTO concepts (owner_id, title, mode, category, risk_summary, is_operating,
+           research_grounded, claims_verified, source_count)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
         [ownerId, result.title || 'Untitled concept', mode,
-         result.inferred_category || category || null, result.risk_summary || null, !!operating]);
+         result.inferred_category || category || null, result.risk_summary || null, !!operating,
+         !!result.research_grounded,
+         (typeof result.claims_verified === 'boolean' ? result.claims_verified : null),
+         result.source_count || 0]);
       concept = c.rows[0];
     }
     for (const a of (result.assets || [])) {
