@@ -19,13 +19,19 @@
   <div id="gate" role="status" aria-live="polite" class="muted">Checking access…</div>
   <div id="console" hidden>
     <p id="headline" role="status" aria-live="polite"></p>
+    <section aria-labelledby="tools-h"><h2 id="tools-h">Staff tools</h2>
+      <p><a class="btn" href="/admin-clay.html">Clay health &amp; connection test</a></p>
+      <p><a class="btn secondary" href="/moderation.html">Review queue</a>
+         <a class="btn secondary" href="/admin-tools.html" style="margin-left:8px">Moderation tools</a>
+         <a class="btn secondary" href="/admin-consultants.html" style="margin-left:8px">Consultant applications</a></p>
+    </section>
     <section aria-labelledby="p-h"><h2 id="p-h">People &amp; ideas</h2><div class="grid" id="people"></div></section>
     <section aria-labelledby="m-h"><h2 id="m-h">Money</h2><div class="grid" id="money"></div></section>
     <section aria-labelledby="c-h"><h2 id="c-h">Clay</h2><div class="grid" id="clay"></div>
       <p><a class="btn secondary" href="/admin-clay.html">Open the Clay health screen</a></p></section>
   </div>
 </main>
-<script src="/js/a11y.js"></script><script src="/js/api.js"></script>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script><script src="/js/nav.js"></script>
 <script>
 const gate=document.getElementById('gate');
 function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
