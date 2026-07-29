@@ -72,6 +72,11 @@ router.post('/register', [
     const msg = welcomeEmail(user.name);
     const sent = await sendEmail({ to: user.email, subject: msg.subject, html: msg.html, text: msg.text });
     if (!sent || !sent.sent) console.error('welcome email not sent:', sent && sent.reason);
+    await query(
+      `INSERT INTO email_log (to_email, kind, sent, reason, provider_id)
+       VALUES ($1,'welcome',$2,$3,$4)`,
+      [user.email, !!(sent && sent.sent), (sent && sent.reason) || null, (sent && sent.id) || null]
+    ).catch((e) => console.error('email_log insert failed:', e.message));
   } catch (e) { console.error('welcome email error:', e.message); }
 
   res.status(201).json({ user, ...issueTokens(user) });

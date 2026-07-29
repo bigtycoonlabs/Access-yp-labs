@@ -3,7 +3,7 @@
 // (never records a send that did not happen).
 async function sendEmail({ to, subject, html, text }) {
   const key = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM || 'Clay at YP Labs <clay@accessyplabs.com>';
+  const from = process.env.EMAIL_FROM || 'Clay at Access YP Labs <clay@accessyplabs.com>';
   if (!key) return { sent: false, reason: 'email_not_configured' };
   try {
     const resp = await fetch('https://api.resend.com/emails', {

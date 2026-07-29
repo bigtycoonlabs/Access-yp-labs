@@ -59,6 +59,7 @@ app.get('/api/health', (req, res) => res.json({
     configured: !!(process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY),
     provider: process.env.OPENAI_API_KEY ? 'openai' : (process.env.ANTHROPIC_API_KEY ? 'anthropic' : null),
   },
+  email_configured: !!process.env.RESEND_API_KEY,
   image_rendering: !!(process.env.IMAGE_API_KEY && process.env.IMAGE_API_URL),
   video_rendering: !!(process.env.VIDEO_API_KEY && process.env.VIDEO_API_URL),
 }));
