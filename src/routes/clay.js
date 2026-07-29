@@ -9,6 +9,7 @@ const clay = require('../services/clay');
 const provider = require('../services/clay/provider');
 const journal = require('../services/clay/journal');
 const retrieval = require('../services/clay/retrieval');
+const health = require('../services/clay/health');
 const { conceptEntitlement } = require('../lib/entitlement');
 const agent = require('../services/clay/agent');
 const research = require('../services/clay/research');
@@ -122,6 +123,7 @@ router.post('/generate', authenticate, [
       conceptId: concept_id || null, resultStatus: result.result_status, providerAvailable,
       grounded: !!result.research_grounded, sourceCount: result.source_count || 0,
       reason: result.message || result.redirect || null, durationMs });
+    health.checkAndAlert().catch(() => {});
     return res.status(200).json({
       status: result.result_status,
       redirect: result.redirect || null,
@@ -137,6 +139,7 @@ router.post('/generate', authenticate, [
       conceptId: concept_id || null, resultStatus: 'empty', providerAvailable,
       grounded: !!result.research_grounded, sourceCount: result.source_count || 0,
       reason: 'answered_with_no_assets', durationMs });
+    health.checkAndAlert().catch(() => {});
     return res.status(200).json({
       status: 'empty',
       message: result.message || 'Clay came back without a complete package, so nothing was saved and nothing was made up. Give it another go.',
@@ -491,6 +494,14 @@ router.get('/journal', authenticate, authorize('staff', 'admin', 'master_staff')
            source_count, reason, duration_ms, created_at
     FROM clay_runs ORDER BY created_at DESC LIMIT 50`);
   res.json({ summary: summary.rows[0], recent: recent.rows });
+}));
+
+// POST /api/clay/health-check — staff-triggered health evaluation. Returns the last
+// hour's stats and whether an alert was (or would be) sent. Same honest logic that
+// runs automatically after a failed generation; this just lets staff force it.
+router.post('/health-check', authenticate, authorize('staff', 'admin', 'master_staff'), asyncHandler(async (req, res) => {
+  const result = await health.checkAndAlert();
+  res.json(result);
 }));
 
 module.exports = router;

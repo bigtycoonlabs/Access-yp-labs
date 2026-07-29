@@ -262,3 +262,11 @@ test('embeddings: unavailable without a key, and vector literal formats', async 
   assert.strictEqual(emb.toVectorLiteral([0.1, 0.2, 0.3]), '[0.1,0.2,0.3]');
   if (had) process.env.OPENAI_API_KEY = had;
 });
+
+test('clay health assess uses honest thresholds', () => {
+  const { assess } = require('../src/services/clay/health');
+  assert.strictEqual(assess({ total: 2, answered: 2, provider_down: 0, failed: 0 }).alert, false);
+  assert.strictEqual(assess({ total: 10, answered: 9, provider_down: 0, failed: 1 }).alert, false);
+  assert.strictEqual(assess({ total: 10, answered: 3, provider_down: 0, failed: 7 }).alert, true);
+  assert.strictEqual(assess({ total: 10, answered: 8, provider_down: 2, failed: 2 }).alert, true);
+});

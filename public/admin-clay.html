@@ -26,6 +26,8 @@
     <section aria-labelledby="sum-h">
       <h2 id="sum-h">At a glance</h2>
       <p id="headline" role="status" aria-live="polite" class="muted"></p>
+      <p><button type="button" class="btn secondary" id="checkbtn">Run health check now</button></p>
+      <p id="checkresult" role="status" aria-live="polite" class="muted"></p>
       <div class="grid" id="stats"></div>
     </section>
     <section aria-labelledby="rec-h">
@@ -92,5 +94,25 @@ async function load(){
   });
 }
 load();
+
+const cb=document.getElementById('checkbtn');
+if(cb){
+  cb.addEventListener('click',async()=>{
+    cb.disabled=true;
+    const out=document.getElementById('checkresult');
+    out.textContent='Running…';
+    try{
+      const r=await Kiln.api('/clay/health-check',{method:'POST'});
+      let msg;
+      if(r.sent) msg='Alert sent to '+(r.recipients||1)+' staff — '+((r.reasons||[]).join('; ')||'a problem was detected')+'.';
+      else if(r.reason==='healthy') msg='All healthy — no alert needed.';
+      else if(r.reason==='already_alerted') msg='A problem is present, but an alert was already sent in the last hour (not re-sending).';
+      else if(r.reason==='no_recipients') msg='A problem is present, but no staff email is on file to alert.';
+      else msg='Check ran: '+(r.reason||'done')+'.';
+      out.textContent=msg; announce(msg,true);
+    }catch(e){ out.textContent=e.message||'Check failed.'; announce(out.textContent,true); }
+    finally{ cb.disabled=false; }
+  });
+}
 </script>
 </body></html>
