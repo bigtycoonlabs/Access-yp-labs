@@ -7,6 +7,8 @@ const { authenticate } = require('../middleware/auth');
 const { asyncHandler } = require('../lib/http');
 const { sendEmail } = require('../services/email');
 const { welcomeEmail } = require('../services/welcomeEmail');
+const { parseCookies } = require('../lib/cookies');
+const COOKIE_V = 'ypl_v';
 
 const router = express.Router();
 
@@ -66,6 +68,21 @@ router.post('/register', [
   }
 
   await recordLogin(req, { userId: user.id, email, success: true, reason: 'register' });
+
+  // Carry in the idea this visitor handed Clay before they had an account, if any.
+  // Best-effort — it never blocks or fails signup.
+  try {
+    const token = parseCookies(req)[COOKIE_V];
+    if (token) {
+      const spark = await query(
+        'SELECT idea FROM anon_sparks WHERE token=$1 AND claimed_by IS NULL ORDER BY created_at DESC LIMIT 1', [token]);
+      if (spark.rows.length) {
+        await query('UPDATE users SET pending_idea=$2 WHERE id=$1', [user.id, spark.rows[0].idea]);
+        await query('UPDATE anon_sparks SET claimed_by=$2 WHERE token=$1 AND claimed_by IS NULL', [token, user.id]);
+        user.pending_idea = spark.rows[0].idea;
+      }
+    }
+  } catch (e) { console.error('spark carry-in failed:', e.message); }
 
   // Best-effort welcome email from Clay — never blocks or fails signup.
   try {

@@ -215,3 +215,26 @@ test('waitlist email validation and ref-code shape', () => {
   assert.match(wl.refCode(), /^[a-f0-9]{8}$/);
   assert.notStrictEqual(wl.refCode(), wl.refCode());
 });
+
+test('cookies parse header into map', () => {
+  const { parseCookies } = require('../src/lib/cookies');
+  const c = parseCookies({ headers: { cookie: 'a=1; ypl_v=abc%2Ddef; x=y' } });
+  assert.strictEqual(c.ypl_v, 'abc-def');
+  assert.strictEqual(c.a, '1');
+  assert.deepStrictEqual(parseCookies({ headers: {} }), {});
+});
+
+test('visitor shapeTeaser sanitizes provider JSON and rejects junk', async () => {
+  const provider = require('../src/services/clay/provider');
+  const visitor = require('../src/routes/visitor');
+  const oa = provider.available, oc = provider.chat;
+  try {
+    provider.available = () => true;
+    provider.chat = async () => ({ ok: true, text: '{"title":"Dog Yoga Co","angle":"Calm classes for anxious dogs","inside":["Market research","Pricing model","Waitlist page"]}' });
+    const t = await visitor.shapeTeaser('yoga for dogs');
+    assert.strictEqual(t.title, 'Dog Yoga Co');
+    assert.strictEqual(t.inside.length, 3);
+    provider.chat = async () => ({ ok: true, text: 'not json at all' });
+    assert.strictEqual(await visitor.shapeTeaser('x'), null);
+  } finally { provider.available = oa; provider.chat = oc; }
+});

@@ -52,6 +52,15 @@
       const list = words.length === 1 ? words[0] : (words.slice(0, -1).join(', ') + ' and ' + words[words.length - 1]);
       opening = 'Welcome back. You told me you’re drawn to ' + list + ' — so what’s it going to be: shape one of those, pick up where we left off, or chase something brand new? “Create” starts fresh; “Enhance” sharpens something you’ve already got.';
     }
+    // If they handed Clay an idea from the homepage before signing up, it's
+    // waiting for them here — greet them with it and pre-fill the box.
+    try {
+      const pend = await Kiln.api('/clay/pending-idea');
+      if (pend && pend.idea) {
+        opening = 'Welcome in — and I didn’t forget. Before you even signed up, you told me: “' + pend.idea + '.” It’s waiting right here in the box, just as you left it. Send it and let’s make it real — or tweak it first if it’s shifted. It stays your idea; I just bring it to life.';
+        if (promptEl) promptEl.value = pend.idea;
+      }
+    } catch (_) {}
     m.appendChild(el('p', null, opening));
   })();
 

@@ -48,6 +48,25 @@
     li{margin:8px 0;}
     .price{font-size:22px;font-weight:700;color:var(--ink);}
     footer{border-top:1px solid var(--line);color:var(--muted);font-size:15px;padding:28px 0 48px;}
+    .idea-wrap{margin-top:20px;max-width:60ch;}
+    .idea-wrap label{display:block;font-size:18px;color:#f2eefb;margin-bottom:8px;font-weight:600;}
+    .idea-wrap textarea{width:100%;min-height:58px;padding:12px 14px;font-size:17px;border-radius:12px;
+      border:1px solid rgba(184,166,255,.5);background:rgba(255,255,255,.06);color:#f6f3ff;font-family:inherit;line-height:1.5;}
+    .idea-wrap textarea::placeholder{color:#b8a6ff;opacity:.85;}
+    .idea-wrap .cta{margin-top:12px;}
+    .build{margin-top:18px;}
+    .build-lead{color:#8ce0ff;font-weight:700;font-size:18px;margin:0 0 6px;}
+    .build-title{color:#fff;font-size:24px;margin:6px 0;}
+    .build-angle{color:#e7e1f7;margin:0 0 10px;}
+    .build-inside-h{color:#f2eefb;font-weight:600;margin:8px 0 4px;}
+    .build-inside{margin:0 0 12px;padding-left:20px;color:#e7e1f7;}
+    .build-inside li{margin:3px 0;}
+    .build .muted{color:#c3bce0;font-size:15px;}
+    #hero .err{color:#ffb4a8;font-weight:600;}
+    @media (prefers-reduced-motion: no-preference){
+      #hero-inner .build > *{animation:riseIn .38s ease both;}
+    }
+    @keyframes riseIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
   </style>
 </head>
 <body>
@@ -55,12 +74,14 @@
   <header>
     <div class="wrap">
       <div class="brand"><a href="/" aria-label="Access YP Labs — home"><img src="/img/yp-labs-logo.svg" alt="Access YP Labs" width="230" height="55" style="height:52px;width:auto;display:block;"/></a></div>
-      <div class="hero">
+      <div class="hero" id="hero">
+        <div id="hero-inner">
         <h1>The businesses the world never launched.</h1>
         <p class="tag">Shaped with Clay. Proven before they exist.</p>
         <p>The world is full of businesses that were dreamed up and never started — not because they were bad, but because no one got around to building them. Access YP Labs is where those ideas become real. Clay, our AI partner, shapes an idea into a complete, pre-proven concept — then the strongest ones wait in the Dreamhold for the founder who’ll finally build them. Not a course. Not a template. The whole business, before it exists.</p>
         <p class="cta-row"><a class="cta" href="/dreamhold.html">Enter the Dreamhold →</a></p>
         <p style="margin-top:16px;"><a href="/values.html" style="color:var(--dream2);font-weight:600;">What we stand for →</a></p>
+        </div>
       </div>
     </div>
   </header>
@@ -115,5 +136,92 @@
       <p>Access YP Labs is a brand of Set Up Your Place LLC. The Dreamhold is a neutral marketplace; it is not a party to any transaction between members. Concepts are pre-proven starting points, not guarantees of income.</p>
     </div>
   </footer>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script>
+<script>
+(function(){
+  const inner=document.getElementById('hero-inner');
+  if(!inner||!window.Kiln) return;
+  function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+  function ordinalWord(n){const w={1:'first',2:'second',3:'third',4:'fourth',5:'fifth',6:'sixth',7:'seventh',8:'eighth',9:'ninth',10:'tenth'};
+    if(w[n])return w[n];const v=n%100,s=['th','st','nd','rd'];return n+(s[(v-20)%10]||s[v]||s[0]);}
+  function cap(s){return s.charAt(0).toUpperCase()+s.slice(1);}
+
+  function dreamholdLink(){
+    const p=el('p');p.style.marginTop='18px';
+    const a=el('a',null,'Or browse the Dreamhold →');a.href='/dreamhold.html';a.style.color='#8ce0ff';a.style.fontWeight='600';
+    p.appendChild(a);return p;
+  }
+
+  function ideaBox(promptText){
+    const wrap=el('div','idea-wrap');
+    const label=el('label',null,promptText);label.setAttribute('for','idea-in');
+    const ta=document.createElement('textarea');ta.id='idea-in';ta.rows=2;ta.setAttribute('placeholder','The one you keep coming back to…');
+    const btn=el('button','cta','Show me what you’ve got');btn.type='button';
+    const out=el('div','build');out.setAttribute('role','status');out.setAttribute('aria-live','polite');
+    btn.addEventListener('click',async()=>{
+      const idea=(ta.value||'').trim();
+      if(idea.length<3){announce('Tell me a little more about the idea.',true);ta.focus();return;}
+      btn.disabled=true;out.innerHTML='';out.appendChild(el('p','muted','Clay is shaping it…'));announce('Clay is shaping your idea.',true);
+      try{
+        const r=await Kiln.api('/spark',{auth:false,method:'POST',body:{idea}});
+        out.innerHTML='';
+        if(r.title){
+          out.appendChild(el('p','build-lead','Here’s what I’ve started for you:'));
+          out.appendChild(el('h3','build-title',r.title));
+          if(r.angle)out.appendChild(el('p','build-angle',r.angle));
+          if(r.inside&&r.inside.length){
+            out.appendChild(el('p','build-inside-h','What the full build would include:'));
+            const ul=el('ul','build-inside');r.inside.forEach(i=>ul.appendChild(el('li',null,i)));out.appendChild(ul);
+          }
+          out.appendChild(el('p','muted','This is just a taste — the whole thing lives in your workspace, and it’s free to build until you download it.'));
+          announce('Clay shaped your idea into '+r.title+'. Create a free account to keep building it.',true);
+        }else{
+          out.appendChild(el('p','build-lead','I’ve got it — and I’m ready to build it out with you.'));
+          out.appendChild(el('p','muted','Create a free account and we’ll shape the whole concept together. Free until you download it.'));
+          announce('Clay has your idea. Create a free account to build it.',true);
+        }
+        const cta=el('a','cta solid','Create a free account & keep building');cta.href='/register.html';cta.style.marginTop='10px';out.appendChild(cta);
+        const si=el('p','muted');const a=el('a',null,'I already have an account');a.href='/login.html';a.style.color='#8ce0ff';si.appendChild(a);out.appendChild(si);
+      }catch(e){out.innerHTML='';out.appendChild(el('p','err',(e&&e.message)||'Something went sideways — try that again.'));announce((e&&e.message)||'Error',true);}
+      finally{btn.disabled=false;}
+    });
+    wrap.appendChild(label);wrap.appendChild(ta);wrap.appendChild(btn);wrap.appendChild(out);
+    return wrap;
+  }
+
+  async function render(){
+    if(Kiln.isLoggedIn&&Kiln.isLoggedIn()){
+      let name='';
+      try{const me=await Kiln.api('/auth/me');name=(me&&me.user&&(me.user.display_name||me.user.name))||'';}catch(_){}
+      inner.innerHTML='';
+      inner.appendChild(el('h1',null,name?('Welcome back, '+name+'.'):'Welcome back.'));
+      inner.appendChild(el('p','tag','Your workspace missed you. Let’s keep building.'));
+      const row=el('p','cta-row');const cta=el('a','cta','Back into your workspace →');cta.href='/app.html';row.appendChild(cta);inner.appendChild(row);
+      inner.appendChild(dreamholdLink());
+      announce(name?('Welcome back, '+name):'Welcome back',false);
+      return;
+    }
+    let hello={visits:1,returning:false,has_spark:false};
+    try{hello=await Kiln.api('/hello',{auth:false});}catch(_){}
+    inner.innerHTML='';
+    if(hello.returning){
+      const nth=ordinalWord(hello.visits);
+      inner.appendChild(el('h1',null,'Back again.'));
+      if(hello.has_spark){
+        inner.appendChild(el('p','tag','That idea you told me? Still right here. This is the '+nth+' time you’ve stood at this door — let’s finish it.'));
+      }else{
+        inner.appendChild(el('p','tag',cap(nth)+' time you’ve stood at this door. Still turning it over? I dare you to actually do it this time.'));
+      }
+      inner.appendChild(ideaBox('Say it out loud — what’s the idea?'));
+    }else{
+      inner.appendChild(el('h1',null,'There you are.'));
+      inner.appendChild(el('p','tag','I’ve been hoping someone with an idea would walk in.'));
+      inner.appendChild(ideaBox('What’s the one you can’t stop thinking about?'));
+    }
+    inner.appendChild(dreamholdLink());
+  }
+  render();
+})();
+</script>
 </body>
 </html>

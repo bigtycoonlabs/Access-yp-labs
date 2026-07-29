@@ -47,6 +47,7 @@ app.use('/api/sellers',       require('./routes/sellers'));
 app.use('/api/maintenance',   require('./routes/maintenance'));
 app.use('/api/listings',      require('./routes/listings'));
 app.use('/api/waitlist',      require('./routes/waitlist'));
+app.use('/api',               require('./routes/visitor'));
 app.use('/api/bids',          require('./routes/bids'));
 app.use('/api/watches',       require('./routes/watches'));
 app.use('/api/orders',        require('./routes/orders'));

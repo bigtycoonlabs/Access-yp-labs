@@ -411,4 +411,13 @@ function buildPackageEmail(title, coverage, assets){
     '<hr/><p style="color:#57534e;font-size:13px;font-family:system-ui,sans-serif">The Dreamhold is a neutral marketplace. Concepts are pre-proven starting points, not guarantees of income.</p></div>';
 }
 
+// GET /api/clay/pending-idea — the idea a new user handed Clay before signing up.
+// Returned once, then cleared, so the workspace greets them with it exactly once.
+router.get('/pending-idea', authenticate, asyncHandler(async (req, res) => {
+  const r = await query('SELECT pending_idea FROM users WHERE id=$1', [req.user.id]);
+  const idea = r.rows[0] ? r.rows[0].pending_idea : null;
+  if (idea) await query('UPDATE users SET pending_idea=NULL WHERE id=$1', [req.user.id]);
+  res.json({ idea: idea || null });
+}));
+
 module.exports = router;
