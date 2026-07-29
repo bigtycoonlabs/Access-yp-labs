@@ -8,6 +8,7 @@ const spine = require('../services/clay/spine');
 const clay = require('../services/clay');
 const provider = require('../services/clay/provider');
 const journal = require('../services/clay/journal');
+const retrieval = require('../services/clay/retrieval');
 const { conceptEntitlement } = require('../lib/entitlement');
 const agent = require('../services/clay/agent');
 const research = require('../services/clay/research');
@@ -104,7 +105,10 @@ router.post('/generate', authenticate, [
 
   const t0 = Date.now();
   const providerAvailable = provider.available();
-  const result = await clay.generate({ mode, category, prompt, operating });
+  // Retrieval grounding: pull the user's own related prior concepts so Clay builds
+  // on real earlier work. Best-effort — returns [] and never blocks the build.
+  const priorWork = await retrieval.relatedConcepts(req.user.id, prompt, { limit: 3, excludeId: concept_id || null });
+  const result = await clay.generate({ mode, category, prompt, operating, priorWork });
   const durationMs = Date.now() - t0;
 
   // Honest non-answers: record the run against a concept if we have one, and
@@ -167,6 +171,7 @@ router.post('/generate', authenticate, [
     concept,
     assets: assets.rows,
     entitled: ent.entitled,
+    related_prior: priorWork.map((p) => ({ id: p.id, title: p.title })),
     coverage: result.coverage,
     dreamhold_suggestion: result.dreamhold_suggestion || null,
     source_check: result.source_check || null,

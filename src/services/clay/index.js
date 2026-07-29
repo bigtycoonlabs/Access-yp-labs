@@ -122,7 +122,7 @@ const OPERATING_ADDENDUM = `IMPORTANT — EXISTING BUSINESS MODE:
 The user ALREADY OPERATES this business. You are enhancing a running operation, not shaping a new launch. Frame every section for a live business: the business plan is a growth/enhancement plan for what already exists; the marketing strategy upgrades what they already do; the build path is a rollout plan for the improvements; any demo illustrates a NEW feature or offer, not a whole new company. Never imply they should sell, list, or hand off their existing business — the Dreamhold only sells unlaunched ideas, never running businesses.
 You MAY optionally include a top-level "dreamhold_suggestion": { "reason": string, "category": one of the known categories } when acquiring a complementary UNLAUNCHED idea from the Dreamhold would strengthen their operation (e.g. a bolt-on product or service line). Only include it when it genuinely helps; otherwise omit it. Never invent a specific listing — name a category to browse with a concrete reason.`;
 
-async function generate({ mode, category, prompt, operating = false }) {
+async function generate({ mode, category, prompt, operating = false, priorWork = [] }) {
   if (!MODES.includes(mode)) mode = 'create';
   if (!category && !prompt) {
     return { result_status: 'refused', redirect: REDIRECTS.NEEDS_CATEGORY,
@@ -147,7 +147,18 @@ async function generate({ mode, category, prompt, operating = false }) {
   ].join('\n');
 
   const grounding = await gatherGrounding(prompt, category);
-  const userMsgFull = grounding.text ? (userMsg + '\n' + grounding.text) : userMsg;
+  let userMsgFull = grounding.text ? (userMsg + '\n' + grounding.text) : userMsg;
+
+  // Retrieval grounding: the user's OWN related prior concepts, so a new build can
+  // connect to real earlier work instead of starting cold. Clay is told what's
+  // known and explicitly told NOT to invent anything beyond it.
+  if (Array.isArray(priorWork) && priorWork.length) {
+    const pw = priorWork.slice(0, 3).map((p, i) =>
+      `${i + 1}. "${p.title}"${p.category ? ' (' + p.category + ')' : ''}` +
+      (p.risk_summary ? ' — noted risk: ' + String(p.risk_summary).slice(0, 300) : '')
+    ).join('\n');
+    userMsgFull += '\n\nPRIOR WORK — the user has ALREADY explored these related concepts of their own (real earlier work). Where it genuinely helps, connect this new concept to that earlier thinking: build on it, contrast it, or note the overlap. Do NOT invent any detail about them beyond what is written here, and do not assume they were ever launched.\n' + pw;
+  }
 
   const out = await provider.complete({ system, user: userMsgFull, json: true, maxTokens: 12000 });
   if (!out.ok) {

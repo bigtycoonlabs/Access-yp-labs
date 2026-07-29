@@ -6,6 +6,7 @@ const { asyncHandler, ApiError } = require('../lib/http');
 const { CATEGORIES, MODES } = require('../services/clay/tools');
 const { conceptEntitlement, paywall, isStaff } = require('../lib/entitlement');
 const protect = require('../lib/protect');
+const retrieval = require('../services/clay/retrieval');
 
 const ASSET_TYPES = ['business_plan', 'marketing_strategy', 'customer_research', 'competitor_research',
   'regulatory_risk', 'html_demo', 'example_image', 'website_prompt', 'build_instructions', 'code_file', 'built_site'];
@@ -69,6 +70,16 @@ router.post('/:id/assets', authenticate, [
       ? 'Uploaded, but this file was flagged by the malware scan and will be blocked from listing/download until resolved.'
       : 'Uploaded.',
   });
+}));
+
+// GET /api/concepts/related?q=...&exclude=... — the user's OWN prior concepts most
+// relevant to some text, for grounding a new build in real earlier work. Scoped to
+// the caller's concepts only. Declared before the /:id routes so it isn't shadowed.
+router.get('/related', authenticate, asyncHandler(async (req, res) => {
+  const q = String(req.query.q || '').slice(0, 2000);
+  const exclude = /^[0-9a-f-]{36}$/i.test(String(req.query.exclude || '')) ? req.query.exclude : null;
+  const related = await retrieval.relatedConcepts(req.user.id, q, { limit: 3, excludeId: exclude });
+  res.json({ related });
 }));
 
 // GET /api/concepts/unkept-summary — how many concepts the user has built but

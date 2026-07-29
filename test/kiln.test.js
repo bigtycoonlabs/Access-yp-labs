@@ -244,3 +244,11 @@ test('clay journal recordRun never throws (best-effort audit)', async () => {
   await assert.doesNotReject(journal.recordRun({ kind: 'generate', resultStatus: 'answered', mode: 'create', sourceCount: 3 }));
   await assert.doesNotReject(journal.recordRun({}));
 });
+
+test('retrieval relatedConcepts guards and never throws', async () => {
+  const retrieval = require('../src/services/clay/retrieval');
+  assert.deepStrictEqual(await retrieval.relatedConcepts(null, 'anything'), []);
+  assert.deepStrictEqual(await retrieval.relatedConcepts('u', ''), []);
+  assert.deepStrictEqual(await retrieval.relatedConcepts('u', 'ab'), []);
+  await assert.doesNotReject(retrieval.relatedConcepts('00000000-0000-0000-0000-000000000000', 'coffee subscription box'));
+});

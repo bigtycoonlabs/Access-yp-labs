@@ -231,6 +231,16 @@
         keep.appendChild(kb);
         container.appendChild(keep);
       }
+      // Retrieval grounding, surfaced honestly: the user's own related prior work
+      // Clay had in mind while building. Only their real earlier concepts.
+      if (Array.isArray(data.related_prior) && data.related_prior.length) {
+        const names = data.related_prior.map((p) => p.title).filter(Boolean);
+        if (names.length) {
+          const note = el('p', 'muted');
+          note.appendChild(document.createTextNode('Clay built this with your earlier work in mind: ' + names.join(', ') + '.'));
+          container.appendChild(note);
+        }
+      }
       announce('Clay assembled your concept, with ' + (data.assets || []).length + ' sections. Suggested next steps are available.');
       return;
     }
