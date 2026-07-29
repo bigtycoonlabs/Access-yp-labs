@@ -7,6 +7,10 @@
   const categoryEl = document.getElementById('category');
   const sendBtn = document.getElementById('send');
   let mode = 'create';
+  // The concept we're actively working on. Once a concept exists, the next message
+  // refines THAT concept (a new version) instead of spawning a fresh one. Cleared
+  // by choosing "Create" or "Start a fresh concept".
+  let currentConceptId = null;
 
   // ---- small DOM helpers (textContent only for untrusted strings) ----
   const CATEGORY_WORDS = {
@@ -34,6 +38,8 @@
 
   // ---- init: greet + honest Clay status ----
   (async function init() {
+    const params = new URLSearchParams(location.search);
+    const openId = /^[0-9a-f-]{36}$/i.test(params.get('concept') || '') ? params.get('concept') : null;
     try {
       const me = await Kiln.api('/auth/me');
       document.getElementById('greeting').textContent = `Welcome, ${me.user.name || 'there'}`;
@@ -43,6 +49,8 @@
       const el2 = document.getElementById('clay-status');
       el2.textContent = s.available ? 'Clay is ready.' : 'Clay generation is not configured yet — you can still browse and manage your work.';
     } catch (_) {}
+    // Opening an existing concept to keep refining it — skip the generic opening.
+    if (openId) { await loadConceptIntoWorkspace(openId); return; }
     let prefs = null;
     try { const r = await Kiln.api('/preferences'); prefs = r.preferences; } catch (_) {}
     const m = message('clay', 'Clay');
@@ -94,6 +102,7 @@
   // ---- mode toggle ----
   function setMode(next) {
     mode = next;
+    if (next === 'create' && currentConceptId) { currentConceptId = null; }
     document.getElementById('mode-create').setAttribute('aria-pressed', String(next === 'create'));
     document.getElementById('mode-enhance').setAttribute('aria-pressed', String(next === 'enhance'));
     const opWrap = document.getElementById('operating-wrap');
@@ -105,6 +114,46 @@
   }
   document.getElementById('mode-create').addEventListener('click', () => setMode('create'));
   document.getElementById('mode-enhance').addEventListener('click', () => setMode('enhance'));
+
+  // ---- open an existing concept to keep refining it ----
+  async function loadConceptIntoWorkspace(id) {
+    try {
+      const { concept, assets } = await Kiln.api('/concepts/' + id);
+      currentConceptId = concept.id;
+      const m = message('clay', 'Clay');
+      m.appendChild(el('p', null, 'Picking up where we left off on “' + (concept.title || 'your concept') + '.” Everything you built is still here — tell me what to change or add and I’ll refine this same concept. You can start a fresh one anytime.'));
+      const current = (assets || []).filter((a) => a.is_current !== false);
+      if (current.length) {
+        const acts = el('div', 'actions');
+        current.forEach((a) => {
+          const b = el('button', 'btn secondary', 'View: ' + (a.title || a.type)); b.type = 'button';
+          b.addEventListener('click', () => viewAsset(m, a.id, a.title || a.type));
+          acts.appendChild(b);
+        });
+        const dl = el('button', 'btn', 'Download package'); dl.type = 'button';
+        dl.addEventListener('click', () => exportConcept(m, concept.id));
+        acts.appendChild(dl);
+        const fresh = el('button', 'btn secondary', 'Start a fresh concept instead'); fresh.type = 'button';
+        fresh.addEventListener('click', startFreshConcept);
+        acts.appendChild(fresh);
+        m.appendChild(acts);
+      }
+      announce('Continuing your concept: ' + (concept.title || 'your concept') + '. Add a message to refine it.', true);
+      if (promptEl) promptEl.focus();
+    } catch (e) {
+      const m = message('clay', 'Clay');
+      m.appendChild(el('p', 'msg err', 'I couldn’t open that concept — it may have been removed. You can start a new one below.'));
+      announce('That concept could not be opened.', true);
+    }
+  }
+
+  function startFreshConcept() {
+    currentConceptId = null;
+    const m = message('clay', 'Clay');
+    m.appendChild(el('p', null, 'Fresh start — this next idea will be its own concept. What are we building?'));
+    announce('Starting a new concept.', true);
+    if (promptEl) { promptEl.value = ''; promptEl.focus(); }
+  }
 
   // ---- send to Clay ----
   async function send() {
@@ -125,7 +174,9 @@
     try {
       const operatingEl = document.getElementById('operating');
       const operating = mode === 'enhance' && !!(operatingEl && operatingEl.checked);
-      const data = await Kiln.api('/clay/generate', { method: 'POST', body: { mode, category, prompt, operating } });
+      const data = await Kiln.api('/clay/generate', { method: 'POST', body: { mode, category, prompt, operating, concept_id: currentConceptId || undefined } });
+      // From here on, keep refining the same concept until they start fresh.
+      if (data && data.status === 'answered' && data.concept) currentConceptId = data.concept.id;
       thinking.removeChild(think);
       renderResult(thinking, data);
     } catch (e) {

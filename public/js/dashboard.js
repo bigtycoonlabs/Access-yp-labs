@@ -28,6 +28,32 @@
   function empty(container, text) { container.innerHTML = ''; container.appendChild(el('p', 'muted', text)); }
   function fail(container, e) { container.innerHTML = ''; container.appendChild(el('p', 'msg err', e.message)); }
 
+  // Download a concept's package, or surface the honest plan gate inline (with a
+  // one-tap Keep for this specific concept) if it isn't kept yet.
+  async function downloadConcept(id, host) {
+    if (host) host.innerHTML = '';
+    try {
+      const { assets } = await Kiln.api('/concepts/' + id + '/export');
+      const text = (assets || []).map((a) => '# ' + (a.title || a.type) + '\n\n' + (a.body || '') + '\n').join('\n\n');
+      const blob = new Blob([text], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'concept-package.txt';
+      document.body.appendChild(a); a.click(); a.remove();
+      announce('Your package download has started.', true);
+    } catch (e) {
+      if (e.status === 402 && e.data && e.data.options && host) {
+        host.appendChild(el('p', null, e.data.message || 'A plan is needed to download or share these materials. You can keep building for free.'));
+        const maker = (e.data.options || []).find((o) => o.plan === 'maker');
+        if (maker) host.appendChild(actionBtn('Keep this concept — $2.99', async () => {
+          const r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'maker', concept_id: maker.concept_id } });
+          if (r.url) { location.href = r.url; return; }
+          announce(r.message || 'Billing isn’t configured yet, so nothing was charged.', true);
+        }));
+        announce('A plan is needed to download this concept.', true);
+      } else { announce(e.message || 'Could not download.', true); }
+    }
+  }
+
   // ---------- Payouts ----------
   async function loadPayouts() {
     const c = document.getElementById('payouts'); c.innerHTML = '';
@@ -97,8 +123,13 @@
           meta += ' · ' + (days > 0 ? ('access ' + days + ' more day' + (days === 1 ? '' : 's') + ' unless subscribed') : 'access expired — subscribe to keep');
         }
         const r = row(x.title, meta, x.stage);
+        const cont = el('a', 'btn', 'Continue in the laboratory');
+        cont.href = '/app.html?concept=' + x.id; cont.style.marginRight = '8px';
+        r.actions.appendChild(cont);
         const demo = el('a', 'btn secondary', 'Live demo'); demo.href = '/sandbox.html?concept=' + x.id;
         demo.style.marginRight = '8px'; r.actions.appendChild(demo);
+        const dlHost = el('div', 'stack'); dlHost.style.marginTop = '8px';
+        r.actions.appendChild(actionBtn('Download package', () => downloadConcept(x.id, dlHost), true));
         const hist = el('div', 'stack'); hist.style.marginTop = '8px';
         r.actions.appendChild(actionBtn('Version history', async () => {
           hist.innerHTML = '';
@@ -114,6 +145,7 @@
           } catch (e) { hist.appendChild(el('p', 'msg err', e.message)); }
         }, true));
         r.appendChild(hist);
+        r.appendChild(dlHost);
         c.appendChild(r);
       });
     } catch (e) { fail(c, e); }
