@@ -252,3 +252,13 @@ test('retrieval relatedConcepts guards and never throws', async () => {
   assert.deepStrictEqual(await retrieval.relatedConcepts('u', 'ab'), []);
   await assert.doesNotReject(retrieval.relatedConcepts('00000000-0000-0000-0000-000000000000', 'coffee subscription box'));
 });
+
+test('embeddings: unavailable without a key, and vector literal formats', async () => {
+  const emb = require('../src/services/clay/retrieval-embeddings');
+  const had = process.env.OPENAI_API_KEY;
+  delete process.env.OPENAI_API_KEY;
+  assert.strictEqual(emb.available(), false);
+  assert.strictEqual(await emb.embed('hello world'), null);
+  assert.strictEqual(emb.toVectorLiteral([0.1, 0.2, 0.3]), '[0.1,0.2,0.3]');
+  if (had) process.env.OPENAI_API_KEY = had;
+});

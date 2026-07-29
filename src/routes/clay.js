@@ -148,6 +148,8 @@ router.post('/generate', authenticate, [
   await journal.recordRun({ actorId: req.user.id, kind: 'generate', mode, category,
     conceptId: concept.id, resultStatus: 'answered', providerAvailable,
     grounded: !!result.research_grounded, sourceCount: result.source_count || 0, durationMs });
+  // Embed the concept so future builds can find it by meaning (best-effort, async).
+  retrieval.embedAndStore(concept.id, [result.title, result.risk_summary, prompt].filter(Boolean).join('. ')).catch(() => {});
   const assets = await query('SELECT id,type,title,is_baseline FROM assets WHERE concept_id=$1 ORDER BY created_at', [concept.id]);
 
   // Dual-channel delivery: email the package too. Best-effort; if it doesn't
