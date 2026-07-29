@@ -270,3 +270,12 @@ test('clay health assess uses honest thresholds', () => {
   assert.strictEqual(assess({ total: 10, answered: 3, provider_down: 0, failed: 7 }).alert, true);
   assert.strictEqual(assess({ total: 10, answered: 8, provider_down: 2, failed: 2 }).alert, true);
 });
+
+test('money path: plan prices are locked and match the webhook write', () => {
+  const { PLANS, planCents } = require('../src/lib/money');
+  assert.strictEqual(planCents('maker'), 299);     // $2.99
+  assert.strictEqual(planCents('sculptor'), 4999); // $49.99
+  assert.strictEqual(PLANS.maker.per_concept, true);
+  assert.strictEqual(PLANS.sculptor.per_concept, false);
+  assert.strictEqual(planCents('nope'), null);     // unknown plan yields no price
+});
