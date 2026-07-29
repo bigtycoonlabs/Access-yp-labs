@@ -62,6 +62,7 @@ app.get('/api/health', (req, res) => res.json({
   email_configured: !!process.env.RESEND_API_KEY,
   auth_configured: !!(process.env.JWT_SECRET && process.env.REFRESH_TOKEN_SECRET),
   image_rendering: !!(process.env.IMAGE_API_KEY && process.env.IMAGE_API_URL),
+  research_configured: !!process.env.SEARCH_API_KEY,
   video_rendering: !!(process.env.VIDEO_API_KEY && process.env.VIDEO_API_URL),
 }));
 app.get('/api/ready', async (req, res) => {

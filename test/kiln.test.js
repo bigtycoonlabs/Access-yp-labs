@@ -168,3 +168,19 @@ test('agent keeps the conversation well-formed when it stops to confirm', async 
     provider.available = origAvail; provider.chat = origChat;
   }
 });
+
+test('research is a reversible read-only tool that requires a query', () => {
+  assert.strictEqual(agent.planToolInvocation('research', { query: 'tutoring market size' }).action, 'execute');
+  assert.strictEqual(agent.planToolInvocation('research', {}).action, 'reject');
+});
+
+test('research degrades honestly with no search backend configured', async () => {
+  const research = require('../src/services/clay/research');
+  const save = process.env.SEARCH_API_KEY;
+  delete process.env.SEARCH_API_KEY;
+  assert.strictEqual(research.available(), false);
+  const r = await research.search('anything at all');
+  assert.strictEqual(r.available, false);
+  assert.deepStrictEqual(r.results, []);
+  if (save) process.env.SEARCH_API_KEY = save;
+});

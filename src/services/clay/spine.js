@@ -33,6 +33,10 @@ const TOOLS = {
     irreversible: false, requires_confirmation: false, required: ['listing_id'], enums: {},
     summary: 'Read a live listing\'s details, including an accessible demo description (read-only).',
   },
+  research: {
+    irreversible: false, requires_confirmation: false, required: ['query'], enums: {},
+    summary: 'Research a topic on the live web (market size, competitors, demand, pricing, regulation) and return sources to cite. Read-only.',
+  },
   generate_concept: {
     irreversible: false, requires_confirmation: false,
     required: ['prompt'],

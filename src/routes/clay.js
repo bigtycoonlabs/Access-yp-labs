@@ -7,6 +7,7 @@ const { MODES, CATEGORIES, PLATFORMS, SOCIAL_GOALS } = require('../services/clay
 const spine = require('../services/clay/spine');
 const clay = require('../services/clay');
 const agent = require('../services/clay/agent');
+const research = require('../services/clay/research');
 const image = require('../services/image');
 const video = require('../services/video');
 const describe = require('../lib/describe');
@@ -247,6 +248,16 @@ function buildExecutors(user) {
       const demo = d.rows.length ? describe.outline(d.rows[0].body) : null;
       return { listing: r.rows[0], demo_description: demo ? { items: demo.items, accessibility: demo.a11y.summary } : null };
     },
+    research: async ({ query: q }) => {
+      const r = await research.search(q, { maxResults: 5 });
+      if (!r.available) {
+        return { available: false, note: 'Live research isn\'t connected, so I can\'t look this up on the web right now — and I won\'t pretend I did. Tell the user plainly, and only offer your own reasoning clearly labelled as such.' };
+      }
+      if (!r.results.length) {
+        return { available: true, query: q, sources: [], note: r.reason === 'empty_query' ? 'No query given.' : 'The search came back empty. Say so; do not invent findings.' };
+      }
+      return { available: true, query: q, answer: r.answer || null, sources: r.results };
+    },
     generate_concept: async ({ prompt, category }) => {
       const result = await clay.generate({ mode: 'create', category, prompt });
       if (result.result_status !== 'answered') return { status: result.result_status, message: result.message };
@@ -360,6 +371,7 @@ router.get('/status', authenticate, (req, res) => {
   const available = clay.available();
   res.json({ available, provider: clay.providerName(), model: clay.modelName(),
     image_rendering: image.configured(), video_rendering: video.configured(),
+    research: research.available(),
     message: available ? 'Clay is ready.' : 'Clay generation is not configured yet.' });
 });
 
