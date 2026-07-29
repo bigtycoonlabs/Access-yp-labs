@@ -146,3 +146,25 @@ test('provider prefers OpenAI, falls back to Anthropic, else unavailable', () =>
   if (save.o) process.env.OPENAI_API_KEY = save.o; else delete process.env.OPENAI_API_KEY;
   if (save.a) process.env.ANTHROPIC_API_KEY = save.a; else delete process.env.ANTHROPIC_API_KEY;
 });
+
+test('agent keeps the conversation well-formed when it stops to confirm', async () => {
+  const provider = require('../src/services/clay/provider');
+  const origAvail = provider.available, origChat = provider.chat;
+  provider.available = () => true;
+  provider.chat = async () => ({
+    ok: true, text: 'Want me to remove that?',
+    tool_calls: [{ id: 'tc_1', name: 'remove_concept', input: { concept_id: 'c1' } }],
+  });
+  try {
+    const out = await agent.runChat({ messages: [{ role: 'user', content: 'delete concept c1' }], executors: {} });
+    assert.strictEqual(out.status, 'confirmation_required');
+    // Every tool_call in the replayable convo must have a matching tool result,
+    // or the provider rejects the next turn.
+    const calls = out.messages.flatMap((m) => (m.tool_calls || []).map((t) => t.id));
+    const results = out.messages.filter((m) => m.role === 'tool').map((m) => m.tool_call_id);
+    assert.ok(calls.includes('tc_1'));
+    for (const id of calls) assert.ok(results.includes(id), 'dangling tool_call: ' + id);
+  } finally {
+    provider.available = origAvail; provider.chat = origChat;
+  }
+});

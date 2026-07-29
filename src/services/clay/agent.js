@@ -93,7 +93,16 @@ async function runChat({ messages, executors = {}, maxSteps = 4 }) {
       if (plan.action === 'reject') {
         convo.push({ role: 'tool', tool_call_id: tc.id, content: 'Rejected: ' + plan.reason });
       } else if (plan.action === 'confirm') {
-        // Stop and ask the human — do NOT execute.
+        // Stop and ask the human — do NOT execute. Keep the conversation
+        // well-formed for replay: every tool_call in this assistant turn needs a
+        // matching tool result, so mark the pending call (and any later calls in
+        // the same batch) as awaiting confirmation instead of leaving them
+        // dangling — otherwise continuing the chat after a confirm/cancel sends
+        // an unanswered tool_call and the provider rejects the whole turn.
+        const idx = toolCalls.indexOf(tc);
+        for (let j = idx; j < toolCalls.length; j++) {
+          convo.push({ role: 'tool', tool_call_id: toolCalls[j].id, content: 'Not executed — awaiting the user\'s explicit confirmation.' });
+        }
         return {
           status: 'confirmation_required',
           reply: text || plan.reason,
