@@ -4,50 +4,49 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Access YP Labs</title>
-  <meta name="description" content="The Dreamhold by Access YP Labs: a neutral marketplace and launchpad for pre-proven business concepts you can run from anywhere. Shape it with Clay. Wake it in the Dreamhold." />
+  <meta name="description" content="Access YP Labs is where an unlaunched business idea becomes real. Clay, our AI partner, shapes and proves it before you build. Claim a pre-proven concept from the Dreamhold — the whole business, before it exists." />
   <style>
-    :root {
-      --clay: #b45309; --clay-dark: #7c2d12; --kiln: #1c1917; --ember: #ea580c;
-      --sand: #faf7f2; --ink: #1c1917; --muted: #57534e; --line: #e7e0d6;
-      --focus: #2563eb;
+    :root{
+      --void:#0b0817; --dream:#b8a6ff; --dream2:#8ce0ff; --glow:#ffd9a8;
+      --paper:#f7f5ff; --ink:#191630; --muted:#585272; --line:#e6e0f5;
+      --accent:#4c3bd4; --accent-dark:#3a2ba6; --focus:#1e40af;
     }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; background: var(--sand); color: var(--ink);
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      font-size: 18px; line-height: 1.6;
-    }
-    a { color: var(--clay-dark); }
-    a:focus-visible, button:focus-visible {
-      outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 4px;
-    }
-    .skip {
-      position: absolute; left: -999px; top: 0; background: var(--ink); color: #fff;
-      padding: 12px 20px; z-index: 100;
-    }
-    .skip:focus { left: 0; }
-    header { background: var(--kiln); color: var(--sand); }
-    .wrap { max-width: 880px; margin: 0 auto; padding: 0 24px; }
-    .brand { display: flex; align-items: center; gap: 12px; padding: 20px 0; }
-    .brand strong { font-size: 20px; letter-spacing: 0.02em; }
-    .hero { padding: 64px 0 56px; }
-    .hero h1 { font-size: 40px; line-height: 1.15; margin: 0 0 8px; }
-    .hero .tag { font-size: 22px; color: var(--ember); font-weight: 600; margin: 0 0 20px; }
-    .hero p { font-size: 20px; color: var(--sand); opacity: 0.92; max-width: 62ch; }
-    main { padding: 48px 0 72px; }
-    section { margin: 0 0 44px; }
-    h2 { font-size: 26px; margin: 0 0 12px; color: var(--clay-dark); }
-    .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 24px; margin: 0 0 16px; }
-    .card h3 { margin: 0 0 6px; font-size: 20px; }
-    .cta {
-      display: inline-block; min-height: 44px; min-width: 44px; padding: 14px 28px;
-      background: var(--clay); color: #fff; font-size: 18px; font-weight: 600;
-      border-radius: 10px; text-decoration: none;
-    }
-    .cta:hover { background: var(--clay-dark); }
-    ul { padding-left: 22px; }
-    li { margin: 6px 0; }
-    footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 16px; padding: 28px 0 48px; }
+    *{box-sizing:border-box;}
+    body{margin:0;background:var(--paper);color:var(--ink);
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:18px;line-height:1.6;}
+    a{color:var(--accent-dark);}
+    a:focus-visible,button:focus-visible,.cta:focus-visible{outline:3px solid var(--focus);outline-offset:3px;border-radius:4px;}
+    .skip{position:absolute;left:-999px;top:0;background:var(--ink);color:#fff;padding:12px 20px;z-index:100;}
+    .skip:focus{left:0;}
+    .wrap{max-width:900px;margin:0 auto;padding:0 24px;}
+    header{color:#f2eefb;background:
+      radial-gradient(120% 80% at 15% -20%, rgba(140,224,255,.18), transparent 55%),
+      radial-gradient(120% 90% at 95% 120%, rgba(184,166,255,.28), transparent 55%), var(--void);}
+    .brand{display:flex;align-items:center;gap:12px;padding:22px 0;}
+    .brand strong{font-size:20px;letter-spacing:.02em;}
+    .hero{padding:66px 0 62px;}
+    .hero h1{font-size:clamp(30px,6vw,46px);line-height:1.12;margin:0 0 14px;max-width:20ch;text-wrap:balance;}
+    .hero .tag{font-size:clamp(17px,2.6vw,21px);color:var(--dream2);font-weight:600;margin:0 0 22px;letter-spacing:.01em;}
+    .hero p{font-size:19px;color:#e7e1f7;max-width:60ch;margin:0;}
+    .hero .cta-row{margin-top:26px;}
+    .cta{display:inline-block;min-height:48px;min-width:48px;padding:14px 28px;font-size:18px;font-weight:700;
+      border-radius:12px;text-decoration:none;color:#17122e;
+      background:linear-gradient(180deg,var(--dream),var(--dream2));box-shadow:0 0 40px rgba(140,224,255,.30);}
+    .cta.solid{color:#fff;background:var(--accent);box-shadow:none;}
+    .cta.solid:hover{background:var(--accent-dark);}
+    main{padding:52px 0 72px;}
+    section{margin:0 0 48px;}
+    h2{font-size:27px;margin:0 0 12px;color:var(--accent-dark);}
+    .lead{max-width:64ch;}
+    .cards{display:grid;gap:16px;grid-template-columns:1fr;margin:18px 0;}
+    @media(min-width:640px){.cards{grid-template-columns:1fr 1fr;}}
+    .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;}
+    .card h3{margin:0 0 6px;font-size:19px;color:var(--ink);}
+    .card p{margin:0;color:var(--muted);}
+    ul{padding-left:22px;max-width:64ch;}
+    li{margin:8px 0;}
+    .price{font-size:22px;font-weight:700;color:var(--ink);}
+    footer{border-top:1px solid var(--line);color:var(--muted);font-size:15px;padding:28px 0 48px;}
   </style>
 </head>
 <body>
@@ -56,49 +55,55 @@
     <div class="wrap">
       <div class="brand"><strong>Access YP Labs</strong></div>
       <div class="hero">
-        <h1>Arbitrage your own mind.</h1>
-        <p class="tag">Shape it with Clay. Wake it in the Dreamhold.</p>
-        <p>Access YP Labs builds the Dreamhold — our neutral marketplace for pre-proven business concepts you can run from anywhere. Most people sell you a course. We sell you the business.</p>
-        <p style="margin-top:18px;"><a class="cta" href="/dreamhold.html">Enter the Dreamhold →</a></p>
+        <h1>The businesses the world never launched.</h1>
+        <p class="tag">Shaped with Clay. Proven before they exist.</p>
+        <p>The world is full of businesses that were dreamed up and never started — not because they were bad, but because no one got around to building them. Access YP Labs is where those ideas become real. Clay, our AI partner, shapes an idea into a complete, pre-proven concept — then the strongest ones wait in the Dreamhold for the founder who’ll finally build them. Not a course. Not a template. The whole business, before it exists.</p>
+        <p class="cta-row"><a class="cta" href="/dreamhold.html">Enter the Dreamhold →</a></p>
       </div>
     </div>
   </header>
 
   <main id="main" class="wrap">
     <section aria-labelledby="clay-h">
-      <h2 id="clay-h">Meet Clay, your idea printer</h2>
-      <p>Clay is a conversational AI that builds a complete, ownable concept package with you — and stays on as your build partner afterward. Clay works two ways:</p>
-      <div class="card">
-        <h3>Create</h3>
-        <p>Start from nothing. Clay shapes a brand-new concept in a category you can run virtually, digitally, remotely, or solo.</p>
+      <h2 id="clay-h">Meet Clay, your partner</h2>
+      <p class="lead">Clay is a conversational AI that shapes an idea into a complete, ownable business concept — and stays on as your partner long after. Clay works with you two ways:</p>
+      <div class="cards">
+        <div class="card">
+          <h3>Shape a new idea</h3>
+          <p>Start from nothing. Clay builds a brand-new concept you can run online, remotely, or solo — and proves it out before you commit a dollar.</p>
+        </div>
+        <div class="card">
+          <h3>Enhance what you have</h3>
+          <p>Bring an idea you’re sitting on, or a business you already run. Clay sharpens the idea toward launch, or helps you grow the operation you’ve got — and can point you to a complementary idea in the Dreamhold to add on.</p>
+        </div>
       </div>
-      <div class="card">
-        <h3>Enhance</h3>
-        <p>Bring an idea you already have. Clay sharpens it, researches it, and packages it to launch or to sell.</p>
-      </div>
-      <p>Every package includes a business plan, marketing strategy, deep customer and competitor research, clearly-labeled regulatory and licensing risk, a working demo, example image briefs, and build instructions you finish and own in your own tools. Clay never fabricates data — if something is directional, it says so.</p>
+      <p class="lead">Every concept comes with a business plan, a marketing strategy, real customer and competitor research, clearly-labeled regulatory and licensing risk, a working demo, and a build path you finish in your own tools. Clay never fabricates data — if something is directional, it says so plainly.</p>
     </section>
 
-    <section aria-labelledby="kiln-h">
-      <h2 id="kiln-h">The Dreamhold</h2>
-      <p>Post a concept you have shaped. Buyers acquire it outright — a clean transfer of ownership. Refine what you buy and re-list it higher; value compounds. The platform is always a neutral third party: we referee, we never play.</p>
+    <section aria-labelledby="dh-h">
+      <h2 id="dh-h">The Dreamhold</h2>
+      <p class="lead">The Dreamhold is a marketplace of unlaunched business ideas — each one shaped into a complete, pre-proven concept. Claim one and it’s yours: a clean transfer of ownership. Refine what you claim and re-list it higher; value compounds. Access YP Labs is always a neutral third party — we referee, we never play.</p>
       <ul>
         <li>Sellers set the price. $50 floor. Flat sale or auction.</li>
-        <li>Escrowed payment. Ownership transfers on delivery.</li>
+        <li>Escrowed payment; ownership transfers on delivery.</li>
+        <li>The one thing you’ll never find here is a running business. The Dreamhold sells ideas, not operations.</li>
         <li>Moderation on policy grounds only — never because a concept competes with ours.</li>
       </ul>
     </section>
 
     <section aria-labelledby="consult-h">
       <h2 id="consult-h">Work with a consultant</h2>
-      <p>Book a 90-minute session with an experienced entrepreneur for $150. Your concept stays private until the consultant signs an NDA. After the session you have a 12-hour window to keep going, free.</p>
+      <p class="lead">Book a 90-minute session with an experienced entrepreneur for $150. Your concept stays private until the consultant signs an NDA. Afterward you have a 12-hour window to keep going, free.</p>
     </section>
 
     <section aria-labelledby="price-h">
       <h2 id="price-h">Pricing</h2>
-      <div class="card"><h3>$2.99 per idea</h3><p>Generate and own a single concept.</p></div>
-      <div class="card"><h3>$49.99 per month</h3><p>Unlimited ideas plus the full platform.</p></div>
-      <p><a class="cta" href="/register.html">Get started</a></p>
+      <p class="lead">Building with Clay is free. You only pay to keep a concept, export it, or go unlimited.</p>
+      <div class="cards">
+        <div class="card"><p class="price">$2.99 / month</p><p>Per concept — keep it, own it, export it, and keep building.</p></div>
+        <div class="card"><p class="price">$49.99 / month</p><p>Unlimited concepts and the full platform.</p></div>
+      </div>
+      <p class="cta-row"><a class="cta solid" href="/register.html">Get started</a></p>
     </section>
   </main>
 
