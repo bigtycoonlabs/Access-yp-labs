@@ -4,6 +4,36 @@
 const { CATEGORIES, ASSET_PLAN, MODES, REDIRECTS, SOCIAL_ASSET_PLAN } = require('./tools');
 const { classifySection, assessCoverage } = require('./interpreter');
 const provider = require('./provider');
+const research = require('./research');
+
+// Best-effort grounding: when a search backend is configured, pull real web
+// results so the research sections are sourced instead of recalled. If research
+// is off or comes back empty, returns '' and generation proceeds unchanged —
+// honest labelling in the prompt still applies.
+async function gatherGrounding(prompt, category) {
+  if (!research.available()) return '';
+  const seed = String(prompt || '').replace(/\s+/g, ' ').trim().slice(0, 160);
+  if (!seed && !category) return '';
+  const queries = [
+    `${seed} market demand and main competitors`.trim(),
+    `${category ? category + ' ' : ''}${seed} regulations licensing requirements`.trim(),
+  ];
+  const blocks = [];
+  for (const q of queries) {
+    try {
+      const r = await research.search(q, { maxResults: 4 });
+      if (r.available && r.results && r.results.length) {
+        const lines = r.results.map((s, i) => `[${i + 1}] ${s.title} — ${s.url}\n${s.snippet}`).join('\n\n');
+        blocks.push(`Search: "${q}"\n${r.answer ? 'Summary: ' + r.answer + '\n' : ''}${lines}`);
+      }
+    } catch (_) { /* best-effort; never block generation on research */ }
+  }
+  if (!blocks.length) return '';
+  return ['',
+    'GROUNDING — these are REAL web search results. Use them to write customer_research, competitor_research, and regulatory_risk, and CITE the sources you use by title and URL. Do not contradict them. If they are thin or silent on a point, say what is missing rather than inventing it. Anything you assert that is NOT supported by these results must be labelled clearly as your own reasoning, not researched fact.',
+    ...blocks,
+  ].join('\n');
+}
 
 const SYSTEM_PROMPT = `You are Clay, the idea printer for Access YP Labs. Access YP Labs runs the Dreamhold, its marketplace and collective dreamspace of business ideas that were never launched — dreams the whole world left on the table. You believe an idea can be proven profitable BEFORE it is launched. You shape those dreams into ownable, buildable concepts — proven before they exist. Write the prose like Clay would: confident, encouraging, and precise, speaking to the person building it — never hype, never filler.
 
@@ -82,7 +112,10 @@ async function generate({ mode, category, prompt, operating = false }) {
     prompt || '(no prompt provided)',
   ].join('\n');
 
-  const out = await provider.complete({ system, user: userMsg, json: true, maxTokens: 8000 });
+  const grounding = await gatherGrounding(prompt, category);
+  const userMsgFull = grounding ? (userMsg + '\n' + grounding) : userMsg;
+
+  const out = await provider.complete({ system, user: userMsgFull, json: true, maxTokens: 8000 });
   if (!out.ok) {
     return { result_status: 'unavailable',
       message: out.reason === 'unavailable'
