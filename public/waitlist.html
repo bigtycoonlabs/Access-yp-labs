@@ -1,0 +1,87 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Your waitlist — Access YP Labs</title><link rel="stylesheet" href="/css/kiln.css"/>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs</a>
+  <nav class="top" aria-label="Primary"><a href="/app.html">Laboratory</a><a href="/marketplace.html">Dreamhold</a></nav>
+</div></header>
+<main id="main" class="wrap">
+  <h1>Your concept's waitlist</h1>
+  <div id="feedback" role="alert" aria-live="assertive"></div>
+  <div id="summary" class="panel"><p class="muted">Loading…</p></div>
+
+  <section aria-labelledby="lh" class="panel" id="launchsec" hidden>
+    <h2 id="lh">Send the launch announcement</h2>
+    <p class="muted">One email to everyone on this waitlist, telling them the business is live. You can only send this once, so make it count.</p>
+    <div class="stack">
+      <div><label for="subj">Subject line</label>
+        <input id="subj" type="text" maxlength="150" placeholder="It's live: [your business] is open"/></div>
+      <div><label for="msg">Message</label>
+        <textarea id="msg" rows="6" aria-label="Launch message" placeholder="Tell them what's ready, and what to do next."></textarea></div>
+      <div><label for="link">Link to the live business (optional)</label>
+        <input id="link" type="url" placeholder="https://…"/></div>
+      <button id="send" class="btn" type="button">Send launch announcement</button>
+      <div id="sendout" role="status" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="ph" class="panel" id="peoplesec" hidden>
+    <h2 id="ph">Who's waiting</h2>
+    <div id="people"></div>
+  </section>
+</main>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script>
+<script>
+function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+function show(m,k){document.getElementById('feedback').innerHTML='<div class="msg '+(k||'err')+'">'+m+'</div>';announce(m,true);}
+const conceptId=new URLSearchParams(location.search).get('concept');
+
+async function load(){
+  if(!conceptId){ show('No concept specified.'); return; }
+  if(!Kiln.isLoggedIn()){ location.href='/login.html?next='+encodeURIComponent(location.pathname+location.search); return; }
+  let data;
+  try{ data=await Kiln.api('/waitlist/'+conceptId); }
+  catch(e){
+    if(e&&(e.sessionExpired||e.status===401)){ location.href='/login.html?next='+encodeURIComponent(location.pathname+location.search); return; }
+    show(e.status===404?'This isn\u2019t your concept, or it doesn\u2019t exist.':e.message); return;
+  }
+  const sum=document.getElementById('summary'); sum.innerHTML='';
+  sum.appendChild(el('p',null, data.count>0
+    ? (data.count+(data.count===1?' person has':' people have')+' joined this waitlist.')
+    : 'No one has joined this waitlist yet. Share your listing link to start capturing demand.'));
+
+  document.getElementById('launchsec').hidden=false;
+  const people=document.getElementById('people'); const psec=document.getElementById('peoplesec');
+  if(data.signups && data.signups.length){
+    psec.hidden=false;
+    data.signups.forEach(s=>{
+      const line=(s.name?s.name+' — ':'')+s.email+' · joined '+new Date(s.created_at).toLocaleDateString()+(s.referred_by?' · referred':'');
+      people.appendChild(el('p','muted',line));
+    });
+  }
+}
+
+document.getElementById('send').addEventListener('click', async ()=>{
+  const subject=document.getElementById('subj').value.trim();
+  const message=document.getElementById('msg').value.trim();
+  const url=document.getElementById('link').value.trim();
+  const out=document.getElementById('sendout');
+  if(subject.length<3){ announce('Add a subject line.',true); return; }
+  if(message.length<10){ announce('Write a longer message.',true); return; }
+  const btn=document.getElementById('send'); btn.disabled=true; out.innerHTML='<p class="muted">Sending…</p>';
+  try{
+    const r=await Kiln.api('/waitlist/'+conceptId+'/launch',{method:'POST',body:{subject,message,url:url||undefined}});
+    out.innerHTML='<p class="msg ok">Sent to '+r.sent+' of '+r.total+' people'+(r.failed?(' ('+r.failed+' didn\u2019t go through)'):'')+'. This waitlist can only be launched once.</p>';
+    announce('Launch announcement sent to '+r.sent+' people.',true);
+    btn.disabled=true;
+  }catch(e){
+    out.innerHTML='<p class="msg err">'+e.message+'</p>'; announce(e.message,true);
+    btn.disabled = e.status===409; // already launched: keep disabled
+  }
+});
+
+load();
+</script>
+</body></html>

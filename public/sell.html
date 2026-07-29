@@ -157,6 +157,9 @@ document.getElementById('createlisting').addEventListener('click',async()=>{
     wl.appendChild(el('p','muted','Once this listing is live, anyone can join the waitlist for the business — no account needed. Share this link to capture real demand before it launches:'));
     wl.appendChild(el('p',null,location.origin+'/listing.html?id='+listing.id));
     wl.appendChild(el('p','muted','That demand travels with the concept — whoever buys it inherits the waitlist. It is proof your idea is wanted.'));
+    const mgr=el('a','btn secondary','Manage waitlist & send launch announcement');
+    mgr.href='/waitlist.html?concept='+conceptId;
+    wl.appendChild(mgr);
     pc.appendChild(wl);
     btn.disabled=false;
   }catch(e){

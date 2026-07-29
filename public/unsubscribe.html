@@ -1,0 +1,33 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Unsubscribe — Access YP Labs</title><link rel="stylesheet" href="/css/kiln.css"/>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs</a>
+</div></header>
+<main id="main" class="wrap">
+  <h1>Leave this waitlist?</h1>
+  <div class="panel">
+    <p>You joined a waitlist for an idea on Access YP Labs. Click below to stop receiving emails about it.</p>
+    <button id="go" class="btn" type="button">Yes, unsubscribe me</button>
+    <div id="out" role="status" aria-live="polite"></div>
+  </div>
+</main>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script>
+<script>
+(function(){
+  const code=new URLSearchParams(location.search).get('code');
+  const out=document.getElementById('out'); const go=document.getElementById('go');
+  if(!code){ go.disabled=true; out.innerHTML='<p class="msg err">This unsubscribe link is missing its code.</p>'; return; }
+  go.addEventListener('click', async ()=>{
+    go.disabled=true;
+    try{
+      await Kiln.api('/waitlist/leave',{auth:false,method:'POST',body:{ref_code:code}});
+      out.innerHTML='<p class="msg ok">Done — you\u2019ve been removed. You won\u2019t hear about this idea again.</p>';
+      announce('You have been unsubscribed from this waitlist.',true);
+    }catch(e){ out.innerHTML='<p class="msg err">'+e.message+'</p>'; go.disabled=false; announce(e.message,true); }
+  });
+})();
+</script>
+</body></html>

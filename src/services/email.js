@@ -18,4 +18,29 @@ async function sendEmail({ to, subject, html, text }) {
     return { sent: false, reason: err.message };
   }
 }
-module.exports = { sendEmail };
+// Batch send (Resend /emails/batch, up to 100 per call). Each entry is a fully
+// distinct email, so per-recipient personalization (name, unsubscribe link) works.
+// Honest: never claims a send it didn't make.
+async function sendBatch(emails) {
+  const key = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM || 'Clay at Access YP Labs <clay@accessyplabs.com>';
+  const batch = (emails || []).slice(0, 100);
+  if (!key) return { sent: 0, failed: batch.length, reason: 'email_not_configured', results: [] };
+  if (!batch.length) return { sent: 0, failed: 0, results: [] };
+  const payload = batch.map((e) => ({ from, to: e.to, subject: e.subject, html: e.html, text: e.text, headers: e.headers }));
+  try {
+    const resp = await fetch('https://api.resend.com/emails/batch', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) return { sent: 0, failed: payload.length, reason: `resend_${resp.status}`, results: [] };
+    const data = await resp.json();
+    const results = data.data || [];
+    return { sent: results.length, failed: payload.length - results.length, results };
+  } catch (err) {
+    return { sent: 0, failed: payload.length, reason: err.message, results: [] };
+  }
+}
+
+module.exports = { sendEmail, sendBatch };
