@@ -448,6 +448,16 @@ router.get('/status', authenticate, (req, res) => {
     message: available ? 'Clay is ready.' : 'Clay generation is not configured yet.' });
 });
 
+// GET /api/clay/diagnose — staff-only LIVE test of Clay's reasoning connection.
+// Unlike /status (which only checks that a key env var exists), this makes a real
+// call and returns the exact provider error, so the true cause of a build failure
+// (invalid key, no access to the chosen model, etc.) is visible without server logs.
+router.get('/diagnose', authenticate, authorize('staff', 'admin', 'master_staff'),
+  asyncHandler(async (req, res) => {
+    const result = await provider.probe();
+    res.json(result);
+  }));
+
 
 function escapeHtml(t){return String(t==null?'':t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 function buildPackageEmail(title, coverage, assets){

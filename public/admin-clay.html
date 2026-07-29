@@ -28,6 +28,8 @@
       <p id="headline" role="status" aria-live="polite" class="muted"></p>
       <p><button type="button" class="btn secondary" id="checkbtn">Run health check now</button></p>
       <p id="checkresult" role="status" aria-live="polite" class="muted"></p>
+      <p><button type="button" class="btn secondary" id="probebtn">Test Clay’s live connection</button></p>
+      <p id="proberesult" role="status" aria-live="polite" class="muted"></p>
       <div class="grid" id="stats"></div>
     </section>
     <section aria-labelledby="rec-h">
@@ -112,6 +114,27 @@ if(cb){
       out.textContent=msg; announce(msg,true);
     }catch(e){ out.textContent=e.message||'Check failed.'; announce(out.textContent,true); }
     finally{ cb.disabled=false; }
+  });
+
+  const pb=document.getElementById('probebtn');
+  if(pb) pb.addEventListener('click',async()=>{
+    pb.disabled=true;
+    const out=document.getElementById('proberesult');
+    out.textContent='Testing Clay’s connection to its reasoning model…';
+    announce('Testing Clay’s connection.',true);
+    try{
+      const r=await Kiln.api('/clay/diagnose');
+      let msg;
+      if(r.ok){
+        msg='Connected. Clay reached '+(r.provider||'the provider')+' using model '+(r.model||'unknown')+'. Building should work.';
+      } else if(r.reason==='no_key'){
+        msg='Not connected: no AI key is set on the server. '+(r.detail||'');
+      } else {
+        msg='Not connected. Clay tried '+(r.provider||'the provider')+' with model '+(r.model||'unknown')+' and got this exact error: '+(r.detail||'unknown error')+'.';
+      }
+      out.textContent=msg; announce(msg,true);
+    }catch(e){ out.textContent=e.message||'Test failed.'; announce(out.textContent,true); }
+    finally{ pb.disabled=false; }
   });
 }
 </script>

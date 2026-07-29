@@ -154,4 +154,22 @@ async function anthropicChat({ system, messages, tools, maxTokens }) {
   return { ok: true, text, tool_calls };
 }
 
-module.exports = { available, providerName, modelName, complete, describeImage, chat };
+// Live connection probe: makes a tiny real call so staff can see whether the key
+// AND the chosen model actually work — not just whether a key env var is present.
+// Returns the exact provider error (bad key, no model access, etc.) rather than a
+// vague "unavailable", so the real cause is visible without reading server logs.
+async function probe() {
+  const p = providerName();
+  if (!p) {
+    return { ok: false, provider: null, model: null, reason: 'no_key',
+      detail: 'No AI provider key is set. Set OPENAI_API_KEY (or ANTHROPIC_API_KEY) on the server.' };
+  }
+  const out = await complete({ system: 'Reply with the single word: ok', user: 'ok', json: false, maxTokens: 64 });
+  if (out.ok) {
+    return { ok: true, provider: p, model: modelName(), detail: 'Clay reached the model successfully.' };
+  }
+  return { ok: false, provider: p, model: modelName(), reason: out.reason || 'error',
+    detail: out.error || 'The model call failed for an unknown reason.' };
+}
+
+module.exports = { available, providerName, modelName, complete, describeImage, chat, probe };

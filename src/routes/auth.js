@@ -30,6 +30,23 @@ function issueTokens(user) {
   };
 }
 
+// Carry an idea a visitor handed Clay (stored as an anon_spark against their visitor
+// cookie) into their account's pending_idea, so the workspace greets them with it.
+// Runs on BOTH register and login — an existing user who typed an idea before signing
+// in should not have to re-type it. Best-effort: never blocks or fails auth.
+async function carryInSpark(req, user) {
+  try {
+    const token = parseCookies(req)[COOKIE_V];
+    if (!token) return;
+    const spark = await query(
+      'SELECT idea FROM anon_sparks WHERE token=$1 AND claimed_by IS NULL ORDER BY created_at DESC LIMIT 1', [token]);
+    if (!spark.rows.length) return;
+    await query('UPDATE users SET pending_idea=$2 WHERE id=$1', [user.id, spark.rows[0].idea]);
+    await query('UPDATE anon_sparks SET claimed_by=$2 WHERE token=$1 AND claimed_by IS NULL', [token, user.id]);
+    user.pending_idea = spark.rows[0].idea;
+  } catch (e) { console.error('spark carry-in failed:', e.message); }
+}
+
 // POST /api/auth/register
 router.post('/register', [
   body('email').isEmail().normalizeEmail(),
@@ -70,19 +87,7 @@ router.post('/register', [
   await recordLogin(req, { userId: user.id, email, success: true, reason: 'register' });
 
   // Carry in the idea this visitor handed Clay before they had an account, if any.
-  // Best-effort — it never blocks or fails signup.
-  try {
-    const token = parseCookies(req)[COOKIE_V];
-    if (token) {
-      const spark = await query(
-        'SELECT idea FROM anon_sparks WHERE token=$1 AND claimed_by IS NULL ORDER BY created_at DESC LIMIT 1', [token]);
-      if (spark.rows.length) {
-        await query('UPDATE users SET pending_idea=$2 WHERE id=$1', [user.id, spark.rows[0].idea]);
-        await query('UPDATE anon_sparks SET claimed_by=$2 WHERE token=$1 AND claimed_by IS NULL', [token, user.id]);
-        user.pending_idea = spark.rows[0].idea;
-      }
-    }
-  } catch (e) { console.error('spark carry-in failed:', e.message); }
+  await carryInSpark(req, user);
 
   // Best-effort welcome email from Clay — never blocks or fails signup.
   try {
@@ -122,6 +127,8 @@ router.post('/login', [
   if (user.status === 'suspended') return res.status(403).json({ error: 'Account suspended.' });
   delete user.password_hash;
   await recordLogin(req, { userId: user.id, email, success: true });
+  // Carry in an idea handed to Clay before signing in, so it isn't lost on login.
+  await carryInSpark(req, user);
   res.json({ user, ...issueTokens(user) });
 }));
 
