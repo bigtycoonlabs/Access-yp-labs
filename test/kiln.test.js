@@ -198,3 +198,9 @@ test('research.extract degrades honestly with no backend', async () => {
   assert.strictEqual(r.available, false);
   if (save) process.env.SEARCH_API_KEY = save;
 });
+
+test('source self-check short-circuits honestly with no sources (no false clean bill)', async () => {
+  const clay = require('../src/services/clay');
+  assert.strictEqual(await clay.selfCheckSources({ customer_research: 'x' }, []), null);
+  assert.strictEqual(await clay.selfCheckSources({}, [{ title: 't', url: 'u', snippet: 's' }]), null);
+});

@@ -11,28 +11,54 @@ const research = require('./research');
 // is off or comes back empty, returns '' and generation proceeds unchanged —
 // honest labelling in the prompt still applies.
 async function gatherGrounding(prompt, category) {
-  if (!research.available()) return '';
+  const empty = { text: '', sources: [] };
+  if (!research.available()) return empty;
   const seed = String(prompt || '').replace(/\s+/g, ' ').trim().slice(0, 160);
-  if (!seed && !category) return '';
+  if (!seed && !category) return empty;
   const queries = [
     `${seed} market demand and main competitors`.trim(),
     `${category ? category + ' ' : ''}${seed} regulations licensing requirements`.trim(),
   ];
   const blocks = [];
+  const sources = [];
   for (const q of queries) {
     try {
       const r = await research.search(q, { maxResults: 4 });
       if (r.available && r.results && r.results.length) {
+        r.results.forEach((s) => sources.push(s));
         const lines = r.results.map((s, i) => `[${i + 1}] ${s.title} — ${s.url}\n${s.snippet}`).join('\n\n');
         blocks.push(`Search: "${q}"\n${r.answer ? 'Summary: ' + r.answer + '\n' : ''}${lines}`);
       }
     } catch (_) { /* best-effort; never block generation on research */ }
   }
-  if (!blocks.length) return '';
-  return ['',
+  if (!blocks.length) return empty;
+  const text = ['',
     'GROUNDING — these are REAL web search results. Use them to write customer_research, competitor_research, and regulatory_risk, and CITE the sources you use by title and URL. Do not contradict them. If they are thin or silent on a point, say what is missing rather than inventing it. Anything you assert that is NOT supported by these results must be labelled clearly as your own reasoning, not researched fact.',
     ...blocks,
   ].join('\n');
+  return { text, sources };
+}
+
+// Self-check: after Clay writes the research sections, hold them up against the
+// ONLY sources he actually had and flag concrete claims the sources don't
+// support. This is the honesty backstop — the user (who may not be able to skim
+// the page themselves) is told exactly which figures to treat with caution.
+// Best-effort: if it can't run, we simply don't show a check rather than faking
+// a clean bill of health.
+async function selfCheckSources(sections, sources) {
+  if (!sources || !sources.length) return null;
+  const researchText = [sections.customer_research, sections.competitor_research, sections.regulatory_risk]
+    .filter(Boolean).join('\n\n');
+  if (!researchText.trim()) return null;
+  const sourceText = sources.map((s, i) => `[${i + 1}] ${s.title} — ${s.url}\n${s.snippet}`).join('\n\n');
+  const sys = 'You are a careful fact-checker. You are given research writing and the ONLY sources that were available when it was written. Identify concrete factual claims in the writing — market sizes, growth rates, dollar figures, named competitors, specific regulations, dates — that are NOT supported by the sources. Be fair: general reasoning, strategy, and clearly-hedged statements are fine and should not be flagged; only flag concrete claims presented as fact that the sources do not back. Reply with a short plain-text list, each item on its own line starting with "- ". If every concrete claim is supported, reply with exactly: All concrete claims are supported by the sources.';
+  const user = `RESEARCH WRITING:\n${researchText.slice(0, 6000)}\n\nSOURCES:\n${sourceText.slice(0, 6000)}`;
+  try {
+    const out = await provider.complete({ system: sys, user, json: false, maxTokens: 600 });
+    if (!out.ok) return null;
+    const t = String(out.text || '').trim();
+    return t || null;
+  } catch (_) { return null; }
 }
 
 const SYSTEM_PROMPT = `You are Clay, the idea printer for Access YP Labs. Access YP Labs runs the Dreamhold, its marketplace and collective dreamspace of business ideas that were never launched — dreams the whole world left on the table. You believe an idea can be proven profitable BEFORE it is launched. You shape those dreams into ownable, buildable concepts — proven before they exist. Write the prose like Clay would: confident, encouraging, and precise, speaking to the person building it — never hype, never filler.
@@ -113,7 +139,7 @@ async function generate({ mode, category, prompt, operating = false }) {
   ].join('\n');
 
   const grounding = await gatherGrounding(prompt, category);
-  const userMsgFull = grounding ? (userMsg + '\n' + grounding) : userMsg;
+  const userMsgFull = grounding.text ? (userMsg + '\n' + grounding.text) : userMsg;
 
   const out = await provider.complete({ system, user: userMsgFull, json: true, maxTokens: 8000 });
   if (!out.ok) {
@@ -143,6 +169,11 @@ async function generate({ mode, category, prompt, operating = false }) {
                    status: classifySection(sections[a.type]) }))
     .filter((a) => a.status === 'answered');
 
+  let source_check = null;
+  if (assets.length && grounding.sources.length) {
+    source_check = await selfCheckSources(sections, grounding.sources);
+  }
+
   return {
     result_status: assets.length ? 'answered' : 'empty',
     title: parsed.title || 'Untitled concept',
@@ -150,6 +181,7 @@ async function generate({ mode, category, prompt, operating = false }) {
     risk_summary: parsed.risk_summary || '',
     assets,
     coverage,
+    source_check,
     dreamhold_suggestion: (operating && parsed.dreamhold_suggestion && parsed.dreamhold_suggestion.reason)
       ? { reason: String(parsed.dreamhold_suggestion.reason).slice(0, 400),
           category: CATEGORIES.includes(parsed.dreamhold_suggestion.category) ? parsed.dreamhold_suggestion.category : null }
@@ -267,4 +299,4 @@ async function remediateDemo({ html, issues }) {
   return { status: 'answered', html: fixed };
 }
 
-module.exports = { generate, generateSocial, describeMedia, remediateDemo, modelName: provider.modelName, available: provider.available, providerName: provider.providerName };
+module.exports = { generate, generateSocial, describeMedia, remediateDemo, selfCheckSources, modelName: provider.modelName, available: provider.available, providerName: provider.providerName };

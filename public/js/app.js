@@ -116,6 +116,19 @@
       if (data.coverage && !data.coverage.complete) {
         container.appendChild(el('p', 'coverage', data.coverage.gap_description));
       }
+      if (data.source_check) {
+        const supported = /^all concrete claims are supported/i.test(String(data.source_check).trim());
+        const sc = el('div', 'source-check');
+        sc.setAttribute('role', 'note');
+        sc.appendChild(el('p', null, supported
+          ? 'Source check: I checked every concrete claim against the sources I found, and they hold up.'
+          : 'Source check — please treat these with caution; the sources I found don’t fully back them:'));
+        if (!supported) sc.appendChild(el('p', 'muted', data.source_check));
+        container.appendChild(sc);
+        announce(supported
+          ? 'Source check passed. Every concrete claim is supported by the sources.'
+          : 'Source check: some claims may not be fully supported. Details are shown below.', true);
+      }
       const actions = el('div', 'actions');
       (data.assets || []).forEach((a) => {
         const b = el('button', 'btn secondary', 'View: ' + (a.title || a.type));

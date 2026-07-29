@@ -125,6 +125,7 @@ router.post('/generate', authenticate, [
     assets: assets.rows,
     coverage: result.coverage,
     dreamhold_suggestion: result.dreamhold_suggestion || null,
+    source_check: result.source_check || null,
     emailed: emailed.sent,
     message: result.message + (emailed.sent ? ' A copy was emailed to you.' : ''),
   });
@@ -272,13 +273,13 @@ function buildExecutors(user) {
       const result = await clay.generate({ mode: 'create', category, prompt });
       if (result.result_status !== 'answered') return { status: result.result_status, message: result.message };
       const concept = await persistResult(user.id, result, { conceptId: null, mode: 'create', category, prompt });
-      return { status: 'answered', concept_id: concept.id, title: concept.title, coverage: result.coverage, message: result.message };
+      return { status: 'answered', concept_id: concept.id, title: concept.title, coverage: result.coverage, source_check: result.source_check || null, message: result.message };
     },
     enhance_concept: async ({ concept_id, prompt }) => {
       const result = await clay.generate({ mode: 'enhance', prompt });
       if (result.result_status !== 'answered') return { status: result.result_status, message: result.message };
       const concept = await persistResult(user.id, result, { conceptId: concept_id, mode: 'enhance', category: null, prompt });
-      return { status: 'answered', concept_id: concept.id, coverage: result.coverage, message: result.message };
+      return { status: 'answered', concept_id: concept.id, coverage: result.coverage, source_check: result.source_check || null, message: result.message };
     },
     generate_social_content: async ({ concept_id, platforms, goal, count }) => {
       const c = await query('SELECT id,title,category,risk_summary FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
