@@ -6,6 +6,8 @@ const { asyncHandler, ApiError } = require('../lib/http');
 const { MODES, CATEGORIES, PLATFORMS, SOCIAL_GOALS } = require('../services/clay/tools');
 const spine = require('../services/clay/spine');
 const clay = require('../services/clay');
+const provider = require('../services/clay/provider');
+const journal = require('../services/clay/journal');
 const agent = require('../services/clay/agent');
 const research = require('../services/clay/research');
 const image = require('../services/image');
@@ -99,7 +101,10 @@ router.post('/generate', authenticate, [
   const { mode, category, prompt, concept_id } = req.body;
   const operating = !!req.body.operating;
 
+  const t0 = Date.now();
+  const providerAvailable = provider.available();
   const result = await clay.generate({ mode, category, prompt, operating });
+  const durationMs = Date.now() - t0;
 
   // Honest non-answers: record the run against a concept if we have one, and
   // return the status + message WITHOUT inventing a package.
@@ -108,6 +113,10 @@ router.post('/generate', authenticate, [
       await query('INSERT INTO generations (concept_id, prompt, result_status) VALUES ($1,$2,$3)',
         [concept_id, prompt, result.result_status]).catch(() => {});
     }
+    await journal.recordRun({ actorId: req.user.id, kind: 'generate', mode, category,
+      conceptId: concept_id || null, resultStatus: result.result_status, providerAvailable,
+      grounded: !!result.research_grounded, sourceCount: result.source_count || 0,
+      reason: result.message || result.redirect || null, durationMs });
     return res.status(200).json({
       status: result.result_status,
       redirect: result.redirect || null,
@@ -116,7 +125,24 @@ router.post('/generate', authenticate, [
     });
   }
 
+  // Fail closed: an "answered" with no actual package is not a real answer. Never
+  // persist a hollow concept — record it honestly as empty and invent nothing.
+  if (!result.assets || !result.assets.length) {
+    await journal.recordRun({ actorId: req.user.id, kind: 'generate', mode, category,
+      conceptId: concept_id || null, resultStatus: 'empty', providerAvailable,
+      grounded: !!result.research_grounded, sourceCount: result.source_count || 0,
+      reason: 'answered_with_no_assets', durationMs });
+    return res.status(200).json({
+      status: 'empty',
+      message: result.message || 'Clay came back without a complete package, so nothing was saved and nothing was made up. Give it another go.',
+      inferred_category: result.inferred_category || null,
+    });
+  }
+
   const concept = await persistResult(req.user.id, result, { conceptId: concept_id, mode, category, prompt, operating });
+  await journal.recordRun({ actorId: req.user.id, kind: 'generate', mode, category,
+    conceptId: concept.id, resultStatus: 'answered', providerAvailable,
+    grounded: !!result.research_grounded, sourceCount: result.source_count || 0, durationMs });
   const assets = await query('SELECT id,type,title,is_baseline FROM assets WHERE concept_id=$1 ORDER BY created_at', [concept.id]);
 
   // Dual-channel delivery: email the package too. Best-effort; if it doesn't
@@ -167,16 +193,24 @@ router.post('/social', authenticate, [
   if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
   const concept = c.rows[0];
 
+  const t0 = Date.now();
+  const providerAvailable = provider.available();
   const result = await clay.generateSocial({ concept, platforms, goal, count });
+  const durationMs = Date.now() - t0;
 
   if (result.result_status !== 'answered') {
     await query('INSERT INTO generations (concept_id, prompt, result_status) VALUES ($1,$2,$3)',
       [concept_id, 'social:' + goal, result.result_status]).catch(() => {});
+    await journal.recordRun({ actorId: req.user.id, kind: 'social', mode: 'enhance', category: concept.category || null,
+      conceptId: concept_id, resultStatus: result.result_status, providerAvailable,
+      reason: result.message || null, durationMs });
     return res.status(200).json({ status: result.result_status, message: result.message });
   }
 
   await persistResult(req.user.id, result,
     { conceptId: concept_id, mode: 'enhance', category: null, prompt: 'social:' + goal + ':' + platforms.join(',') });
+  await journal.recordRun({ actorId: req.user.id, kind: 'social', mode: 'enhance', category: concept.category || null,
+    conceptId: concept_id, resultStatus: 'answered', providerAvailable, durationMs });
   const assets = await query(
     `SELECT id, type, title FROM assets WHERE concept_id=$1 AND is_current=true
      AND type IN ('social_post','image_prompt','video_script','social_template','content_calendar')

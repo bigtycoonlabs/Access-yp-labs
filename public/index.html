@@ -67,6 +67,11 @@
       #hero-inner .build > *{animation:riseIn .38s ease both;}
     }
     @keyframes riseIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+    .liveness{padding:14px 20px 4px;}
+    .liveness .live-row{list-style:none;display:flex;flex-wrap:wrap;gap:10px;margin:0;padding:0;}
+    .liveness .live-row li{background:rgba(140,224,255,.10);border:1px solid rgba(140,224,255,.35);
+      color:#d8f2ff;border-radius:999px;padding:8px 14px;font-size:15px;font-weight:600;}
+    .liveness .live-empty{color:#c3bce0;font-size:15px;margin:0;}
   </style>
 </head>
 <body>
@@ -85,6 +90,8 @@
       </div>
     </div>
   </header>
+
+  <section id="liveness" class="wrap liveness" aria-label="What’s happening on Access YP Labs right now" hidden></section>
 
   <main id="main" class="wrap">
     <section aria-labelledby="clay-h">
@@ -221,6 +228,26 @@
     inner.appendChild(dreamholdLink());
   }
   render();
+
+  (async function liveness(){
+    const box=document.getElementById('liveness');
+    if(!box) return;
+    let d; try{ d=await Kiln.api('/liveness',{auth:false}); }catch(_){ return; }
+    const chips=[];
+    if(d.in_dreamhold>0) chips.push(d.in_dreamhold+(d.in_dreamhold===1?' concept':' concepts')+' in the Dreamhold');
+    if(d.waiting>0) chips.push(d.waiting+(d.waiting===1?' person':' people')+' waiting for a builder');
+    if(d.ideas_shaped>0) chips.push(d.ideas_shaped+(d.ideas_shaped===1?' idea':' ideas')+' shaped with Clay');
+    box.innerHTML='';
+    if(!chips.length){
+      const p=el('p','live-empty','The first concepts are being shaped right now — yours could be next.');
+      box.appendChild(p);
+    }else{
+      const ul=el('ul','live-row');
+      chips.forEach(c=>ul.appendChild(el('li',null,c)));
+      box.appendChild(ul);
+    }
+    box.hidden=false;
+  })();
 })();
 </script>
 </body>

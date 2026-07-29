@@ -238,3 +238,9 @@ test('visitor shapeTeaser sanitizes provider JSON and rejects junk', async () =>
     assert.strictEqual(await visitor.shapeTeaser('x'), null);
   } finally { provider.available = oa; provider.chat = oc; }
 });
+
+test('clay journal recordRun never throws (best-effort audit)', async () => {
+  const journal = require('../src/services/clay/journal');
+  await assert.doesNotReject(journal.recordRun({ kind: 'generate', resultStatus: 'answered', mode: 'create', sourceCount: 3 }));
+  await assert.doesNotReject(journal.recordRun({}));
+});

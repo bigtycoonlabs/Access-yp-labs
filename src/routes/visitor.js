@@ -4,6 +4,7 @@ const { query } = require('../config/db');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { parseCookies, setCookie } = require('../lib/cookies');
 const provider = require('../services/clay/provider');
+const journal = require('../services/clay/journal');
 const router = express.Router();
 
 const COOKIE = 'ypl_v';
@@ -89,11 +90,16 @@ router.post('/spark', asyncHandler(async (req, res) => {
   const day = v.rows[0] && v.rows[0].taste_day ? new Date(v.rows[0].taste_day).toISOString().slice(0, 10) : null;
   if (day !== today) used = 0;
 
+  const t0 = Date.now();
+  const providerAvailable = provider.available();
   let teaser = null;
-  if (used < 5 && provider.available()) {
+  if (used < 5 && providerAvailable) {
     teaser = await shapeTeaser(idea);
     if (teaser) await query('UPDATE visitors SET taste_count=$2, taste_day=$3 WHERE token=$1', [token, used + 1, today]);
   }
+  journal.recordRun({ kind: 'teaser', mode: 'create',
+    resultStatus: teaser ? 'answered' : (providerAvailable ? 'empty' : 'unavailable'),
+    providerAvailable, durationMs: Date.now() - t0 });
 
   await query(
     `INSERT INTO anon_sparks (token, idea, title, angle, inside)
@@ -105,6 +111,23 @@ router.post('/spark', asyncHandler(async (req, res) => {
     title: teaser ? teaser.title : null,
     angle: teaser ? teaser.angle : null,
     inside: teaser ? teaser.inside : null,
+  });
+}));
+
+// GET /api/liveness — real, honest signals for the homepage. Only true counts:
+// concepts shaped, concepts currently live in the Dreamhold, and people waiting on
+// those live concepts. If there's nothing yet, the homepage says so plainly rather
+// than inventing activity.
+router.get('/liveness', asyncHandler(async (req, res) => {
+  const [ideas, held, waiting] = await Promise.all([
+    query('SELECT COUNT(*)::int AS n FROM concepts'),
+    query("SELECT COUNT(*)::int AS n FROM listings WHERE status='live'"),
+    query("SELECT COUNT(*)::int AS n FROM waitlist_signups w JOIN listings l ON l.concept_id=w.concept_id AND l.status='live'"),
+  ]);
+  res.json({
+    ideas_shaped: ideas.rows[0].n,
+    in_dreamhold: held.rows[0].n,
+    waiting: waiting.rows[0].n,
   });
 }));
 
