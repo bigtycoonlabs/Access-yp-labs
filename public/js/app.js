@@ -46,7 +46,7 @@
     let prefs = null;
     try { const r = await Kiln.api('/preferences'); prefs = r.preferences; } catch (_) {}
     const m = message('clay', 'Clay');
-    let opening = "I'm Clay. Here's how this works: you bring me an idea — any idea, half-formed is fine — and I build the whole thing out with you: the plan, the research, the marketing, a working demo. Pick “Create” to start something new, or “Enhance” to sharpen an idea you already have or a business you already run. So — what's the one that's been living in your head?";
+    let opening = "I'm Clay. Here's how this works: you bring me an idea — any idea, half-formed is fine — and we pressure-test it, sharpen it, and build the whole thing out together: the plan, the research, the marketing, a working demo. It stays your idea; I just help bring it to life. Pick “Create” to start something new, or “Enhance” to sharpen an idea you already have or a business you already run. So — what's the one that's been living in your head?";
     if (prefs && prefs.interests && prefs.interests.length) {
       const words = prefs.interests.map((i) => CATEGORY_WORDS[i] || i.replace(/_/g, ' '));
       const list = words.length === 1 ? words[0] : (words.slice(0, -1).join(', ') + ' and ' + words[words.length - 1]);
