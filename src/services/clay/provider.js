@@ -9,8 +9,23 @@ let OpenAI = null, Anthropic = null;
 try { OpenAI = require('openai'); } catch (_) { /* optional */ }
 try { Anthropic = require('@anthropic-ai/sdk'); } catch (_) { /* optional */ }
 
-const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o';
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5.5';
 const ANTHROPIC_MODEL = process.env.CLAY_MODEL || 'claude-sonnet-4-5';
+// GPT-5 / o-series reasoning models require max_completion_tokens (they reject the
+// older max_tokens) and accept an optional reasoning_effort; gpt-4o-class models use
+// max_tokens and reject reasoning_effort. Route params by model so Clay works on
+// either without silently failing. Set OPENAI_REASONING_EFFORT (low|medium|high|xhigh)
+// to deepen reasoning; unset uses the model's own default (medium for gpt-5.5).
+const OPENAI_REASONING_EFFORT = process.env.OPENAI_REASONING_EFFORT || null;
+function isReasoningModel(m) { return /^(gpt-5|o\d)/i.test(String(m)); }
+function openaiTokenParams(maxTokens) {
+  if (isReasoningModel(OPENAI_MODEL)) {
+    const p = { max_completion_tokens: maxTokens };
+    if (OPENAI_REASONING_EFFORT) p.reasoning_effort = OPENAI_REASONING_EFFORT;
+    return p;
+  }
+  return { max_tokens: maxTokens };
+}
 
 function providerName() {
   if (OpenAI && process.env.OPENAI_API_KEY) return 'openai';
@@ -30,7 +45,7 @@ async function complete({ system, user, json = false, maxTokens = 6000 }) {
   try {
     if (p === 'openai') {
       const resp = await openaiClient().chat.completions.create({
-        model: OPENAI_MODEL, max_tokens: maxTokens,
+        model: OPENAI_MODEL, ...openaiTokenParams(maxTokens),
         response_format: json ? { type: 'json_object' } : undefined,
         messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
       });
@@ -53,7 +68,7 @@ async function describeImage({ imageBase64, mediaType = 'image/png', system, pro
   try {
     if (p === 'openai') {
       const resp = await openaiClient().chat.completions.create({
-        model: OPENAI_MODEL, max_tokens: maxTokens,
+        model: OPENAI_MODEL, ...openaiTokenParams(maxTokens),
         messages: [
           { role: 'system', content: system },
           { role: 'user', content: [
@@ -109,7 +124,7 @@ async function openaiChat({ system, messages, tools, maxTokens }) {
     }
   }
   const oaTools = tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } }));
-  const resp = await openaiClient().chat.completions.create({ model: OPENAI_MODEL, max_tokens: maxTokens, messages: oaMessages, tools: oaTools });
+  const resp = await openaiClient().chat.completions.create({ model: OPENAI_MODEL, ...openaiTokenParams(maxTokens), messages: oaMessages, tools: oaTools });
   const choice = resp.choices?.[0]?.message || {};
   const tool_calls = (choice.tool_calls || []).map((tc) => {
     let input = {};
