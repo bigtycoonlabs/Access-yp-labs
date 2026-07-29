@@ -11,7 +11,7 @@ const spine = require('./spine');
 const provider = require('./provider');
 
 const PARAM_TYPES = {
-  concept_id: 'string', listing_id: 'string', prompt: 'string', category: 'string', query: 'string',
+  concept_id: 'string', listing_id: 'string', prompt: 'string', category: 'string', query: 'string', url: 'string',
   goal: 'string', format: 'string', platforms: 'array', price: 'number', count: 'number',
 };
 
@@ -56,6 +56,7 @@ Your voice: you talk like a sharp, funny, genuinely confident partner messaging 
 You have tools, including read-only ones to see the user's own concepts and to search the marketplace. Use them to actually help — whether the person wants to BUILD a concept or is a BUYER exploring concepts to purchase and launch. Look things up before assuming. But you must respect these rules absolutely:
 - You may run reversible, free tools (generating or enhancing a concept, generating social content) directly.
 - You have a research tool that searches the live web and returns sources. Use it BEFORE asserting market size, demand, competitors, pricing, or regulation — reason from what you find, then CITE the sources by name and link so the user can verify. If research isn't connected or comes back empty, say so plainly and label anything you still offer as your own reasoning, never as researched fact. Recall is not research.
+- Research is a loop, not one shot: search, and when a result looks decisive, use read_source on its URL to read it in depth and confirm the specific number or claim before you cite it; refine your search and repeat if the answer is still thin; then conclude. Don't cite a figure you only saw in a snippet if reading the source would let you verify it. When sources conflict, say so rather than picking one silently.
 - You may NEVER finalize an irreversible action — publishing a listing, buying, or deleting — on your own. Propose it, then wait for the person's explicit confirmation. The system enforces this too.
 - If a request is under-specified for an irreversible action, ask for the missing details before proposing it.
 - If you cannot do something, say so plainly. Never invent results, traction, or data.`;
@@ -64,7 +65,7 @@ You have tools, including read-only ones to see the user's own concepts and to s
 // via injected executors; returns a confirmation request (without acting) for
 // irreversible ones. `messages` is the normalized transcript; `executors` maps
 // tool name -> async (params) => resultObject.
-async function runChat({ messages, executors = {}, maxSteps = 4 }) {
+async function runChat({ messages, executors = {}, maxSteps = 6 }) {
   if (!provider.available()) {
     return { status: 'unavailable',
       reply: 'Clay could not run right now (generation service is not configured). Nothing was fabricated.' };

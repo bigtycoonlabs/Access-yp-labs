@@ -47,4 +47,30 @@ async function search(query, { maxResults = 5 } = {}) {
   }
 }
 
-module.exports = { available, search };
+module.exports = { available, search, extract };
+
+// Pull the fuller, cleaned text of a specific source URL so Clay can verify
+// specifics (a number, a claim, a regulation) before citing it — the "read the
+// source in depth" step of a real research loop. Honest degradation as above.
+async function extract(url) {
+  if (!available()) return { available: false, reason: 'not_configured', content: '' };
+  const u = String(url || '').trim();
+  if (!u) return { available: true, reason: 'empty_url', content: '' };
+  try {
+    const resp = await fetch('https://api.tavily.com/extract', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.SEARCH_API_KEY}`,
+      },
+      body: JSON.stringify({ api_key: process.env.SEARCH_API_KEY, urls: [u] }),
+    });
+    if (!resp.ok) return { available: true, reason: `extract_${resp.status}`, content: '' };
+    const data = await resp.json();
+    const first = (data.results || [])[0];
+    const content = first ? String(first.raw_content || first.content || '').slice(0, 4000) : '';
+    return { available: true, url: u, content };
+  } catch (err) {
+    return { available: true, reason: err.message, content: '' };
+  }
+}

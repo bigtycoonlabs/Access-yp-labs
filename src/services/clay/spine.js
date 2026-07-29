@@ -37,6 +37,10 @@ const TOOLS = {
     irreversible: false, requires_confirmation: false, required: ['query'], enums: {},
     summary: 'Research a topic on the live web (market size, competitors, demand, pricing, regulation) and return sources to cite. Read-only.',
   },
+  read_source: {
+    irreversible: false, requires_confirmation: false, required: ['url'], enums: {},
+    summary: 'Read one source URL in depth (fuller text) to verify a specific claim before citing it. Read-only.',
+  },
   generate_concept: {
     irreversible: false, requires_confirmation: false,
     required: ['prompt'],

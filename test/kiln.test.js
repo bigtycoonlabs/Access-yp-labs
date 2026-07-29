@@ -184,3 +184,17 @@ test('research degrades honestly with no search backend configured', async () =>
   assert.deepStrictEqual(r.results, []);
   if (save) process.env.SEARCH_API_KEY = save;
 });
+
+test('read_source is a reversible read-only tool that requires a url', () => {
+  assert.strictEqual(agent.planToolInvocation('read_source', { url: 'https://example.com' }).action, 'execute');
+  assert.strictEqual(agent.planToolInvocation('read_source', {}).action, 'reject');
+});
+
+test('research.extract degrades honestly with no backend', async () => {
+  const research = require('../src/services/clay/research');
+  const save = process.env.SEARCH_API_KEY;
+  delete process.env.SEARCH_API_KEY;
+  const r = await research.extract('https://example.com');
+  assert.strictEqual(r.available, false);
+  if (save) process.env.SEARCH_API_KEY = save;
+});

@@ -258,6 +258,16 @@ function buildExecutors(user) {
       }
       return { available: true, query: q, answer: r.answer || null, sources: r.results };
     },
+    read_source: async ({ url }) => {
+      const r = await research.extract(url);
+      if (!r.available) {
+        return { available: false, note: 'Live research isn\'t connected, so I can\'t open that source — and I won\'t summarise a page I didn\'t read.' };
+      }
+      if (!r.content) {
+        return { available: true, url, content: '', note: 'I couldn\'t pull readable text from that page. Say so; don\'t invent what it says.' };
+      }
+      return { available: true, url, content: r.content };
+    },
     generate_concept: async ({ prompt, category }) => {
       const result = await clay.generate({ mode: 'create', category, prompt });
       if (result.result_status !== 'answered') return { status: result.result_status, message: result.message };
