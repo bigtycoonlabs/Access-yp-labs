@@ -43,8 +43,11 @@ router.post('/', authenticate, [
   const { concept_id, format, price_cents, starting_bid_cents, stage_label,
           completion_target, risk_disclosed, ownership_ack, auction_close_at } = req.body;
 
-  const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, req.user.id]);
+  const own = await query('SELECT id, is_operating FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, req.user.id]);
   if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (own.rows[0].is_operating) {
+    throw new ApiError(409, 'The Dreamhold sells unlaunched ideas, not running businesses. This is marked as a business you already operate, so it can\u2019t be listed. Clay can still help you enhance it — or find a complementary dream to add to it.');
+  }
 
   if (!risk_disclosed || !ownership_ack) {
     throw new ApiError(400, 'You must disclose risk and acknowledge that a sale transfers ownership.');

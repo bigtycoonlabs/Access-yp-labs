@@ -54,7 +54,11 @@ function parseModelJson(text) {
  * Run a Clay generation. Returns a normalized result the caller persists.
  * Never throws for "the model couldn't help" — that becomes an honest status.
  */
-async function generate({ mode, category, prompt }) {
+const OPERATING_ADDENDUM = `IMPORTANT — EXISTING BUSINESS MODE:
+The user ALREADY OPERATES this business. You are enhancing a running operation, not shaping a new launch. Frame every section for a live business: the business plan is a growth/enhancement plan for what already exists; the marketing strategy upgrades what they already do; the build path is a rollout plan for the improvements; any demo illustrates a NEW feature or offer, not a whole new company. Never imply they should sell, list, or hand off their existing business — the Dreamhold only sells unlaunched ideas, never running businesses.
+You MAY optionally include a top-level "dreamhold_suggestion": { "reason": string, "category": one of the known categories } when acquiring a complementary UNLAUNCHED idea from the Dreamhold would strengthen their operation (e.g. a bolt-on product or service line). Only include it when it genuinely helps; otherwise omit it. Never invent a specific listing — name a category to browse with a concrete reason.`;
+
+async function generate({ mode, category, prompt, operating = false }) {
   if (!MODES.includes(mode)) mode = 'create';
   if (!category && !prompt) {
     return { result_status: 'refused', redirect: REDIRECTS.NEEDS_CATEGORY,
@@ -67,14 +71,18 @@ async function generate({ mode, category, prompt }) {
       message: 'Clay could not run right now (generation service is not configured). Nothing was fabricated.' };
   }
 
+  const system = operating ? (SYSTEM_PROMPT + '\n\n' + OPERATING_ADDENDUM) : SYSTEM_PROMPT;
   const userMsg = [
     `Mode: ${mode}`,
+    operating
+      ? 'Subject: a business the user ALREADY RUNS — enhance the running operation; do NOT frame it as a brand-new launch, and never imply selling it.'
+      : 'Subject: an unlaunched idea.',
     category ? `Category: ${category}` : 'Category: (not provided — infer or set redirect="needs_category")',
     '',
     prompt || '(no prompt provided)',
   ].join('\n');
 
-  const out = await provider.complete({ system: SYSTEM_PROMPT, user: userMsg, json: true, maxTokens: 8000 });
+  const out = await provider.complete({ system, user: userMsg, json: true, maxTokens: 8000 });
   if (!out.ok) {
     return { result_status: 'unavailable',
       message: out.reason === 'unavailable'
@@ -109,8 +117,12 @@ async function generate({ mode, category, prompt }) {
     risk_summary: parsed.risk_summary || '',
     assets,
     coverage,
+    dreamhold_suggestion: (operating && parsed.dreamhold_suggestion && parsed.dreamhold_suggestion.reason)
+      ? { reason: String(parsed.dreamhold_suggestion.reason).slice(0, 400),
+          category: CATEGORIES.includes(parsed.dreamhold_suggestion.category) ? parsed.dreamhold_suggestion.category : null }
+      : null,
     message: assets.length
-      ? `Clay assembled your concept. ${coverage.gap_description}`
+      ? `Clay assembled your ${operating ? 'enhancement plan' : 'concept'}. ${coverage.gap_description}`
       : 'Clay ran but produced no usable sections. Nothing was saved.',
   };
 }

@@ -17,7 +17,7 @@ const router = express.Router();
 // Persist a full Clay result: concept (create) or new assets (enhance) + a
 // generations row recording the honest result_status. Uses a transaction so a
 // partial/failed generation never leaves half-written data.
-async function persistResult(ownerId, result, { conceptId = null, mode, category, prompt }) {
+async function persistResult(ownerId, result, { conceptId = null, mode, category, prompt, operating = false }) {
   const client = await getClient();
   try {
     await client.query('BEGIN');
@@ -32,10 +32,10 @@ async function persistResult(ownerId, result, { conceptId = null, mode, category
       }
     } else {
       const c = await client.query(
-        `INSERT INTO concepts (owner_id, title, mode, category, risk_summary)
-         VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+        `INSERT INTO concepts (owner_id, title, mode, category, risk_summary, is_operating)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
         [ownerId, result.title || 'Untitled concept', mode,
-         result.inferred_category || category || null, result.risk_summary || null]);
+         result.inferred_category || category || null, result.risk_summary || null, !!operating]);
       concept = c.rows[0];
     }
     for (const a of (result.assets || [])) {
@@ -80,12 +80,14 @@ router.post('/generate', authenticate, [
   body('category').optional().isIn(CATEGORIES),
   body('prompt').isString().isLength({ min: 3 }),
   body('concept_id').optional().isUUID(),
+  body('operating').optional().isBoolean(),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   const { mode, category, prompt, concept_id } = req.body;
+  const operating = !!req.body.operating;
 
-  const result = await clay.generate({ mode, category, prompt });
+  const result = await clay.generate({ mode, category, prompt, operating });
 
   // Honest non-answers: record the run against a concept if we have one, and
   // return the status + message WITHOUT inventing a package.
@@ -102,7 +104,7 @@ router.post('/generate', authenticate, [
     });
   }
 
-  const concept = await persistResult(req.user.id, result, { conceptId: concept_id, mode, category, prompt });
+  const concept = await persistResult(req.user.id, result, { conceptId: concept_id, mode, category, prompt, operating });
   const assets = await query('SELECT id,type,title,is_baseline FROM assets WHERE concept_id=$1 ORDER BY created_at', [concept.id]);
 
   // Dual-channel delivery: email the package too. Best-effort; if it doesn't
@@ -121,6 +123,7 @@ router.post('/generate', authenticate, [
     concept,
     assets: assets.rows,
     coverage: result.coverage,
+    dreamhold_suggestion: result.dreamhold_suggestion || null,
     emailed: emailed.sent,
     message: result.message + (emailed.sent ? ' A copy was emailed to you.' : ''),
   });
