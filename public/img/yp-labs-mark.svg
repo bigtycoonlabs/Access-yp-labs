@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Access YP Labs">
+  <title>Access YP Labs</title>
+  <defs>
+    <linearGradient id="yplm-g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#b8a6ff"/>
+      <stop offset="1" stop-color="#8ce0ff"/>
+    </linearGradient>
+    <radialGradient id="yplm-glow" cx="0.5" cy="0.4" r="0.5">
+      <stop offset="0" stop-color="#ffd9a8" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ffd9a8" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="32" cy="26" r="24" fill="url(#yplm-glow)"/>
+  <path d="M12 48 Q32 60 52 48" fill="none" stroke="url(#yplm-g)" stroke-width="5.5" stroke-linecap="round"/>
+  <path d="M32 8 C33.4 21 37 24.6 50 26 C37 27.4 33.4 31 32 44 C30.6 31 27 27.4 14 26 C27 24.6 30.6 21 32 8 Z" fill="url(#yplm-g)"/>
+  <circle cx="32" cy="9.5" r="2.4" fill="#ffd9a8"/>
+</svg>
