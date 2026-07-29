@@ -227,6 +227,9 @@ router.get('/:id', asyncHandler(async (req, res) => {
   if (!r.rows.length) throw new ApiError(404, 'Listing not found.');
   const listing = r.rows[0];
   if (listing.status !== 'live') return res.status(404).json({ error: 'Listing not available.' });
+  // Never expose the seller's user id publicly — the alias is the public identity,
+  // and a raw seller_id could be cross-referenced to de-anonymize a creator.
+  delete listing.seller_id;
   res.json({ listing });
 }));
 

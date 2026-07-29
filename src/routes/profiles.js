@@ -36,10 +36,12 @@ router.put('/me', authenticate, [
   res.json({ profile: r.rows[0] });
 }));
 
-// Public profile — respects visibility flags, never returns email/phone/contact.
+// Public profile — respects visibility flags, shows the creator's pen name (never
+// their real account name), and never returns email/phone/contact.
 router.get('/:userId', asyncHandler(async (req, res) => {
   const r = await query(
-    `SELECT u.id, u.name, p.about_me, p.show_concepts, p.show_completed, p.show_listings
+    `SELECT u.id, COALESCE(u.display_name, 'A Dreamhold creator') AS name,
+            p.about_me, p.show_concepts, p.show_completed, p.show_listings
      FROM users u JOIN profiles p ON p.user_id=u.id WHERE u.id=$1`, [req.params.userId]);
   if (!r.rows.length) return res.status(404).json({ error: 'Profile not found.' });
   const p = r.rows[0];
