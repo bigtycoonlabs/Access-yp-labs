@@ -309,7 +309,12 @@
     catch (_) { location.replace('/login.html'); return; }
     if (['staff', 'admin', 'master_staff'].includes(me.role)) {
       const g = document.getElementById('global');
+      const sd = el('a', 'btn', 'Staff dashboard'); sd.href = '/admin-overview.html';
+      g.appendChild(sd);
+      const chp = el('a', 'btn secondary', 'Clay health & connection test'); chp.href = '/admin-clay.html';
+      chp.style.marginLeft = '8px'; g.appendChild(chp);
       const a = el('a', 'btn secondary', 'Open the review queue'); a.href = '/moderation.html';
+      a.style.marginLeft = '8px';
       g.appendChild(a);
       const at = el('a', 'btn secondary', 'Moderation tools'); at.href = '/admin-tools.html';
       at.style.marginLeft = '8px'; g.appendChild(at);
