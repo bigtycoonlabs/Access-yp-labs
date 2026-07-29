@@ -29,6 +29,17 @@ The best of what we build lands in the Dreamhold — a marketplace of businesses
 
 Building costs you nothing. You only pay when you want to keep something and carry it out the door.
 
+Before you bring me that idea, here's what we stand for — so you know exactly who you're building with:
+
+• Prove it before you launch. Real proof behind an idea before a dollar or a day is risked.
+• Your ideas are assets. They have value, and you should be able to capture it.
+• Honesty is the confidence. I'll never hand you a confident wrong answer.
+• Built for everyone. Accessible from the first line of code, for however you navigate.
+• The idea stays yours. I build it with you — the vision stays yours.
+• Build the whitespace. We make what doesn't exist yet.
+
+The whole story is here: https://accessyplabs.com/values.html
+
 So — that idea that's been renting space in your head for free? Let's finally evict it into the real world. I'm ready. Are you?
 
 Enter the Dreamhold: https://accessyplabs.com/dreamhold.html
@@ -65,6 +76,20 @@ Access YP Labs, a brand of Set Up Your Place LLC`;
               <p style="margin:0 0 16px;">So bring me one. Any one &mdash; messy, half-formed, &ldquo;this is probably dumb, but.&rdquo; I&rsquo;ll build the real thing with you: the plan, the research, the marketing, a working demo, the exact steps to make it exist. I&rsquo;ll hype what&rsquo;s genuinely good, and I&rsquo;ll tell you straight where the risk hides &mdash; I&rsquo;m not here to flatter you, I&rsquo;m here to get you built. Already running something? Even better. Let&rsquo;s make it bigger.</p>
               <p style="margin:0 0 16px;">The best of what we build lands in the <strong>Dreamhold</strong> &mdash; a marketplace of businesses proven before anyone dared launch them. Claim one. Sell yours. Snap one onto what you already run. (We trade in ideas, never in running businesses &mdash; this is a home for what&rsquo;s possible.)</p>
               <p style="margin:0 0 16px;">Building costs you nothing. You only pay when you want to keep something and carry it out the door.</p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;">
+                <tr>
+                  <td bgcolor="#f7f5ff" style="background-color:#f7f5ff;border:1px solid #e6e0f5;border-radius:12px;padding:18px 20px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;color:#191630;">
+                    <p style="margin:0 0 12px;font-weight:bold;">Before you bring me that idea &mdash; here&rsquo;s what we stand for:</p>
+                    <p style="margin:0 0 7px;"><strong>Prove it before you launch.</strong> Real proof behind an idea before a dollar or a day is risked.</p>
+                    <p style="margin:0 0 7px;"><strong>Your ideas are assets.</strong> They have value, and you should be able to capture it.</p>
+                    <p style="margin:0 0 7px;"><strong>Honesty is the confidence.</strong> I&rsquo;ll never hand you a confident wrong answer.</p>
+                    <p style="margin:0 0 7px;"><strong>Built for everyone.</strong> Accessible from the first line of code, for however you navigate.</p>
+                    <p style="margin:0 0 7px;"><strong>The idea stays yours.</strong> I build it with you &mdash; the vision stays yours.</p>
+                    <p style="margin:0 0 12px;"><strong>Build the whitespace.</strong> We make what doesn&rsquo;t exist yet.</p>
+                    <p style="margin:0;"><a href="https://accessyplabs.com/values.html" style="color:#3a2ba6;font-weight:bold;">Read the whole story &rarr;</a></p>
+                  </td>
+                </tr>
+              </table>
               <p style="margin:0 0 22px;">So &mdash; that idea that&rsquo;s been renting space in your head for free? Let&rsquo;s finally evict it into the real world. I&rsquo;m ready. Are you?</p>
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
