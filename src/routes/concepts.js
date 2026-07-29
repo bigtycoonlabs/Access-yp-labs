@@ -4,7 +4,7 @@ const { query } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { CATEGORIES, MODES } = require('../services/clay/tools');
-const { conceptEntitlement, paywall } = require('../lib/entitlement');
+const { conceptEntitlement, paywall, isStaff } = require('../lib/entitlement');
 const protect = require('../lib/protect');
 
 const ASSET_TYPES = ['business_plan', 'marketing_strategy', 'customer_research', 'competitor_research',
@@ -69,6 +69,30 @@ router.post('/:id/assets', authenticate, [
       ? 'Uploaded, but this file was flagged by the malware scan and will be blocked from listing/download until resolved.'
       : 'Uploaded.',
   });
+}));
+
+// GET /api/concepts/unkept-summary — how many concepts the user has built but
+// can't yet download (no active plan covers them). Powers a gentle, mutable
+// reminder. Honest by construction: staff and Sculptor cover everything, so their
+// count is 0 and they're never nudged. Declared before the /:id routes so the
+// static path is never shadowed by the concept-id param.
+router.get('/unkept-summary', authenticate, asyncHandler(async (req, res) => {
+  const prefs = await query('SELECT reminders_muted FROM user_preferences WHERE user_id=$1', [req.user.id]);
+  const muted = !!(prefs.rows[0] && prefs.rows[0].reminders_muted);
+  if (isStaff(req.user.role)) return res.json({ count: 0, sample: [], muted });
+  const sculptor = await query(
+    `SELECT 1 FROM subscriptions WHERE user_id=$1 AND plan='sculptor' AND status='active'
+       AND (current_period_end IS NULL OR current_period_end > now()) LIMIT 1`, [req.user.id]);
+  if (sculptor.rows.length) return res.json({ count: 0, sample: [], muted });
+  const rows = await query(
+    `SELECT c.id, c.title FROM concepts c
+      WHERE c.owner_id=$1
+        AND NOT EXISTS (
+          SELECT 1 FROM subscriptions s WHERE s.user_id=$1 AND s.plan='maker' AND s.status='active'
+            AND s.concept_id=c.id AND (s.current_period_end IS NULL OR s.current_period_end > now()))
+        AND NOT (c.origin='purchased' AND c.access_expires_at IS NOT NULL AND c.access_expires_at > now())
+      ORDER BY c.created_at DESC`, [req.user.id]);
+  res.json({ count: rows.rows.length, sample: rows.rows.slice(0, 3), muted });
 }));
 
 // GATED export: bundle of current assets for download. Building is free; pulling

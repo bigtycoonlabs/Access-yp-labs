@@ -62,6 +62,33 @@
       }
     } catch (_) {}
     m.appendChild(el('p', null, opening));
+
+    // Gentle, mutable reminder about concepts built but not yet kept. Honest and
+    // easy to silence — never shown to Sculptor/staff (their count is 0).
+    try {
+      const u = await Kiln.api('/concepts/unkept-summary');
+      if (u && u.count > 0 && !u.muted) {
+        const r = message('clay', 'Clay');
+        const names = (u.sample || []).map((s) => s.title).filter(Boolean);
+        const lead = u.count === 1
+          ? 'One gentle nudge: you’ve built a concept you haven’t kept yet'
+          : ('One gentle nudge: you’ve built ' + u.count + ' concepts you haven’t kept yet');
+        r.appendChild(el('p', null, lead + (names.length ? (' — ' + names.join(', ')) : '') + '. They’re yours to download anytime with Maker, $2.99 each. No rush — and you can quiet these whenever you like.'));
+        const acts = el('div', 'actions');
+        const see = el('a', 'btn secondary', 'See my concepts'); see.href = '/dashboard.html'; acts.appendChild(see);
+        const quiet = el('button', 'btn secondary', 'Quiet these reminders'); quiet.type = 'button';
+        quiet.addEventListener('click', async () => {
+          quiet.disabled = true;
+          try {
+            await Kiln.api('/preferences/reminders', { method: 'PUT', body: { muted: true } });
+            r.innerHTML = ''; r.appendChild(el('p', 'muted', 'Reminders quieted. You can turn them back on in settings anytime.'));
+            announce('Reminders quieted.', true);
+          } catch (e) { announce(e.message, true); quiet.disabled = false; }
+        });
+        acts.appendChild(quiet);
+        r.appendChild(acts);
+      }
+    } catch (_) {}
   })();
 
   // ---- mode toggle ----
@@ -184,6 +211,26 @@
       consultBtn.href = '/consultants.html?concept=' + encodeURIComponent(data.concept.id);
       actions.appendChild(consultBtn);
       container.appendChild(actions);
+
+      // The "free until you download" moment — positive, shown once, never a nag.
+      // Only when this concept isn't already kept (staff/Sculptor/Maker come back
+      // entitled, so they never see an upsell).
+      if (data.entitled === false && data.concept) {
+        const keep = el('div', 'keep-note');
+        keep.setAttribute('role', 'note');
+        keep.appendChild(el('p', null, 'This concept is yours to explore and refine right now — free. Whenever you want to download it, share it, or keep it for good, that’s Maker: $2.99 for this one concept.'));
+        const kb = el('button', 'btn', 'Keep this concept — $2.99'); kb.type = 'button';
+        kb.addEventListener('click', async () => {
+          kb.disabled = true;
+          try {
+            const r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'maker', concept_id: data.concept.id } });
+            if (r.url) { location.href = r.url; return; }
+            announce(r.message || 'Billing isn’t configured yet, so nothing was charged.', true); kb.disabled = false;
+          } catch (e) { announce(e.message, true); kb.disabled = false; }
+        });
+        keep.appendChild(kb);
+        container.appendChild(keep);
+      }
       announce('Clay assembled your concept, with ' + (data.assets || []).length + ' sections. Suggested next steps are available.');
       return;
     }

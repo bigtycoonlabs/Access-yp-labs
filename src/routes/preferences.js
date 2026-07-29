@@ -37,8 +37,8 @@ router.get('/options', authenticate, (req, res) => {
 
 // The signed-in user's saved customization (defaults if none yet).
 router.get('/', authenticate, asyncHandler(async (req, res) => {
-  const r = await query('SELECT interests, runs_business, business_kind, launch_budget, onboarded FROM user_preferences WHERE user_id=$1', [req.user.id]);
-  res.json({ preferences: r.rows[0] || { interests: [], runs_business: false, business_kind: '', launch_budget: '', onboarded: false } });
+  const r = await query('SELECT interests, runs_business, business_kind, launch_budget, onboarded, reminders_muted FROM user_preferences WHERE user_id=$1', [req.user.id]);
+  res.json({ preferences: r.rows[0] || { interests: [], runs_business: false, business_kind: '', launch_budget: '', onboarded: false, reminders_muted: false } });
 }));
 
 // Upsert the customization. Validates interests are real categories and the
@@ -69,6 +69,21 @@ router.put('/', authenticate, [
      RETURNING interests, runs_business, business_kind, launch_budget, onboarded`,
     [req.user.id, interests, runs, kind, budget, onboarded]);
   res.json({ preferences: r.rows[0] });
+}));
+
+// PUT /api/preferences/reminders { muted } — quiet or re-enable the gentle
+// unkept-concepts reminder, WITHOUT touching any other preference (a partial
+// upsert here must never clobber interests/budget/onboarding).
+router.put('/reminders', authenticate, [body('muted').isBoolean()], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  const muted = !!req.body.muted;
+  await query(
+    `INSERT INTO user_preferences (user_id, reminders_muted)
+     VALUES ($1,$2)
+     ON CONFLICT (user_id) DO UPDATE SET reminders_muted=EXCLUDED.reminders_muted, updated_at=now()`,
+    [req.user.id, muted]);
+  res.json({ reminders_muted: muted });
 }));
 
 module.exports = router;

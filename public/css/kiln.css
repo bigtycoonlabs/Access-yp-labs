@@ -47,3 +47,8 @@ footer.site{border-top:1px solid var(--line);color:var(--muted);font-size:15px;p
 .check input{width:auto;min-height:auto;}
 fieldset{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:0 0 10px;}
 legend{font-weight:700;padding:0 6px;}
+
+/* The "free until you download" moment after a build — positive, not a nag. */
+.keep-note{border:1px solid var(--line,#dcd6ec);border-left:5px solid #8ce0ff;border-radius:10px;
+  background:rgba(140,224,255,.06);padding:14px 16px;margin:12px 0;}
+.keep-note p{margin:0 0 10px;}

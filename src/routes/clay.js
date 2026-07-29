@@ -8,6 +8,7 @@ const spine = require('../services/clay/spine');
 const clay = require('../services/clay');
 const provider = require('../services/clay/provider');
 const journal = require('../services/clay/journal');
+const { conceptEntitlement } = require('../lib/entitlement');
 const agent = require('../services/clay/agent');
 const research = require('../services/clay/research');
 const image = require('../services/image');
@@ -156,10 +157,16 @@ router.post('/generate', authenticate, [
     });
   } catch (e) { emailed = { sent: false, reason: e.message }; }
 
+  // Surface entitlement at delivery so Clay can frame it honestly and positively:
+  // the build is free to explore; downloading/keeping is where a plan comes in.
+  // (Staff and Sculptor users come back entitled, so no upsell is shown to them.)
+  const ent = await conceptEntitlement(req.user, concept.id);
+
   res.status(201).json({
     status: 'answered',
     concept,
     assets: assets.rows,
+    entitled: ent.entitled,
     coverage: result.coverage,
     dreamhold_suggestion: result.dreamhold_suggestion || null,
     source_check: result.source_check || null,
