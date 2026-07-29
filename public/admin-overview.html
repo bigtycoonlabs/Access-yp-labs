@@ -1,0 +1,70 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Platform overview — Access YP Labs</title><link rel="stylesheet" href="/css/kiln.css"/>
+<style>
+  .stat{border:1px solid var(--line);border-radius:10px;background:#fff;padding:14px 16px;margin:8px 0;}
+  .stat .big{font-size:26px;font-weight:800;margin:0;}
+  .stat .lbl{margin:2px 0 0;color:#555;font-size:14px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;}
+</style>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs</a>
+  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/admin-clay.html">Clay health</a><a href="/admin-tools.html">Moderation</a></nav>
+</div></header>
+<main id="main" class="wrap">
+  <h1>Platform overview</h1>
+  <p class="muted">One honest read on the whole platform. Every number is a live count — nothing here is estimated.</p>
+  <div id="gate" role="status" aria-live="polite" class="muted">Checking access…</div>
+  <div id="console" hidden>
+    <p id="headline" role="status" aria-live="polite"></p>
+    <section aria-labelledby="p-h"><h2 id="p-h">People &amp; ideas</h2><div class="grid" id="people"></div></section>
+    <section aria-labelledby="m-h"><h2 id="m-h">Money</h2><div class="grid" id="money"></div></section>
+    <section aria-labelledby="c-h"><h2 id="c-h">Clay</h2><div class="grid" id="clay"></div>
+      <p><a class="btn secondary" href="/admin-clay.html">Open the Clay health screen</a></p></section>
+  </div>
+</main>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script>
+<script>
+const gate=document.getElementById('gate');
+function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+function pct(n,d){return d>0?Math.round((n/d)*100):0;}
+function stat(host,big,lbl){const d=el('div','stat');d.appendChild(el('p','big',String(big)));d.appendChild(el('p','lbl',lbl));host.appendChild(d);}
+
+async function load(){
+  let d;
+  try{ d=await Kiln.api('/admin/overview'); }
+  catch(e){ gate.textContent = e.status===403 ? 'This page is for staff only.' : (e.message||'Could not load.'); return; }
+  gate.hidden=true; document.getElementById('console').hidden=false;
+
+  const c=d.counts, a=d.clay_all;
+  const answeredPct=pct(a.answered,a.total);
+  const providerNote = a.provider_down>0
+    ? ('Clay’s provider was unavailable on '+a.provider_down+' recorded run'+(a.provider_down===1?'':'s')+'.')
+    : 'Clay’s provider has been available on every recorded run.';
+  const clayNote = a.total===0 ? 'Clay has no recorded runs yet.'
+    : (answeredPct+'% of '+a.total+' Clay runs answered. '+providerNote);
+  const headline = c.users+' member'+(c.users===1?'':'s')+', '+c.concepts+' concept'+(c.concepts===1?'':'s')+' shaped, '
+    + c.live_listings+' live in the Dreamhold, '+c.waitlist+' on the waitlist. '+clayNote;
+  const h=document.getElementById('headline'); h.textContent=headline; announce(headline,true);
+
+  const people=document.getElementById('people'); people.innerHTML='';
+  stat(people,c.users,'Members');
+  stat(people,c.concepts,'Concepts shaped');
+  stat(people,c.live_listings,'Live in the Dreamhold');
+  stat(people,c.waitlist,'On the waitlist');
+
+  const money=document.getElementById('money'); money.innerHTML='';
+  stat(money,c.maker_subs,'Maker plans ($2.99/concept)');
+  stat(money,c.sculptor_subs,'Sculptor plans ($49.99/mo)');
+
+  const clay=document.getElementById('clay'); clay.innerHTML='';
+  stat(clay,a.total,'Clay runs (all time)');
+  stat(clay,answeredPct+'%','Answered');
+  stat(clay,a.last_24h,'Runs in last 24h');
+  stat(clay,a.provider_down,'Runs with provider down');
+}
+load();
+</script>
+</body></html>
