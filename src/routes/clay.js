@@ -1,7 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { query, getClient } = require('../config/db');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { MODES, CATEGORIES, PLATFORMS, SOCIAL_GOALS } = require('../services/clay/tools');
 const spine = require('../services/clay/spine');
@@ -452,6 +452,31 @@ router.get('/pending-idea', authenticate, asyncHandler(async (req, res) => {
   const idea = r.rows[0] ? r.rows[0].pending_idea : null;
   if (idea) await query('UPDATE users SET pending_idea=NULL WHERE id=$1', [req.user.id]);
   res.json({ idea: idea || null });
+}));
+
+// GET /api/clay/journal — staff-only health view over Clay's append-only audit
+// trail. Aggregates + the most recent runs, so staff can hear at a glance whether
+// Clay is up, answering, and grounding — and catch a bad stretch early. It reports
+// only what happened; it never stores or shows the user's idea text.
+router.get('/journal', authenticate, authorize('staff', 'admin', 'master_staff'), asyncHandler(async (req, res) => {
+  const summary = await query(`
+    SELECT
+      COUNT(*)::int AS total,
+      COUNT(*) FILTER (WHERE created_at > now() - interval '24 hours')::int AS last_24h,
+      COUNT(*) FILTER (WHERE result_status='answered')::int AS answered,
+      COUNT(*) FILTER (WHERE result_status='empty')::int AS empty,
+      COUNT(*) FILTER (WHERE result_status='unavailable')::int AS unavailable,
+      COUNT(*) FILTER (WHERE result_status NOT IN ('answered','empty','unavailable'))::int AS other,
+      COUNT(*) FILTER (WHERE grounded)::int AS grounded,
+      COUNT(*) FILTER (WHERE provider_available IS TRUE)::int AS provider_up,
+      COUNT(*) FILTER (WHERE provider_available IS FALSE)::int AS provider_down,
+      COALESCE(ROUND(AVG(duration_ms))::int, 0) AS avg_ms
+    FROM clay_runs`);
+  const recent = await query(`
+    SELECT kind, mode, category, result_status, provider_available, grounded,
+           source_count, reason, duration_ms, created_at
+    FROM clay_runs ORDER BY created_at DESC LIMIT 50`);
+  res.json({ summary: summary.rows[0], recent: recent.rows });
 }));
 
 module.exports = router;

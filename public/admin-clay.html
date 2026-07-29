@@ -1,0 +1,96 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Clay health — Access YP Labs</title><link rel="stylesheet" href="/css/kiln.css"/>
+<style>
+  .stat{border:1px solid var(--line);border-radius:10px;background:#fff;padding:14px 16px;margin:8px 0;}
+  .stat .big{font-size:26px;font-weight:800;margin:0;}
+  .stat .lbl{margin:2px 0 0;color:#555;font-size:14px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;}
+  .run{border:1px solid var(--line);border-left-width:5px;border-radius:8px;background:#fff;padding:10px 12px;margin:8px 0;}
+  .run.answered{border-left-color:#1a8f5a;} .run.empty{border-left-color:#c58a00;}
+  .run.unavailable{border-left-color:#b03a2e;} .run.other{border-left-color:#8e63ce;}
+  .run .meta{color:#555;font-size:14px;margin:3px 0 0;}
+  .pill{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 8px;background:#eee;margin-right:6px;}
+</style>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs</a>
+  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/admin-tools.html">Moderation</a></nav>
+</div></header>
+<main id="main" class="wrap">
+  <h1>Clay health</h1>
+  <p class="muted">An honest, append-only record of every run Clay has made — the successes and the failures. It never stores the idea text, only what happened.</p>
+  <div id="gate" role="status" aria-live="polite" class="muted">Checking access…</div>
+  <div id="console" hidden>
+    <section aria-labelledby="sum-h">
+      <h2 id="sum-h">At a glance</h2>
+      <p id="headline" role="status" aria-live="polite" class="muted"></p>
+      <div class="grid" id="stats"></div>
+    </section>
+    <section aria-labelledby="rec-h">
+      <h2 id="rec-h">Most recent runs</h2>
+      <div id="runs" class="stack"></div>
+    </section>
+  </div>
+</main>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script>
+<script>
+const gate=document.getElementById('gate');
+function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+function pct(n,d){return d>0?Math.round((n/d)*100):0;}
+function nice(s){return String(s||'').replace(/_/g,' ');}
+function when(iso){try{return new Date(iso).toLocaleString();}catch(_){return iso;}}
+
+function stat(big,lbl){const d=el('div','stat');d.appendChild(el('p','big',String(big)));d.appendChild(el('p','lbl',lbl));return d;}
+
+async function load(){
+  let data;
+  try{ data=await Kiln.api('/clay/journal'); }
+  catch(e){ gate.textContent = e.status===403 ? 'This page is for staff only.' : (e.message||'Could not load.'); return; }
+  gate.hidden=true;
+  document.getElementById('console').hidden=false;
+
+  const s=data.summary;
+  const answeredPct=pct(s.answered,s.total);
+  const groundedPct=pct(s.grounded,s.total);
+  const providerNote = s.provider_down>0
+    ? ('Provider was unavailable on '+s.provider_down+' run'+(s.provider_down===1?'':'s')+'.')
+    : 'Provider has been available on every recorded run.';
+  const headline = s.total===0
+    ? 'No runs recorded yet. As soon as Clay builds anything, it shows up here.'
+    : (answeredPct+'% of '+s.total+' runs answered. '+groundedPct+'% were research-grounded. '+providerNote+' Average build time '+s.avg_ms+' ms.');
+  const h=document.getElementById('headline'); h.textContent=headline; announce(headline,true);
+
+  const g=document.getElementById('stats'); g.innerHTML='';
+  g.appendChild(stat(s.total,'Total runs'));
+  g.appendChild(stat(s.last_24h,'In the last 24 hours'));
+  g.appendChild(stat(answeredPct+'%','Answered ('+s.answered+')'));
+  g.appendChild(stat(s.empty,'Came back empty'));
+  g.appendChild(stat(s.unavailable,'Provider unavailable'));
+  g.appendChild(stat(s.other,'Refused / errored'));
+  g.appendChild(stat(groundedPct+'%','Research-grounded'));
+  g.appendChild(stat(s.avg_ms+' ms','Average build time'));
+
+  const box=document.getElementById('runs'); box.innerHTML='';
+  if(!data.recent.length){ box.appendChild(el('p','muted','Nothing yet.')); return; }
+  data.recent.forEach(r=>{
+    const cls = ['answered','empty','unavailable'].includes(r.result_status) ? r.result_status : 'other';
+    const row=el('div','run '+cls);
+    const head=el('p',null);
+    head.appendChild(el('span','pill',nice(r.kind)));
+    head.appendChild(document.createTextNode(nice(r.result_status)+(r.mode?(' · '+nice(r.mode)):'')));
+    row.appendChild(head);
+    const bits=[];
+    bits.push(r.provider_available===false?'provider down':(r.provider_available===true?'provider up':'provider unknown'));
+    if(r.grounded) bits.push('grounded'+(r.source_count?(' · '+r.source_count+' sources'):''));
+    if(Number.isFinite(r.duration_ms)) bits.push(r.duration_ms+' ms');
+    bits.push(when(r.created_at));
+    row.appendChild(el('p','meta',bits.join(' · ')));
+    if(r.reason) row.appendChild(el('p','meta','Reason: '+r.reason));
+    box.appendChild(row);
+  });
+}
+load();
+</script>
+</body></html>
