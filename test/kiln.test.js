@@ -204,3 +204,14 @@ test('source self-check short-circuits honestly with no sources (no false clean 
   assert.strictEqual(await clay.selfCheckSources({ customer_research: 'x' }, []), null);
   assert.strictEqual(await clay.selfCheckSources({}, [{ title: 't', url: 'u', snippet: 's' }]), null);
 });
+
+test('waitlist email validation and ref-code shape', () => {
+  const wl = require('../src/routes/waitlist');
+  assert.ok(wl.EMAIL_RE.test('a@b.co'));
+  assert.ok(wl.EMAIL_RE.test('first.last@sub.domain.io'));
+  assert.ok(!wl.EMAIL_RE.test('nope'));
+  assert.ok(!wl.EMAIL_RE.test('a@b'));
+  assert.ok(!wl.EMAIL_RE.test('a b@c.co'));
+  assert.match(wl.refCode(), /^[a-f0-9]{8}$/);
+  assert.notStrictEqual(wl.refCode(), wl.refCode());
+});

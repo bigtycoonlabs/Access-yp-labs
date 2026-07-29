@@ -38,6 +38,44 @@ async function loadPreview(container){
     }
   }catch(e){ body.textContent=''; body.appendChild(el('p','muted','A preview isn’t available for this listing.')); }
 }
+async function renderWaitlist(container, conceptId, listingId){
+  if(!conceptId) return;
+  const sec=el('section','panel'); sec.setAttribute('aria-labelledby','wl-h');
+  const h=el('h3',null,'Join the waitlist'); h.id='wl-h'; sec.appendChild(h);
+  sec.appendChild(el('p','muted','Raise your hand for this business before it launches. No account needed.'));
+  const countP=el('p','muted','Checking interest…'); sec.appendChild(countP);
+  try{
+    const c=await Kiln.api('/waitlist/'+conceptId+'/count',{auth:false});
+    countP.textContent = c.count>0
+      ? (c.count+(c.count===1?' person is':' people are')+' already waiting for this.')
+      : 'Be the first to raise your hand for this one.';
+  }catch(_){ countP.textContent=''; }
+  const ref=new URLSearchParams(location.search).get('ref')||'';
+  const nameL=el('label',null,'Your name (optional)'); nameL.setAttribute('for','wl-name');
+  const nameI=el('input'); nameI.id='wl-name'; nameI.type='text'; nameI.maxLength=80;
+  const emailL=el('label',null,'Your email'); emailL.setAttribute('for','wl-email');
+  const emailI=el('input'); emailI.id='wl-email'; emailI.type='email'; emailI.setAttribute('required','');
+  const btn=el('button','btn','Join the waitlist'); btn.type='button';
+  const out=el('div'); out.setAttribute('role','status'); out.setAttribute('aria-live','polite');
+  btn.addEventListener('click', async ()=>{
+    const email=(emailI.value||'').trim();
+    if(!email){ announce('Please enter your email.',true); emailI.focus(); return; }
+    btn.disabled=true;
+    try{
+      const r=await Kiln.api('/waitlist/'+conceptId,{auth:false,method:'POST',body:{email,name:nameI.value||undefined,ref:ref||undefined}});
+      out.innerHTML='';
+      out.appendChild(el('p','msg ok', r.message+(r.count?(' You\u2019re one of '+r.count+' waiting.'):'')));
+      const share=location.origin+'/listing.html?id='+encodeURIComponent(listingId)+'&ref='+encodeURIComponent(r.ref_code);
+      out.appendChild(el('p','muted','Share this concept to grow its waitlist: '+share));
+      announce(r.message+' There are now '+r.count+' people waiting.',true);
+    }catch(e){ out.innerHTML=''; out.appendChild(el('p','msg err', e.message)); announce(e.message,true); }
+    finally{ btn.disabled=false; }
+  });
+  sec.appendChild(nameL); sec.appendChild(nameI);
+  sec.appendChild(emailL); sec.appendChild(emailI);
+  sec.appendChild(btn); sec.appendChild(out);
+  container.appendChild(sec);
+}
 async function load(){
   if(!id){statusEl.textContent='No listing specified.';return;}
   try{
@@ -63,6 +101,8 @@ async function load(){
     }
 
     loadPreview(detail);
+
+    await renderWaitlist(detail, listing.concept_id, id);
 
     if(!Kiln.isLoggedIn()){
       const back=encodeURIComponent(location.pathname+location.search);

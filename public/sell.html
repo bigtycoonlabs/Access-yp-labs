@@ -151,7 +151,14 @@ document.getElementById('createlisting').addEventListener('click',async()=>{
     submit.addEventListener('click',async()=>{submit.disabled=true;
       try{await Kiln.api('/listings/'+listing.id+'/submit',{method:'POST'});show('Submitted for review. Staff will approve it before it goes live.','ok');}
       catch(e){show(e.message);submit.disabled=false;}});
-    pc.appendChild(submit);btn.disabled=false;
+    pc.appendChild(submit);
+    const wl=el('div','panel');
+    wl.appendChild(el('h3',null,'Your concept has a built-in waitlist'));
+    wl.appendChild(el('p','muted','Once this listing is live, anyone can join the waitlist for the business — no account needed. Share this link to capture real demand before it launches:'));
+    wl.appendChild(el('p',null,location.origin+'/listing.html?id='+listing.id));
+    wl.appendChild(el('p','muted','That demand travels with the concept — whoever buys it inherits the waitlist. It is proof your idea is wanted.'));
+    pc.appendChild(wl);
+    btn.disabled=false;
   }catch(e){
     btn.disabled=false;
     if(e.status===422){show('This concept needs a business plan, a marketing strategy, and a build path. Add them in section 2, or build them in Clay, then try again.');document.getElementById('sec2').hidden=false;}
