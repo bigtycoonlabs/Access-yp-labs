@@ -37,7 +37,13 @@
   <div class="composer" id="composer">
     <div class="modes" role="group" aria-label="What would you like to do?">
       <button type="button" class="btn mode-btn" id="mode-create" aria-pressed="true">Create a new concept</button>
-      <button type="button" class="btn mode-btn" id="mode-enhance" aria-pressed="false">Enhance my idea</button>
+      <button type="button" class="btn mode-btn" id="mode-enhance" aria-pressed="false">Enhance an idea or business</button>
+    </div>
+    <div id="operating-wrap" hidden style="margin:8px 0;">
+      <label style="display:flex;gap:10px;align-items:flex-start;">
+        <input type="checkbox" id="operating" style="min-width:22px;min-height:22px;margin-top:2px;">
+        <span>This business already exists — I run it. Enhance my operation (it won’t be listed for sale in the Dreamhold).</span>
+      </label>
     </div>
     <label for="category">Category <span class="muted">(optional — Clay can decide)</span></label>
     <select id="category">

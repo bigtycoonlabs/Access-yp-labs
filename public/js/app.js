@@ -60,7 +60,12 @@
     mode = next;
     document.getElementById('mode-create').setAttribute('aria-pressed', String(next === 'create'));
     document.getElementById('mode-enhance').setAttribute('aria-pressed', String(next === 'enhance'));
-    announce(next === 'create' ? 'Create a new concept selected.' : 'Enhance my idea selected.');
+    const opWrap = document.getElementById('operating-wrap');
+    if (opWrap) {
+      opWrap.hidden = next !== 'enhance';
+      if (next !== 'enhance') { const ob = document.getElementById('operating'); if (ob) ob.checked = false; }
+    }
+    announce(next === 'create' ? 'Create a new concept selected.' : 'Enhance selected. You can mark this as a business you already run.');
   }
   document.getElementById('mode-create').addEventListener('click', () => setMode('create'));
   document.getElementById('mode-enhance').addEventListener('click', () => setMode('enhance'));
@@ -82,7 +87,9 @@
     thinking.appendChild(think);
 
     try {
-      const data = await Kiln.api('/clay/generate', { method: 'POST', body: { mode, category, prompt } });
+      const operatingEl = document.getElementById('operating');
+      const operating = mode === 'enhance' && !!(operatingEl && operatingEl.checked);
+      const data = await Kiln.api('/clay/generate', { method: 'POST', body: { mode, category, prompt, operating } });
       thinking.removeChild(think);
       renderResult(thinking, data);
     } catch (e) {
@@ -118,9 +125,20 @@
         demoBtn.href = '/sandbox.html?concept=' + encodeURIComponent(data.concept.id);
         actions.appendChild(demoBtn);
       }
-      const listBtn = el('button', 'btn', 'List this in the Dreamhold'); listBtn.type = 'button';
-      listBtn.addEventListener('click', () => openListingForm(container, data.concept.id));
-      actions.appendChild(listBtn);
+      if (data.concept && data.concept.is_operating) {
+        // A running business is never listed for sale. Offer a complementary dream instead.
+        if (data.dreamhold_suggestion && data.dreamhold_suggestion.reason) {
+          container.appendChild(el('p', 'muted', 'Clay suggests: ' + data.dreamhold_suggestion.reason));
+        }
+        const findBtn = el('a', 'btn', 'Find a complementary dream in the Dreamhold');
+        const cat = data.dreamhold_suggestion && data.dreamhold_suggestion.category;
+        findBtn.href = '/marketplace.html?entered=1' + (cat ? ('&category=' + encodeURIComponent(cat)) : '');
+        actions.appendChild(findBtn);
+      } else {
+        const listBtn = el('button', 'btn', 'List this in the Dreamhold'); listBtn.type = 'button';
+        listBtn.addEventListener('click', () => openListingForm(container, data.concept.id));
+        actions.appendChild(listBtn);
+      }
       const socialBtn = el('button', 'btn secondary', 'Generate social content'); socialBtn.type = 'button';
       socialBtn.addEventListener('click', () => openSocialForm(container, data.concept.id));
       actions.appendChild(socialBtn);

@@ -89,6 +89,7 @@ async function load(){
   }catch(e){statusEl.textContent='Could not load listings: '+e.message;announce('Could not load listings.',true);}
 }
 document.getElementById('apply').addEventListener('click',load);
+(function(){var pc=new URLSearchParams(location.search).get('category');if(pc){var s=document.getElementById('f-category');if(s)s.value=pc;}})();
 loadLeaping(); load();
 </script>
 </body></html>
