@@ -58,7 +58,16 @@ async function send(){
       addTurn('Clay',data.reply||'(no reply)');
       announce(data.reply||'Clay replied.',true);
     }
-  }catch(e){ addTurn('Clay','Something went wrong: '+e.message); announce(e.message,true); }
+  }catch(e){
+    if(e&&(e.sessionExpired||e.status===401)){
+      addTurn('Clay','Looks like your session timed out. I’m sending you to sign back in — your work is saved.');
+      announce('Your session timed out. Taking you to sign in.',true);
+      setTimeout(function(){location.href='/login.html?session=expired';},1600);
+      return;
+    }
+    addTurn('Clay','I hit a snag on my end and couldn’t finish that one. I never make things up, so nothing was fabricated — give me another go in a moment.');
+    announce('Clay hit a snag. Nothing was fabricated.',true);
+  }
   sendBtn.disabled=false;
 }
 function renderConfirm(c){
@@ -73,7 +82,10 @@ function renderConfirm(c){
       const r=await Kiln.api('/clay/chat/confirm',{method:'POST',body:{tool:c.tool,params:c.params}});
       if(r.status==='handoff'){ addTurn('Clay',r.message||'Opening the right flow…'); announce(r.message||'Opening the right flow.',true); setTimeout(()=>{location.href=r.url;},900); }
       else { addTurn('Clay',r.message||'Done.'); announce(r.message||'Done.',true); }
-    }catch(e){ addTurn('Clay','Could not complete: '+e.message); announce(e.message,true); }
+    }catch(e){
+      if(e&&(e.sessionExpired||e.status===401)){ addTurn('Clay','Your session timed out — sending you to sign back in.'); setTimeout(function(){location.href='/login.html?session=expired';},1600); return; }
+      addTurn('Clay','I couldn’t complete that one — and nothing was fabricated. Try again in a moment.'); announce('Clay could not complete that.',true);
+    }
     confirmzone.innerHTML='';
   });
   no.addEventListener('click',()=>{ confirmzone.innerHTML=''; addTurn('Clay','Okay, I won’t do that.'); announce('Cancelled.',true); });

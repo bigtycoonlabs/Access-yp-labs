@@ -38,5 +38,6 @@ async function submit(){
 }
 document.getElementById('submit').addEventListener('click', submit);
 document.getElementById('password').addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
+if(new URLSearchParams(location.search).get('session')==='expired'){ show('Your session timed out. Please sign in again \u2014 your account and your work are safe.','ok'); }
 </script>
 </body></html>

@@ -37,7 +37,12 @@
     try { data = await res.json(); } catch (_) { /* no body */ }
     if (!res.ok) {
       const msg = (data && (data.error || (data.errors && data.errors[0] && data.errors[0].msg))) || `Request failed (${res.status})`;
-      const err = new Error(msg); err.status = res.status; err.data = data; throw err;
+      const err = new Error(msg); err.status = res.status; err.data = data;
+      // Unrecoverable auth failure: drop the stale token and flag a session end so
+      // pages can send the user to sign in again (in Clay's voice) instead of
+      // surfacing a raw token error.
+      if (res.status === 401 && opts.auth !== false) { clearTokens(); err.sessionExpired = true; }
+      throw err;
     }
     return data;
   }
