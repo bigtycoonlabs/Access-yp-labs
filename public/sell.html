@@ -84,7 +84,8 @@ async function loadProjects(){
   try{
     const {concepts}=await Kiln.api('/concepts');
     const sel=document.getElementById('project');
-    concepts.forEach(c=>{const o=el('option',null,c.title);o.value=c.id;sel.appendChild(o);});
+    // Running businesses can't be listed in the Dreamhold — never offer them here.
+    concepts.filter(c=>!c.is_operating).forEach(c=>{const o=el('option',null,c.title);o.value=c.id;sel.appendChild(o);});
   }catch(e){show(e.message);}
 }
 document.getElementById('project').addEventListener('change',e=>pickProject(e.target.value));
