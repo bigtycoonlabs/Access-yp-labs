@@ -31,7 +31,23 @@ router.post('/', authenticate, [
 }));
 
 router.get('/', authenticate, asyncHandler(async (req, res) => {
-  const r = await query('SELECT * FROM concepts WHERE owner_id=$1 ORDER BY updated_at DESC', [req.user.id]);
+  // Include an honest per-concept "kept" flag (can the owner download it?) so the
+  // dashboard can show the money state at a glance. One query: staff and active
+  // Sculptor cover everything; otherwise a Maker plan for that concept, or an
+  // unexpired purchased first month.
+  const staff = isStaff(req.user.role);
+  const r = await query(
+    `SELECT c.*,
+       ($2::boolean
+        OR EXISTS (SELECT 1 FROM subscriptions s WHERE s.user_id=c.owner_id AND s.plan='sculptor'
+                     AND s.status='active' AND (s.current_period_end IS NULL OR s.current_period_end>now()))
+        OR EXISTS (SELECT 1 FROM subscriptions s WHERE s.user_id=c.owner_id AND s.plan='maker'
+                     AND s.status='active' AND s.concept_id=c.id
+                     AND (s.current_period_end IS NULL OR s.current_period_end>now()))
+        OR (c.origin='purchased' AND c.access_expires_at IS NOT NULL AND c.access_expires_at>now())
+       ) AS entitled
+     FROM concepts c WHERE c.owner_id=$1 ORDER BY c.updated_at DESC`,
+    [req.user.id, staff]);
   res.json({ concepts: r.rows });
 }));
 

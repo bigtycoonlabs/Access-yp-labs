@@ -118,6 +118,7 @@
         const claimed = x.origin === 'purchased';
         const prefix = x.is_operating ? 'Your running business · ' : (claimed ? 'Claimed from the Dreamhold · ' : '');
         let meta = prefix + nice(x.category) + (x.is_housing ? ' · housing' : '');
+        meta += x.entitled ? ' · kept — yours to download' : ' · free to build · $2.99 to keep';
         if (x.access_expires_at) {
           const days = Math.ceil((new Date(x.access_expires_at) - new Date()) / 86400000);
           meta += ' · ' + (days > 0 ? ('access ' + days + ' more day' + (days === 1 ? '' : 's') + ' unless subscribed') : 'access expired — subscribe to keep');
