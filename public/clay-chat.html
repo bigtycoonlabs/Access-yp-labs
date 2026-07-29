@@ -40,7 +40,7 @@ function addTurn(who,text){
 }
 async function checkStatus(){
   try{const s=await Kiln.api('/clay/status');
-    if(!s.available){document.getElementById('unavailable').innerHTML='<div class="msg err">Clay’s conversation isn’t configured yet (no generation key). You can still use the one-shot laboratory.</div>';}
+    if(!s.available){document.getElementById('unavailable').innerHTML='<div class="msg err">Clay isn’t fully awake for chat yet — his conversation engine hasn’t been switched on. You can still shape full concepts in the laboratory, and he’ll be ready to talk here soon.</div>';}
   }catch(_){}
 }
 async function send(){

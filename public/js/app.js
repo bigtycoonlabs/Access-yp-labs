@@ -46,11 +46,11 @@
     let prefs = null;
     try { const r = await Kiln.api('/preferences'); prefs = r.preferences; } catch (_) {}
     const m = message('clay', 'Clay');
-    let opening = "I'm Clay. Tell me about a business you want to shape, or an idea you already have — then I'll build a full concept package with you. Choose “Create” to start fresh or “Enhance” to sharpen an idea you already have.";
+    let opening = "I'm Clay. Here's how this works: you bring me an idea — any idea, half-formed is fine — and I build the whole thing out with you: the plan, the research, the marketing, a working demo. Pick “Create” to start something new, or “Enhance” to sharpen an idea you already have or a business you already run. So — what's the one that's been living in your head?";
     if (prefs && prefs.interests && prefs.interests.length) {
       const words = prefs.interests.map((i) => CATEGORY_WORDS[i] || i.replace(/_/g, ' '));
       const list = words.length === 1 ? words[0] : (words.slice(0, -1).join(', ') + ' and ' + words[words.length - 1]);
-      opening = 'Welcome back to your laboratory. You told me you’re drawn to ' + list + ' — want to shape one of those, continue something, or start somewhere new? Choose “Create” to start fresh or “Enhance” to sharpen an idea you already have.';
+      opening = 'Welcome back. You told me you’re drawn to ' + list + ' — so what’s it going to be: shape one of those, pick up where we left off, or chase something brand new? “Create” starts fresh; “Enhance” sharpens something you’ve already got.';
     }
     m.appendChild(el('p', null, opening));
   })();
@@ -94,8 +94,14 @@
       renderResult(thinking, data);
     } catch (e) {
       thinking.removeChild(think);
-      thinking.appendChild(el('p', 'msg err', e.message));
-      announce('Something went wrong: ' + e.message, true);
+      if (e && (e.sessionExpired || e.status === 401)) {
+        thinking.appendChild(el('p', null, 'Looks like your session timed out — I’m sending you to sign back in. Your work is saved.'));
+        announce('Your session timed out. Taking you to sign in.', true);
+        setTimeout(function () { location.href = '/login.html?session=expired'; }, 1600);
+        return;
+      }
+      thinking.appendChild(el('p', 'msg err', 'I hit a snag and couldn’t finish that one — and I never make things up, so nothing was fabricated. Give me another go in a moment.'));
+      announce('Clay hit a snag. Nothing was fabricated.', true);
     } finally {
       sendBtn.disabled = false;
       scrollToLatest(thinking);
