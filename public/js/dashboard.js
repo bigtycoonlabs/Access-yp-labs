@@ -284,6 +284,23 @@
         const a2 = el('a', 'btn secondary', 'Consultant applications'); a2.href = '/admin-consultants.html';
         a2.style.marginLeft = '8px'; g.appendChild(a2);
       }
+      // Staff can post as a consultant directly — no application, no wait.
+      try {
+        const { consultant } = await Kiln.api('/consultants/me');
+        if (consultant && consultant.approved) {
+          const done = el('a', 'btn secondary', 'You post as a consultant — view directory');
+          done.href = '/consultants.html'; done.style.marginLeft = '8px'; g.appendChild(done);
+        } else {
+          const enroll = el('button', 'btn secondary', 'Post as a consultant'); enroll.type = 'button';
+          enroll.style.marginLeft = '8px';
+          enroll.addEventListener('click', async () => {
+            enroll.disabled = true;
+            try { await Kiln.api('/consultants/enroll', { method: 'POST' }); enroll.textContent = 'You now post as a consultant'; announce('You can now post as a consultant.', true); }
+            catch (e) { announce(e.message, true); enroll.disabled = false; }
+          });
+          g.appendChild(enroll);
+        }
+      } catch (_) {}
     }
     const q = new URLSearchParams(location.search);
     if (q.get('onboard') === 'done') announce('Payout setup returned. Refreshing status.', true);

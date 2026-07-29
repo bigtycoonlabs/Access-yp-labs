@@ -46,6 +46,23 @@ router.get('/applications', authenticate, authorize('admin', 'master_staff'),
     res.json({ applications: r.rows });
   }));
 
+// Staff enroll themselves as a consultant — no application, no approval wait.
+// Staff are never billed and can post as consultants directly. Idempotent.
+router.post('/enroll', authenticate, authorize('staff', 'admin', 'master_staff'),
+  asyncHandler(async (req, res) => {
+    await query(
+      `INSERT INTO consultants (user_id, approved, badge, rate_display)
+       VALUES ($1,true,true,'$150 / 90-min session')
+       ON CONFLICT (user_id) DO UPDATE SET approved=true, badge=true`, [req.user.id]);
+    res.status(201).json({ enrolled: true });
+  }));
+
+// Whether the signed-in user is already posting as a consultant.
+router.get('/me', authenticate, asyncHandler(async (req, res) => {
+  const r = await query('SELECT approved FROM consultants WHERE user_id=$1', [req.user.id]);
+  res.json({ consultant: r.rows.length ? { approved: r.rows[0].approved } : null });
+}));
+
 // Public directory of approved consultants.
 router.get('/', asyncHandler(async (req, res) => {
   const r = await query(
