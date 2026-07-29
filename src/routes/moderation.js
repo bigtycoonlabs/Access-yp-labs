@@ -14,7 +14,8 @@ router.get('/queue', authenticate, authorize('staff', 'admin', 'master_staff'),
   asyncHandler(async (req, res) => {
     const r = await query(
       `SELECT l.id, l.stage_label, l.price_cents, l.created_at,
-              c.title, c.category, c.risk_summary, l.seller_id, u.name AS seller_name
+              c.title, c.category, c.risk_summary, l.seller_id, u.name AS seller_name,
+              COALESCE(u.display_name, '—') AS seller_alias
        FROM listings l JOIN concepts c ON c.id=l.concept_id JOIN users u ON u.id=l.seller_id
        WHERE l.status='in_review' ORDER BY l.created_at ASC`);
     res.json({ queue: r.rows });

@@ -51,6 +51,10 @@ fieldset{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margi
   </section>
 
   <section aria-labelledby="s3" id="sec3" hidden><h2 id="s3">3. Create your listing</h2>
+      <div><label for="penname">Your pen name (shown on the listing instead of your real name)</label>
+        <input id="penname" type="text" maxlength="40" placeholder="e.g. NightMarket"/>
+        <button type="button" class="btn secondary" id="savepen">Save pen name</button>
+        <p class="muted">Buyers see this name, never your account name. We still know it's you behind the scenes, for payouts and trust.</p></div>
     <div class="stack">
       <div><label for="format">Format</label>
         <select id="format"><option value="flat">Fixed price</option><option value="auction">Auction</option></select></div>
@@ -89,6 +93,17 @@ async function loadProjects(){
   }catch(e){show(e.message);}
 }
 document.getElementById('project').addEventListener('change',e=>pickProject(e.target.value));
+
+// Pen name: load current value, let the creator set the public alias.
+(async function(){
+  try{ const s=await Kiln.api('/sellers/status'); if(s.display_name){ document.getElementById('penname').value=s.display_name; } }catch(_){}
+})();
+document.getElementById('savepen').addEventListener('click',async()=>{
+  const v=(document.getElementById('penname').value||'').trim();
+  if(v.length<2||v.length>40){ show('Your pen name needs to be between 2 and 40 characters.'); return; }
+  try{ await Kiln.api('/sellers/alias',{method:'PUT',body:{display_name:v}}); show('Pen name saved. Your listings will show "'+v+'".','ok'); announce('Pen name saved.'); }
+  catch(e){ show(e.message); }
+});
 document.getElementById('newproj').addEventListener('click',async()=>{
   const title=window.prompt('Name your project:'); if(!title)return;
   try{const {concept}=await Kiln.api('/concepts',{method:'POST',body:{title,mode:'create'}});

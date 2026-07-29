@@ -42,7 +42,7 @@ async function load(){
     queue.forEach(l=>{
       const r=el('div','row');
       r.appendChild(el('h3',null,l.title));
-      r.appendChild(el('p','muted',nice(l.category)+' · '+nice(l.stage_label)+' · '+money(l.price_cents)+' · by '+l.seller_name));
+      r.appendChild(el('p','muted',nice(l.category)+' · '+nice(l.stage_label)+' · '+money(l.price_cents)+' · by '+l.seller_alias+' (real: '+l.seller_name+')'));
       if(l.risk_summary){r.appendChild(el('p',null,'Risk noted: '+l.risk_summary));}
       const wrap=el('div','decide');
       const rsWrap=el('div');

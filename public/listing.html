@@ -44,7 +44,7 @@ async function load(){
     const {listing}=await Kiln.api('/listings/'+id,{auth:false});
     statusEl.textContent='';
     detail.appendChild(el('h1',null,listing.title));
-    detail.appendChild(el('p','muted',(listing.category||'').replace(/_/g,' ')+' · '+(listing.stage_label||'').replace(/_/g,' ')+' · by '+listing.seller_name));
+    detail.appendChild(el('p','muted',(listing.category||'').replace(/_/g,' ')+' · '+(listing.stage_label||'').replace(/_/g,' ')+' · by '+listing.seller_alias));
     if(listing.working_since){detail.appendChild(el('p','muted','In development since '+new Date(listing.working_since).toLocaleDateString()));}
     if(listing.risk_summary){const r=el('div','panel');r.appendChild(el('h3',null,'Regulatory & licensing risk'));r.appendChild(el('p',null,listing.risk_summary));detail.appendChild(r);}
 
@@ -65,7 +65,16 @@ async function load(){
     loadPreview(detail);
 
     if(!Kiln.isLoggedIn()){
-      const p=el('p');const a=el('a','btn','Sign in to buy, bid, or watch');a.href='/login.html';p.appendChild(a);detail.appendChild(p);return;
+      const back=encodeURIComponent(location.pathname+location.search);
+      const box=el('div','panel');
+      box.appendChild(el('p',null,'This is a concept from the Dreamhold — a business you can own and build before it exists. Create a free account to claim it, place a bid, or follow it before it launches.'));
+      const p=el('p');p.style.display='flex';p.style.gap='10px';p.style.flexWrap='wrap';
+      const create=el('a','btn','Create a free account to claim this');create.href='/register.html?next='+back;
+      const signin=el('a','btn secondary','I already have an account');signin.href='/login.html?next='+back;
+      p.appendChild(create);p.appendChild(signin);box.appendChild(p);
+      detail.appendChild(box);
+      announce('This concept is open to view. Create a free account to claim it, bid, or follow it before it launches.');
+      return;
     }
     renderPreviews(detail, id);
     renderDemoDescription(detail, id);

@@ -8,12 +8,25 @@ const router = express.Router();
 // Current seller payout status.
 router.get('/status', authenticate, asyncHandler(async (req, res) => {
   const r = await query('SELECT stripe_account_id, kyc_status FROM seller_accounts WHERE user_id=$1', [req.user.id]);
+  const u = await query('SELECT display_name FROM users WHERE id=$1', [req.user.id]);
   const row = r.rows[0] || null;
   res.json({
     onboarded: !!(row && row.stripe_account_id),
     kyc_status: row ? row.kyc_status : 'not_started',
     stripe_configured: stripe.configured(),
+    display_name: (u.rows[0] && u.rows[0].display_name) || null,
   });
+}));
+
+// Public pen name for Dreamhold listings — separate from, and shown instead of,
+// the real account name. Anonymity is public-only; we still know the real user.
+router.put('/alias', authenticate, asyncHandler(async (req, res) => {
+  const name = (req.body && typeof req.body.display_name === 'string') ? req.body.display_name.trim() : '';
+  if (name.length < 2 || name.length > 40) {
+    return res.status(400).json({ error: 'Your pen name needs to be between 2 and 40 characters.' });
+  }
+  await query('UPDATE users SET display_name=$1 WHERE id=$2', [name, req.user.id]);
+  res.json({ display_name: name });
 }));
 
 // Begin (or resume) Stripe Connect onboarding. Returns a hosted onboarding URL.

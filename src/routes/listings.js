@@ -146,7 +146,7 @@ router.get('/', asyncHandler(async (req, res) => {
   const r = await query(
     `SELECT l.id, l.format, l.price_cents, l.starting_bid_cents, l.auction_close_at,
             l.stage_label, l.completion_target, l.created_at,
-            c.title, c.category, c.risk_summary, u.name AS seller_name
+            c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dreamhold creator') AS seller_alias
      FROM listings l
      JOIN concepts c ON c.id=l.concept_id
      JOIN users u ON u.id=l.seller_id
@@ -169,7 +169,7 @@ router.get('/leaping', authenticate, asyncHandler(async (req, res) => {
   const r = await query(
     `SELECT l.id, l.format, l.price_cents, l.starting_bid_cents, l.auction_close_at,
             l.stage_label, l.completion_target, l.created_at,
-            c.title, c.category, c.risk_summary, u.name AS seller_name
+            c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dreamhold creator') AS seller_alias
      FROM listings l JOIN concepts c ON c.id=l.concept_id JOIN users u ON u.id=l.seller_id
      WHERE l.status='live'
        AND ($1::text[] IS NULL OR array_length($1::text[],1) IS NULL OR c.category::text = ANY($1::text[]))
@@ -214,7 +214,7 @@ router.get('/:id/demo-description', asyncHandler(async (req, res) => {
 // Single listing (public if live; owner may view any state).
 router.get('/:id', asyncHandler(async (req, res) => {
   const r = await query(
-    `SELECT l.*, c.title, c.category, c.risk_summary, u.name AS seller_name,
+    `SELECT l.*, c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dreamhold creator') AS seller_alias,
             CASE WHEN c.show_working_since THEN c.working_since ELSE NULL END AS working_since
      FROM listings l JOIN concepts c ON c.id=l.concept_id JOIN users u ON u.id=l.seller_id
      WHERE l.id=$1`, [req.params.id]);

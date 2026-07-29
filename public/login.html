@@ -33,7 +33,7 @@ async function submit(){
   try{
     const data = await Kiln.api('/auth/login', { method:'POST', auth:false, body:{ email, password } });
     Kiln.setTokens({ accessToken:data.accessToken, refreshToken:data.refreshToken });
-    announce('Signed in. Opening your laboratory.'); location.href = '/app.html';
+    announce('Signed in. Opening your laboratory.'); { const n=new URLSearchParams(location.search).get('next'); location.href = (n && n.charAt(0)==='/' && n.charAt(1)!=='/') ? n : '/app.html'; }
   }catch(e){ show(e.message); btn.disabled = false; }
 }
 document.getElementById('submit').addEventListener('click', submit);
