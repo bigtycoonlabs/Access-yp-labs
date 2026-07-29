@@ -11,6 +11,9 @@
   // refines THAT concept (a new version) instead of spawning a fresh one. Cleared
   // by choosing "Create" or "Start a fresh concept".
   let currentConceptId = null;
+  // Whether Clay's generation provider is connected. When it isn't, we say so
+  // plainly instead of letting a build fail with a vague error.
+  let clayAvailable = true;
 
   // ---- small DOM helpers (textContent only for untrusted strings) ----
   const CATEGORY_WORDS = {
@@ -46,8 +49,15 @@
     } catch (_) {}
     try {
       const s = await Kiln.api('/clay/status');
+      clayAvailable = !!s.available;
       const el2 = document.getElementById('clay-status');
-      el2.textContent = s.available ? 'Clay is ready.' : 'Clay generation is not configured yet — you can still browse and manage your work.';
+      if (s.available) {
+        el2.textContent = 'Clay is ready.';
+      } else {
+        el2.textContent = 'Clay’s builder isn’t switched on yet. You can still browse and manage your work — building will light up as soon as it’s connected.';
+        el2.setAttribute('role', 'alert');
+        announce('Heads up: Clay’s builder isn’t connected yet, so it can’t create concepts right now. You can still browse and manage your work.', true);
+      }
     } catch (_) {}
     // Opening an existing concept to keep refining it — skip the generic opening.
     if (openId) { await loadConceptIntoWorkspace(openId); return; }
@@ -297,10 +307,11 @@
     }
     // Non-answers — always honest, never fabricated.
     const map = {
-      unavailable: 'Clay could not run just now, so nothing was generated and nothing was made up. ',
+      unavailable: 'Clay’s builder isn’t connected right now, so it couldn’t create anything — and it never invents, so nothing was made up. This is a setup step on our side, not something you did. ',
       empty: 'Clay ran but did not produce a usable package, so nothing was saved. ',
       refused: '',
     };
+    if (data.status === 'unavailable') clayAvailable = false;
     let text = (map[data.status] || '') + (data.message || '');
     if (data.redirect === 'needs_category') text += ' Pick a category above, or add more detail, and send again.';
     container.appendChild(el('p', 'msg ' + (data.status === 'refused' ? 'ok' : 'err'), text.trim()));
