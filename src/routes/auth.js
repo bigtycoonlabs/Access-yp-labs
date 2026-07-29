@@ -2,9 +2,11 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
-const { query } = require('../config/db');
+const { query, getClient } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler } = require('../lib/http');
+const { sendEmail } = require('../services/email');
+const { welcomeEmail } = require('../services/welcomeEmail');
 
 const router = express.Router();
 
@@ -40,15 +42,38 @@ router.post('/register', [
   if (existing.rows.length) return res.status(409).json({ error: 'Account already exists.' });
 
   const passwordHash = await bcrypt.hash(password, 12);
-  const result = await query(
-    `INSERT INTO users (email, password_hash, name, role, status, created_at)
-     VALUES ($1,$2,$3,'member','active',NOW())
-     RETURNING id, email, name, role, status`,
-    [email, passwordHash, name]
-  );
-  const user = result.rows[0];
-  await query('INSERT INTO profiles (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [user.id]);
+
+  // Create the user and their profile atomically — a failure on either side must
+  // never leave a half-created account (as a missing table grant once did).
+  const client = await getClient();
+  let user;
+  try {
+    await client.query('BEGIN');
+    const result = await client.query(
+      `INSERT INTO users (email, password_hash, name, role, status, created_at)
+       VALUES ($1,$2,$3,'member','active',NOW())
+       RETURNING id, email, name, role, status`,
+      [email, passwordHash, name]
+    );
+    user = result.rows[0];
+    await client.query('INSERT INTO profiles (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [user.id]);
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+
   await recordLogin(req, { userId: user.id, email, success: true, reason: 'register' });
+
+  // Best-effort welcome email from Clay — never blocks or fails signup.
+  try {
+    const msg = welcomeEmail(user.name);
+    const sent = await sendEmail({ to: user.email, subject: msg.subject, html: msg.html, text: msg.text });
+    if (!sent || !sent.sent) console.error('welcome email not sent:', sent && sent.reason);
+  } catch (e) { console.error('welcome email error:', e.message); }
+
   res.status(201).json({ user, ...issueTokens(user) });
 }));
 
