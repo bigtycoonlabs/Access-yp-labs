@@ -16,7 +16,7 @@ async function embed(text) {
   const t = String(text || '').trim().slice(0, 6000);
   if (!t) return null;
   try {
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 20000, maxRetries: 1 });
     const r = await client.embeddings.create({ model: MODEL, input: t });
     const v = r && r.data && r.data[0] && r.data[0].embedding;
     return Array.isArray(v) && v.length === DIMS ? v : null;
