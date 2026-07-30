@@ -198,12 +198,12 @@
             out.appendChild(el('p','build-inside-h','What the full build would include:'));
             const ul=el('ul','build-inside');r.inside.forEach(i=>ul.appendChild(el('li',null,i)));out.appendChild(ul);
           }
-          out.appendChild(el('p','muted','This is just a taste — the whole thing lives in your workspace, and it’s free to build until you download it.'));
-          announce('Clay shaped your idea into '+r.title+'. Create a free account to keep building it.',true);
+          out.appendChild(el('p','muted','This is just a taste. Create a free account and Clay builds the full concept for you — that takes a few minutes, so Clay emails it to you the moment it’s ready. That’s what the account is for. Free until you download it.'));
+          announce('Clay shaped your idea into '+r.title+'. Create a free account so Clay can build the full concept and email it to you when it’s ready.',true);
         }else{
           out.appendChild(el('p','build-lead','I’ve got it — and I’m ready to build it out with you.'));
-          out.appendChild(el('p','muted','Create a free account and we’ll shape the whole concept together. Free until you download it.'));
-          announce('Clay has your idea. Create a free account to build it.',true);
+          out.appendChild(el('p','muted','Create a free account and Clay builds the whole concept. It takes a few minutes, so Clay emails it to you when it’s ready — that’s why an account is needed. Free until you download it.'));
+          announce('Clay has your idea. Create a free account so Clay can build it and email you when it’s ready.',true);
         }
         const cta=el('a','cta solid','Create a free account & keep building');cta.href='/register.html';cta.style.marginTop='10px';out.appendChild(cta);
         const si=el('p','muted');const a=el('a',null,'I already have an account');a.href='/login.html';a.style.color='#8ce0ff';si.appendChild(a);out.appendChild(si);

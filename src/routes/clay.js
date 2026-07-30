@@ -92,6 +92,74 @@ async function persistResult(ownerId, result, { conceptId = null, mode, category
 }
 
 // POST /api/clay/generate  { mode, category?, prompt, concept_id? }
+// Background build: writing a full concept takes 1–3 minutes, so we never make the user
+// wait on the request. The route returns immediately with a "building" message and this
+// runs after — persisting the concept and emailing the finished package (or an honest
+// outcome) when done. It handles and reports its own failures; it must never throw out.
+async function runBuild({ user, mode, category, prompt, operating, conceptId }) {
+  const t0 = Date.now();
+  const providerAvailable = provider.available();
+  try {
+    // Retrieval grounding: the user's own related prior work (best-effort, never blocks).
+    const priorWork = await retrieval.relatedConcepts(user.id, prompt, { limit: 3, excludeId: conceptId || null });
+    const result = await clay.generate({ mode, category, prompt, operating, priorWork });
+    const durationMs = Date.now() - t0;
+
+    // Honest non-answer (redirect / refused / unavailable): record it and email the
+    // outcome so the user always hears back — never invent a package.
+    if (result.result_status !== 'answered') {
+      if (conceptId) {
+        await query('INSERT INTO generations (concept_id, prompt, result_status) VALUES ($1,$2,$3)',
+          [conceptId, prompt, result.result_status]).catch(() => {});
+      }
+      await journal.recordRun({ actorId: user.id, kind: 'generate', mode, category,
+        conceptId: conceptId || null, resultStatus: result.result_status, providerAvailable,
+        grounded: !!result.research_grounded, sourceCount: result.source_count || 0,
+        reason: result.message || result.redirect || null, durationMs });
+      health.checkAndAlert().catch(() => {});
+      await notifyBuildOutcome(user, result.message
+        || 'Clay couldn’t complete this one. Nothing was fabricated — try again with a bit more detail.');
+      return;
+    }
+
+    // Fail closed: "answered" with no package is not a real answer. Save nothing.
+    if (!result.assets || !result.assets.length) {
+      await journal.recordRun({ actorId: user.id, kind: 'generate', mode, category,
+        conceptId: conceptId || null, resultStatus: 'empty', providerAvailable,
+        grounded: !!result.research_grounded, sourceCount: result.source_count || 0,
+        reason: 'answered_with_no_assets', durationMs });
+      health.checkAndAlert().catch(() => {});
+      await notifyBuildOutcome(user,
+        'Clay came back without a complete package, so nothing was saved and nothing was made up. Please try again.');
+      return;
+    }
+
+    const concept = await persistResult(user.id, result, { conceptId, mode, category, prompt, operating });
+    await journal.recordRun({ actorId: user.id, kind: 'generate', mode, category,
+      conceptId: concept.id, resultStatus: 'answered', providerAvailable,
+      grounded: !!result.research_grounded, sourceCount: result.source_count || 0, durationMs });
+    retrieval.embedAndStore(concept.id, [result.title, result.risk_summary, prompt].filter(Boolean).join('. ')).catch(() => {});
+
+    // Finished — email the full package with a one-tap link straight to the concept.
+    await sendEmail({
+      to: user.email,
+      subject: 'Your concept is ready: ' + (result.title || concept.title || 'new concept'),
+      html: buildPackageEmail(result.title || concept.title, result.coverage, result.assets, concept.id),
+    }).catch(() => {});
+  } catch (e) {
+    const durationMs = Date.now() - t0;
+    await journal.recordRun({ actorId: user.id, kind: 'generate', mode, category,
+      conceptId: conceptId || null, resultStatus: 'unavailable', providerAvailable,
+      reason: 'build_error: ' + (e && e.message ? e.message : 'unknown'), durationMs }).catch(() => {});
+    health.checkAndAlert().catch(() => {});
+    await notifyBuildOutcome(user,
+      'Clay hit a snag while building and didn’t finish. Nothing was fabricated — please try again in a moment.');
+  }
+}
+
+// POST /api/clay/generate  { mode, category?, prompt, concept_id? }
+// Async by design: a full concept takes 1–3 minutes to write, so we confirm immediately
+// and email the finished package rather than parking the user on a spinner.
 router.post('/generate', authenticate, [
   body('mode').isIn(MODES),
   body('category').optional().isIn(CATEGORIES),
@@ -104,84 +172,25 @@ router.post('/generate', authenticate, [
   const { mode, category, prompt, concept_id } = req.body;
   const operating = !!req.body.operating;
 
-  const t0 = Date.now();
-  const providerAvailable = provider.available();
-  // Retrieval grounding: pull the user's own related prior concepts so Clay builds
-  // on real earlier work. Best-effort — returns [] and never blocks the build.
-  const priorWork = await retrieval.relatedConcepts(req.user.id, prompt, { limit: 3, excludeId: concept_id || null });
-  const result = await clay.generate({ mode, category, prompt, operating, priorWork });
-  const durationMs = Date.now() - t0;
-
-  // Honest non-answers: record the run against a concept if we have one, and
-  // return the status + message WITHOUT inventing a package.
-  if (result.result_status !== 'answered') {
-    if (concept_id) {
-      await query('INSERT INTO generations (concept_id, prompt, result_status) VALUES ($1,$2,$3)',
-        [concept_id, prompt, result.result_status]).catch(() => {});
-    }
-    await journal.recordRun({ actorId: req.user.id, kind: 'generate', mode, category,
-      conceptId: concept_id || null, resultStatus: result.result_status, providerAvailable,
-      grounded: !!result.research_grounded, sourceCount: result.source_count || 0,
-      reason: result.message || result.redirect || null, durationMs });
-    health.checkAndAlert().catch(() => {});
+  // Fast fail: if the builder isn't connected, say so now — no point promising an email.
+  if (!provider.available()) {
     return res.status(200).json({
-      status: result.result_status,
-      redirect: result.redirect || null,
-      message: result.message,
-      inferred_category: result.inferred_category || null,
+      status: 'unavailable',
+      message: 'Clay’s builder isn’t connected right now, so it can’t create anything — and it never invents, so nothing was made up. This is a setup step on our side, not something you did.',
     });
   }
 
-  // Fail closed: an "answered" with no actual package is not a real answer. Never
-  // persist a hollow concept — record it honestly as empty and invent nothing.
-  if (!result.assets || !result.assets.length) {
-    await journal.recordRun({ actorId: req.user.id, kind: 'generate', mode, category,
-      conceptId: concept_id || null, resultStatus: 'empty', providerAvailable,
-      grounded: !!result.research_grounded, sourceCount: result.source_count || 0,
-      reason: 'answered_with_no_assets', durationMs });
-    health.checkAndAlert().catch(() => {});
-    return res.status(200).json({
-      status: 'empty',
-      message: result.message || 'Clay came back without a complete package, so nothing was saved and nothing was made up. Give it another go.',
-      inferred_category: result.inferred_category || null,
-    });
-  }
+  // Kick the build off in the background and tell the user right away. runBuild emails
+  // the finished package (that's what the email/account is for) and it also lands in the
+  // Laboratory. Fire-and-forget: runBuild owns its own errors, so we never await it.
+  runBuild({ user: req.user, mode, category, prompt, operating, conceptId: concept_id || null })
+    .catch(() => {});
 
-  const concept = await persistResult(req.user.id, result, { conceptId: concept_id, mode, category, prompt, operating });
-  await journal.recordRun({ actorId: req.user.id, kind: 'generate', mode, category,
-    conceptId: concept.id, resultStatus: 'answered', providerAvailable,
-    grounded: !!result.research_grounded, sourceCount: result.source_count || 0, durationMs });
-  // Embed the concept so future builds can find it by meaning (best-effort, async).
-  retrieval.embedAndStore(concept.id, [result.title, result.risk_summary, prompt].filter(Boolean).join('. ')).catch(() => {});
-  const assets = await query('SELECT id,type,title,is_baseline FROM assets WHERE concept_id=$1 ORDER BY created_at', [concept.id]);
-
-  // Dual-channel delivery: email the package too. Best-effort; if it doesn't
-  // send, we say so honestly rather than claiming a delivery that didn't happen.
-  let emailed = { sent: false };
-  try {
-    emailed = await sendEmail({
-      to: req.user.email,
-      subject: 'Your concept from Clay: ' + (result.title || 'new concept'),
-      html: buildPackageEmail(result.title || concept.title, result.coverage, result.assets),
-    });
-  } catch (e) { emailed = { sent: false, reason: e.message }; }
-
-  // Surface entitlement at delivery so Clay can frame it honestly and positively:
-  // the build is free to explore; downloading/keeping is where a plan comes in.
-  // (Staff and Sculptor users come back entitled, so no upsell is shown to them.)
-  const ent = await conceptEntitlement(req.user, concept.id);
-
-  res.status(201).json({
-    status: 'answered',
-    concept,
-    assets: assets.rows,
-    entitled: ent.entitled,
-    related_prior: priorWork.map((p) => ({ id: p.id, title: p.title })),
-    coverage: result.coverage,
-    dreamhold_suggestion: result.dreamhold_suggestion || null,
-    source_check: result.source_check || null,
-    emailed: emailed.sent,
-    message: result.message + (emailed.sent ? ' A copy was emailed to you.' : ''),
+  return res.status(202).json({
+    status: 'building',
+    email: req.user.email,
+    eta_seconds: 180,
+    message: 'I’m building your concept now. This usually takes 1 to 3 minutes — you don’t need to wait here. I’ll email it to ' + req.user.email + ' the moment it’s ready, and it’ll be waiting in your Laboratory too.',
   });
 }));
 
@@ -462,16 +471,30 @@ router.get('/diagnose', authenticate, authorize('staff', 'admin', 'master_staff'
 
 
 function escapeHtml(t){return String(t==null?'':t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
-function buildPackageEmail(title, coverage, assets){
+function buildPackageEmail(title, coverage, assets, conceptId){
   const parts = (assets||[]).map(a =>
     '<h2 style="color:#7c2d12;font-family:system-ui,sans-serif">'+escapeHtml(a.label||a.type)+'</h2>'+
     '<div style="white-space:pre-wrap;font-family:system-ui,sans-serif;font-size:15px;line-height:1.6">'+escapeHtml(a.body)+'</div>');
   const gap = coverage && !coverage.complete ? '<p style="color:#57534e">'+escapeHtml(coverage.gap_description)+'</p>' : '';
+  const cta = conceptId ? '<p><a href="https://accessyplabs.com/app.html?concept='+encodeURIComponent(conceptId)+'" style="display:inline-block;background:#7c2d12;color:#ffffff;padding:12px 22px;border-radius:8px;text-decoration:none;font-family:system-ui,sans-serif;font-size:16px">Open it in your Laboratory</a></p>' : '';
   return '<div style="max-width:640px;margin:0 auto">'+
     '<h1 style="font-family:system-ui,sans-serif;color:#1c1917">'+escapeHtml(title)+'</h1>'+
-    '<p style="font-family:system-ui,sans-serif">Your concept package from Clay at Access YP Labs. You also have it in your laboratory.</p>'+
-    gap + parts.join('') +
+    '<p style="font-family:system-ui,sans-serif;font-size:16px;line-height:1.5">Your concept is ready — Clay at Access YP Labs finished building it. It’s also waiting in your Laboratory.</p>'+
+    cta + gap + parts.join('') +
     '<hr/><p style="color:#57534e;font-size:13px;font-family:system-ui,sans-serif">The Dreamhold is a neutral marketplace. Concepts are pre-proven starting points, not guarantees of income.</p></div>';
+}
+
+// Short, honest email for when a build could not finish (redirect, empty, or error).
+// The user is never left waiting on an email that only comes on success.
+function buildOutcomeEmail(message){
+  return '<div style="max-width:640px;margin:0 auto;font-family:system-ui,sans-serif;font-size:16px;line-height:1.5;color:#1c1917">'+
+    '<p>'+escapeHtml(message)+'</p>'+
+    '<p><a href="https://accessyplabs.com/app.html" style="display:inline-block;background:#7c2d12;color:#ffffff;padding:12px 22px;border-radius:8px;text-decoration:none">Open Clay to try again</a></p>'+
+    '<p style="color:#57534e;font-size:13px">— Clay at Access YP Labs</p></div>';
+}
+async function notifyBuildOutcome(user, message){
+  try { return await sendEmail({ to: user.email, subject: 'About your concept build', html: buildOutcomeEmail(message) }); }
+  catch (_) { return { sent: false }; }
 }
 
 // GET /api/clay/pending-idea — the idea a new user handed Clay before signing up.

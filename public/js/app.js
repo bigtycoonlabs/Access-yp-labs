@@ -305,6 +305,13 @@
       announce('Clay assembled your concept, with ' + (data.assets || []).length + ' sections. Suggested next steps are available.');
       return;
     }
+    // Async build: Clay confirmed it's working and will email the finished concept.
+    // The user is free to leave — no spinner, no waiting.
+    if (data.status === 'building') {
+      container.appendChild(el('p', 'msg ok', data.message || 'I’m building your concept now and will email it to you when it’s ready.'));
+      announce(data.message || 'Clay is building your concept now. This usually takes 1 to 3 minutes. You’ll get an email when it’s ready, and it will be in your Laboratory. You don’t need to wait here.', true);
+      return;
+    }
     // Non-answers — always honest, never fabricated.
     const map = {
       unavailable: 'Clay’s builder isn’t connected right now, so it couldn’t create anything — and it never invents, so nothing was made up. This is a setup step on our side, not something you did. ',
