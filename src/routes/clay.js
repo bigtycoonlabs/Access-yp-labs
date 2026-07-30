@@ -153,15 +153,24 @@ async function runBuild({ user, mode, category, prompt, operating, conceptId, bu
       grounded: !!result.research_grounded, sourceCount: result.source_count || 0, durationMs });
     retrieval.embedAndStore(concept.id, [result.title, result.risk_summary, prompt].filter(Boolean).join('. ')).catch(() => {});
 
-    // Finished — email the full package with a one-tap link straight to the concept.
-    await sendEmail({
-      to: user.email,
-      subject: 'Your concept is ready: ' + (result.title || concept.title || 'new concept'),
-      html: buildPackageEmail(result.title || concept.title, result.coverage, result.assets, concept.id),
-    }).catch(() => {});
-    await finishBuild(buildId, { status: 'done', conceptId: concept.id,
-      message: 'Your concept is ready — it’s in your Laboratory and on its way to your email.',
-      note: 'Done — your concept is ready.' });
+    // Email the package — but CHECK the result and be honest. If it didn't send, we say
+    // so and point to the Laboratory rather than promising a mail that isn't coming.
+    let emailed = { sent: false, reason: 'unknown' };
+    try {
+      emailed = await sendEmail({
+        to: user.email,
+        subject: 'Your concept is ready: ' + (result.title || concept.title || 'new concept'),
+        html: buildPackageEmail(result.title || concept.title, result.coverage, result.assets, concept.id),
+      });
+    } catch (e) { emailed = { sent: false, reason: (e && e.message) ? e.message : 'error' }; }
+    if (!emailed.sent) console.error('package email NOT sent for concept', concept.id, '- reason:', emailed.reason);
+    const doneMsg = emailed.sent
+      ? 'Your concept is ready — it’s open here, saved in your Laboratory, and on its way to your email.'
+      : 'Your concept is ready and saved in your Laboratory. I could not email it this time, so open it right here — nothing was lost.';
+    await finishBuild(buildId, { status: 'done', conceptId: concept.id, message: doneMsg,
+      note: emailed.sent
+        ? 'Done — your concept is ready, and I’ve emailed it to you.'
+        : 'Done — your concept is ready. (I couldn’t send the email this time — open it from the link.)' });
   } catch (e) {
     const durationMs = Date.now() - t0;
     await journal.recordRun({ actorId: user.id, kind: 'generate', mode, category,

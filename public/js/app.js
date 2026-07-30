@@ -217,6 +217,9 @@
     log.style.margin = '8px 0';
     container.appendChild(log);
     let shown = 0, tries = 0;
+    const startedAt = Date.now();
+    let heartbeat = null, lastBeat = 0;
+    const clearBeat = () => { if (heartbeat) { heartbeat.remove(); heartbeat = null; } };
     const maxTries = 140; // ~6 min at 2.5s, then hand off to the email
     const timer = setInterval(async () => {
       tries++;
@@ -224,30 +227,41 @@
       try { data = await Kiln.api('/clay/build/' + buildId); }
       catch (e) { if (tries > 5) clearInterval(timer); return; }
       const notes = (data && data.notes) || [];
-      for (; shown < notes.length; shown++) {
-        log.appendChild(el('p', 'muted build-note', notes[shown].text));
-        announce(notes[shown].text); // polite: reads without cutting off
+      if (notes.length > shown) {
+        clearBeat(); // real progress arrived — drop the heartbeat so notes stay last
+        for (; shown < notes.length; shown++) {
+          log.appendChild(el('p', 'muted build-note', notes[shown].text));
+          announce(notes[shown].text); // polite: reads without cutting off
+        }
       }
-      scrollToLatest(log);
       if (data.status === 'done') {
-        clearInterval(timer);
+        clearInterval(timer); clearBeat();
         if (data.concept_id) {
           currentConceptId = data.concept_id;
           const open = el('a', 'btn', 'Open your concept');
           open.href = '/app.html?concept=' + encodeURIComponent(data.concept_id);
           log.appendChild(open);
         }
-        log.appendChild(el('p', 'msg ok', 'Your concept is ready — open it above, in your Laboratory, or from the email I just sent.'));
-        announce('Your concept is ready. You can open it now, and it has also been emailed to you.', true);
+        const msg = data.message || 'Your concept is ready — open it above or in your Laboratory.';
+        log.appendChild(el('p', 'msg ok', msg));
+        announce(msg, true); // honest: says whether it emailed or not
       } else if (data.status === 'failed') {
-        clearInterval(timer);
+        clearInterval(timer); clearBeat();
         log.appendChild(el('p', 'msg err', data.message || 'Clay couldn’t finish this build. Nothing was fabricated — please try again.'));
         announce(data.message || 'Clay could not finish this build. Nothing was fabricated. Please try again.', true);
       } else if (tries >= maxTries) {
-        clearInterval(timer);
-        log.appendChild(el('p', 'muted', 'Still working — I’ll email it to you the moment it’s ready.'));
+        clearInterval(timer); clearBeat();
+        log.appendChild(el('p', 'muted', 'Still working — I’ll email it to you the moment it’s ready, and it’ll be in your Laboratory.'));
         announce('Clay is still working. It will email you the moment it’s ready.', true);
+      } else {
+        // Still building. The big writing step posts no sub-notes for a minute or two, so
+        // keep a live heartbeat (and an occasional spoken reassurance) — never a dead spot.
+        const secs = Math.round((Date.now() - startedAt) / 1000);
+        if (!heartbeat) { heartbeat = el('p', 'muted build-note'); heartbeat.style.opacity = '0.75'; log.appendChild(heartbeat); }
+        heartbeat.textContent = 'Still working… ' + secs + 's in. The big writing step normally takes a minute or two.';
+        if (secs - lastBeat >= 25) { lastBeat = secs; announce('Still working, ' + secs + ' seconds in. This is normal.'); }
       }
+      scrollToLatest(log);
     }, 2500);
   }
 
