@@ -58,6 +58,7 @@ app.use('/api/reports',       require('./routes/reports'));
 
 app.get('/api/health', (req, res) => res.json({
   status: 'ok', service: 'yp-labs', platform: 'access-yp-labs', marketplace: 'the-dreamhold',
+  build: 'clay-resilient-2026-07-30',
   clay: {
     configured: !!(process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY),
     provider: process.env.OPENAI_API_KEY ? 'openai' : (process.env.ANTHROPIC_API_KEY ? 'anthropic' : null),
