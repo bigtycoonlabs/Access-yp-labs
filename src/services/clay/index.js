@@ -86,6 +86,8 @@ You must respond with a SINGLE valid JSON object and nothing else, matching:
   "inferred_category": one of ${JSON.stringify(CATEGORIES)} | null,
   "title": string,
   "risk_summary": string,              // labelled regulatory/licensing risk, "" if none identified
+  "clays_take": string,                // YOUR honest, first-person take on THIS specific idea — spoken TO the person who had it. What genuinely excites you about it, the one real challenge to respect, and why you think it can work anyway. 3-5 sentences, warm and direct, in your own voice. Never fake enthusiasm and never fabricate: if it's hard, name what's hard and why it's still worth building. This is the message that makes them want to keep going.
+  "next_steps": string[],              // 2-3 concrete, specific next moves to keep building THIS concept (never generic advice like "do market research") — the exact first things you'd do next if this were yours.
   "sections": {
     "business_plan": string,
     "marketing_strategy": string,
@@ -211,6 +213,10 @@ async function generate({ mode, category, prompt, operating = false, priorWork =
     title: parsed.title || 'Untitled concept',
     inferred_category: parsed.inferred_category || category || null,
     risk_summary: parsed.risk_summary || '',
+    clays_take: typeof parsed.clays_take === 'string' ? parsed.clays_take.trim() : '',
+    next_steps: Array.isArray(parsed.next_steps)
+      ? parsed.next_steps.filter((s) => typeof s === 'string' && s.trim()).map((s) => s.trim()).slice(0, 3)
+      : [],
     assets,
     coverage,
     source_check,

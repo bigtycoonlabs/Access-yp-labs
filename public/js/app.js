@@ -132,6 +132,7 @@
       currentConceptId = concept.id;
       const m = message('clay', 'Clay');
       m.appendChild(el('p', null, 'Picking up where we left off on “' + (concept.title || 'your concept') + '.” Everything you built is still here — tell me what to change or add and I’ll refine this same concept. You can start a fresh one anytime.'));
+      renderClaysTake(m, concept);
       const current = (assets || []).filter((a) => a.is_current !== false);
       if (current.length) {
         const acts = el('div', 'actions');
@@ -266,9 +267,34 @@
   }
 
   // ---- render Clay's result honestly by status ----
+  // Clay's own voice on a concept — its honest take and the next moves it would make —
+  // shown before the files so the person hears a partner's thinking, not just documents.
+  // Announced politely so a VoiceOver user actually hears the take, not just reaches it.
+  function renderClaysTake(container, concept) {
+    const c = concept || {};
+    const steps = Array.isArray(c.next_steps) ? c.next_steps.filter(Boolean) : [];
+    if (!c.clays_take && !steps.length) return;
+    const take = el('div', 'clays-take');
+    take.setAttribute('role', 'note');
+    take.setAttribute('aria-label', 'Clay’s take on your idea');
+    if (c.clays_take) {
+      take.appendChild(el('p', 'take-label', 'Clay’s take'));
+      take.appendChild(el('p', null, c.clays_take));
+    }
+    if (steps.length) {
+      take.appendChild(el('p', 'take-label', 'Where I’d take it next'));
+      const ol = document.createElement('ol');
+      steps.forEach((s) => { const li = document.createElement('li'); li.textContent = s; ol.appendChild(li); });
+      take.appendChild(ol);
+    }
+    container.appendChild(take);
+    if (c.clays_take) announce('Clay’s take: ' + c.clays_take);
+  }
+
   function renderResult(container, data) {
     if (data.status === 'answered') {
       container.appendChild(el('p', null, data.message || 'Here is your concept.'));
+      renderClaysTake(container, data.concept || {});
       if (data.coverage && !data.coverage.complete) {
         container.appendChild(el('p', 'coverage', data.coverage.gap_description));
       }

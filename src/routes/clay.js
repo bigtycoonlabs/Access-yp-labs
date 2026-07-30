@@ -36,6 +36,11 @@ async function persistResult(ownerId, result, { conceptId = null, mode, category
         await client.query('UPDATE concepts SET risk_summary=$2, updated_at=NOW() WHERE id=$1',
           [concept.id, result.risk_summary]);
       }
+      // A re-generation refreshes Clay's take and next steps for the concept.
+      if (result.clays_take || (Array.isArray(result.next_steps) && result.next_steps.length)) {
+        await client.query('UPDATE concepts SET clays_take=$2, next_steps=$3::jsonb, updated_at=NOW() WHERE id=$1',
+          [concept.id, result.clays_take || null, JSON.stringify(result.next_steps || [])]);
+      }
       // Proof is a high-water mark: refresh it only when THIS run was grounded,
       // so an ungrounded follow-up edit never erases earned substantiation.
       if (result.research_grounded) {
@@ -46,13 +51,14 @@ async function persistResult(ownerId, result, { conceptId = null, mode, category
     } else {
       const c = await client.query(
         `INSERT INTO concepts (owner_id, title, mode, category, risk_summary, is_operating,
-           research_grounded, claims_verified, source_count)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+           research_grounded, claims_verified, source_count, clays_take, next_steps)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb) RETURNING *`,
         [ownerId, result.title || 'Untitled concept', mode,
          result.inferred_category || category || null, result.risk_summary || null, !!operating,
          !!result.research_grounded,
          (typeof result.claims_verified === 'boolean' ? result.claims_verified : null),
-         result.source_count || 0]);
+         result.source_count || 0,
+         result.clays_take || null, JSON.stringify(result.next_steps || [])]);
       concept = c.rows[0];
     }
     // Drift guard: if the model produces an asset type the DB enum doesn't recognize yet
@@ -160,7 +166,7 @@ async function runBuild({ user, mode, category, prompt, operating, conceptId, bu
       emailed = await sendEmail({
         to: user.email,
         subject: 'Your concept is ready: ' + (result.title || concept.title || 'new concept'),
-        html: buildPackageEmail(result.title || concept.title, result.coverage, result.assets, concept.id),
+        html: buildPackageEmail(result.title || concept.title, result.coverage, result.assets, concept.id, result.clays_take, result.next_steps),
       });
     } catch (e) { emailed = { sent: false, reason: (e && e.message) ? e.message : 'error' }; }
     if (!emailed.sent) console.error('package email NOT sent for concept', concept.id, '- reason:', emailed.reason);
@@ -514,16 +520,23 @@ router.get('/diagnose', authenticate, authorize('staff', 'admin', 'master_staff'
 
 
 function escapeHtml(t){return String(t==null?'':t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
-function buildPackageEmail(title, coverage, assets, conceptId){
+function buildPackageEmail(title, coverage, assets, conceptId, claysTake, nextSteps){
   const parts = (assets||[]).map(a =>
     '<h2 style="color:#7c2d12;font-family:system-ui,sans-serif">'+escapeHtml(a.label||a.type)+'</h2>'+
     '<div style="white-space:pre-wrap;font-family:system-ui,sans-serif;font-size:15px;line-height:1.6">'+escapeHtml(a.body)+'</div>');
   const gap = coverage && !coverage.complete ? '<p style="color:#57534e">'+escapeHtml(coverage.gap_description)+'</p>' : '';
+  const steps = (nextSteps||[]).filter(Boolean);
+  const take = (claysTake || steps.length)
+    ? '<div style="border-left:4px solid #b45309;background:#fbf6f0;padding:12px 16px;margin:14px 0;border-radius:8px">'+
+        (claysTake ? '<p style="margin:0 0 8px;font-family:system-ui,sans-serif;font-size:16px;line-height:1.5"><strong style="color:#7c2d12">Clay’s take:</strong> '+escapeHtml(claysTake)+'</p>' : '')+
+        (steps.length ? '<p style="margin:0 0 4px;font-family:system-ui,sans-serif;font-size:16px"><strong style="color:#7c2d12">Where I’d take it next:</strong></p><ol style="margin:0;padding-left:20px;font-family:system-ui,sans-serif;font-size:15px;line-height:1.6">'+steps.map(s=>'<li>'+escapeHtml(s)+'</li>').join('')+'</ol>' : '')+
+      '</div>'
+    : '';
   const cta = conceptId ? '<p><a href="https://accessyplabs.com/app.html?concept='+encodeURIComponent(conceptId)+'" style="display:inline-block;background:#7c2d12;color:#ffffff;padding:12px 22px;border-radius:8px;text-decoration:none;font-family:system-ui,sans-serif;font-size:16px">Open it in your Laboratory</a></p>' : '';
   return '<div style="max-width:640px;margin:0 auto">'+
     '<h1 style="font-family:system-ui,sans-serif;color:#1c1917">'+escapeHtml(title)+'</h1>'+
     '<p style="font-family:system-ui,sans-serif;font-size:16px;line-height:1.5">Your concept is ready — Clay at Access YP Labs finished building it. It’s also waiting in your Laboratory.</p>'+
-    cta + gap + parts.join('') +
+    take + cta + gap + parts.join('') +
     '<hr/><p style="color:#57534e;font-size:13px;font-family:system-ui,sans-serif">The Dreamhold is a neutral marketplace. Concepts are pre-proven starting points, not guarantees of income.</p></div>';
 }
 
