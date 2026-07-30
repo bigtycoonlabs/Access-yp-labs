@@ -1,6 +1,15 @@
 // The Dreamhold laboratory — chat-first, accessible. Talk to Clay, then act inline.
 (function () {
-  if (!Kiln.isLoggedIn()) { location.replace('/login.html'); return; }
+  if (!Kiln.isLoggedIn()) {
+    // No access token in this browser — but the HttpOnly refresh cookie may still hold a live
+    // session (localStorage gets wiped by the browser far sooner than the session should end).
+    // Try to recover silently; only send them to sign in if that truly fails.
+    Kiln.refresh().then(function (ok) {
+      if (ok) location.reload();
+      else location.replace('/login.html');
+    });
+    return;
+  }
 
   const log = document.getElementById('log');
   const promptEl = document.getElementById('prompt');
@@ -90,10 +99,17 @@
   (async function init() {
     const params = new URLSearchParams(location.search);
     const openId = /^[0-9a-f-]{36}$/i.test(params.get('concept') || '') ? params.get('concept') : null;
+    let firstName = '';
     try {
       const me = await Kiln.api('/auth/me');
-      document.getElementById('greeting').textContent = `Welcome, ${me.user.name || 'there'}`;
-    } catch (_) {}
+      const nm = (me.user && me.user.name) || '';
+      firstName = (nm.split(' ')[0]) || '';
+      document.getElementById('greeting').textContent = `Welcome, ${nm || 'there'}`;
+    } catch (e) {
+      // A genuinely expired session (refresh already failed) must go cleanly to sign-in —
+      // never fall through and greet a logged-out person as a brand-new visitor.
+      if (e && e.sessionExpired) { goSignIn(); return; }
+    }
     try {
       const s = await Kiln.api('/clay/status');
       clayAvailable = !!s.available;
@@ -108,14 +124,25 @@
     } catch (_) {}
     // Opening an existing concept to keep refining it — skip the generic opening.
     if (openId) { await loadConceptIntoWorkspace(openId); return; }
+    // Figure out whether this is a returning builder BEFORE greeting them. Their own concepts
+    // are the truth — someone with work in progress must never be greeted like a first-timer,
+    // even if they never filled in interests.
+    let myConcepts = [];
+    try { const r = await Kiln.api('/concepts'); myConcepts = (r && r.concepts) || []; } catch (_) {}
     let prefs = null;
     try { const r = await Kiln.api('/preferences'); prefs = r.preferences; } catch (_) {}
     const m = message('clay', 'Clay');
-    let opening = "I'm Clay. Here's how this works: you bring me an idea — any idea, half-formed is fine — and we pressure-test it, sharpen it, and build the whole thing out together: the plan, the research, the marketing, a working demo. It stays your idea; I just help bring it to life. Pick “Create” to start something new, or “Enhance” to sharpen an idea you already have or a business you already run. So — what's the one that's been living in your head?";
-    if (prefs && prefs.interests && prefs.interests.length) {
+    let opening;
+    if (myConcepts.length) {
+      opening = (firstName ? ('Welcome back, ' + firstName + '. ') : 'Welcome back. ')
+        + 'Your Laboratory is right where you left it — ' + myConcepts.length + ' concept'
+        + (myConcepts.length === 1 ? '' : 's') + ' waiting for you below. Open any one to pick up building, or start something new with “Create.”';
+    } else if (prefs && prefs.interests && prefs.interests.length) {
       const words = prefs.interests.map((i) => CATEGORY_WORDS[i] || i.replace(/_/g, ' '));
       const list = words.length === 1 ? words[0] : (words.slice(0, -1).join(', ') + ' and ' + words[words.length - 1]);
-      opening = 'Welcome back. You told me you’re drawn to ' + list + ' — so what’s it going to be: shape one of those, pick up where we left off, or chase something brand new? “Create” starts fresh; “Enhance” sharpens something you’ve already got.';
+      opening = 'Welcome back. You told me you’re drawn to ' + list + ' — so what’s it going to be: shape one of those, or chase something brand new? “Create” starts fresh; “Enhance” sharpens something you’ve already got.';
+    } else {
+      opening = "I'm Clay. Here's how this works: you bring me an idea — any idea, half-formed is fine — and we pressure-test it, sharpen it, and build the whole thing out together: the plan, the research, the marketing, a working demo. It stays your idea; I just help bring it to life. Pick “Create” to start something new, or “Enhance” to sharpen an idea you already have or a business you already run. So — what's the one that's been living in your head?";
     }
     // If they handed Clay an idea from the homepage before signing up, it's
     // waiting for them here — greet them with it and pre-fill the box.
@@ -127,7 +154,7 @@
       }
     } catch (_) {}
     m.appendChild(el('p', null, opening));
-    await renderMyConcepts(m);
+    await renderMyConcepts(m, myConcepts);
 
     // Gentle, mutable reminder about concepts built but not yet kept. Honest and
     // easy to silence — never shown to Sculptor/staff (their count is 0).
@@ -333,9 +360,11 @@
   // Announced politely so a VoiceOver user actually hears the take, not just reaches it.
   // Your concepts, front and center in the Laboratory — so picking up a project is the
   // easiest thing to do, and continuing is always free (paying is only to keep/download).
-  async function renderMyConcepts(container) {
-    let concepts = [];
-    try { const r = await Kiln.api('/concepts'); concepts = (r && r.concepts) || []; } catch (_) { return; }
+  async function renderMyConcepts(container, prefetched) {
+    let concepts = prefetched;
+    if (!concepts) {
+      try { const r = await Kiln.api('/concepts'); concepts = (r && r.concepts) || []; } catch (_) { return; }
+    }
     if (!concepts.length) return;
     const panel = el('div', 'my-concepts');
     panel.setAttribute('role', 'region');

@@ -1,6 +1,14 @@
 // The Dreamhold dashboard — management overview with state-aware actions.
 (function () {
-  if (!Kiln.isLoggedIn()) { location.replace('/login.html'); return; }
+  if (!Kiln.isLoggedIn()) {
+    // localStorage may be wiped though the HttpOnly refresh cookie is still alive — recover
+    // silently before bouncing to sign-in, so a returning user isn't logged out for no reason.
+    Kiln.refresh().then(function (ok) {
+      if (ok) location.reload();
+      else location.replace('/login.html');
+    });
+    return;
+  }
   let me = null;
 
   function el(t, c, x) { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; }

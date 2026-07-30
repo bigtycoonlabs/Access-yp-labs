@@ -7,7 +7,22 @@ const { authenticate } = require('../middleware/auth');
 const { asyncHandler } = require('../lib/http');
 const { sendEmail } = require('../services/email');
 const { welcomeEmail } = require('../services/welcomeEmail');
-const { parseCookies } = require('../lib/cookies');
+const { parseCookies, setCookie } = require('../lib/cookies');
+
+// The refresh token also lives in an HttpOnly cookie, not just localStorage. This is what
+// actually keeps people signed in: iOS/Safari wipe script-writable localStorage after ~7 days
+// of not visiting, which would silently log a returning user out and make Clay greet them like
+// a stranger. A first-party HttpOnly cookie survives that, is safe from XSS (JS can't read it),
+// and lets us re-mint tokens for up to 30 days. Scoped to /api/auth so it's only sent to the
+// auth endpoints that need it.
+const REFRESH_COOKIE = 'kiln_rt';
+const REFRESH_MAX_AGE = 60 * 60 * 24 * 30; // 30 days, matching the refresh token's life
+function setRefreshCookie(res, refreshToken) {
+  setCookie(res, REFRESH_COOKIE, refreshToken, { path: '/api/auth', maxAge: REFRESH_MAX_AGE });
+}
+function clearRefreshCookie(res) {
+  setCookie(res, REFRESH_COOKIE, '', { path: '/api/auth', maxAge: 0 });
+}
 const COOKIE_V = 'ypl_v';
 
 const router = express.Router();
@@ -25,7 +40,7 @@ async function recordLogin(req, { userId = null, email, success, reason = null }
 function issueTokens(user) {
   const payload = { id: user.id, email: user.email, role: user.role, name: user.name };
   return {
-    accessToken: jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '2h' }),
+    accessToken: jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }),
     refreshToken: jwt.sign({ id: user.id }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '30d' }),
   };
 }
@@ -101,7 +116,9 @@ router.post('/register', [
     ).catch((e) => console.error('email_log insert failed:', e.message));
   } catch (e) { console.error('welcome email error:', e.message); }
 
-  res.status(201).json({ user, ...issueTokens(user) });
+  const tokens = issueTokens(user);
+  setRefreshCookie(res, tokens.refreshToken);
+  res.status(201).json({ user, ...tokens });
 }));
 
 // POST /api/auth/login
@@ -129,19 +146,27 @@ router.post('/login', [
   await recordLogin(req, { userId: user.id, email, success: true });
   // Carry in an idea handed to Clay before signing in, so it isn't lost on login.
   await carryInSpark(req, user);
-  res.json({ user, ...issueTokens(user) });
+  const tokens = issueTokens(user);
+  setRefreshCookie(res, tokens.refreshToken);
+  res.json({ user, ...tokens });
 }));
 
 // POST /api/auth/refresh
 router.post('/refresh', asyncHandler(async (req, res) => {
-  const { refreshToken } = req.body;
+  // Accept the refresh token from the HttpOnly cookie first (the durable path that
+  // survives localStorage being wiped), then fall back to the request body for older
+  // clients. Either way we re-mint and re-set the cookie so the session keeps rolling.
+  const cookies = parseCookies(req);
+  const refreshToken = cookies[REFRESH_COOKIE] || req.body.refreshToken;
   if (!refreshToken) return res.status(400).json({ error: 'Refresh token required.' });
   let decoded;
   try { decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET); }
-  catch (_) { return res.status(401).json({ error: 'Invalid or expired refresh token.' }); }
+  catch (_) { clearRefreshCookie(res); return res.status(401).json({ error: 'Invalid or expired refresh token.' }); }
   const r = await query('SELECT id,email,name,role FROM users WHERE id=$1', [decoded.id]);
-  if (!r.rows.length) return res.status(401).json({ error: 'Account not found.' });
-  res.json(issueTokens(r.rows[0]));
+  if (!r.rows.length) { clearRefreshCookie(res); return res.status(401).json({ error: 'Account not found.' }); }
+  const tokens = issueTokens(r.rows[0]);
+  setRefreshCookie(res, tokens.refreshToken);
+  res.json(tokens);
 }));
 
 // GET /api/auth/me
@@ -154,7 +179,7 @@ router.get('/me', authenticate, asyncHandler(async (req, res) => {
   res.json({ user: r.rows[0] });
 }));
 
-// POST /api/auth/logout  (stateless JWT — client discards tokens)
-router.post('/logout', authenticate, (req, res) => res.json({ ok: true }));
+// POST /api/auth/logout  (stateless JWT — client discards tokens; we also clear the cookie)
+router.post('/logout', authenticate, (req, res) => { clearRefreshCookie(res); res.json({ ok: true }); });
 
 module.exports = router;

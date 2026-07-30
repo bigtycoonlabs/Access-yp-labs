@@ -12,17 +12,22 @@
     const tokens = getTokens();
     if (auth && tokens.accessToken) headers.Authorization = `Bearer ${tokens.accessToken}`;
     const res = await fetch(`/api${path}`, {
-      method, headers, body: body ? JSON.stringify(body) : undefined,
+      method, headers, credentials: 'same-origin',
+      body: body ? JSON.stringify(body) : undefined,
     });
     return res;
   }
 
   async function refresh() {
+    // The refresh token may live only in an HttpOnly cookie — localStorage can be wiped by the
+    // browser (iOS/Safari do this after ~7 days), which is what silently logs returning users
+    // out. The cookie is sent automatically on this same-origin call, so we try to refresh even
+    // with nothing stored locally; that's what keeps someone signed in across a storage wipe.
     const { refreshToken } = getTokens();
-    if (!refreshToken) return false;
-    const res = await raw('/auth/refresh', { method: 'POST', body: { refreshToken }, auth: false });
+    const res = await raw('/auth/refresh', { method: 'POST', body: refreshToken ? { refreshToken } : {}, auth: false });
     if (!res.ok) return false;
-    const data = await res.json();
+    let data = null; try { data = await res.json(); } catch (_) { return false; }
+    if (!data || !data.accessToken) return false;
     setTokens({ ...getTokens(), accessToken: data.accessToken, refreshToken: data.refreshToken });
     return true;
   }
@@ -47,5 +52,5 @@
     return data;
   }
 
-  window.Kiln = { api, getTokens, setTokens, clearTokens, isLoggedIn };
+  window.Kiln = { api, getTokens, setTokens, clearTokens, isLoggedIn, refresh };
 })();
