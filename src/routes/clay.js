@@ -454,7 +454,9 @@ router.get('/status', authenticate, (req, res) => {
 // (invalid key, no access to the chosen model, etc.) is visible without server logs.
 router.get('/diagnose', authenticate, authorize('staff', 'admin', 'master_staff'),
   asyncHandler(async (req, res) => {
-    const result = await provider.probe();
+    const model = (typeof req.query.model === 'string' && req.query.model.trim())
+      ? req.query.model.trim().slice(0, 100) : null;
+    const result = await provider.probe(model);
     res.json(result);
   }));
 

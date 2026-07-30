@@ -30,6 +30,8 @@
       <p id="checkresult" role="status" aria-live="polite" class="muted"></p>
       <p><button type="button" class="btn secondary" id="probebtn">Test Clay’s live connection</button></p>
       <p id="proberesult" role="status" aria-live="polite" class="muted"></p>
+      <p><button type="button" class="btn secondary" id="findmodelbtn">Find a working model</button></p>
+      <p id="findmodelresult" role="status" aria-live="polite" class="muted"></p>
       <div class="grid" id="stats"></div>
     </section>
     <section aria-labelledby="rec-h">
@@ -135,6 +137,31 @@ if(cb){
       out.textContent=msg; announce(msg,true);
     }catch(e){ out.textContent=e.message||'Test failed.'; announce(out.textContent,true); }
     finally{ pb.disabled=false; }
+  });
+
+  const fm=document.getElementById('findmodelbtn');
+  if(fm) fm.addEventListener('click',async()=>{
+    fm.disabled=true;
+    const out=document.getElementById('findmodelresult');
+    const candidates=['gpt-5.6','gpt-5.5','gpt-5','gpt-4o'];
+    out.textContent='Testing which models your key can use — this makes a few quick calls, one moment…';
+    announce('Testing which models your key can use.',true);
+    const works=[], fails=[];
+    for(const m of candidates){
+      try{
+        const r=await Kiln.api('/clay/diagnose?model='+encodeURIComponent(m));
+        if(r && r.ok) works.push(m); else fails.push(m);
+      }catch(_){ fails.push(m); }
+    }
+    let msg;
+    if(works.length){
+      msg='Working models: '+works.join(', ')+'. '+(fails.length?('Not available on this key: '+fails.join(', ')+'. '):'')
+        +'Set OPENAI_MODEL on Railway to one of the working ones — '+works[0]+' is the most capable of them.';
+    } else {
+      msg='None of the common models worked with this key ('+fails.join(', ')+'). The key itself is likely invalid or restricted — double-check OPENAI_API_KEY on Railway.';
+    }
+    out.textContent=msg; announce(msg,true);
+    fm.disabled=false;
   });
 }
 </script>

@@ -18,8 +18,8 @@ const ANTHROPIC_MODEL = process.env.CLAY_MODEL || 'claude-sonnet-4-5';
 // to deepen reasoning; unset uses the model's own default (medium for gpt-5.5).
 const OPENAI_REASONING_EFFORT = process.env.OPENAI_REASONING_EFFORT || null;
 function isReasoningModel(m) { return /^(gpt-5|o\d)/i.test(String(m)); }
-function openaiTokenParams(maxTokens) {
-  if (isReasoningModel(OPENAI_MODEL)) {
+function openaiTokenParams(maxTokens, model) {
+  if (isReasoningModel(model || OPENAI_MODEL)) {
     const p = { max_completion_tokens: maxTokens };
     if (OPENAI_REASONING_EFFORT) p.reasoning_effort = OPENAI_REASONING_EFFORT;
     return p;
@@ -39,13 +39,14 @@ function openaiClient() { return new OpenAI({ apiKey: process.env.OPENAI_API_KEY
 function anthropicClient() { return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }); }
 
 // ---- single-shot text completion ----
-async function complete({ system, user, json = false, maxTokens = 6000 }) {
+async function complete({ system, user, json = false, maxTokens = 6000, model = null }) {
   const p = providerName();
   if (!p) return { ok: false, reason: 'unavailable', text: '' };
   try {
     if (p === 'openai') {
+      const oaModel = model || OPENAI_MODEL;
       const resp = await openaiClient().chat.completions.create({
-        model: OPENAI_MODEL, ...openaiTokenParams(maxTokens),
+        model: oaModel, ...openaiTokenParams(maxTokens, oaModel),
         response_format: json ? { type: 'json_object' } : undefined,
         messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
       });
@@ -158,17 +159,18 @@ async function anthropicChat({ system, messages, tools, maxTokens }) {
 // AND the chosen model actually work — not just whether a key env var is present.
 // Returns the exact provider error (bad key, no model access, etc.) rather than a
 // vague "unavailable", so the real cause is visible without reading server logs.
-async function probe() {
+async function probe(model) {
   const p = providerName();
   if (!p) {
     return { ok: false, provider: null, model: null, reason: 'no_key',
       detail: 'No AI provider key is set. Set OPENAI_API_KEY (or ANTHROPIC_API_KEY) on the server.' };
   }
-  const out = await complete({ system: 'Reply with the single word: ok', user: 'ok', json: false, maxTokens: 64 });
+  const tried = p === 'openai' ? (model || OPENAI_MODEL) : ANTHROPIC_MODEL;
+  const out = await complete({ system: 'Reply with the single word: ok', user: 'ok', json: false, maxTokens: 64, model: model || null });
   if (out.ok) {
-    return { ok: true, provider: p, model: modelName(), detail: 'Clay reached the model successfully.' };
+    return { ok: true, provider: p, model: tried, detail: 'Clay reached the model successfully.' };
   }
-  return { ok: false, provider: p, model: modelName(), reason: out.reason || 'error',
+  return { ok: false, provider: p, model: tried, reason: out.reason || 'error',
     detail: out.error || 'The model call failed for an unknown reason.' };
 }
 
