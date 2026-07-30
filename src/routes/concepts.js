@@ -145,7 +145,8 @@ router.get('/:id', authenticate, asyncHandler(async (req, res) => {
   const c = await query('SELECT * FROM concepts WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
   if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
   const a = await query('SELECT * FROM assets WHERE concept_id=$1 ORDER BY created_at', [req.params.id]);
-  res.json({ concept: c.rows[0], assets: a.rows });
+  const ent = await conceptEntitlement(req.user, req.params.id);
+  res.json({ concept: c.rows[0], assets: a.rows, entitled: !!ent.entitled });
 }));
 
 router.patch('/:id', authenticate, [

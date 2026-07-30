@@ -60,3 +60,7 @@ legend{font-weight:700;padding:0 6px;}
 .clays-take ol{margin:4px 0 6px;padding-left:22px;}
 .clays-take li{margin:0 0 6px;}
 .take-label{font-weight:700;color:var(--clay-dark);letter-spacing:.02em;margin:0 0 4px;}
+/* Locked pieces notice — positive, never a scold. Names what's built and waiting. */
+.locked-note{border:1px solid var(--line);border-left:5px solid var(--warn);border-radius:10px;
+  background:rgba(180,83,9,.05);padding:14px 16px;margin:12px 0;}
+.locked-note p{margin:0 0 10px;}

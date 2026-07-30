@@ -11,6 +11,53 @@
   // refines THAT concept (a new version) instead of spawning a fresh one. Cleared
   // by choosing "Create" or "Start a fresh concept".
   let currentConceptId = null;
+  // The three pieces anyone can see and keep refining for free. Must match the server's
+  // PREVIEW_TYPES in lib/entitlement.js. Everything else is built and updated but stays
+  // locked until the concept is kept.
+  const PREVIEW_TYPES = ['business_plan', 'marketing_strategy', 'html_demo', 'built_site'];
+
+  // When you're refining an existing concept there's no decision to make — hide the
+  // create/enhance toggles (and the "already running" checkbox). They come back when you
+  // start fresh, where the choice actually matters.
+  function setEditingConcept(editing) {
+    const modes = document.getElementById('modes');
+    const opWrap = document.getElementById('operating-wrap');
+    if (modes) modes.hidden = !!editing;
+    if (editing && opWrap) opWrap.hidden = true;
+  }
+
+  function goSignIn() {
+    announce('Your session ended — taking you to sign in. Your work is saved.', true);
+    setTimeout(function () { location.href = '/login.html?session=expired'; }, 1400);
+  }
+
+  // Start the Maker keep-checkout for a concept. Shared by the locked-files notice and the
+  // per-file lock, so there's one honest path to unlock everything.
+  async function keepConcept(conceptId, btn) {
+    if (btn) btn.disabled = true;
+    try {
+      const r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'maker', concept_id: conceptId } });
+      if (r && r.url) { location.href = r.url; return; }
+      announce((r && r.message) || 'Billing isn’t set up yet, so nothing was charged.', true);
+    } catch (e) {
+      if (e.sessionExpired) { goSignIn(); return; }
+      announce(e.message, true);
+    }
+    if (btn) btn.disabled = false;
+  }
+
+  // Names the pieces that are built and waiting, with one clear way to unlock them all.
+  function lockedNotice(container, conceptId, names) {
+    if (!names || !names.length) return;
+    const box = el('div', 'locked-note');
+    box.setAttribute('role', 'note');
+    box.appendChild(el('p', 'take-label', 'Built and waiting — unlocks when you keep this'));
+    box.appendChild(el('p', null, 'Also ready inside this concept: ' + names.join(', ') + '. Your business plan, marketing strategy, and live demo stay open for free — the rest opens the moment you keep it.'));
+    const kb = el('button', 'btn', 'Unlock everything — $2.99'); kb.type = 'button';
+    kb.addEventListener('click', () => keepConcept(conceptId, kb));
+    box.appendChild(kb);
+    container.appendChild(box);
+  }
   // Whether Clay's generation provider is connected. When it isn't, we say so
   // plainly instead of letting a build fail with a vague error.
   let clayAvailable = true;
@@ -128,18 +175,25 @@
   // ---- open an existing concept to keep refining it ----
   async function loadConceptIntoWorkspace(id) {
     try {
-      const { concept, assets } = await Kiln.api('/concepts/' + id);
+      const { concept, assets, entitled } = await Kiln.api('/concepts/' + id);
       currentConceptId = concept.id;
+      setEditingConcept(true); // refining an existing concept — hide the create/enhance toggles
       const m = message('clay', 'Clay');
       m.appendChild(el('p', null, 'Picking up where we left off on “' + (concept.title || 'your concept') + '.” Everything you built is still here — tell me what to change or add and I’ll refine this same concept. You can start a fresh one anytime.'));
       renderClaysTake(m, concept);
       const current = (assets || []).filter((a) => a.is_current !== false);
       if (current.length) {
         const acts = el('div', 'actions');
+        const isEntitled = entitled !== false;
+        const lockedNames = [];
         current.forEach((a) => {
-          const b = el('button', 'btn secondary', 'View: ' + (a.title || a.type)); b.type = 'button';
-          b.addEventListener('click', () => viewAsset(m, a.id, a.title || a.type));
-          acts.appendChild(b);
+          if (isEntitled || PREVIEW_TYPES.includes(a.type)) {
+            const b = el('button', 'btn secondary', 'View: ' + (a.title || a.type)); b.type = 'button';
+            b.addEventListener('click', () => viewAsset(m, a.id, a.title || a.type));
+            acts.appendChild(b);
+          } else {
+            lockedNames.push(a.title || a.label || a.type);
+          }
         });
         const dl = el('button', 'btn', 'Download package'); dl.type = 'button';
         dl.addEventListener('click', () => exportConcept(m, concept.id));
@@ -148,10 +202,12 @@
         fresh.addEventListener('click', startFreshConcept);
         acts.appendChild(fresh);
         m.appendChild(acts);
+        lockedNotice(m, concept.id, lockedNames);
       }
       announce('Continuing your concept: ' + (concept.title || 'your concept') + '. Add a message to refine it.', true);
       if (promptEl) promptEl.focus();
     } catch (e) {
+      if (e.sessionExpired) { goSignIn(); return; }
       const m = message('clay', 'Clay');
       m.appendChild(el('p', 'msg err', 'I couldn’t open that concept — it may have been removed. You can start a new one below.'));
       announce('That concept could not be opened.', true);
@@ -160,6 +216,7 @@
 
   function startFreshConcept() {
     currentConceptId = null;
+    setEditingConcept(false);
     const m = message('clay', 'Clay');
     m.appendChild(el('p', null, 'Fresh start — this next idea will be its own concept. What are we building?'));
     announce('Starting a new concept.', true);
@@ -187,7 +244,7 @@
       const operating = mode === 'enhance' && !!(operatingEl && operatingEl.checked);
       const data = await Kiln.api('/clay/generate', { method: 'POST', body: { mode, category, prompt, operating, concept_id: currentConceptId || undefined } });
       // From here on, keep refining the same concept until they start fresh.
-      if (data && data.status === 'answered' && data.concept) currentConceptId = data.concept.id;
+      if (data && data.status === 'answered' && data.concept) { currentConceptId = data.concept.id; setEditingConcept(true); }
       thinking.removeChild(think);
       renderResult(thinking, data);
     } catch (e) {
@@ -238,7 +295,7 @@
       if (data.status === 'done') {
         clearInterval(timer); clearBeat();
         if (data.concept_id) {
-          currentConceptId = data.concept_id;
+          currentConceptId = data.concept_id; setEditingConcept(true);
           const open = el('a', 'btn', 'Open your concept');
           open.href = '/app.html?concept=' + encodeURIComponent(data.concept_id);
           log.appendChild(open);
@@ -312,11 +369,17 @@
           : 'Source check: some claims may not be fully supported. Details are shown below.', true);
       }
       const actions = el('div', 'actions');
+      const entitled = data.entitled !== false;
+      const lockedNames = [];
       (data.assets || []).forEach((a) => {
-        const b = el('button', 'btn secondary', 'View: ' + (a.title || a.type));
-        b.type = 'button';
-        b.addEventListener('click', () => viewAsset(container, a.id, a.title || a.type));
-        actions.appendChild(b);
+        if (entitled || PREVIEW_TYPES.includes(a.type)) {
+          const b = el('button', 'btn secondary', 'View: ' + (a.title || a.type));
+          b.type = 'button';
+          b.addEventListener('click', () => viewAsset(container, a.id, a.title || a.type));
+          actions.appendChild(b);
+        } else {
+          lockedNames.push(a.title || a.label || a.type);
+        }
       });
       const dl = el('button', 'btn', 'Download package'); dl.type = 'button';
       dl.addEventListener('click', () => exportConcept(container, data.concept.id));
@@ -358,24 +421,20 @@
       actions.appendChild(consultBtn);
       container.appendChild(actions);
 
-      // The "free until you download" moment — positive, shown once, never a nag.
-      // Only when this concept isn't already kept (staff/Sculptor/Maker come back
-      // entitled, so they never see an upsell).
+      // Not kept yet: name the pieces that are built and waiting, with one way to unlock
+      // them all. The business plan, marketing strategy, and demo stay free above.
       if (data.entitled === false && data.concept) {
-        const keep = el('div', 'keep-note');
-        keep.setAttribute('role', 'note');
-        keep.appendChild(el('p', null, 'This concept is yours to explore and refine right now — free. Whenever you want to download it, share it, or keep it for good, that’s Maker: $2.99 for this one concept.'));
-        const kb = el('button', 'btn', 'Keep this concept — $2.99'); kb.type = 'button';
-        kb.addEventListener('click', async () => {
-          kb.disabled = true;
-          try {
-            const r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'maker', concept_id: data.concept.id } });
-            if (r.url) { location.href = r.url; return; }
-            announce(r.message || 'Billing isn’t configured yet, so nothing was charged.', true); kb.disabled = false;
-          } catch (e) { announce(e.message, true); kb.disabled = false; }
-        });
-        keep.appendChild(kb);
-        container.appendChild(keep);
+        if (lockedNames.length) {
+          lockedNotice(container, data.concept.id, lockedNames);
+        } else {
+          const keep = el('div', 'keep-note');
+          keep.setAttribute('role', 'note');
+          keep.appendChild(el('p', null, 'This concept is yours to explore and refine right now — free. Whenever you want to download it, share it, or keep it for good, that’s Maker: $2.99 for this one concept.'));
+          const kb = el('button', 'btn', 'Keep this concept — $2.99'); kb.type = 'button';
+          kb.addEventListener('click', () => keepConcept(data.concept.id, kb));
+          keep.appendChild(kb);
+          container.appendChild(keep);
+        }
       }
       // Retrieval grounding, surfaced honestly: the user's own related prior work
       // Clay had in mind while building. Only their real earlier concepts.
@@ -423,6 +482,7 @@
       document.body.appendChild(a); a.click(); a.remove();
       announce('Your package download has started.', true);
     } catch (e) {
+      if (e.sessionExpired) { goSignIn(); return; }
       if (e.status === 402 && e.data && e.data.options) return renderPaywall(container, e.data);
       announce('Could not export: ' + e.message, true);
     }
@@ -465,7 +525,21 @@
       wrap.appendChild(body);
       container.appendChild(wrap);
       focusEl(body, label + ' loaded.');
-    } catch (e) { announce('Could not load ' + label + ': ' + e.message, true); }
+    } catch (e) {
+      if (e.sessionExpired) { goSignIn(); return; }
+      if (e.status === 402) {
+        const cid = currentConceptId || (e.data && e.data.options && e.data.options[0] && e.data.options[0].concept_id);
+        const box = el('div', 'locked-note'); box.setAttribute('role', 'note');
+        box.appendChild(el('p', null, '“' + label + '” is part of this concept and unlocks when you keep it. Your business plan, marketing strategy, and live demo stay open for free.'));
+        const kb = el('button', 'btn', 'Unlock everything — $2.99'); kb.type = 'button';
+        kb.addEventListener('click', () => keepConcept(cid, kb));
+        box.appendChild(kb);
+        container.appendChild(box);
+        focusEl(box, label + ' is locked until you keep this concept.');
+        return;
+      }
+      announce('Could not load ' + label + ': ' + e.message, true);
+    }
   }
 
   // ---- inline listing form (baseline gate + acknowledgments) ----

@@ -6,6 +6,12 @@ const { query } = require('../config/db');
 const STAFF_ROLES = ['staff', 'admin', 'master_staff'];
 const isStaff = (role) => STAFF_ROLES.includes(role);
 
+// The three pieces a person can always see and keep refining for free, even before
+// paying: the business plan, the marketing strategy, and the live HTML demo. Everything
+// else is still generated and updated, but stays locked until the concept is kept.
+const PREVIEW_TYPES = ['business_plan', 'marketing_strategy', 'html_demo', 'built_site'];
+const isPreviewType = (type) => PREVIEW_TYPES.includes(type);
+
 // Staff normally never pay. billing_test lets a staff account (e.g. the founder)
 // deliberately go through the real subscribe/paywall/pay flow to test it end to end,
 // while keeping its role and staff powers for everything else.
@@ -51,4 +57,4 @@ function paywall(conceptId) {
   };
 }
 
-module.exports = { isStaff, billingExempt, STAFF_ROLES, conceptEntitlement, paywall };
+module.exports = { isStaff, billingExempt, STAFF_ROLES, conceptEntitlement, paywall, PREVIEW_TYPES, isPreviewType };

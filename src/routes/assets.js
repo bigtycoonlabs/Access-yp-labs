@@ -2,7 +2,7 @@ const express = require('express');
 const { query } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
-const { conceptEntitlement, paywall } = require('../lib/entitlement');
+const { conceptEntitlement, paywall, isPreviewType } = require('../lib/entitlement');
 const protect = require('../lib/protect');
 const describe = require('../lib/describe');
 const router = express.Router();
@@ -43,13 +43,20 @@ router.get('/concept/:conceptId/demo', authenticate, asyncHandler(async (req, re
   res.json({ demo, description: describe.outline(demo.body) });
 }));
 
-// A single asset (owner view — free).
+// A single asset. The business plan, marketing strategy, and live demo are always
+// viewable and refinable for free. Every other section is generated and kept up to date,
+// but stays locked (402) until the concept is kept — then everything opens.
 router.get('/:id', authenticate, asyncHandler(async (req, res) => {
   const r = await query(
     `SELECT a.* FROM assets a JOIN concepts c ON c.id=a.concept_id
      WHERE a.id=$1 AND c.owner_id=$2`, [req.params.id, req.user.id]);
   if (!r.rows.length) throw new ApiError(404, 'Asset not found.');
-  res.json({ asset: r.rows[0] });
+  const asset = r.rows[0];
+  if (!isPreviewType(asset.type)) {
+    const ent = await conceptEntitlement(req.user, asset.concept_id);
+    if (!ent.entitled) return res.status(402).json(paywall(asset.concept_id));
+  }
+  res.json({ asset });
 }));
 
 // GATED download of the clean asset. Requires an active plan (or staff, or a
