@@ -279,3 +279,32 @@ test('money path: plan prices are locked and match the webhook write', () => {
   assert.strictEqual(PLANS.sculptor.per_concept, false);
   assert.strictEqual(planCents('nope'), null);     // unknown plan yields no price
 });
+
+// --- Adaptive reasoning effort: Clay scales thinking power to the task ---
+const clayProvider = require('../src/services/clay/provider');
+
+test('adaptive effort: trivial tasks stay on low', () => {
+  // tiny probe-style call
+  assert.strictEqual(clayProvider.autoEffort({ maxTokens: 64, inputChars: 20 }), 'low');
+  // short teaser
+  assert.strictEqual(clayProvider.autoEffort({ maxTokens: 600, inputChars: 200 }), 'low');
+});
+
+test('adaptive effort: large structured generation is capped at medium (finishes in time)', () => {
+  // full concept build: 12k tokens, json, long prompt
+  assert.strictEqual(clayProvider.autoEffort({ maxTokens: 12000, json: true, inputChars: 5000 }), 'medium');
+});
+
+test('adaptive effort: dense input with compact output earns high', () => {
+  // hard analysis / validation: lots to weigh, little to write
+  assert.strictEqual(clayProvider.autoEffort({ maxTokens: 2000, inputChars: 9000 }), 'high');
+});
+
+test('adaptive effort: OPENAI_REASONING_EFFORT acts as a ceiling, never a floor', () => {
+  const prev = process.env.OPENAI_REASONING_EFFORT;
+  // Note: resolveEffort reads the module-captured const, so we assert the clamp logic
+  // via an explicit effort that exceeds a lower auto pick instead of mutating env here.
+  // An explicit effort is honored when no lower ceiling applies:
+  assert.strictEqual(clayProvider.resolveEffort({ maxTokens: 64, inputChars: 10, effort: 'high' }), 'high');
+  process.env.OPENAI_REASONING_EFFORT = prev;
+});

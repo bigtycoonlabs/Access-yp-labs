@@ -21,14 +21,38 @@ const OPENAI_REASONING_EFFORT = process.env.OPENAI_REASONING_EFFORT || null;
 // single bad env value can never fully break Clay. Overridable via OPENAI_FALLBACK_MODEL.
 const OPENAI_FALLBACK = process.env.OPENAI_FALLBACK_MODEL || 'gpt-5.5';
 function isReasoningModel(m) { return /^(gpt-5|o\d)/i.test(String(m)); }
-function openaiTokenParams(maxTokens, model) {
+// Adaptive reasoning: Clay scales how hard the model thinks to the task, rather than a
+// flat setting. Simple/cheap calls stay fast on 'low'; genuinely hard analysis earns
+// 'high'; large structured generations use 'medium' so they finish within the request
+// timeout instead of grinding for minutes. A caller can pin an effort explicitly, and
+// OPENAI_REASONING_EFFORT (if set) acts as a ceiling that never raises the chosen level.
+const EFFORT_ORDER = { low: 1, medium: 2, high: 3 };
+
+function autoEffort({ maxTokens = 1000, json = false, inputChars = 0 }) {
+  // Trivial: tiny output and short input — almost no reasoning needed (probes, teasers,
+  // titles, quick classifications).
+  if (maxTokens <= 1200 && inputChars < 1500) return 'low';
+  // Dense input but compact output (analysis, validation, self-critique): worth deep
+  // reasoning, and the small output keeps it fast even at high effort.
+  if (inputChars >= 6000 && maxTokens <= 4000) return 'high';
+  // Large structured generation (e.g. a full concept): real work, but capped at medium
+  // so it completes within the request timeout rather than hanging.
+  if (maxTokens >= 8000) return 'medium';
+  // Middle ground: scale by output size, structure, and how much input there is to weigh.
+  const score = (json ? 1 : 0) + (inputChars >= 3000 ? 1 : 0) + (maxTokens >= 4000 ? 1 : 0);
+  return score >= 2 ? 'medium' : 'low';
+}
+
+function resolveEffort({ maxTokens = 1000, json = false, inputChars = 0, effort = null } = {}) {
+  let tier = (effort && EFFORT_ORDER[effort]) ? effort : autoEffort({ maxTokens, json, inputChars });
+  const ceil = (OPENAI_REASONING_EFFORT && EFFORT_ORDER[OPENAI_REASONING_EFFORT]) ? OPENAI_REASONING_EFFORT : null;
+  if (ceil && EFFORT_ORDER[tier] > EFFORT_ORDER[ceil]) tier = ceil; // clamp down, never up
+  return tier;
+}
+
+function openaiTokenParams(maxTokens, model, opts = {}) {
   if (isReasoningModel(model || OPENAI_MODEL)) {
-    const p = { max_completion_tokens: maxTokens };
-    // Default to 'low' effort so reasoning models (gpt-5.x) answer promptly instead
-    // of spending minutes on hidden reasoning — which surfaced as Clay hanging on
-    // "Thinking…". Override with OPENAI_REASONING_EFFORT for deeper reasoning.
-    p.reasoning_effort = OPENAI_REASONING_EFFORT || 'low';
-    return p;
+    return { max_completion_tokens: maxTokens, reasoning_effort: resolveEffort({ maxTokens, ...opts }) };
   }
   return { max_tokens: maxTokens };
 }
@@ -45,14 +69,15 @@ function openaiClient() { return new OpenAI({ apiKey: process.env.OPENAI_API_KEY
 function anthropicClient() { return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }); }
 
 // ---- single-shot text completion ----
-async function complete({ system, user, json = false, maxTokens = 6000, model = null, fallback = true }) {
+async function complete({ system, user, json = false, maxTokens = 6000, model = null, fallback = true, effort = null }) {
   const p = providerName();
   if (!p) return { ok: false, reason: 'unavailable', text: '' };
   try {
     if (p === 'openai') {
       const oaModel = model || OPENAI_MODEL;
+      const tokenOpts = { json, inputChars: String(system || '').length + String(user || '').length, effort };
       const call = (mdl) => openaiClient().chat.completions.create({
-        model: mdl, ...openaiTokenParams(maxTokens, mdl),
+        model: mdl, ...openaiTokenParams(maxTokens, mdl, tokenOpts),
         response_format: json ? { type: 'json_object' } : undefined,
         messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
       });
@@ -194,4 +219,4 @@ async function probe(model) {
     detail: out.error || 'The model call failed for an unknown reason.' };
 }
 
-module.exports = { available, providerName, modelName, complete, describeImage, chat, probe };
+module.exports = { available, providerName, modelName, complete, describeImage, chat, probe, autoEffort, resolveEffort };
