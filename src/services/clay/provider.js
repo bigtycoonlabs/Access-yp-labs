@@ -29,18 +29,16 @@ function isReasoningModel(m) { return /^(gpt-5|o\d)/i.test(String(m)); }
 const EFFORT_ORDER = { low: 1, medium: 2, high: 3 };
 
 function autoEffort({ maxTokens = 1000, json = false, inputChars = 0 }) {
-  // Trivial: tiny output and short input — almost no reasoning needed (probes, teasers,
-  // titles, quick classifications).
-  if (maxTokens <= 1200 && inputChars < 1500) return 'low';
-  // Dense input but compact output (analysis, validation, self-critique): worth deep
-  // reasoning, and the small output keeps it fast even at high effort.
+  // Effort scales with how hard the THINKING is (how much input to weigh, how tricky the
+  // problem) — NOT with how much text gets written. A big structured document is
+  // generation work: it needs token headroom and a good prompt, not deep reasoning, and
+  // burning reasoning time on it just makes it slow. So:
+  //   - dense input, compact output (analysis, validation, self-critique) -> think hard
+  //   - moderate analysis -> medium
+  //   - trivial, and large generations alike -> low, so they stay fast
   if (inputChars >= 6000 && maxTokens <= 4000) return 'high';
-  // Large structured generation (e.g. a full concept): real work, but capped at medium
-  // so it completes within the request timeout rather than hanging.
-  if (maxTokens >= 8000) return 'medium';
-  // Middle ground: scale by output size, structure, and how much input there is to weigh.
-  const score = (json ? 1 : 0) + (inputChars >= 3000 ? 1 : 0) + (maxTokens >= 4000 ? 1 : 0);
-  return score >= 2 ? 'medium' : 'low';
+  if (inputChars >= 3000 && maxTokens <= 6000) return 'medium';
+  return 'low';
 }
 
 function resolveEffort({ maxTokens = 1000, json = false, inputChars = 0, effort = null } = {}) {
@@ -65,7 +63,7 @@ function providerName() {
 function available() { return providerName() !== null; }
 function modelName() { return providerName() === 'openai' ? OPENAI_MODEL : ANTHROPIC_MODEL; }
 
-function openaiClient() { return new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 90000, maxRetries: 1 }); }
+function openaiClient() { return new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 180000, maxRetries: 0 }); }
 function anthropicClient() { return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }); }
 
 // ---- single-shot text completion ----

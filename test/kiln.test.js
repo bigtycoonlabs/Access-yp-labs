@@ -290,9 +290,14 @@ test('adaptive effort: trivial tasks stay on low', () => {
   assert.strictEqual(clayProvider.autoEffort({ maxTokens: 600, inputChars: 200 }), 'low');
 });
 
-test('adaptive effort: large structured generation is capped at medium (finishes in time)', () => {
-  // full concept build: 12k tokens, json, long prompt
-  assert.strictEqual(clayProvider.autoEffort({ maxTokens: 12000, json: true, inputChars: 5000 }), 'medium');
+test('adaptive effort: large generation stays low (generation work, not reasoning work)', () => {
+  // full concept build: 12k token budget, json, substantial prompt — it should generate
+  // fast on low reasoning, not burn time on deep reasoning it doesn't need.
+  assert.strictEqual(clayProvider.autoEffort({ maxTokens: 12000, json: true, inputChars: 5000 }), 'low');
+});
+
+test('adaptive effort: moderate analysis lands on medium', () => {
+  assert.strictEqual(clayProvider.autoEffort({ maxTokens: 5000, inputChars: 4000 }), 'medium');
 });
 
 test('adaptive effort: dense input with compact output earns high', () => {
