@@ -12,6 +12,15 @@ const isStaff = (role) => STAFF_ROLES.includes(role);
 const PREVIEW_TYPES = ['business_plan', 'marketing_strategy', 'html_demo', 'built_site'];
 const isPreviewType = (type) => PREVIEW_TYPES.includes(type);
 
+// Strip the BODY of any non-preview asset when the caller isn't entitled, so locked content
+// never leaves the server through a list endpoint. Keeps id/type/title/version so the UI can
+// still list the piece and route the click through the gated single-asset endpoint. This is
+// the backstop that makes the preview-gate real: without it, any list response leaks bodies.
+function redactLockedAssets(assets, entitled) {
+  if (entitled) return assets || [];
+  return (assets || []).map((a) => (isPreviewType(a.type) ? a : { ...a, body: '', locked: true }));
+}
+
 // Staff normally never pay. billing_test lets a staff account (e.g. the founder)
 // deliberately go through the real subscribe/paywall/pay flow to test it end to end,
 // while keeping its role and staff powers for everything else.
@@ -57,4 +66,4 @@ function paywall(conceptId) {
   };
 }
 
-module.exports = { isStaff, billingExempt, STAFF_ROLES, conceptEntitlement, paywall, PREVIEW_TYPES, isPreviewType };
+module.exports = { isStaff, billingExempt, STAFF_ROLES, conceptEntitlement, paywall, PREVIEW_TYPES, isPreviewType, redactLockedAssets };

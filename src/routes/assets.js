@@ -2,19 +2,22 @@ const express = require('express');
 const { query } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
-const { conceptEntitlement, paywall, isPreviewType } = require('../lib/entitlement');
+const { conceptEntitlement, paywall, isPreviewType, redactLockedAssets } = require('../lib/entitlement');
 const protect = require('../lib/protect');
 const describe = require('../lib/describe');
 const router = express.Router();
 
-// Current assets for a concept the caller owns (in-laboratory VIEW — free).
+// Current assets for a concept the caller owns (in-laboratory VIEW). Preview pieces come
+// through in full; other bodies are redacted until the concept is kept — the list endpoint
+// must not leak what the single-asset endpoint gates.
 router.get('/concept/:conceptId', authenticate, asyncHandler(async (req, res) => {
   const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2',
     [req.params.conceptId, req.user.id]);
   if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
   const r = await query(
     'SELECT * FROM assets WHERE concept_id=$1 AND is_current=true ORDER BY created_at', [req.params.conceptId]);
-  res.json({ assets: r.rows });
+  const ent = await conceptEntitlement(req.user, req.params.conceptId);
+  res.json({ assets: redactLockedAssets(r.rows, !!ent.entitled) });
 }));
 
 // Version history (superseded assets) for a concept the caller owns.

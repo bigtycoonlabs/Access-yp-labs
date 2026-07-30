@@ -4,7 +4,7 @@ const { query } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { CATEGORIES, MODES } = require('../services/clay/tools');
-const { conceptEntitlement, paywall, isStaff, billingExempt } = require('../lib/entitlement');
+const { conceptEntitlement, paywall, isStaff, billingExempt, redactLockedAssets } = require('../lib/entitlement');
 const protect = require('../lib/protect');
 const retrieval = require('../services/clay/retrieval');
 
@@ -149,7 +149,7 @@ router.get('/:id', authenticate, asyncHandler(async (req, res) => {
   await query('UPDATE concepts SET last_opened_at=now(), expiry_reminded_at=NULL WHERE id=$1', [req.params.id]);
   const a = await query('SELECT * FROM assets WHERE concept_id=$1 ORDER BY created_at', [req.params.id]);
   const ent = await conceptEntitlement(req.user, req.params.id);
-  res.json({ concept: c.rows[0], assets: a.rows, entitled: !!ent.entitled });
+  res.json({ concept: c.rows[0], assets: redactLockedAssets(a.rows, !!ent.entitled), entitled: !!ent.entitled });
 }));
 
 router.patch('/:id', authenticate, [
