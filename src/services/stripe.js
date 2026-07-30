@@ -57,6 +57,23 @@ async function createEscrowCheckout({ amountCents, feeCents, sellerAccountId, or
 }
 
 
+// Cancel a live subscription so billing actually STOPS. Flipping our DB status alone
+// never stops Stripe from charging the card — this does.
+async function cancelSubscription(subscriptionId) {
+  const s = stripe();
+  if (!s) return { ok: false, reason: 'stripe_not_configured' };
+  try {
+    await s.subscriptions.cancel(subscriptionId);
+    return { ok: true };
+  } catch (err) {
+    // Already-canceled subscriptions report as such — treat that as success (idempotent).
+    if (err && /No such subscription|already been canceled|resource_missing/i.test(err.message || '')) {
+      return { ok: true, alreadyGone: true };
+    }
+    return { ok: false, reason: 'stripe_error', message: err.message };
+  }
+}
+
 // Verify + parse a webhook event from the raw request body.
 function constructEvent(rawBody, signature) {
   const s = stripe();
@@ -88,4 +105,4 @@ async function createPlanCheckout({ mode, priceCents, planName, userId, plan, co
   return { ok: true, url: session.url, sessionId: session.id };
 }
 
-module.exports = { configured, constructEvent, createPlanCheckout, createConnectedAccount, createAccountLink, retrieveAccount, createEscrowCheckout };
+module.exports = { configured, constructEvent, createPlanCheckout, cancelSubscription, createConnectedAccount, createAccountLink, retrieveAccount, createEscrowCheckout };

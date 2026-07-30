@@ -66,10 +66,24 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
 }));
 
 router.post('/:id/cancel', authenticate, asyncHandler(async (req, res) => {
+  const sub = (await query(
+    'SELECT id, stripe_subscription_id, status FROM subscriptions WHERE id=$1 AND user_id=$2',
+    [req.params.id, req.user.id])).rows[0];
+  if (!sub) return res.status(404).json({ error: 'Subscription not found.' });
+  if (sub.status === 'canceled') return res.json({ subscription: sub, already: true });
+
+  // Stop billing in Stripe FIRST. We must never mark this canceled in our own records
+  // while Stripe would keep charging the card — that would silently bill the user for
+  // access we've revoked. If Stripe can't confirm the cancel, we change nothing and say so.
+  if (sub.stripe_subscription_id) {
+    const c = await stripe.cancelSubscription(sub.stripe_subscription_id);
+    if (!c.ok && c.reason !== 'stripe_not_configured') {
+      return res.status(502).json({ error: 'Could not stop billing with the payment processor just now, so nothing was changed. Please try again in a moment — you have not lost access.' });
+    }
+  }
   const r = await query(
-    `UPDATE subscriptions SET status='canceled', updated_at=now() WHERE id=$1 AND user_id=$2 RETURNING *`,
+    "UPDATE subscriptions SET status='canceled', updated_at=now() WHERE id=$1 AND user_id=$2 RETURNING *",
     [req.params.id, req.user.id]);
-  if (!r.rows.length) return res.status(404).json({ error: 'Subscription not found.' });
   res.json({ subscription: r.rows[0] });
 }));
 
