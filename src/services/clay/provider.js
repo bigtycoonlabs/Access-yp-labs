@@ -17,6 +17,9 @@ const ANTHROPIC_MODEL = process.env.CLAY_MODEL || 'claude-sonnet-4-5';
 // either without silently failing. Set OPENAI_REASONING_EFFORT (low|medium|high|xhigh)
 // to deepen reasoning; unset uses the model's own default (medium for gpt-5.5).
 const OPENAI_REASONING_EFFORT = process.env.OPENAI_REASONING_EFFORT || null;
+// Known-good model to fall back to if a mistyped/unavailable OPENAI_MODEL 404s, so a
+// single bad env value can never fully break Clay. Overridable via OPENAI_FALLBACK_MODEL.
+const OPENAI_FALLBACK = process.env.OPENAI_FALLBACK_MODEL || 'gpt-5.5';
 function isReasoningModel(m) { return /^(gpt-5|o\d)/i.test(String(m)); }
 function openaiTokenParams(maxTokens, model) {
   if (isReasoningModel(model || OPENAI_MODEL)) {
@@ -39,18 +42,32 @@ function openaiClient() { return new OpenAI({ apiKey: process.env.OPENAI_API_KEY
 function anthropicClient() { return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }); }
 
 // ---- single-shot text completion ----
-async function complete({ system, user, json = false, maxTokens = 6000, model = null }) {
+async function complete({ system, user, json = false, maxTokens = 6000, model = null, fallback = true }) {
   const p = providerName();
   if (!p) return { ok: false, reason: 'unavailable', text: '' };
   try {
     if (p === 'openai') {
       const oaModel = model || OPENAI_MODEL;
-      const resp = await openaiClient().chat.completions.create({
-        model: oaModel, ...openaiTokenParams(maxTokens, oaModel),
+      const call = (mdl) => openaiClient().chat.completions.create({
+        model: mdl, ...openaiTokenParams(maxTokens, mdl),
         response_format: json ? { type: 'json_object' } : undefined,
         messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
       });
-      return { ok: true, text: resp.choices?.[0]?.message?.content || '' };
+      try {
+        const resp = await call(oaModel);
+        return { ok: true, text: resp.choices?.[0]?.message?.content || '' };
+      } catch (err) {
+        // A mistyped/unavailable OPENAI_MODEL shouldn't fully break Clay: if the
+        // configured model doesn't exist, retry once on a known-good default. Skipped
+        // when the caller pinned a specific model (so the probe still tells the truth).
+        const notFound = err && (err.status === 404 || /does not exist|do not have access/i.test(err.message || ''));
+        if (fallback && !model && notFound && oaModel !== OPENAI_FALLBACK) {
+          console.error(`OPENAI_MODEL "${oaModel}" is unavailable (${err.message}); falling back to ${OPENAI_FALLBACK}.`);
+          const resp = await call(OPENAI_FALLBACK);
+          return { ok: true, text: resp.choices?.[0]?.message?.content || '', fallback_model: OPENAI_FALLBACK, requested_model: oaModel };
+        }
+        throw err;
+      }
     }
     const resp = await anthropicClient().messages.create({
       model: ANTHROPIC_MODEL, max_tokens: maxTokens, system,
@@ -166,7 +183,7 @@ async function probe(model) {
       detail: 'No AI provider key is set. Set OPENAI_API_KEY (or ANTHROPIC_API_KEY) on the server.' };
   }
   const tried = p === 'openai' ? (model || OPENAI_MODEL) : ANTHROPIC_MODEL;
-  const out = await complete({ system: 'Reply with the single word: ok', user: 'ok', json: false, maxTokens: 64, model: model || null });
+  const out = await complete({ system: 'Reply with the single word: ok', user: 'ok', json: false, maxTokens: 64, model: model || null, fallback: false });
   if (out.ok) {
     return { ok: true, provider: p, model: tried, detail: 'Clay reached the model successfully.' };
   }
