@@ -47,15 +47,21 @@ router.post('/', authenticate, [
       message: 'You already have an active Maker plan for this concept — you won’t be charged again.' });
   }
 
+  // Live Stripe rejects non-https return URLs. Only trust CLIENT_URL if it's https;
+  // otherwise fall back to the real production origin so checkout can't be broken by a
+  // missing or dev-value env var.
+  const base = (process.env.CLIENT_URL || '').startsWith('https') ? process.env.CLIENT_URL : 'https://accessyplabs.com';
   const checkout = await stripe.createPlanCheckout({
     mode: 'subscription', priceCents: planCents(plan), planName: PLANS[plan].label, plan,
     conceptId, userId: req.user.id, email: req.user.email,
-    successUrl: `${process.env.CLIENT_URL}/dashboard.html?sub=done`,
-    cancelUrl: `${process.env.CLIENT_URL}/dashboard.html?sub=canceled`,
+    successUrl: `${base}/dashboard.html?sub=done`,
+    cancelUrl: `${base}/dashboard.html?sub=canceled`,
   });
   if (!checkout.ok) {
-    return res.status(200).json({ ok: false, reason: checkout.reason,
-      message: 'Billing is not configured on the platform yet, so nothing was charged.' });
+    const msg = checkout.reason === 'stripe_not_configured'
+      ? 'Billing is not configured on the platform yet, so nothing was charged.'
+      : (checkout.message || 'Could not start checkout right now, so nothing was charged. Please try again.');
+    return res.status(200).json({ ok: false, reason: checkout.reason, detail: checkout.detail || null, message: msg });
   }
   res.json({ ok: true, url: checkout.url });
 }));

@@ -41,19 +41,26 @@ async function retrieveAccount(accountId) {
 async function createEscrowCheckout({ amountCents, feeCents, sellerAccountId, orderId, successUrl, cancelUrl }) {
   const s = stripe();
   if (!s) return { ok: false, reason: 'stripe_not_configured' };
-  const session = await s.checkout.sessions.create({
-    mode: 'payment',
-    line_items: [{ price_data: { currency: 'usd', unit_amount: amountCents,
-      product_data: { name: `YP Labs transfer #${orderId}` } }, quantity: 1 }],
-    payment_intent_data: {
-      application_fee_amount: feeCents,
-      transfer_data: { destination: sellerAccountId },
-    },
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-    metadata: { order_id: orderId },
-  });
-  return { ok: true, url: session.url, sessionId: session.id };
+  try {
+    const session = await s.checkout.sessions.create({
+      mode: 'payment',
+      line_items: [{ price_data: { currency: 'usd', unit_amount: amountCents,
+        product_data: { name: `YP Labs transfer #${orderId}` } }, quantity: 1 }],
+      payment_intent_data: {
+        application_fee_amount: feeCents,
+        transfer_data: { destination: sellerAccountId },
+      },
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: { order_id: orderId },
+    });
+    return { ok: true, url: session.url, sessionId: session.id };
+  } catch (err) {
+    console.error('createEscrowCheckout FAILED — type:', err && err.type, '| code:', err && err.code,
+      '| param:', err && err.param, '| message:', err && err.message);
+    return { ok: false, reason: 'stripe_error', detail: (err && (err.code || err.type)) || 'unknown',
+      message: 'Could not start checkout with the payment processor, so nothing was charged. Please try again in a moment.' };
+  }
 }
 
 
@@ -93,16 +100,25 @@ async function createPlanCheckout({ mode, priceCents, planName, userId, plan, co
   const s = stripe();
   if (!s) return { ok: false, reason: 'stripe_not_configured' };
   const recurring = mode === 'subscription' ? { interval: 'month' } : undefined;
-  const session = await s.checkout.sessions.create({
-    mode,
-    customer_email: email || undefined,
-    line_items: [{ price_data: { currency: 'usd', unit_amount: priceCents,
-      product_data: { name: planName }, recurring }, quantity: 1 }],
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-    metadata: { kind: 'subscription', user_id: userId, plan, concept_id: conceptId || '' },
-  });
-  return { ok: true, url: session.url, sessionId: session.id };
+  try {
+    const session = await s.checkout.sessions.create({
+      mode,
+      customer_email: email || undefined,
+      line_items: [{ price_data: { currency: 'usd', unit_amount: priceCents,
+        product_data: { name: planName }, recurring }, quantity: 1 }],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: { kind: 'subscription', user_id: userId, plan, concept_id: conceptId || '' },
+    });
+    return { ok: true, url: session.url, sessionId: session.id };
+  } catch (err) {
+    // Never let a Stripe error become an opaque 500. Log the real cause (Railway logs)
+    // and return a clean, honest message the UI can speak.
+    console.error('createPlanCheckout FAILED — type:', err && err.type, '| code:', err && err.code,
+      '| param:', err && err.param, '| message:', err && err.message);
+    return { ok: false, reason: 'stripe_error', detail: (err && (err.code || err.type)) || 'unknown',
+      message: 'Could not start checkout with the payment processor, so nothing was charged. Please try again in a moment.' };
+  }
 }
 
 module.exports = { configured, constructEvent, createPlanCheckout, cancelSubscription, createConnectedAccount, createAccountLink, retrieveAccount, createEscrowCheckout };

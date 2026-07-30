@@ -56,11 +56,12 @@ router.post('/', authenticate, [
   const sa = await query('SELECT stripe_account_id FROM seller_accounts WHERE user_id=$1', [listing.seller_id]);
   let checkout = { ok: false, reason: 'seller_not_onboarded' };
   if (sa.rows[0] && sa.rows[0].stripe_account_id) {
+    const base = (process.env.CLIENT_URL || '').startsWith('https') ? process.env.CLIENT_URL : 'https://accessyplabs.com';
     checkout = await stripe.createEscrowCheckout({
       amountCents: amount, feeCents: fee, sellerAccountId: sa.rows[0].stripe_account_id,
       orderId: order.id,
-      successUrl: `${process.env.CLIENT_URL}/orders/${order.id}?paid=1`,
-      cancelUrl: `${process.env.CLIENT_URL}/orders/${order.id}?canceled=1`,
+      successUrl: `${base}/orders/${order.id}?paid=1`,
+      cancelUrl: `${base}/orders/${order.id}?canceled=1`,
     });
   }
   res.status(201).json({ order, checkout });

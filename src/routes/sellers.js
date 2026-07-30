@@ -49,10 +49,11 @@ router.post('/onboard', authenticate, asyncHandler(async (req, res) => {
        ON CONFLICT (user_id) DO UPDATE SET stripe_account_id=EXCLUDED.stripe_account_id`,
       [req.user.id, accountId]);
   }
+  const base = (process.env.CLIENT_URL || '').startsWith('https') ? process.env.CLIENT_URL : 'https://accessyplabs.com';
   const link = await stripe.createAccountLink({
     accountId,
-    refreshUrl: `${process.env.CLIENT_URL}/dashboard.html?onboard=refresh`,
-    returnUrl: `${process.env.CLIENT_URL}/dashboard.html?onboard=done`,
+    refreshUrl: `${base}/dashboard.html?onboard=refresh`,
+    returnUrl: `${base}/dashboard.html?onboard=done`,
   });
   if (!link.ok) return res.status(502).json({ ok: false, message: 'Could not start onboarding.' });
   res.json({ ok: true, url: link.url });
