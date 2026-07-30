@@ -331,7 +331,14 @@
     }
     const q = new URLSearchParams(location.search);
     if (q.get('onboard') === 'done') announce('Payout setup returned. Refreshing status.', true);
-    if (q.get('sub') === 'done') announce('Thanks — your plan is being activated.', true);
+    if (q.get('sub') === 'done') {
+      announce('Payment received — thank you. Your plan is being activated and will show here in a moment.', true);
+      // Activation happens via Stripe's webhook, which can land a second or two after the
+      // redirect — refresh the plan status shortly so what's shown matches reality.
+      setTimeout(() => loadSubs(), 3000);
+      setTimeout(() => loadSubs(), 8000);
+    }
+    if (q.get('sub') === 'canceled') announce('Checkout canceled — you were not charged.', true);
     loadPayouts(); loadSubs(); loadConcepts(); loadListings(); loadOrders(); loadEngagements(); loadWatches(); loadTuning();
     document.getElementById('signout').addEventListener('click', (e) => { e.preventDefault(); Kiln.clearTokens(); location.href = '/'; });
   })();

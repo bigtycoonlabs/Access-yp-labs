@@ -31,6 +31,22 @@ router.post('/', authenticate, [
     conceptId = null; // Sculptor covers everything.
   }
 
+  // Money-safety: never start a second paid checkout for coverage the user already has.
+  // Sculptor covers every concept; Maker covers one. This prevents accidental
+  // double-charging — tapping "Keep this concept" twice, or buying Maker when Sculptor
+  // already covers it. Only 'active' blocks; a lapsed (past_due) plan can re-subscribe.
+  const active = await query(
+    "SELECT plan, concept_id FROM subscriptions WHERE user_id=$1 AND status='active'",
+    [req.user.id]);
+  if (active.rows.some((r) => r.plan === 'sculptor')) {
+    return res.json({ ok: false, reason: 'already_covered',
+      message: 'You already have Sculptor, which covers unlimited concepts — there’s nothing to buy, and you won’t be charged again.' });
+  }
+  if (plan === 'maker' && active.rows.some((r) => r.plan === 'maker' && r.concept_id === conceptId)) {
+    return res.json({ ok: false, reason: 'already_covered',
+      message: 'You already have an active Maker plan for this concept — you won’t be charged again.' });
+  }
+
   const checkout = await stripe.createPlanCheckout({
     mode: 'subscription', priceCents: planCents(plan), planName: PLANS[plan].label, plan,
     conceptId, userId: req.user.id, email: req.user.email,
