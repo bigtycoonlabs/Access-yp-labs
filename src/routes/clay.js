@@ -164,6 +164,7 @@ async function runBuild({ user, mode, category, prompt, operating, conceptId, bu
       });
     } catch (e) { emailed = { sent: false, reason: (e && e.message) ? e.message : 'error' }; }
     if (!emailed.sent) console.error('package email NOT sent for concept', concept.id, '- reason:', emailed.reason);
+    await logEmail(user.email, 'concept_package', emailed);
     const doneMsg = emailed.sent
       ? 'Your concept is ready — it’s open here, saved in your Laboratory, and on its way to your email.'
       : 'Your concept is ready and saved in your Laboratory. I could not email it this time, so open it right here — nothing was lost.';
@@ -535,8 +536,11 @@ function buildOutcomeEmail(message){
     '<p style="color:#57534e;font-size:13px">— Clay at Access YP Labs</p></div>';
 }
 async function notifyBuildOutcome(user, message){
-  try { return await sendEmail({ to: user.email, subject: 'About your concept build', html: buildOutcomeEmail(message) }); }
-  catch (_) { return { sent: false }; }
+  let r = { sent: false, reason: 'unknown' };
+  try { r = await sendEmail({ to: user.email, subject: 'About your concept build', html: buildOutcomeEmail(message) }); }
+  catch (e) { r = { sent: false, reason: (e && e.message) || 'error' }; }
+  await logEmail(user.email, 'build_outcome', r);
+  return r;
 }
 
 // --- Live build progress -------------------------------------------------------------
@@ -565,6 +569,16 @@ async function finishBuild(buildId, { status, conceptId = null, message = null, 
     const noteJson = note ? JSON.stringify([{ at: new Date().toISOString(), text: note }]) : '[]';
     await query('UPDATE clay_builds SET status=$1, concept_id=$2, message=$3, notes = notes || $4::jsonb, updated_at=now() WHERE id=$5',
       [status, conceptId, message, noteJson, buildId]);
+  } catch (_) {}
+}
+
+// Persist every build-email outcome so a silent failure never again leaves zero trace.
+// Best-effort: logging must not affect the build.
+async function logEmail(toEmail, kind, result){
+  try {
+    const sent = !!(result && result.sent);
+    await query('INSERT INTO email_log (to_email, kind, sent, reason, provider_id) VALUES ($1,$2,$3,$4,$5)',
+      [toEmail, kind, sent, sent ? null : ((result && result.reason) || 'unknown'), sent ? (result.id || null) : null]);
   } catch (_) {}
 }
 
