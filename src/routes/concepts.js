@@ -4,7 +4,7 @@ const { query } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { CATEGORIES, MODES } = require('../services/clay/tools');
-const { conceptEntitlement, paywall, isStaff } = require('../lib/entitlement');
+const { conceptEntitlement, paywall, isStaff, billingExempt } = require('../lib/entitlement');
 const protect = require('../lib/protect');
 const retrieval = require('../services/clay/retrieval');
 
@@ -35,7 +35,7 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
   // dashboard can show the money state at a glance. One query: staff and active
   // Sculptor cover everything; otherwise a Maker plan for that concept, or an
   // unexpired purchased first month.
-  const staff = isStaff(req.user.role);
+  const staff = billingExempt(req.user);
   const r = await query(
     `SELECT c.*,
        ($2::boolean
@@ -106,7 +106,7 @@ router.get('/related', authenticate, asyncHandler(async (req, res) => {
 router.get('/unkept-summary', authenticate, asyncHandler(async (req, res) => {
   const prefs = await query('SELECT reminders_muted FROM user_preferences WHERE user_id=$1', [req.user.id]);
   const muted = !!(prefs.rows[0] && prefs.rows[0].reminders_muted);
-  if (isStaff(req.user.role)) return res.json({ count: 0, sample: [], muted });
+  if (billingExempt(req.user)) return res.json({ count: 0, sample: [], muted });
   const sculptor = await query(
     `SELECT 1 FROM subscriptions WHERE user_id=$1 AND plan='sculptor' AND status='active'
        AND (current_period_end IS NULL OR current_period_end > now()) LIMIT 1`, [req.user.id]);

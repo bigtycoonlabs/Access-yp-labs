@@ -313,3 +313,14 @@ test('adaptive effort: OPENAI_REASONING_EFFORT acts as a ceiling, never a floor'
   assert.strictEqual(clayProvider.resolveEffort({ maxTokens: 64, inputChars: 10, effort: 'high' }), 'high');
   process.env.OPENAI_REASONING_EFFORT = prev;
 });
+
+// --- billingExempt: staff never pay, unless flagged for real-flow testing ---
+test('billingExempt: staff are exempt unless billing_test is set', () => {
+  const ent = require('../src/lib/entitlement');
+  assert.strictEqual(ent.billingExempt({ role: 'master_staff' }), true);
+  assert.strictEqual(ent.billingExempt({ role: 'admin' }), true);
+  assert.strictEqual(ent.billingExempt({ role: 'master_staff', billing_test: true }), false); // founder testing
+  assert.strictEqual(ent.billingExempt({ role: 'user' }), false);
+  assert.strictEqual(ent.billingExempt({ role: 'user', billing_test: true }), false);
+  assert.strictEqual(ent.billingExempt(null), false);
+});

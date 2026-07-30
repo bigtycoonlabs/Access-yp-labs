@@ -18,10 +18,11 @@ const authenticate = async (req, res, next) => {
     return res.status(401).json({ error: 'Invalid or expired token.' });
   }
   try {
-    const u = await query('SELECT status, role FROM users WHERE id=$1', [decoded.id]);
+    const u = await query('SELECT status, role, billing_test FROM users WHERE id=$1', [decoded.id]);
     if (!u.rows.length) return res.status(401).json({ error: 'Account not found.' });
     if (u.rows[0].status === 'suspended') return res.status(403).json({ error: 'Your account is suspended.' });
     decoded.role = u.rows[0].role;
+    decoded.billing_test = u.rows[0].billing_test === true;
   } catch (e) {
     // If the status check itself fails (transient DB issue), fall back to the
     // verified token rather than locking everyone out.

@@ -4,7 +4,7 @@ const { query } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler } = require('../lib/http');
 const { PLANS, planCents } = require('../lib/money');
-const { isStaff } = require('../lib/entitlement');
+const { isStaff, billingExempt } = require('../lib/entitlement');
 const stripe = require('../services/stripe');
 const router = express.Router();
 
@@ -17,7 +17,7 @@ router.post('/', authenticate, [
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-  if (isStaff(req.user.role)) {
+  if (billingExempt(req.user)) {
     return res.json({ ok: false, reason: 'staff_exempt', message: 'Staff accounts have full access and are never charged.' });
   }
   const { plan } = req.body;
@@ -65,7 +65,7 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
     `SELECT s.*, c.title AS concept_title
        FROM subscriptions s LEFT JOIN concepts c ON c.id = s.concept_id
       WHERE s.user_id=$1 ORDER BY s.created_at DESC`, [req.user.id]);
-  res.json({ subscriptions: r.rows, staff_exempt: isStaff(req.user.role) });
+  res.json({ subscriptions: r.rows, staff_exempt: billingExempt(req.user) });
 }));
 
 router.post('/:id/cancel', authenticate, asyncHandler(async (req, res) => {

@@ -6,9 +6,14 @@ const { query } = require('../config/db');
 const STAFF_ROLES = ['staff', 'admin', 'master_staff'];
 const isStaff = (role) => STAFF_ROLES.includes(role);
 
+// Staff normally never pay. billing_test lets a staff account (e.g. the founder)
+// deliberately go through the real subscribe/paywall/pay flow to test it end to end,
+// while keeping its role and staff powers for everything else.
+const billingExempt = (user) => isStaff(user && user.role) && !(user && user.billing_test);
+
 // Active plan covering a concept? Returns { entitled, reason, http }.
 async function conceptEntitlement(user, conceptId) {
-  if (isStaff(user.role)) return { entitled: true, reason: 'staff' };
+  if (billingExempt(user)) return { entitled: true, reason: 'staff' };
 
   const c = (await query(
     'SELECT id, owner_id, origin, access_expires_at FROM concepts WHERE id=$1', [conceptId])).rows[0];
@@ -46,4 +51,4 @@ function paywall(conceptId) {
   };
 }
 
-module.exports = { isStaff, STAFF_ROLES, conceptEntitlement, paywall };
+module.exports = { isStaff, billingExempt, STAFF_ROLES, conceptEntitlement, paywall };
