@@ -43,13 +43,16 @@
     } catch (e) {
       if (e.status === 402 && e.data && e.data.options && host) {
         host.appendChild(el('p', null, e.data.message || 'A plan is needed to download or share these materials. You can keep building for free.'));
-        const maker = (e.data.options || []).find((o) => o.plan === 'maker');
-        if (maker) host.appendChild(actionBtn('Keep this concept — $2.99', async () => {
-          const r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'maker', concept_id: maker.concept_id } });
+        const go = async (body) => {
+          const r = await Kiln.api('/subscriptions', { method: 'POST', body });
           if (r.url) { location.href = r.url; return; }
           announce(r.message || 'Billing isn’t configured yet, so nothing was charged.', true);
-        }));
-        announce('A plan is needed to download this concept.', true);
+        };
+        const maker = (e.data.options || []).find((o) => o.plan === 'maker');
+        const sculptor = (e.data.options || []).find((o) => o.plan === 'sculptor');
+        if (maker) host.appendChild(actionBtn('Keep just this concept — $2.99/month', () => go({ plan: 'maker', concept_id: maker.concept_id })));
+        if (sculptor) host.appendChild(actionBtn('Keep everything — unlimited concepts, $49.99/month', () => go({ plan: 'sculptor' })));
+        announce('A plan is needed to download this concept. You can keep just this concept for $2.99 a month, or get unlimited concepts for $49.99 a month.', true);
       } else { announce(e.message || 'Could not download.', true); }
     }
   }
@@ -93,13 +96,45 @@
         if (r.url) { location.href = r.url; return; }
         announce(r.message || 'Billing is not configured yet.', true);
       };
-      if (active.some((s) => s.plan === 'sculptor')) {
+      // Self-serve cancel with a safe two-tap confirm (no modal — screen-reader friendly).
+      const cancelSubBtn = (sub, label) => {
+        const b = el('button', 'btn secondary', 'Cancel ' + label); b.type = 'button';
+        let armed = false;
+        b.addEventListener('click', async () => {
+          if (!armed) {
+            armed = true;
+            b.textContent = 'Tap again to confirm — this stops billing';
+            announce('Tap again to confirm canceling ' + label + '. This stops your billing.', true);
+            return;
+          }
+          b.disabled = true;
+          try {
+            await Kiln.api('/subscriptions/' + sub.id + '/cancel', { method: 'POST' });
+            announce(label + ' canceled. Billing has stopped. Anything you already downloaded is still yours.', true);
+            loadSubs();
+          } catch (e) {
+            b.disabled = false; armed = false; b.textContent = 'Cancel ' + label;
+            announce(e.message || 'Could not cancel just now — nothing changed. Please try again.', true);
+          }
+        });
+        return b;
+      };
+      const sculptor = active.find((s) => s.plan === 'sculptor');
+      if (sculptor) {
         c.appendChild(el('p', 'msg ok', 'Sculptor plan active — unlimited concepts ($49.99/month).'));
+        c.appendChild(cancelSubBtn(sculptor, 'Sculptor'));
         return;
       }
       const makers = active.filter((s) => s.plan === 'maker');
       if (makers.length) {
         c.appendChild(el('p', null, makers.length + ' concept' + (makers.length > 1 ? 's' : '') + ' on the Maker plan ($2.99/month each).'));
+        makers.forEach((m) => {
+          const name = m.concept_title ? '“' + m.concept_title + '”' : 'this concept';
+          const line = el('div', 'sub-row'); line.style.margin = '6px 0';
+          line.appendChild(el('p', 'muted', 'Maker — ' + name + ' ($2.99/month)'));
+          line.appendChild(cancelSubBtn(m, 'Maker for ' + name));
+          c.appendChild(line);
+        });
       } else {
         c.appendChild(el('p', 'muted', 'No plan yet. Build for free — a plan is asked for only when you download, share, or keep a concept past 30 days.'));
       }

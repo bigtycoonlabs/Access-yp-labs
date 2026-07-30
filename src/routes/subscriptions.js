@@ -61,7 +61,10 @@ router.post('/', authenticate, [
 }));
 
 router.get('/', authenticate, asyncHandler(async (req, res) => {
-  const r = await query('SELECT * FROM subscriptions WHERE user_id=$1 ORDER BY created_at DESC', [req.user.id]);
+  const r = await query(
+    `SELECT s.*, c.title AS concept_title
+       FROM subscriptions s LEFT JOIN concepts c ON c.id = s.concept_id
+      WHERE s.user_id=$1 ORDER BY s.created_at DESC`, [req.user.id]);
   res.json({ subscriptions: r.rows, staff_exempt: isStaff(req.user.role) });
 }));
 
