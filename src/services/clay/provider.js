@@ -24,7 +24,10 @@ function isReasoningModel(m) { return /^(gpt-5|o\d)/i.test(String(m)); }
 function openaiTokenParams(maxTokens, model) {
   if (isReasoningModel(model || OPENAI_MODEL)) {
     const p = { max_completion_tokens: maxTokens };
-    if (OPENAI_REASONING_EFFORT) p.reasoning_effort = OPENAI_REASONING_EFFORT;
+    // Default to 'low' effort so reasoning models (gpt-5.x) answer promptly instead
+    // of spending minutes on hidden reasoning — which surfaced as Clay hanging on
+    // "Thinking…". Override with OPENAI_REASONING_EFFORT for deeper reasoning.
+    p.reasoning_effort = OPENAI_REASONING_EFFORT || 'low';
     return p;
   }
   return { max_tokens: maxTokens };
@@ -38,7 +41,7 @@ function providerName() {
 function available() { return providerName() !== null; }
 function modelName() { return providerName() === 'openai' ? OPENAI_MODEL : ANTHROPIC_MODEL; }
 
-function openaiClient() { return new OpenAI({ apiKey: process.env.OPENAI_API_KEY }); }
+function openaiClient() { return new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 90000, maxRetries: 1 }); }
 function anthropicClient() { return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }); }
 
 // ---- single-shot text completion ----

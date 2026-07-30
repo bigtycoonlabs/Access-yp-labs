@@ -21,6 +21,7 @@ async function search(query, { maxResults = 5 } = {}) {
   try {
     const resp = await fetch('https://api.tavily.com/search', {
       method: 'POST',
+      signal: AbortSignal.timeout(15000),
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${process.env.SEARCH_API_KEY}`,
