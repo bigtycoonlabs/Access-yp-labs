@@ -127,6 +127,7 @@
       }
     } catch (_) {}
     m.appendChild(el('p', null, opening));
+    await renderMyConcepts(m);
 
     // Gentle, mutable reminder about concepts built but not yet kept. Honest and
     // easy to silence — never shown to Sculptor/staff (their count is 0).
@@ -327,6 +328,29 @@
   // Clay's own voice on a concept — its honest take and the next moves it would make —
   // shown before the files so the person hears a partner's thinking, not just documents.
   // Announced politely so a VoiceOver user actually hears the take, not just reaches it.
+  // Your concepts, front and center in the Laboratory — so picking up a project is the
+  // easiest thing to do, and continuing is always free (paying is only to keep/download).
+  async function renderMyConcepts(container) {
+    let concepts = [];
+    try { const r = await Kiln.api('/concepts'); concepts = (r && r.concepts) || []; } catch (_) { return; }
+    if (!concepts.length) return;
+    const panel = el('div', 'my-concepts');
+    panel.setAttribute('role', 'region');
+    panel.setAttribute('aria-label', 'Your concepts');
+    panel.appendChild(el('p', 'take-label', 'Your concepts — pick up where you left off'));
+    panel.appendChild(el('p', 'muted', 'Open any one to keep building for free. Keeping a concept ($2.99) is only for downloading it and unlocking every section.'));
+    const acts = el('div', 'actions');
+    concepts.slice(0, 8).forEach((c) => {
+      const b = el('button', 'btn secondary', 'Continue: ' + (c.title || 'Untitled concept')); b.type = 'button';
+      b.addEventListener('click', () => loadConceptIntoWorkspace(c.id));
+      acts.appendChild(b);
+    });
+    panel.appendChild(acts);
+    if (concepts.length > 8) panel.appendChild(el('p', 'muted', 'And ' + (concepts.length - 8) + ' more in your dashboard.'));
+    container.appendChild(panel);
+    announce('You have ' + concepts.length + ' concept' + (concepts.length === 1 ? '' : 's') + ' waiting. Open any to keep building.');
+  }
+
   function renderClaysTake(container, concept) {
     const c = concept || {};
     const steps = Array.isArray(c.next_steps) ? c.next_steps.filter(Boolean) : [];

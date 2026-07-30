@@ -64,3 +64,8 @@ legend{font-weight:700;padding:0 6px;}
 .locked-note{border:1px solid var(--line);border-left:5px solid var(--warn);border-radius:10px;
   background:rgba(180,83,9,.05);padding:14px 16px;margin:12px 0;}
 .locked-note p{margin:0 0 10px;}
+/* Your concepts, made prominent in the Laboratory so projects are easy to find. */
+.my-concepts{border:1px solid var(--line);border-radius:12px;background:#fff;
+  padding:16px 18px;margin:14px 0;box-shadow:0 1px 3px rgba(28,25,23,.06);}
+.my-concepts .take-label{font-size:18px;}
+.my-concepts p{margin:0 0 10px;}
