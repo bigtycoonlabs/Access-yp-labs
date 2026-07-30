@@ -32,6 +32,8 @@ async function persistResult(ownerId, result, { conceptId = null, mode, category
       const c = await client.query('SELECT * FROM concepts WHERE id=$1 AND owner_id=$2', [conceptId, ownerId]);
       if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
       concept = c.rows[0];
+      // Refining is returning to the concept: reset its expiry clock and clear any warning.
+      await client.query('UPDATE concepts SET last_opened_at=NOW(), expiry_reminded_at=NULL WHERE id=$1', [concept.id]);
       if (result.risk_summary) {
         await client.query('UPDATE concepts SET risk_summary=$2, updated_at=NOW() WHERE id=$1',
           [concept.id, result.risk_summary]);

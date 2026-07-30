@@ -210,8 +210,11 @@
     } catch (e) {
       if (e.sessionExpired) { goSignIn(); return; }
       const m = message('clay', 'Clay');
-      m.appendChild(el('p', 'msg err', 'I couldn’t open that concept — it may have been removed. You can start a new one below.'));
-      announce('That concept could not be opened.', true);
+      const msg = (e.status === 410 || e.status === 404)
+        ? (e.message || 'That concept isn’t available anymore. You can start a fresh one below.')
+        : 'I couldn’t open that concept — it may have been removed. You can start a new one below.';
+      m.appendChild(el('p', 'msg err', msg));
+      announce(msg, true);
     }
   }
 

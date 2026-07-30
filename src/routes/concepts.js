@@ -46,7 +46,7 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
                      AND (s.current_period_end IS NULL OR s.current_period_end>now()))
         OR (c.origin='purchased' AND c.access_expires_at IS NOT NULL AND c.access_expires_at>now())
        ) AS entitled
-     FROM concepts c WHERE c.owner_id=$1 ORDER BY c.updated_at DESC`,
+     FROM concepts c WHERE c.owner_id=$1 AND c.expired_at IS NULL ORDER BY c.updated_at DESC`,
     [req.user.id, staff]);
   res.json({ concepts: r.rows });
 }));
@@ -113,7 +113,7 @@ router.get('/unkept-summary', authenticate, asyncHandler(async (req, res) => {
   if (sculptor.rows.length) return res.json({ count: 0, sample: [], muted });
   const rows = await query(
     `SELECT c.id, c.title FROM concepts c
-      WHERE c.owner_id=$1
+      WHERE c.owner_id=$1 AND c.expired_at IS NULL
         AND NOT EXISTS (
           SELECT 1 FROM subscriptions s WHERE s.user_id=$1 AND s.plan='maker' AND s.status='active'
             AND s.concept_id=c.id AND (s.current_period_end IS NULL OR s.current_period_end > now()))
@@ -144,6 +144,9 @@ router.get('/:id/export', authenticate, asyncHandler(async (req, res) => {
 router.get('/:id', authenticate, asyncHandler(async (req, res) => {
   const c = await query('SELECT * FROM concepts WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
   if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (c.rows[0].expired_at) throw new ApiError(410, 'This concept has faded — it sat unopened past its window and was cleared. You can start a fresh one anytime.');
+  // Returning to a concept resets its expiry clock and clears any pending fade-reminder.
+  await query('UPDATE concepts SET last_opened_at=now(), expiry_reminded_at=NULL WHERE id=$1', [req.params.id]);
   const a = await query('SELECT * FROM assets WHERE concept_id=$1 ORDER BY created_at', [req.params.id]);
   const ent = await conceptEntitlement(req.user, req.params.id);
   res.json({ concept: c.rows[0], assets: a.rows, entitled: !!ent.entitled });

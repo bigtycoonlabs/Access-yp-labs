@@ -93,5 +93,16 @@ app.use((err, req, res, next) => {
 
 if (require.main === module) {
   app.listen(PORT, () => console.log(`Access YP Labs server running on port ${PORT}`));
+  // Daily concept-expiry sweep: warn owners of quiet free concepts, then soft-expire the
+  // ones that lapsed after being warned. Skipped in tests; a sweep error can't crash boot.
+  if (process.env.NODE_ENV !== 'test') {
+    const { runExpirySweep } = require('./services/expiry');
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const sweep = () => runExpirySweep()
+      .then((r) => console.log('expiry sweep:', JSON.stringify(r)))
+      .catch((e) => console.error('expiry sweep error:', e && e.message));
+    setTimeout(sweep, 60 * 1000); // once, a minute after boot
+    setInterval(sweep, DAY_MS);   // then daily
+  }
 }
 module.exports = app;
