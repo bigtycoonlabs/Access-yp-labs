@@ -144,12 +144,18 @@ router.get('/:id/export', authenticate, asyncHandler(async (req, res) => {
 router.get('/:id', authenticate, asyncHandler(async (req, res) => {
   const c = await query('SELECT * FROM concepts WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
   if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
-  if (c.rows[0].expired_at) throw new ApiError(410, 'This concept has faded — it sat unopened past its window and was cleared. You can start a fresh one anytime.');
-  // Returning to a concept resets its expiry clock and clears any pending fade-reminder.
-  await query('UPDATE concepts SET last_opened_at=now(), expiry_reminded_at=NULL WHERE id=$1', [req.params.id]);
-  const a = await query('SELECT * FROM assets WHERE concept_id=$1 ORDER BY created_at', [req.params.id]);
   const ent = await conceptEntitlement(req.user, req.params.id);
-  res.json({ concept: c.rows[0], assets: redactLockedAssets(a.rows, !!ent.entitled), entitled: !!ent.entitled });
+  // A faded concept stays blocked ONLY for someone who hasn't kept it. An entitled owner can
+  // always reach their own work — and opening it restores it (clears the faded flag), so
+  // keeping a concept brings it back.
+  if (c.rows[0].expired_at && !ent.entitled) {
+    throw new ApiError(410, 'This concept has faded — it sat unopened past its window and was cleared. You can start a fresh one anytime.');
+  }
+  // Returning to a concept resets its expiry clock, clears any pending fade-reminder, and
+  // un-hides it if it had faded (only reachable here when the owner is entitled).
+  await query('UPDATE concepts SET last_opened_at=now(), expiry_reminded_at=NULL, expired_at=NULL WHERE id=$1', [req.params.id]);
+  const a = await query('SELECT * FROM assets WHERE concept_id=$1 ORDER BY created_at', [req.params.id]);
+  res.json({ concept: { ...c.rows[0], expired_at: null }, assets: redactLockedAssets(a.rows, !!ent.entitled), entitled: !!ent.entitled });
 }));
 
 router.patch('/:id', authenticate, [

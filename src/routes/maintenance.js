@@ -14,12 +14,16 @@ function guard(req, res, next) {
   });
 }
 
-// Time out abandoned concepts: past their access window, with no active plan
-// covering them and not currently listed. Cascades to assets/generations.
+// Time out abandoned PURCHASED concepts: past their paid access window, with no active plan
+// covering them and not currently listed. This is now a SOFT expiry — we set expired_at and
+// hide the concept, but never hard-delete it. The owner's paid access has already ended, so
+// hiding matches their real access state, and the work stays recoverable if they come back and
+// resubscribe. Consistent with the free-concept expiry: a dream is never destroyed outright.
 router.post('/expire-concepts', guard, asyncHandler(async (req, res) => {
   const r = await query(
-    `DELETE FROM concepts c
-     WHERE c.access_expires_at < now()
+    `UPDATE concepts c SET expired_at=now()
+     WHERE c.expired_at IS NULL
+       AND c.access_expires_at < now()
        AND NOT EXISTS (
          SELECT 1 FROM subscriptions s WHERE s.status='active'
            AND ((s.plan='sculptor' AND s.user_id=c.owner_id)
@@ -27,7 +31,7 @@ router.post('/expire-concepts', guard, asyncHandler(async (req, res) => {
        AND NOT EXISTS (
          SELECT 1 FROM listings l WHERE l.concept_id=c.id AND l.status IN ('live','in_review'))
      RETURNING id`);
-  res.json({ removed: r.rows.length });
+  res.json({ soft_expired: r.rows.length });
 }));
 
 // Concepts expiring within 7 days (owner-facing reminder feed).
