@@ -5,7 +5,7 @@
 //
 // Logged-in menu:  Laboratory · Dashboard · The Dreamhold · Consultants · Profile
 //                  · Staff (staff only) · Sign out
-// Logged-out menu: Home · The Dreamhold · Sign in
+// Logged-out menu: Home · The Dreamhold · Sign in · Sign up
 (function () {
   var nav = document.querySelector('nav.top');
   if (!nav) return;
@@ -55,5 +55,6 @@
     nav.appendChild(link('/', 'Home'));
     nav.appendChild(link('/marketplace.html', 'The Dreamhold'));
     nav.appendChild(link('/login.html', 'Sign in'));
+    nav.appendChild(link('/register.html', 'Sign up'));
   }
 })();

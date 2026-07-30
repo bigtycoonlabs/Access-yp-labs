@@ -24,6 +24,12 @@
       radial-gradient(120% 80% at 15% -20%, rgba(140,224,255,.18), transparent 55%),
       radial-gradient(120% 90% at 95% 120%, rgba(184,166,255,.28), transparent 55%), var(--void);}
     .brand{display:flex;align-items:center;gap:12px;padding:22px 0;}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+    nav.top{display:flex;flex-wrap:wrap;align-items:center;gap:2px;}
+    nav.top a{color:#f2eefb;font-size:17px;font-weight:600;text-decoration:none;padding:11px 12px;display:inline-block;min-height:44px;box-sizing:border-box;line-height:22px;border-radius:8px;}
+    nav.top a:hover{text-decoration:underline;}
+    nav.top a:focus-visible{outline:3px solid var(--dream2);outline-offset:2px;}
+    nav.top a[aria-current="page"]{text-decoration:underline;}
     .brand strong{font-size:20px;letter-spacing:.02em;}
     .hero{padding:66px 0 62px;}
     .hero h1{font-size:clamp(30px,6vw,46px);line-height:1.12;margin:0 0 14px;max-width:20ch;text-wrap:balance;}
@@ -78,7 +84,13 @@
   <a class="skip" href="#main">Skip to main content</a>
   <header>
     <div class="wrap">
-      <div class="brand"><a href="/" aria-label="Access YP Labs — home"><img src="/img/yp-labs-logo.svg" alt="Access YP Labs" width="230" height="55" style="height:52px;width:auto;display:block;"/></a></div>
+      <div class="topbar">
+        <div class="brand"><a href="/" aria-label="Access YP Labs — home"><img src="/img/yp-labs-logo.svg" alt="Access YP Labs" width="230" height="55" style="height:52px;width:auto;display:block;"/></a></div>
+        <nav class="top" aria-label="Primary">
+          <a href="/login.html">Sign in</a>
+          <a href="/register.html">Sign up</a>
+        </nav>
+      </div>
       <div class="hero" id="hero">
         <div id="hero-inner">
         <h1>The businesses the world never launched.</h1>
@@ -149,7 +161,7 @@
         <a href="/risk.html" style="display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Risk Disclosure</a>
       </nav>
     </footer>
-<script src="/js/a11y.js"></script><script src="/js/api.js"></script>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script><script src="/js/nav.js"></script>
 <script>
 (function(){
   const inner=document.getElementById('hero-inner');
