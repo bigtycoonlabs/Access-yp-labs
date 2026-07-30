@@ -55,7 +55,16 @@ async function persistResult(ownerId, result, { conceptId = null, mode, category
          result.source_count || 0]);
       concept = c.rows[0];
     }
+    // Drift guard: if the model produces an asset type the DB enum doesn't recognize yet
+    // (code/schema drift — exactly what broke a build before), skip that one section
+    // rather than crash the whole build. The concept still saves with everything else,
+    // and skipping BEFORE any insert keeps the transaction clean. The valid set is read
+    // live from the DB, so it's always current.
+    const validTypes = new Set((await client.query(
+      "SELECT e.enumlabel AS t FROM pg_enum e JOIN pg_type ty ON ty.oid=e.enumtypid JOIN pg_namespace n ON n.oid=ty.typnamespace WHERE ty.typname='asset_type' AND n.nspname='yp_labs'"
+    )).rows.map((r) => r.t));
     for (const a of (result.assets || [])) {
+      if (!validTypes.has(a.type)) continue;
       let scanStatus = 'not_required', scanDetail = null;
       if (protect.needsScan(a.type)) {
         const sc = protect.scanCode(a.body);
@@ -96,13 +105,14 @@ async function persistResult(ownerId, result, { conceptId = null, mode, category
 // wait on the request. The route returns immediately with a "building" message and this
 // runs after — persisting the concept and emailing the finished package (or an honest
 // outcome) when done. It handles and reports its own failures; it must never throw out.
-async function runBuild({ user, mode, category, prompt, operating, conceptId }) {
+async function runBuild({ user, mode, category, prompt, operating, conceptId, buildId = null }) {
   const t0 = Date.now();
   const providerAvailable = provider.available();
+  const onProgress = (text) => addBuildNote(buildId, text);
   try {
     // Retrieval grounding: the user's own related prior work (best-effort, never blocks).
     const priorWork = await retrieval.relatedConcepts(user.id, prompt, { limit: 3, excludeId: conceptId || null });
-    const result = await clay.generate({ mode, category, prompt, operating, priorWork });
+    const result = await clay.generate({ mode, category, prompt, operating, priorWork, onProgress });
     const durationMs = Date.now() - t0;
 
     // Honest non-answer (redirect / refused / unavailable): record it and email the
@@ -117,8 +127,9 @@ async function runBuild({ user, mode, category, prompt, operating, conceptId }) 
         grounded: !!result.research_grounded, sourceCount: result.source_count || 0,
         reason: result.message || result.redirect || null, durationMs });
       health.checkAndAlert().catch(() => {});
-      await notifyBuildOutcome(user, result.message
-        || 'Clay couldn’t complete this one. Nothing was fabricated — try again with a bit more detail.');
+      { const m = result.message || 'Clay couldn’t complete this one. Nothing was fabricated — try again with a bit more detail.';
+        await notifyBuildOutcome(user, m);
+        await finishBuild(buildId, { status: 'failed', message: m, note: m }); }
       return;
     }
 
@@ -129,11 +140,13 @@ async function runBuild({ user, mode, category, prompt, operating, conceptId }) 
         grounded: !!result.research_grounded, sourceCount: result.source_count || 0,
         reason: 'answered_with_no_assets', durationMs });
       health.checkAndAlert().catch(() => {});
-      await notifyBuildOutcome(user,
-        'Clay came back without a complete package, so nothing was saved and nothing was made up. Please try again.');
+      { const m = 'Clay came back without a complete package, so nothing was saved and nothing was made up. Please try again.';
+        await notifyBuildOutcome(user, m);
+        await finishBuild(buildId, { status: 'failed', message: m, note: m }); }
       return;
     }
 
+    await onProgress('Saving your concept and its sections…');
     const concept = await persistResult(user.id, result, { conceptId, mode, category, prompt, operating });
     await journal.recordRun({ actorId: user.id, kind: 'generate', mode, category,
       conceptId: concept.id, resultStatus: 'answered', providerAvailable,
@@ -146,14 +159,18 @@ async function runBuild({ user, mode, category, prompt, operating, conceptId }) 
       subject: 'Your concept is ready: ' + (result.title || concept.title || 'new concept'),
       html: buildPackageEmail(result.title || concept.title, result.coverage, result.assets, concept.id),
     }).catch(() => {});
+    await finishBuild(buildId, { status: 'done', conceptId: concept.id,
+      message: 'Your concept is ready — it’s in your Laboratory and on its way to your email.',
+      note: 'Done — your concept is ready.' });
   } catch (e) {
     const durationMs = Date.now() - t0;
     await journal.recordRun({ actorId: user.id, kind: 'generate', mode, category,
       conceptId: conceptId || null, resultStatus: 'unavailable', providerAvailable,
       reason: 'build_error: ' + (e && e.message ? e.message : 'unknown'), durationMs }).catch(() => {});
     health.checkAndAlert().catch(() => {});
-    await notifyBuildOutcome(user,
-      'Clay hit a snag while building and didn’t finish. Nothing was fabricated — please try again in a moment.');
+    { const m = 'Clay hit a snag while building and didn’t finish. Nothing was fabricated — please try again in a moment.';
+      await notifyBuildOutcome(user, m);
+      await finishBuild(buildId, { status: 'failed', message: m, note: m }); }
   }
 }
 
@@ -182,16 +199,32 @@ router.post('/generate', authenticate, [
 
   // Kick the build off in the background and tell the user right away. runBuild emails
   // the finished package (that's what the email/account is for) and it also lands in the
-  // Laboratory. Fire-and-forget: runBuild owns its own errors, so we never await it.
-  runBuild({ user: req.user, mode, category, prompt, operating, conceptId: concept_id || null })
+  // Laboratory. We also open a build record so the user can WATCH Clay work live if they
+  // want (the client polls GET /clay/build/:id). Fire-and-forget: runBuild owns its own
+  // errors, so we never await it.
+  const buildId = await createBuild(req.user.id, 'Got it — starting your build.');
+  runBuild({ user: req.user, mode, category, prompt, operating, conceptId: concept_id || null, buildId })
     .catch(() => {});
 
   return res.status(202).json({
     status: 'building',
+    build_id: buildId,
     email: req.user.email,
     eta_seconds: 180,
-    message: 'I’m building your concept now. This usually takes 1 to 3 minutes — you don’t need to wait here. I’ll email it to ' + req.user.email + ' the moment it’s ready, and it’ll be waiting in your Laboratory too.',
+    message: 'I’m building your concept now. This usually takes 1 to 3 minutes — you don’t need to wait here. I’ll email it to ' + req.user.email + ' the moment it’s ready, and it’ll be waiting in your Laboratory too. You can watch me work below if you like.',
   });
+}));
+
+// GET /api/clay/build/:id — live progress for a build the user started, so the client can
+// show Clay's work as it happens. Owner-scoped; returns notes, status, and (when done)
+// the concept id to open.
+router.get('/build/:id', authenticate, asyncHandler(async (req, res) => {
+  if (!/^[0-9a-f-]{36}$/i.test(req.params.id || '')) throw new ApiError(400, 'Bad build id.');
+  const r = await query('SELECT status, notes, concept_id, message FROM clay_builds WHERE id=$1 AND actor_id=$2',
+    [req.params.id, req.user.id]);
+  if (!r.rows.length) throw new ApiError(404, 'Build not found.');
+  const b = r.rows[0];
+  res.json({ status: b.status, notes: b.notes || [], concept_id: b.concept_id, message: b.message });
 }));
 
 // POST /api/clay/social  { concept_id, platforms[], goal, count? }
@@ -495,6 +528,35 @@ function buildOutcomeEmail(message){
 async function notifyBuildOutcome(user, message){
   try { return await sendEmail({ to: user.email, subject: 'About your concept build', html: buildOutcomeEmail(message) }); }
   catch (_) { return { sent: false }; }
+}
+
+// --- Live build progress -------------------------------------------------------------
+// Clay narrates its work so a user can watch it build in real time (or step away and let
+// the email catch them). Notes are appended to a clay_builds row the client polls. Every
+// write here is best-effort: progress reporting must never affect or slow the build.
+async function createBuild(actorId, firstNote){
+  try {
+    const notes = firstNote ? [{ at: new Date().toISOString(), text: firstNote }] : [];
+    const r = await query(
+      "INSERT INTO clay_builds (actor_id, status, notes) VALUES ($1,'building',$2::jsonb) RETURNING id",
+      [actorId, JSON.stringify(notes)]);
+    return r.rows[0].id;
+  } catch (_) { return null; }
+}
+async function addBuildNote(buildId, text){
+  if (!buildId) return;
+  try {
+    await query('UPDATE clay_builds SET notes = notes || $1::jsonb, updated_at=now() WHERE id=$2',
+      [JSON.stringify([{ at: new Date().toISOString(), text }]), buildId]);
+  } catch (_) { /* progress is best-effort */ }
+}
+async function finishBuild(buildId, { status, conceptId = null, message = null, note = null }){
+  if (!buildId) return;
+  try {
+    const noteJson = note ? JSON.stringify([{ at: new Date().toISOString(), text: note }]) : '[]';
+    await query('UPDATE clay_builds SET status=$1, concept_id=$2, message=$3, notes = notes || $4::jsonb, updated_at=now() WHERE id=$5',
+      [status, conceptId, message, noteJson, buildId]);
+  } catch (_) {}
 }
 
 // GET /api/clay/pending-idea — the idea a new user handed Clay before signing up.

@@ -206,6 +206,51 @@
   }
   sendBtn.addEventListener('click', send);
 
+  // Watch Clay build in real time: poll the build's progress notes and surface each new
+  // one as Clay posts it, announced for VoiceOver. If the user steps away, the email
+  // still covers them. When it finishes, the concept opens right here.
+  function watchBuild(container, buildId) {
+    const log = el('div', 'build-log');
+    log.setAttribute('aria-label', 'Clay’s build progress');
+    log.style.borderLeft = '3px solid #d6c3b6';
+    log.style.paddingLeft = '10px';
+    log.style.margin = '8px 0';
+    container.appendChild(log);
+    let shown = 0, tries = 0;
+    const maxTries = 140; // ~6 min at 2.5s, then hand off to the email
+    const timer = setInterval(async () => {
+      tries++;
+      let data;
+      try { data = await Kiln.api('/clay/build/' + buildId); }
+      catch (e) { if (tries > 5) clearInterval(timer); return; }
+      const notes = (data && data.notes) || [];
+      for (; shown < notes.length; shown++) {
+        log.appendChild(el('p', 'muted build-note', notes[shown].text));
+        announce(notes[shown].text); // polite: reads without cutting off
+      }
+      scrollToLatest(log);
+      if (data.status === 'done') {
+        clearInterval(timer);
+        if (data.concept_id) {
+          currentConceptId = data.concept_id;
+          const open = el('a', 'btn', 'Open your concept');
+          open.href = '/app.html?concept=' + encodeURIComponent(data.concept_id);
+          log.appendChild(open);
+        }
+        log.appendChild(el('p', 'msg ok', 'Your concept is ready — open it above, in your Laboratory, or from the email I just sent.'));
+        announce('Your concept is ready. You can open it now, and it has also been emailed to you.', true);
+      } else if (data.status === 'failed') {
+        clearInterval(timer);
+        log.appendChild(el('p', 'msg err', data.message || 'Clay couldn’t finish this build. Nothing was fabricated — please try again.'));
+        announce(data.message || 'Clay could not finish this build. Nothing was fabricated. Please try again.', true);
+      } else if (tries >= maxTries) {
+        clearInterval(timer);
+        log.appendChild(el('p', 'muted', 'Still working — I’ll email it to you the moment it’s ready.'));
+        announce('Clay is still working. It will email you the moment it’s ready.', true);
+      }
+    }, 2500);
+  }
+
   // ---- render Clay's result honestly by status ----
   function renderResult(container, data) {
     if (data.status === 'answered') {
@@ -310,6 +355,7 @@
     if (data.status === 'building') {
       container.appendChild(el('p', 'msg ok', data.message || 'I’m building your concept now and will email it to you when it’s ready.'));
       announce(data.message || 'Clay is building your concept now. This usually takes 1 to 3 minutes. You’ll get an email when it’s ready, and it will be in your Laboratory. You don’t need to wait here.', true);
+      if (data.build_id) watchBuild(container, data.build_id);
       return;
     }
     // Non-answers — always honest, never fabricated.
