@@ -845,7 +845,7 @@
   function openListingForm(container, conceptId) {
     const form = el('div', 'panel');
     form.appendChild(el('h3', null, 'List this concept on The Dreamhold'));
-    form.appendChild(el('p', 'muted', 'You set the price. $50 minimum. Selling transfers ownership to the buyer.'));
+    form.appendChild(el('p', 'muted', 'You set the price. $10 minimum. Selling transfers ownership to the buyer.'));
 
     const fmtLabel = el('label'); fmtLabel.textContent = 'Sale format'; fmtLabel.setAttribute('for', 'l-format');
     const fmt = el('select'); fmt.id = 'l-format';
@@ -868,7 +868,7 @@
     submit.addEventListener('click', async () => {
       out.textContent = '';
       const dollars = parseInt(price.value, 10);
-      if (!dollars || dollars < 50) { out.appendChild(el('p', 'msg err', 'Price must be at least $50.')); announce('Price must be at least $50.', true); return; }
+      if (!dollars || dollars < 10) { out.appendChild(el('p', 'msg err', 'Price must be at least $10.')); announce('Price must be at least $10.', true); return; }
       if (!risk.checked || !own.checked) { out.appendChild(el('p', 'msg err', 'Please confirm both acknowledgments.')); announce('Please confirm both acknowledgments.', true); return; }
       submit.disabled = true; announce('Submitting your listing…');
       try {

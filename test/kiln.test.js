@@ -8,10 +8,12 @@ test('platform take is 20%', () => {
   assert.strictEqual(money.sellerNetCents(10000), 8000);
 });
 
-test('$50 price floor is enforced', () => {
-  assert.strictEqual(money.isAboveFloor(5000), true);
-  assert.strictEqual(money.isAboveFloor(4999), false);
-  assert.strictEqual(money.isAboveFloor(50.5), false);
+test('$10 price floor is enforced', () => {
+  assert.strictEqual(money.PRICE_FLOOR_CENTS, 1000);
+  assert.strictEqual(money.isAboveFloor(1000), true);   // exactly $10 is allowed
+  assert.strictEqual(money.isAboveFloor(999), false);   // $9.99 is not
+  assert.strictEqual(money.isAboveFloor(50000), true);  // higher prices still fine
+  assert.strictEqual(money.isAboveFloor(10.5), false);  // non-integer cents rejected
 });
 
 test('consultant split is $150 -> $30 / $120', () => {

@@ -58,11 +58,11 @@ fieldset{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margi
     <div class="stack">
       <div><label for="format">Format</label>
         <select id="format"><option value="flat">Fixed price</option><option value="auction">Auction</option></select></div>
-      <div id="flatwrap"><label for="price">Price in US dollars (minimum $50)</label>
-        <input id="price" type="number" min="50" step="1" value="50"/></div>
+      <div id="flatwrap"><label for="price">Price in US dollars (minimum $10)</label>
+        <input id="price" type="number" min="10" step="1" value="10"/></div>
       <div id="aucwrap" hidden>
-        <label for="startbid">Starting bid in US dollars (minimum $50)</label>
-        <input id="startbid" type="number" min="50" step="1" value="50"/>
+        <label for="startbid">Starting bid in US dollars (minimum $10)</label>
+        <input id="startbid" type="number" min="10" step="1" value="10"/>
         <label for="close">Auction closes</label><input id="close" type="datetime-local"/></div>
       <div><label for="working">Optionally, when did you start this project?</label>
         <input id="working" type="date"/>

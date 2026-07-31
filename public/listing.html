@@ -149,14 +149,14 @@ async function load(){
     if(isAuction && !closed){
       const bidWrap=el('div','panel');bidWrap.appendChild(el('h2',null,'Place a bid'));
       const bl=el('label',null,'Your bid in US dollars (must beat the current high)');bl.setAttribute('for','bid');
-      const bi=el('input');bi.id='bid';bi.type='number';bi.min='50';bi.step='1';
-      const minNext=Math.max(50, Math.floor((Math.max(listing.starting_bid_cents||0, highBid))/100)+1);
+      const bi=el('input');bi.id='bid';bi.type='number';bi.min='10';bi.step='1';
+      const minNext=Math.max(10, Math.floor((Math.max(listing.starting_bid_cents||0, highBid))/100)+1);
       bi.value=String(minNext);
       const bb=el('button','btn','Place bid');bb.type='button';
       const bout=el('div');bout.setAttribute('role','alert');bout.setAttribute('aria-live','assertive');
       bb.addEventListener('click',async()=>{
         bout.textContent='';const d=parseInt(bi.value,10);
-        if(!d||d<50){bout.appendChild(el('p','msg err','Bid must be at least $50.'));announce('Bid must be at least $50.',true);return;}
+        if(!d||d<10){bout.appendChild(el('p','msg err','Bid must be at least $10.'));announce('Bid must be at least $10.',true);return;}
         bb.disabled=true;announce('Placing your bid…');
         try{await Kiln.api('/bids/'+id,{method:'POST',body:{amount_cents:d*100}});
           announce('Bid placed at '+money(d*100)+'.',true);location.reload();

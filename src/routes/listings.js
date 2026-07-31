@@ -64,8 +64,8 @@ router.post('/', authenticate, [
       needs: { business_plan: base.hasPlan, marketing_strategy: base.hasMarketing, build_path: base.hasBuildPath },
     });
   }
-  if (format === 'flat' && !isAboveFloor(price_cents)) throw new ApiError(400, 'Flat price must be at least $50.');
-  if (format === 'auction' && !isAboveFloor(starting_bid_cents)) throw new ApiError(400, 'Starting bid must be at least $50.');
+  if (format === 'flat' && !isAboveFloor(price_cents)) throw new ApiError(400, 'Flat price must be at least $10.');
+  if (format === 'auction' && !isAboveFloor(starting_bid_cents)) throw new ApiError(400, 'Starting bid must be at least $10.');
 
   const r = await query(
     `INSERT INTO listings
@@ -127,8 +127,8 @@ router.patch('/:id', authenticate, [
   const target = req.body.completion_target !== undefined ? req.body.completion_target : l.completion_target;
   const closeAt = req.body.auction_close_at !== undefined ? req.body.auction_close_at : l.auction_close_at;
 
-  if (format === 'flat' && !isAboveFloor(price)) throw new ApiError(400, 'Flat price must be at least $50.');
-  if (format === 'auction' && !isAboveFloor(bid)) throw new ApiError(400, 'Starting bid must be at least $50.');
+  if (format === 'flat' && !isAboveFloor(price)) throw new ApiError(400, 'Flat price must be at least $10.');
+  if (format === 'auction' && !isAboveFloor(bid)) throw new ApiError(400, 'Starting bid must be at least $10.');
 
   const r = await query(
     `UPDATE listings SET format=$3, price_cents=$4, starting_bid_cents=$5, stage_label=$6,

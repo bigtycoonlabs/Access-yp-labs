@@ -1,7 +1,7 @@
 // Money is handled in integer cents everywhere. One source of truth for the
-// platform economics so no route can drift: 20% platform take, $50 floor.
+// platform economics so no route can drift: 20% platform take, $10 floor.
 const PLATFORM_RATE = 0.20;      // 20% across marketplace + consultants
-const PRICE_FLOOR_CENTS = 5000;  // $50 minimum listing price
+const PRICE_FLOOR_CENTS = 1000;  // $10 minimum listing price
 
 // Consultant session economics (fixed): $150 total, 20% / 80% split.
 const CONSULT_FEE_CENTS = 15000;

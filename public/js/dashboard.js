@@ -221,12 +221,12 @@
     [['concept', 'Concept'], ['in_build', 'In build'], ['prepared_to_start', 'Prepared to start']].forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; if (v === l.stage_label) o.selected = true; sSel.appendChild(o); });
     const tIn = document.createElement('input'); tIn.type = 'text'; tIn.value = l.completion_target || '';
     host.appendChild(labeled('Format', fSel, 'ef-' + l.id));
-    host.appendChild(labeled('Price or starting bid (US dollars, at least $50)', pIn, 'ep-' + l.id));
+    host.appendChild(labeled('Price or starting bid (US dollars, at least $10)', pIn, 'ep-' + l.id));
     host.appendChild(labeled('Stage', sSel, 'es-' + l.id));
     host.appendChild(labeled('Completion target (optional)', tIn, 'et-' + l.id));
     host.appendChild(actionBtn('Save changes', async () => {
       const dollars = parseFloat(pIn.value);
-      if (!(dollars >= 50)) { announce('Price or starting bid must be at least $50.', true); return; }
+      if (!(dollars >= 10)) { announce('Price or starting bid must be at least $10.', true); return; }
       const body = { format: fSel.value, stage_label: sSel.value, completion_target: tIn.value };
       const cents = Math.round(dollars * 100);
       if (fSel.value === 'flat') body.price_cents = cents; else body.starting_bid_cents = cents;

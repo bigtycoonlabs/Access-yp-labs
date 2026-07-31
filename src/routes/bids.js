@@ -3,7 +3,7 @@ const { body, validationResult } = require('express-validator');
 const { query, getClient } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
-const { isAboveFloor } = require('../lib/money');
+const { isAboveFloor, PRICE_FLOOR_CENTS } = require('../lib/money');
 const router = express.Router();
 
 // Place a bid on a live auction listing. Must beat the current high bid and the floor.
@@ -12,7 +12,7 @@ const router = express.Router();
 // same high-water mark and both land, letting a bid that doesn't truly beat the current high
 // slip in.
 router.post('/:listingId', authenticate, [
-  body('amount_cents').isInt({ min: 5000 }),
+  body('amount_cents').isInt({ min: PRICE_FLOOR_CENTS }),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
@@ -29,7 +29,7 @@ router.post('/:listingId', authenticate, [
     if (listing.auction_close_at && new Date(listing.auction_close_at) < new Date()) {
       throw new ApiError(400, 'This auction has closed.');
     }
-    if (!isAboveFloor(amount_cents)) throw new ApiError(400, 'Bid must be at least $50.');
+    if (!isAboveFloor(amount_cents)) throw new ApiError(400, 'Bid must be at least $10.');
 
     const high = await client.query('SELECT COALESCE(MAX(amount_cents),0) AS m FROM bids WHERE listing_id=$1', [req.params.listingId]);
     const floor = Math.max(listing.starting_bid_cents || 0, high.rows[0].m);
