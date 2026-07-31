@@ -27,6 +27,19 @@ router.post('/', authenticate, [
   const listing = l.rows[0];
   if (listing.seller_id === req.user.id) throw new ApiError(400, 'You cannot buy your own listing.');
 
+  // A concept sells once. If this listing already has an order that's been paid or settled,
+  // no other buyer can claim it — this blocks the common double-purchase before any money
+  // moves. (Abandoned, never-paid 'created' orders don't block, so a lapsed checkout can't
+  // permanently lock a listing.) A rare simultaneous race is still caught at release, where
+  // the listing row is locked and an already-sold listing is refused.
+  const claimed = await query(
+    `SELECT 1 FROM orders_transfers
+      WHERE listing_id=$1 AND status IN ('in_escrow','proof_submitted','delivered','released') LIMIT 1`,
+    [listing_id]);
+  if (claimed.rows.length) {
+    throw new ApiError(409, 'Someone is already completing the purchase of this concept, so it can’t be bought again.');
+  }
+
   // Settle price: flat = price; auction = highest bid, restricted to the winner.
   let amount = listing.price_cents;
   if (listing.format === 'auction') {
@@ -103,8 +116,16 @@ router.post('/:id/release', authenticate, asyncHandler(async (req, res) => {
     if (!['delivered', 'proof_submitted', 'in_escrow'].includes(order.status)) {
       throw new ApiError(400, `Order cannot be released from status "${order.status}".`);
     }
-    const l = await client.query('SELECT concept_id FROM listings WHERE id=$1', [order.listing_id]);
+    const l = await client.query('SELECT concept_id, status FROM listings WHERE id=$1 FOR UPDATE', [order.listing_id]);
     if (!l.rows.length) throw new ApiError(404, 'The listing for this order no longer exists.');
+    // A Dreamhold concept is one-of-a-kind: it can only transfer to ONE buyer. Locking the
+    // listing row above serializes concurrent releases; if another order already won this
+    // listing (status 'sold'), we must NOT transfer the concept again — that would silently
+    // overwrite the first buyer's ownership. Refuse honestly; this order's payment is refunded
+    // rather than double-selling the concept.
+    if (l.rows[0].status === 'sold') {
+      throw new ApiError(409, 'This concept was already transferred to another buyer for this listing, so this order can’t be released. Your payment will be refunded — nothing was double-sold.');
+    }
     const conceptId = l.rows[0].concept_id;
 
     // Clean transfer: buyer owns it, with the first month included; assets lock
