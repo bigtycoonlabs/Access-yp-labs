@@ -384,6 +384,36 @@
           g.appendChild(enroll);
         }
       } catch (_) {}
+
+      // Testing-mode toggle: flip your own account between full staff access (no paywalls, for
+      // testing building and publishing) and the real pay flow (paywalls on, to test money),
+      // without a database edit. Takes effect on your next action.
+      try {
+        const tm = await Kiln.api('/admin/testing-mode');
+        let on = !!tm.billing_test;
+        const btn = el('button', 'btn secondary'); btn.type = 'button'; btn.style.marginLeft = '8px';
+        const paint = () => {
+          btn.textContent = on
+            ? 'Testing payments: ON — switch to full access'
+            : 'Full access (no paywalls) — switch to test payments';
+          btn.setAttribute('aria-label', on
+            ? 'Billing test mode is on: you go through the real payment flow. Activate to switch to full staff access with no paywalls.'
+            : 'Full staff access, no paywalls. Activate to switch to testing the real payment flow.');
+        };
+        paint();
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          try {
+            const r = await Kiln.api('/admin/testing-mode', { method: 'POST', body: { enabled: !on } });
+            on = !!r.billing_test; paint();
+            announce(on
+              ? 'Testing payments mode on. You will go through the real pay flow.'
+              : 'Full staff access on. Paywalls are off for you.', true);
+          } catch (e) { announce(e.message, true); }
+          btn.disabled = false;
+        });
+        g.appendChild(btn);
+      } catch (_) {}
     }
     const q = new URLSearchParams(location.search);
     if (q.get('onboard') === 'done') announce('Payout setup returned. Refreshing status.', true);

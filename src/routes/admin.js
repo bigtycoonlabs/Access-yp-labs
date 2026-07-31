@@ -30,4 +30,26 @@ router.get('/overview', authenticate, authorize('staff', 'admin', 'master_staff'
     res.json({ counts: counts.rows[0], clay_all: clayAll.rows[0], clay_recent: clayRecent });
   }));
 
+// Testing mode — a staff member's own switch between two ways of experiencing the platform:
+//   OFF (billing_test=false): full staff access, no paywalls — for testing building, publishing,
+//     and browsing the Dreamhold without money getting in the way.
+//   ON  (billing_test=true):  go through the REAL subscribe / paywall / pay flow, to test money
+//     end to end as a normal user would.
+// It only ever changes the CALLER'S OWN account, so it can't touch anyone else — and authenticate
+// re-reads the flag on every request, so a flip takes effect on the very next action.
+router.get('/testing-mode', authenticate, authorize('staff', 'admin', 'master_staff'),
+  asyncHandler(async (req, res) => {
+    const r = await query('SELECT billing_test FROM users WHERE id=$1', [req.user.id]);
+    res.json({ billing_test: !!(r.rows[0] && r.rows[0].billing_test) });
+  }));
+
+router.post('/testing-mode', authenticate, authorize('staff', 'admin', 'master_staff'),
+  asyncHandler(async (req, res) => {
+    const enabled = req.body && req.body.enabled === true;
+    const r = await query(
+      'UPDATE users SET billing_test=$2, updated_at=now() WHERE id=$1 RETURNING billing_test',
+      [req.user.id, enabled]);
+    res.json({ billing_test: !!r.rows[0].billing_test });
+  }));
+
 module.exports = router;
