@@ -68,6 +68,12 @@
     .build-inside{margin:0 0 12px;padding-left:20px;color:#e7e1f7;}
     .build-inside li{margin:3px 0;}
     .build .muted{color:#c3bce0;font-size:15px;}
+    .clay-speaker{display:flex;align-items:center;gap:9px;margin:0 0 10px;}
+    .clay-speaker .dot{width:26px;height:26px;border-radius:50%;flex:0 0 auto;
+      background:linear-gradient(135deg,var(--dream),var(--dream2));
+      color:#0b0817;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;}
+    .clay-speaker .nm{color:#fff;font-weight:700;font-size:16px;}
+    .clay-speaker .sub{color:#c3bce0;font-weight:500;font-size:13px;}
     #hero .err{color:#ffb4a8;font-weight:600;}
     @media (prefers-reduced-motion: no-preference){
       #hero-inner .build > *{animation:riseIn .38s ease both;}
@@ -167,6 +173,16 @@
   const inner=document.getElementById('hero-inner');
   if(!inner||!window.Kiln) return;
   function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+  // A speaker nameplate so every reply on the homepage clearly reads as Clay talking — an
+  // avatar "C", the name, and a subtitle. The pieces are aria-hidden and the whole row carries
+  // one clean accessible name, so VoiceOver says "Clay, your AI partner" rather than spelling
+  // out the avatar letter.
+  function claySpeaker(){
+    const h=el('div','clay-speaker');h.setAttribute('aria-label','Clay, your AI partner');
+    const dot=el('span','dot','C');const nm=el('span','nm','Clay');const sub=el('span','sub','your AI partner');
+    [dot,nm,sub].forEach(function(x){x.setAttribute('aria-hidden','true');});
+    h.appendChild(dot);h.appendChild(nm);h.appendChild(sub);return h;
+  }
   function ordinalWord(n){const w={1:'first',2:'second',3:'third',4:'fourth',5:'fifth',6:'sixth',7:'seventh',8:'eighth',9:'ninth',10:'tenth'};
     if(w[n])return w[n];const v=n%100,s=['th','st','nd','rd'];return n+(s[(v-20)%10]||s[v]||s[0]);}
   function cap(s){return s.charAt(0).toUpperCase()+s.slice(1);}
@@ -182,14 +198,14 @@
     const label=el('label',null,promptText);label.setAttribute('for','idea-in');
     const ta=document.createElement('textarea');ta.id='idea-in';ta.rows=2;ta.setAttribute('placeholder','The one you keep coming back to…');
     const btn=el('button','cta','Show me what you’ve got');btn.type='button';
-    const out=el('div','build');out.setAttribute('role','status');out.setAttribute('aria-live','polite');
+    const out=el('div','build');out.setAttribute('role','group');out.setAttribute('aria-label','Clay’s reply');
     btn.addEventListener('click',async()=>{
       const idea=(ta.value||'').trim();
       if(idea.length<3){announce('Tell me a little more about the idea.',true);ta.focus();return;}
-      btn.disabled=true;out.innerHTML='';out.appendChild(el('p','muted','Clay is shaping it…'));announce('Clay is shaping your idea.',true);
+      btn.disabled=true;out.innerHTML='';out.appendChild(claySpeaker());out.appendChild(el('p','muted','Clay is shaping it…'));announce('Clay is shaping your idea.',true);
       try{
         const r=await Kiln.api('/spark',{auth:false,method:'POST',body:{idea}});
-        out.innerHTML='';
+        out.innerHTML='';out.appendChild(claySpeaker());
         if(r.title){
           out.appendChild(el('p','build-lead','Here’s what I’ve started for you:'));
           out.appendChild(el('h3','build-title',r.title));
@@ -207,7 +223,7 @@
         }
         const cta=el('a','cta solid','Create a free account & keep building');cta.href='/register.html';cta.style.marginTop='10px';out.appendChild(cta);
         const si=el('p','muted');const a=el('a',null,'I already have an account');a.href='/login.html';a.style.color='#8ce0ff';si.appendChild(a);out.appendChild(si);
-      }catch(e){out.innerHTML='';out.appendChild(el('p','err',(e&&e.message)||'Something went sideways — try that again.'));announce((e&&e.message)||'Error',true);}
+      }catch(e){out.innerHTML='';out.appendChild(claySpeaker());out.appendChild(el('p','err',(e&&e.message)||'Something went sideways — try that again.'));announce((e&&e.message)||'Error',true);}
       finally{btn.disabled=false;}
     });
     wrap.appendChild(label);wrap.appendChild(ta);wrap.appendChild(btn);wrap.appendChild(out);

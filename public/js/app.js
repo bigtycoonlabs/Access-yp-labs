@@ -92,6 +92,10 @@
   }
   function message(who, label) {
     const m = el('div', 'message' + (who === 'you' ? ' you' : ''));
+    // Identify every message by speaker, so VoiceOver announces who it's from ("Clay" / "You")
+    // when you land on it — not just a floating line of text.
+    m.setAttribute('role', 'group');
+    m.setAttribute('aria-label', who === 'you' ? 'You' : 'Clay');
     m.appendChild(el('p', 'who', label));
     log.appendChild(m);
     return m;
