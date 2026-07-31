@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const { query, getClient } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
-const { asyncHandler } = require('../lib/http');
+const { asyncHandler, ApiError } = require('../lib/http');
 const { sendEmail } = require('../services/email');
 const { welcomeEmail } = require('../services/welcomeEmail');
 const { parseCookies, setCookie } = require('../lib/cookies');
@@ -94,6 +94,10 @@ router.post('/register', [
     await client.query('COMMIT');
   } catch (e) {
     await client.query('ROLLBACK').catch(() => {});
+    // Two people registering the same email at once both pass the existence check above;
+    // the unique index then rejects the loser. Return the same clean 409 as the pre-check
+    // instead of a confusing 500.
+    if (e && e.code === '23505') throw new ApiError(409, 'Account already exists.');
     throw e;
   } finally {
     client.release();
@@ -162,8 +166,12 @@ router.post('/refresh', asyncHandler(async (req, res) => {
   let decoded;
   try { decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET); }
   catch (_) { clearRefreshCookie(res); return res.status(401).json({ error: 'Invalid or expired refresh token.' }); }
-  const r = await query('SELECT id,email,name,role FROM users WHERE id=$1', [decoded.id]);
+  const r = await query('SELECT id,email,name,role,status FROM users WHERE id=$1', [decoded.id]);
   if (!r.rows.length) { clearRefreshCookie(res); return res.status(401).json({ error: 'Account not found.' }); }
+  // A suspended account must not be able to keep a session alive by refreshing. authenticate
+  // already blocks suspended users on every protected route in real time; this makes the door
+  // fully closed — no fresh tokens for a suspended account, and the cookie is cleared.
+  if (r.rows[0].status === 'suspended') { clearRefreshCookie(res); return res.status(403).json({ error: 'Your account is suspended.' }); }
   const tokens = issueTokens(r.rows[0]);
   setRefreshCookie(res, tokens.refreshToken);
   res.json(tokens);
