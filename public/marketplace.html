@@ -6,13 +6,12 @@
 .filters{display:flex;gap:12px;flex-wrap:wrap;align-items:end;} .filters>div{flex:1;min-width:180px;}</style>
 </head><body>
 <script>
-// Entering the Dreamhold is an experience with a door. Not onboarded (no account
-// or not tuned yet) -> the door (Clay onboarding). Onboarded but new session ->
-// the drift. Arriving with ?entered=1 -> straight in.
+// Entering the Dreamhold keeps its cool dream-hall entry, but no tuning gate stands in the
+// way: the cool entry plays once per session, then you're in the drift. Clay tunes the
+// Dreamhold to you from the lab now, not from a door you have to get past. ?entered=1 -> in.
 (function(){try{
   var p=new URLSearchParams(location.search);
   if(p.get('entered')){ sessionStorage.setItem('descended','1'); return; }
-  if(!localStorage.getItem('dreamhold_onboarded')){ location.replace('/dreamhold.html'); return; }
   if(!sessionStorage.getItem('descended')){ location.replace('/enter.html'); }
 }catch(e){}})();
 </script>
@@ -24,6 +23,7 @@
 <main id="main" class="wrap">
   <h1>The Dreamhold</h1>
   <p class="muted">Pre-proven concepts you can acquire outright. The platform is a neutral third party — we referee, we never play.</p>
+  <p style="margin:6px 0 18px;"><a href="/app.html" class="btn secondary" style="text-decoration:none;">Ask Clay for help</a> <span class="muted">Clay’s right here in your lab — ask about any dream before you claim it.</span></p>
   <section id="leaping" aria-labelledby="leaping-h" hidden style="margin-bottom:24px;">
     <h2 id="leaping-h">Dreams leaping for you</h2>
     <p class="muted" id="leaping-sub">Tuned to what you told Clay. These turned toward you first.</p>

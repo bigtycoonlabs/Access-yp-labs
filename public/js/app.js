@@ -162,6 +162,9 @@
     } catch (_) {}
     m.appendChild(el('p', null, opening));
     await renderMyConcepts(m, myConcepts);
+    // Offer to tune the Dreamhold from the lab — opt-in, never a gate. Skipped if they're
+    // already tuned, or arrived mid-flow with an idea already sitting in the box.
+    if (prefs && !prefs.onboarded && !(promptEl && promptEl.value)) maybeOfferTuning();
 
     // Gentle, mutable reminder about concepts built but not yet kept. Honest and
     // easy to silence — never shown to Sculptor/staff (their count is 0).
@@ -259,6 +262,77 @@
     m.appendChild(el('p', null, 'Fresh start — this next idea will be its own concept. What are we building?'));
     announce('Starting a new concept.', true);
     if (promptEl) { promptEl.value = ''; promptEl.focus(); }
+  }
+
+  // ---- Dreamhold tuning, in the lab now (opt-in, never a gate) ----
+  // The old Dreamhold "door" made everyone answer these before they could go in. It lives here
+  // instead: Clay offers to tune the Dreamhold, the person takes it or leaves it, and it saves to
+  // the same preferences the Dreamhold reads for "dreams leaping for you."
+  function maybeOfferTuning() {
+    const m = message('clay', 'Clay');
+    m.appendChild(el('p', null, 'Whenever you want it, I can tune the Dreamhold to you — the kinds of ideas you lean toward, whether you already run something, and a rough launch budget — so the right dreams lean back when you drop in. Want to set that now?'));
+    const row = el('p'); row.style.display = 'flex'; row.style.gap = '10px'; row.style.flexWrap = 'wrap';
+    const yes = el('button', 'btn', 'Tune my Dreamhold'); yes.type = 'button';
+    const no = el('button', 'btn secondary', 'Maybe later'); no.type = 'button';
+    yes.addEventListener('click', function () { row.remove(); renderTuning(m); });
+    no.addEventListener('click', function () { row.remove(); m.appendChild(el('p', 'muted', 'No rush — I’ll keep the whole Dreamhold open to you, and you can ask me to tune it anytime.')); announce('Okay, maybe later.'); });
+    row.appendChild(yes); row.appendChild(no); m.appendChild(row);
+    scrollToLatest(m);
+  }
+
+  async function renderTuning(m) {
+    let opts = { categories: [], budgets: [] };
+    try { opts = await Kiln.api('/preferences/options'); } catch (_) {}
+    const state = { interests: [], runs_business: false, business_kind: '', launch_budget: '' };
+    const form = el('div'); form.style.marginTop = '6px';
+
+    const fs = el('fieldset'); fs.appendChild(el('legend', null, 'Ideas you’re most excited to launch — pick any'));
+    const chips = el('div'); chips.style.display = 'flex'; chips.style.gap = '8px'; chips.style.flexWrap = 'wrap';
+    (opts.categories || []).forEach(function (cat) {
+      const b = el('button', 'btn secondary', cat.label); b.type = 'button'; b.setAttribute('aria-pressed', 'false');
+      b.addEventListener('click', function () {
+        const on = b.getAttribute('aria-pressed') === 'true'; b.setAttribute('aria-pressed', String(!on));
+        if (on) { state.interests = state.interests.filter(function (x) { return x !== cat.id; }); }
+        else { state.interests.push(cat.id); }
+        announce((on ? 'Removed ' : 'Added ') + cat.label);
+      });
+      chips.appendChild(b);
+    });
+    fs.appendChild(chips); form.appendChild(fs);
+
+    const opFs = el('fieldset'); opFs.appendChild(el('legend', null, 'Do you already run a business?'));
+    const opWrap = el('div'); opWrap.style.display = 'flex'; opWrap.style.gap = '10px'; opWrap.style.flexWrap = 'wrap';
+    const kindWrap = el('div'); kindWrap.style.marginTop = '8px'; kindWrap.hidden = true;
+    const kindLabel = el('label', null, 'What kind? A few words is plenty.'); kindLabel.setAttribute('for', 'tune-kind');
+    const kindIn = document.createElement('input'); kindIn.id = 'tune-kind'; kindIn.type = 'text';
+    kindWrap.appendChild(kindLabel); kindWrap.appendChild(kindIn);
+    const yesB = el('button', 'btn secondary', 'Yes, I run one'); yesB.type = 'button'; yesB.setAttribute('aria-pressed', 'false');
+    const noB = el('button', 'btn secondary', 'Not yet'); noB.type = 'button'; noB.setAttribute('aria-pressed', 'true');
+    function setRuns(v) { state.runs_business = v; yesB.setAttribute('aria-pressed', String(v)); noB.setAttribute('aria-pressed', String(!v)); kindWrap.hidden = !v; if (!v) { state.business_kind = ''; kindIn.value = ''; } }
+    yesB.addEventListener('click', function () { setRuns(true); kindIn.focus(); });
+    noB.addEventListener('click', function () { setRuns(false); });
+    opWrap.appendChild(yesB); opWrap.appendChild(noB); opFs.appendChild(opWrap); opFs.appendChild(kindWrap); form.appendChild(opFs);
+
+    const bFs = el('fieldset'); bFs.appendChild(el('legend', null, 'A rough launch budget'));
+    const bLabel = el('label', null, 'When a dream’s ready to launch, what could you put behind it?'); bLabel.setAttribute('for', 'tune-budget');
+    const bSel = document.createElement('select'); bSel.id = 'tune-budget';
+    bSel.appendChild(new Option('No preference', ''));
+    (opts.budgets || []).forEach(function (b) { bSel.appendChild(new Option(b.label, b.id)); });
+    bFs.appendChild(bLabel); bFs.appendChild(bSel); form.appendChild(bFs);
+
+    const save = el('button', 'btn', 'Save my tuning'); save.type = 'button'; save.style.marginTop = '10px';
+    save.addEventListener('click', async function () {
+      state.business_kind = kindIn.value.trim(); state.launch_budget = bSel.value;
+      save.disabled = true; announce('Saving your tuning…');
+      try {
+        await Kiln.api('/preferences', { method: 'PUT', body: { interests: state.interests, runs_business: state.runs_business, business_kind: state.business_kind, launch_budget: state.launch_budget, onboarded: true } });
+        form.remove();
+        m.appendChild(el('p', 'msg ok', 'Your Dreamhold’s tuned — the right dreams will lean toward you when you drop in. You can retune anytime.'));
+        announce('Your Dreamhold is tuned.', true);
+      } catch (e) { save.disabled = false; announce((e && e.message) || 'Could not save your tuning just now.', true); }
+    });
+    form.appendChild(save);
+    m.appendChild(form); scrollToLatest(m);
   }
 
   // ---- send to Clay ----

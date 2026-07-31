@@ -18,6 +18,30 @@ const id=new URLSearchParams(location.search).get('id');
 const statusEl=document.getElementById('status'), detail=document.getElementById('detail');
 function money(c){return '$'+((c||0)/100).toFixed(2);}
 function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+
+// The dream, up front: what this concept is, and what it would be like to own it running as a
+// business. Honest and evocative — it never invents specific outcomes; it frames what claiming
+// a pre-proven concept on this platform actually means. The concept-specific "what it does"
+// comes from the working demo and previews below.
+function dreamHero(listing){
+  const cat=(listing.category||'concept').replace(/_/g,' ');
+  const box=el('div','panel hero-dream');box.setAttribute('aria-label','What you would be claiming');
+  box.appendChild(el('h2',null,'What it’s like to own this'));
+  box.appendChild(el('p',null,
+    '“'+listing.title+'” is a '+cat+' business that Clay shaped end to end before it exists — the plan, the market and competitor research, the marketing, and a working demo, all already built out. It isn’t a template or a course. It’s the whole business, waiting for an owner.'));
+  box.appendChild(el('p',null,
+    'Picture it live: a '+cat+' business with your name on it, up and running — one you didn’t have to dream up, research, or prove from a blank page, because that work is done. Claim it and it’s yours, exclusively, to build the rest of the way and run. Here’s exactly what it is and what it does:'));
+  return box;
+}
+
+// Risk — clearly disclosed, but after you understand the dream, not as the opening line.
+function riskPanel(listing){
+  if(!listing.risk_summary) return null;
+  const r=el('div','panel');
+  r.appendChild(el('h3',null,'Before you claim it — regulatory & licensing risk'));
+  r.appendChild(el('p',null,listing.risk_summary));
+  return r;
+}
 async function loadPreview(container){
   const box=el('div','panel'); box.appendChild(el('h2',null,'What’s inside this dream'));
   const body=el('div'); box.appendChild(body); container.appendChild(box);
@@ -84,7 +108,11 @@ async function load(){
     detail.appendChild(el('h1',null,listing.title));
     detail.appendChild(el('p','muted',(listing.category||'').replace(/_/g,' ')+' · '+(listing.stage_label||'').replace(/_/g,' ')+' · by '+listing.seller_alias));
     if(listing.working_since){detail.appendChild(el('p','muted','In development since '+new Date(listing.working_since).toLocaleDateString()));}
-    if(listing.risk_summary){const r=el('div','panel');r.appendChild(el('h3',null,'Regulatory & licensing risk'));r.appendChild(el('p',null,listing.risk_summary));detail.appendChild(r);}
+    // Lead with the dream, not the fine print: what this concept is and what it's like to own it.
+    detail.appendChild(dreamHero(listing));
+    var askP=el('p');askP.style.margin='2px 0 16px';
+    var askA=el('a','btn secondary','Ask Clay about this dream');askA.href='/app.html';askA.style.textDecoration='none';
+    askP.appendChild(askA);detail.appendChild(askP);
 
     const isAuction=listing.format==='auction';
     const closed=isAuction && listing.auction_close_at && new Date(listing.auction_close_at)<new Date();
@@ -108,6 +136,7 @@ async function load(){
 
     if(!Kiln.isLoggedIn()){
       const back=encodeURIComponent(location.pathname+location.search);
+      const rp0=riskPanel(listing); if(rp0) detail.appendChild(rp0);
       const box=el('div','panel');
       box.appendChild(el('p',null,'This is a concept from the Dreamhold — a business you can own and build before it exists. Create a free account to claim it, place a bid, or follow it before it launches.'));
       const p=el('p');p.style.display='flex';p.style.gap='10px';p.style.flexWrap='wrap';
@@ -120,6 +149,9 @@ async function load(){
     }
     renderPreviews(detail, id);
     renderDemoDescription(detail, id);
+
+    // Now the fine print — clearly, but after you know what the dream is and does.
+    const rp=riskPanel(listing); if(rp) detail.appendChild(rp);
 
     // Watch (always available)
     const actions=el('div','actions');actions.style.display='flex';actions.style.gap='10px';actions.style.flexWrap='wrap';
