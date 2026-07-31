@@ -31,9 +31,14 @@ async function stripeWebhook(req, res) {
         const price = planCents(md.plan);
         const conceptId = md.concept_id && md.concept_id.length ? md.concept_id : null;
         const stripeSubId = event.data.object.subscription || null;
+        // ON CONFLICT keeps this idempotent at the row level: if Stripe delivers the same
+        // checkout event concurrently (both deliveries passing the dedup check before either
+        // records it), the second insert of the same Stripe subscription no-ops instead of
+        // creating a duplicate active subscription for a single payment.
         await query(
           `INSERT INTO subscriptions (user_id, plan, concept_id, status, price_cents, stripe_subscription_id)
-           VALUES ($1,$2,$3,'active',$4,$5)`, [md.user_id, md.plan, conceptId, price, stripeSubId]);
+           VALUES ($1,$2,$3,'active',$4,$5)
+           ON CONFLICT (stripe_subscription_id) DO NOTHING`, [md.user_id, md.plan, conceptId, price, stripeSubId]);
       } else if (md.order_id) {
         await query(
           `UPDATE orders_transfers SET status='in_escrow'
