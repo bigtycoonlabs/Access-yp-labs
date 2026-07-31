@@ -82,6 +82,12 @@ router.post('/engagements', authenticate, [
   const { consultant_id, concept_id } = req.body;
   const c = await query('SELECT approved FROM consultants WHERE user_id=$1', [consultant_id]);
   if (!c.rows.length || !c.rows[0].approved) throw new ApiError(404, 'Consultant not available.');
+  // If the client names a concept, it must be their own — never let an engagement point at
+  // someone else's concept, so a future "share concept with consultant" step can't leak it.
+  if (concept_id) {
+    const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, req.user.id]);
+    if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  }
   const r = await query(
     `INSERT INTO consultant_engagements (client_id, consultant_id, concept_id, state)
      VALUES ($1,$2,$3,'requested') RETURNING *`,
@@ -156,11 +162,18 @@ router.post('/engagements/:id/continue', authenticate, asyncHandler(async (req, 
   res.json({ engagement: r.rows[0] });
 }));
 
-// Client confirms a launch resulted — builds the consultant's portfolio.
+// Client confirms a launch resulted — builds the consultant's portfolio. One-time, and only
+// after a session was actually delivered: the launch count ranks the public directory, so it
+// must not be pumpable by calling this repeatedly or on an engagement where nothing happened.
 router.post('/engagements/:id/confirm-launch', authenticate, asyncHandler(async (req, res) => {
   const e = await loadEngagement(req.params.id, req.user.id, 'client');
   const r = await query(
-    `UPDATE consultant_engagements SET launch_confirmed=true WHERE id=$1 RETURNING *`, [req.params.id]);
+    `UPDATE consultant_engagements SET launch_confirmed=true
+     WHERE id=$1 AND launch_confirmed=false AND state IN ('session_delivered','continued')
+     RETURNING *`, [req.params.id]);
+  if (!r.rows.length) {
+    throw new ApiError(400, 'A launch can only be confirmed once, and only after a session has been delivered.');
+  }
   await query('UPDATE consultants SET successful_launches=successful_launches+1 WHERE user_id=$1', [e.consultant_id]);
   res.json({ engagement: r.rows[0] });
 }));

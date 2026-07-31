@@ -35,6 +35,7 @@ router.post('/', authenticate, [
   body('price_cents').optional().isInt({ min: PRICE_FLOOR_CENTS }),
   body('starting_bid_cents').optional().isInt({ min: PRICE_FLOOR_CENTS }),
   body('stage_label').optional().isIn(['concept', 'in_build', 'prepared_to_start']),
+  body('auction_close_at').optional().isISO8601(),
   body('risk_disclosed').isBoolean(),
   body('ownership_ack').isBoolean(),
 ], asyncHandler(async (req, res) => {
@@ -107,7 +108,7 @@ router.patch('/:id', authenticate, [
   body('starting_bid_cents').optional().isInt({ min: PRICE_FLOOR_CENTS }),
   body('stage_label').optional().isIn(['concept', 'in_build', 'prepared_to_start']),
   body('completion_target').optional().isString().isLength({ max: 200 }),
-  body('auction_close_at').optional(),
+  body('auction_close_at').optional().isISO8601(),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
