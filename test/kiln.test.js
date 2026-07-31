@@ -410,3 +410,42 @@ test('consultant checkout routes the platform fee and consultant cut, honestly u
   // The client pays the full fee; platform fee + consultant cut reconcile to it exactly.
   assert.strictEqual(money.CONSULT_PLATFORM_CENTS + money.CONSULT_CONSULTANT_CENTS, money.CONSULT_FEE_CENTS);
 });
+
+// ---- file ingestion (Clay accepting user files) ----
+test('ingest classifies code, data, text, image, and binary', () => {
+  const ingest = require('../src/lib/ingest');
+  const code = Buffer.from('function hi(){ return 1; }\n', 'utf8');
+  assert.strictEqual(ingest.classify('app.js', 'text/javascript', code), 'code');
+  assert.strictEqual(ingest.classify('data.json', 'application/json', Buffer.from('{"a":1}', 'utf8')), 'data');
+  assert.strictEqual(ingest.classify('notes.md', null, Buffer.from('# Hi', 'utf8')), 'text');
+  // image by mime and by extension
+  assert.strictEqual(ingest.classify('logo.png', 'image/png', Buffer.from([0x89, 0x50, 0x4e, 0x47])), 'image');
+  assert.strictEqual(ingest.classify('pic', 'image/jpeg', Buffer.from([1, 2, 3])), 'image');
+  // real binary (has NUL bytes) -> not readable as text
+  assert.strictEqual(ingest.classify('blob.bin', 'application/octet-stream', Buffer.from([0x00, 0x01, 0x02, 0x00])), 'binary');
+});
+
+test('ingest isProbablyText rejects NUL bytes, accepts clean utf8', () => {
+  const ingest = require('../src/lib/ingest');
+  assert.strictEqual(ingest.isProbablyText(Buffer.from('hello world\n', 'utf8')), true);
+  assert.strictEqual(ingest.isProbablyText(Buffer.from([0x00, 0x41, 0x42])), false);
+  assert.strictEqual(ingest.isProbablyText(Buffer.alloc(0)), false);
+});
+
+test('ingest extractText strips BOM and caps length', () => {
+  const ingest = require('../src/lib/ingest');
+  const withBom = Buffer.from('\uFEFFhello', 'utf8');
+  assert.strictEqual(ingest.extractText(withBom), 'hello');
+  const big = Buffer.from('x'.repeat(ingest.MAX_TEXT_CHARS + 500), 'utf8');
+  const out = ingest.extractText(big);
+  assert.ok(out.length <= ingest.MAX_TEXT_CHARS + 20);
+  assert.ok(out.endsWith('[truncated]'));
+});
+
+test('ingest outcomeLine is honest per read status', () => {
+  const ingest = require('../src/lib/ingest');
+  assert.match(ingest.outcomeLine({ filename: 'a.js', kind: 'code', read_status: 'read', chars: 100 }), /read as code/);
+  assert.match(ingest.outcomeLine({ filename: 'logo.png', read_status: 'described' }), /image and described/);
+  assert.match(ingest.outcomeLine({ filename: 'x.bin', read_status: 'unreadable' }), /without guessing/);
+  assert.match(ingest.outcomeLine({ filename: 'big.zip', skipped: 'too_large' }), /too large/);
+});

@@ -15,6 +15,9 @@
   const promptEl = document.getElementById('prompt');
   const categoryEl = document.getElementById('category');
   const sendBtn = document.getElementById('send');
+  const attachEl = document.getElementById('attach');
+  const attachedEl = document.getElementById('attached');
+  let pendingUploadIds = [];
   let mode = 'create';
   // The concept we're actively working on. Once a concept exists, the next message
   // refines THAT concept (a new version) instead of spawning a fresh one. Cleared
@@ -273,7 +276,13 @@
     try {
       const operatingEl = document.getElementById('operating');
       const operating = mode === 'enhance' && !!(operatingEl && operatingEl.checked);
-      const data = await Kiln.api('/clay/generate', { method: 'POST', body: { mode, category, prompt, operating, concept_id: currentConceptId || undefined } });
+      const body = { mode, category, prompt, operating, concept_id: currentConceptId || undefined };
+      if (pendingUploadIds.length) body.upload_ids = pendingUploadIds.slice();
+      const data = await Kiln.api('/clay/generate', { method: 'POST', body });
+      // Files were handed to this build; clear them so they aren't attached again. (They're
+      // linked to the concept server-side, so future enhancements still see them.)
+      pendingUploadIds = [];
+      if (attachedEl) attachedEl.textContent = '';
       // From here on, keep refining the same concept until they start fresh.
       if (data && data.status === 'answered' && data.concept) { currentConceptId = data.concept.id; setEditingConcept(true); }
       thinking.removeChild(think);
@@ -294,6 +303,58 @@
     }
   }
   sendBtn.addEventListener('click', send);
+
+  // ---- attach files for Clay to use (code, images, graphics, documents) ----
+  function readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => { const s = String(r.result || ''); const i = s.indexOf(','); resolve(i >= 0 ? s.slice(i + 1) : s); };
+      r.onerror = () => reject(new Error('read failed'));
+      r.readAsDataURL(file);
+    });
+  }
+  function renderAttached(data) {
+    if (!attachedEl) return;
+    attachedEl.textContent = '';
+    attachedEl.appendChild(el('p', null, (data && data.message) || 'Files attached.'));
+    const lines = (data && data.summary) || [];
+    if (lines.length) {
+      const ul = el('ul');
+      ul.style.margin = '4px 0 0'; ul.style.paddingLeft = '20px';
+      lines.forEach((t) => ul.appendChild(el('li', 'muted', t)));
+      attachedEl.appendChild(ul);
+    }
+  }
+  if (attachEl) {
+    attachEl.addEventListener('change', async () => {
+      const files = Array.from(attachEl.files || []).slice(0, 10);
+      if (!files.length) return;
+      attachEl.disabled = true;
+      if (attachedEl) attachedEl.textContent = 'Reading your files…';
+      announce('Reading your files…');
+      try {
+        const payload = [];
+        for (const f of files) {
+          // Files over the limit are sent empty so the server reports them as "too large"
+          // by name — the user hears exactly which file didn't make it and why.
+          if (f.size > 6 * 1024 * 1024) { payload.push({ filename: f.name, mime_type: f.type || null, data: '' }); continue; }
+          payload.push({ filename: f.name, mime_type: f.type || null, data: await readFileAsBase64(f) });
+        }
+        const body = { files: payload };
+        if (currentConceptId) body.concept_id = currentConceptId;
+        const data = await Kiln.api('/clay/uploads', { method: 'POST', body });
+        (data.ids || []).forEach((id) => { if (id && pendingUploadIds.indexOf(id) < 0) pendingUploadIds.push(id); });
+        renderAttached(data);
+        announce((data && data.message) || 'Files attached.', true);
+      } catch (e) {
+        if (attachedEl) attachedEl.textContent = 'I couldn’t attach those files. Please try again.';
+        announce('I couldn’t attach those files. Please try again.', true);
+      } finally {
+        attachEl.disabled = false;
+        attachEl.value = ''; // allow re-selecting the same file
+      }
+    });
+  }
 
   // Watch Clay build in real time: poll the build's progress notes and surface each new
   // one as Clay posts it, announced for VoiceOver. If the user steps away, the email

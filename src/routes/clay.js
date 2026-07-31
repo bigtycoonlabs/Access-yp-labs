@@ -18,6 +18,7 @@ const video = require('../services/video');
 const describe = require('../lib/describe');
 const { sendEmail } = require('../services/email');
 const protect = require('../lib/protect');
+const ingest = require('../lib/ingest');
 const router = express.Router();
 
 // Persist a full Clay result: concept (create) or new assets (enhance) + a
@@ -113,14 +114,54 @@ async function persistResult(ownerId, result, { conceptId = null, mode, category
 // wait on the request. The route returns immediately with a "building" message and this
 // runs after — persisting the concept and emailing the finished package (or an honest
 // outcome) when done. It handles and reports its own failures; it must never throw out.
-async function runBuild({ user, mode, category, prompt, operating, conceptId, buildId = null }) {
+// Gather the extracted content of files the user attached — the ones uploaded for THIS build
+// (by id) plus any already attached to the concept being enhanced — dedup by name, and cap
+// the total so a big pile of files can't blow the model's context. Best-effort: a failure
+// here never blocks the build, it just means no source materials this time.
+async function loadClaySources(userId, uploadIds, conceptId) {
+  const ids = Array.isArray(uploadIds)
+    ? uploadIds.filter((x) => typeof x === 'string' && /^[0-9a-f-]{36}$/i.test(x))
+    : [];
+  if (!ids.length && !conceptId) return [];
+  let rows;
+  try {
+    rows = (await query(
+      `SELECT filename, kind, read_status, extracted_text, created_at
+         FROM clay_uploads
+        WHERE user_id=$3
+          AND ( id = ANY($1::uuid[]) OR ($2::uuid IS NOT NULL AND concept_id=$2) )
+        ORDER BY created_at ASC`,
+      [ids, conceptId || null, userId])).rows;
+  } catch (_) { return []; }
+  const seen = new Set();
+  const sources = [];
+  let total = 0;
+  for (const r of rows) {
+    const key = r.filename + '|' + r.kind;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    let text = r.extracted_text || '';
+    if (total + text.length > ingest.MAX_TOTAL_INJECT_CHARS) {
+      text = text.slice(0, Math.max(0, ingest.MAX_TOTAL_INJECT_CHARS - total));
+    }
+    total += text.length;
+    sources.push({ filename: r.filename, kind: r.kind, read_status: r.read_status, text });
+    if (total >= ingest.MAX_TOTAL_INJECT_CHARS) break;
+  }
+  return sources;
+}
+
+async function runBuild({ user, mode, category, prompt, operating, conceptId, buildId = null, uploadIds = [] }) {
   const t0 = Date.now();
   const providerAvailable = provider.available();
   const onProgress = (text) => addBuildNote(buildId, text);
   try {
     // Retrieval grounding: the user's own related prior work (best-effort, never blocks).
     const priorWork = await retrieval.relatedConcepts(user.id, prompt, { limit: 3, excludeId: conceptId || null });
-    const result = await clay.generate({ mode, category, prompt, operating, priorWork, onProgress });
+    // Files the user attached for this build, plus any already attached to the concept
+    // being enhanced — so materials carry forward across enhancements automatically.
+    const sources = await loadClaySources(user.id, uploadIds, conceptId);
+    const result = await clay.generate({ mode, category, prompt, operating, priorWork, sources, onProgress });
     const durationMs = Date.now() - t0;
 
     // Honest non-answer (redirect / refused / unavailable): record it and email the
@@ -156,6 +197,12 @@ async function runBuild({ user, mode, category, prompt, operating, conceptId, bu
 
     await onProgress('Saving your concept and its sections…');
     const concept = await persistResult(user.id, result, { conceptId, mode, category, prompt, operating });
+    // Attach any newly-uploaded files to this concept so they inform future enhancements too.
+    if (uploadIds && uploadIds.length) {
+      await query(
+        'UPDATE clay_uploads SET concept_id=$1 WHERE id = ANY($2::uuid[]) AND user_id=$3 AND concept_id IS NULL',
+        [concept.id, uploadIds, user.id]).catch(() => {});
+    }
     await journal.recordRun({ actorId: user.id, kind: 'generate', mode, category,
       conceptId: concept.id, resultStatus: 'answered', providerAvailable,
       grounded: !!result.research_grounded, sourceCount: result.source_count || 0, durationMs });
@@ -195,17 +242,97 @@ async function runBuild({ user, mode, category, prompt, operating, conceptId, bu
 // POST /api/clay/generate  { mode, category?, prompt, concept_id? }
 // Async by design: a full concept takes 1–3 minutes to write, so we confirm immediately
 // and email the finished package rather than parking the user on a spinner.
+// POST /api/clay/uploads — files the user wants Clay to use (code, images/graphics, docs,
+// any type). We read what we can — text/code directly, images through Clay's vision — and
+// store the EXTRACTED content so it can be folded into generation and enhancement. We never
+// run code, and we never invent the contents of a file we couldn't read.
+router.post('/uploads', authenticate, [
+  body('files').isArray({ min: 1, max: 10 }),
+  body('concept_id').optional().isUUID(),
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  const conceptId = req.body.concept_id || null;
+
+  // If attaching to an existing concept, it must belong to the caller.
+  if (conceptId) {
+    const own = await query('SELECT 1 FROM concepts WHERE id=$1 AND owner_id=$2', [conceptId, req.user.id]);
+    if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  }
+
+  const PER_FILE_BYTES = 6 * 1024 * 1024;   // 6 MB per file
+  const BATCH_BYTES = 9 * 1024 * 1024;      // keep the whole batch under the 10 MB body cap
+  let totalBytes = 0;
+  const out = [];
+
+  for (const f of req.body.files.slice(0, 10)) {
+    const filename = String(f && f.filename ? f.filename : 'file').slice(0, 200);
+    const mime = f && f.mime_type ? String(f.mime_type).slice(0, 120) : null;
+    let buf;
+    try { buf = Buffer.from(String(f && f.data ? f.data : ''), 'base64'); } catch (_) { buf = Buffer.alloc(0); }
+
+    if (!buf.length) { out.push({ filename, skipped: 'empty' }); continue; }
+    if (buf.length > PER_FILE_BYTES) { out.push({ filename, skipped: 'too_large' }); continue; }
+    if (totalBytes + buf.length > BATCH_BYTES) { out.push({ filename, skipped: 'batch_too_large' }); continue; }
+    totalBytes += buf.length;
+
+    const kind = ingest.classify(filename, mime, buf);
+    let extracted = null;
+    let read_status = 'unreadable';
+
+    if (kind === 'image') {
+      // Read the image with Clay's own eyes (vision). Honest on failure — never fabricated.
+      const mediaType = mime && /^image\//i.test(mime) ? mime : 'image/png';
+      const desc = await provider.describeImage({
+        imageBase64: buf.toString('base64'),
+        mediaType,
+        system: 'You are helping a product designer who cannot see. Describe the image precisely and usefully. Never guess at anything not visible.',
+        prompt: 'Describe this image in concrete detail for someone building a product from it: overall layout and structure, every piece of visible text (quote it exactly), colors, UI elements/components, imagery and graphics, and the overall style and mood — everything a designer or developer would need to reproduce it or build on it. If something is unclear, say so rather than guessing.',
+        maxTokens: 900,
+      }).catch(() => ({ ok: false }));
+      if (desc && desc.ok && desc.text) { extracted = String(desc.text).slice(0, ingest.MAX_TEXT_CHARS); read_status = 'described'; }
+    } else if (kind !== 'binary') {
+      extracted = ingest.extractText(buf);
+      read_status = 'read';
+    }
+
+    const ins = await query(
+      `INSERT INTO clay_uploads (user_id, concept_id, filename, mime_type, kind, byte_size, extracted_text, read_status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+      [req.user.id, conceptId, filename, mime, kind, buf.length, extracted, read_status]);
+    out.push({ id: ins.rows[0].id, filename, kind, read_status, chars: extracted ? extracted.length : 0 });
+  }
+
+  const attached = out.filter((o) => o.id);
+  const usable = attached.filter((o) => o.read_status === 'read' || o.read_status === 'described');
+  res.json({
+    uploads: out,
+    ids: attached.map((o) => o.id),
+    summary: out.map((o) => ingest.outcomeLine(o)),
+    message: usable.length
+      ? `Attached ${attached.length} file${attached.length === 1 ? '' : 's'}. Clay will use ${usable.length} of them in what it builds.`
+      : (attached.length
+          ? 'Files attached, but Clay could not read their contents, so it will note them without inventing anything.'
+          : 'Nothing was attached.'),
+  });
+}));
+
+// POST /api/clay/generate  { mode, category?, prompt, concept_id?, upload_ids? }
 router.post('/generate', authenticate, [
   body('mode').isIn(MODES),
   body('category').optional().isIn(CATEGORIES),
   body('prompt').isString().isLength({ min: 3 }),
   body('concept_id').optional().isUUID(),
   body('operating').optional().isBoolean(),
+  body('upload_ids').optional().isArray(),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   const { mode, category, prompt, concept_id } = req.body;
   const operating = !!req.body.operating;
+  const uploadIds = Array.isArray(req.body.upload_ids)
+    ? req.body.upload_ids.filter((x) => typeof x === 'string' && /^[0-9a-f-]{36}$/i.test(x)).slice(0, 10)
+    : [];
 
   // Fast fail: if the builder isn't connected, say so now — no point promising an email.
   if (!provider.available()) {
@@ -221,7 +348,7 @@ router.post('/generate', authenticate, [
   // want (the client polls GET /clay/build/:id). Fire-and-forget: runBuild owns its own
   // errors, so we never await it.
   const buildId = await createBuild(req.user.id, 'Got it — starting your build.');
-  runBuild({ user: req.user, mode, category, prompt, operating, conceptId: concept_id || null, buildId })
+  runBuild({ user: req.user, mode, category, prompt, operating, conceptId: concept_id || null, buildId, uploadIds })
     .catch(() => {});
 
   return res.status(202).json({

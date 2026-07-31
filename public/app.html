@@ -58,6 +58,12 @@
     </select>
     <label for="prompt">Describe your idea or what you want</label>
     <textarea id="prompt" placeholder="For example: a subscription box for left-handed tools, run entirely online."></textarea>
+    <div class="attach-row" style="margin:8px 0;">
+      <label for="attach">Attach files <span class="muted">(optional — code, images, graphics, or documents for Clay to use)</span></label>
+      <input type="file" id="attach" multiple aria-describedby="attach-hint" style="min-height:44px;">
+      <p id="attach-hint" class="muted" style="margin:4px 0 0;">Clay reads code and text directly and looks at images with its vision, then folds whatever you attach into the plan, design, and notes. If it can’t read a file, it says so instead of guessing.</p>
+      <div id="attached" role="status" aria-live="polite" style="margin-top:6px;"></div>
+    </div>
     <div class="actions">
       <button type="button" class="btn" id="send">Send to Clay</button>
     </div>
