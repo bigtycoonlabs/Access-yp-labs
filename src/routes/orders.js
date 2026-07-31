@@ -67,24 +67,25 @@ router.post('/', authenticate, [
   res.status(201).json({ order, checkout });
 }));
 
-// Seller submits proof of shipment for physical-goods concepts.
+// Seller submits proof of shipment for physical-goods concepts. Only AFTER payment is in
+// escrow — never from 'created', or a concept could move without the buyer ever paying.
 router.post('/:id/proof', authenticate, [body('proof_of_shipment').isString().notEmpty()],
   asyncHandler(async (req, res) => {
     const r = await query(
       `UPDATE orders_transfers SET status='proof_submitted', proof_of_shipment=$3
-       WHERE id=$1 AND seller_id=$2 AND status IN ('in_escrow','created') RETURNING *`,
+       WHERE id=$1 AND seller_id=$2 AND status IN ('in_escrow','proof_submitted') RETURNING *`,
       [req.params.id, req.user.id, req.body.proof_of_shipment]);
-    if (!r.rows.length) throw new ApiError(404, 'Order not found.');
+    if (!r.rows.length) throw new ApiError(404, 'Order not found, or not yet paid into escrow.');
     res.json({ order: r.rows[0] });
   }));
 
-// Seller marks the transfer delivered.
+// Seller marks the transfer delivered. Only AFTER payment is in escrow — never from 'created'.
 router.post('/:id/deliver', authenticate, asyncHandler(async (req, res) => {
   const r = await query(
     `UPDATE orders_transfers SET status='delivered', delivered_at=NOW()
-     WHERE id=$1 AND seller_id=$2 AND status IN ('in_escrow','proof_submitted','created') RETURNING *`,
+     WHERE id=$1 AND seller_id=$2 AND status IN ('in_escrow','proof_submitted') RETURNING *`,
     [req.params.id, req.user.id]);
-  if (!r.rows.length) throw new ApiError(404, 'Order not found.');
+  if (!r.rows.length) throw new ApiError(404, 'Order not found, or not yet paid into escrow.');
   res.json({ order: r.rows[0] });
 }));
 
@@ -103,6 +104,7 @@ router.post('/:id/release', authenticate, asyncHandler(async (req, res) => {
       throw new ApiError(400, `Order cannot be released from status "${order.status}".`);
     }
     const l = await client.query('SELECT concept_id FROM listings WHERE id=$1', [order.listing_id]);
+    if (!l.rows.length) throw new ApiError(404, 'The listing for this order no longer exists.');
     const conceptId = l.rows[0].concept_id;
 
     // Clean transfer: buyer owns it, with the first month included; assets lock
@@ -113,10 +115,12 @@ router.post('/:id/release', authenticate, asyncHandler(async (req, res) => {
       [conceptId, order.buyer_id]);
     await client.query('UPDATE assets SET exclusive_locked=true, locked_at=now() WHERE concept_id=$1', [conceptId]);
     await client.query(`UPDATE listings SET status='sold', updated_at=NOW() WHERE id=$1`, [order.listing_id]);
-    // The seller is no longer obligated to pay for a concept they've sold.
-    await client.query(
+    // The seller is no longer obligated to pay for a concept they've sold. Mark the row
+    // canceled here and capture its Stripe id so we can stop the actual billing after commit.
+    const sellerSub = await client.query(
       `UPDATE subscriptions SET status='canceled', updated_at=now()
-       WHERE user_id=$1 AND concept_id=$2 AND plan='maker' AND status='active'`,
+       WHERE user_id=$1 AND concept_id=$2 AND plan='maker' AND status='active'
+       RETURNING stripe_subscription_id`,
       [order.seller_id, conceptId]);
     // The purchase includes one month of Clay Maker on the bought concept, so the
     // buyer can enhance and export it immediately. It's complimentary (no Stripe)
@@ -128,6 +132,18 @@ router.post('/:id/release', authenticate, asyncHandler(async (req, res) => {
     const done = await client.query(
       `UPDATE orders_transfers SET status='released' WHERE id=$1 RETURNING *`, [order.id]);
     await client.query('COMMIT');
+    // Stop the seller's real Stripe billing for the concept they just sold. Post-commit and
+    // best-effort: never hold a DB lock across an external call, and a Stripe hiccup here must
+    // not undo a completed, paid transfer — it's logged for follow-up instead.
+    for (const s of sellerSub.rows) {
+      if (!s.stripe_subscription_id) continue;
+      try {
+        const c = await stripe.cancelSubscription(s.stripe_subscription_id);
+        if (!c.ok && c.reason !== 'stripe_not_configured') {
+          console.error('release: could not cancel seller Stripe sub', s.stripe_subscription_id, '-', c.reason);
+        }
+      } catch (e) { console.error('release: seller Stripe cancel error', s.stripe_subscription_id, '-', e && e.message); }
+    }
     res.json({ order: done.rows[0], transferred_concept: conceptId });
   } catch (e) {
     await client.query('ROLLBACK'); throw e;
