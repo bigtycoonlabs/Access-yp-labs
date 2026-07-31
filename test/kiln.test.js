@@ -324,3 +324,73 @@ test('billingExempt: staff are exempt unless billing_test is set', () => {
   assert.strictEqual(ent.billingExempt({ role: 'user', billing_test: true }), false);
   assert.strictEqual(ent.billingExempt(null), false);
 });
+
+// --- paywall backstop: locked asset bodies must never leave the server for a non-entitled user ---
+test('redactLockedAssets blanks non-preview bodies unless entitled, keeps metadata', () => {
+  const ent = require('../src/lib/entitlement');
+  const assets = [
+    { id: '1', type: 'business_plan', title: 'Plan', body: 'FULL PLAN' },
+    { id: '2', type: 'marketing_strategy', title: 'Mkt', body: 'FULL MKT' },
+    { id: '3', type: 'html_demo', title: 'Demo', body: '<html>' },
+    { id: '4', type: 'customer_research', title: 'Research', body: 'SECRET RESEARCH' },
+    { id: '5', type: 'money_flow', title: 'Money', body: 'SECRET MONEY' },
+  ];
+  const red = ent.redactLockedAssets(assets, false);
+  assert.strictEqual(red[0].body, 'FULL PLAN');   // preview stays
+  assert.strictEqual(red[2].body, '<html>');      // preview stays
+  assert.strictEqual(red[3].body, '');            // locked body blanked
+  assert.strictEqual(red[3].locked, true);
+  assert.strictEqual(red[4].body, '');
+  assert.strictEqual(red[3].id, '4');             // metadata preserved for listing
+  assert.strictEqual(red[3].title, 'Research');
+  const full = ent.redactLockedAssets(assets, true);
+  assert.strictEqual(full[3].body, 'SECRET RESEARCH'); // entitled: nothing redacted
+  assert.strictEqual(full[4].body, 'SECRET MONEY');
+  assert.deepStrictEqual(ent.redactLockedAssets(null, false), []); // null-safe
+});
+
+test('preview types are exactly the four free pieces', () => {
+  const ent = require('../src/lib/entitlement');
+  assert.deepStrictEqual(ent.PREVIEW_TYPES.slice().sort(),
+    ['built_site', 'business_plan', 'html_demo', 'marketing_strategy']);
+  assert.strictEqual(ent.isPreviewType('business_plan'), true);
+  assert.strictEqual(ent.isPreviewType('money_flow'), false);
+});
+
+// --- session cookie: the refresh cookie must be HttpOnly + SameSite, scoped, with a Max-Age ---
+test('setCookie sets HttpOnly, SameSite=Lax, path and max-age', () => {
+  const { setCookie } = require('../src/lib/cookies');
+  const headers = {};
+  const res = { getHeader: (k) => headers[k], setHeader: (k, v) => { headers[k] = v; } };
+  setCookie(res, 'kiln_rt', 'tok123', { path: '/api/auth', maxAge: 60 * 60 * 24 * 30 });
+  const c = headers['Set-Cookie'];
+  const cookie = Array.isArray(c) ? c[0] : c;
+  assert.ok(/kiln_rt=tok123/.test(cookie));
+  assert.ok(/HttpOnly/.test(cookie));
+  assert.ok(/SameSite=Lax/.test(cookie));
+  assert.ok(/Path=\/api\/auth/.test(cookie));
+  assert.ok(/Max-Age=2592000/.test(cookie));
+});
+
+test('setCookie appends multiple cookies rather than clobbering', () => {
+  const { setCookie } = require('../src/lib/cookies');
+  const headers = {};
+  const res = { getHeader: (k) => headers[k], setHeader: (k, v) => { headers[k] = v; } };
+  setCookie(res, 'a', '1', {});
+  setCookie(res, 'b', '2', {});
+  assert.ok(Array.isArray(headers['Set-Cookie']));
+  assert.strictEqual(headers['Set-Cookie'].length, 2);
+});
+
+// --- background sweeps: honest, safe thresholds ---
+test('stale-build threshold sits well beyond any real build', () => {
+  const builds = require('../src/services/builds');
+  assert.strictEqual(typeof builds.sweepStaleBuilds, 'function');
+  assert.ok(builds.STALE_AFTER_MIN >= 8); // model call caps ~3 min; client stops watching ~6 min
+});
+
+test('concept expiry always warns before it expires', () => {
+  const exp = require('../src/services/expiry');
+  assert.ok(exp.REMIND_AFTER_DAYS < exp.EXPIRE_AFTER_DAYS);
+  assert.strictEqual(typeof exp.runExpirySweep, 'function');
+});
