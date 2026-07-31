@@ -98,6 +98,7 @@ CREATE TABLE IF NOT EXISTS yp_labs.subscriptions (
   concept_id  uuid,
   status      text NOT NULL DEFAULT 'active' CHECK (status IN ('active','canceled','past_due')),
   price_cents integer NOT NULL,   -- 299 or 4999
+  cancel_at_period_end boolean NOT NULL DEFAULT false,  -- scheduled to stop renewing; stays active until period end
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 

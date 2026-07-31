@@ -112,12 +112,20 @@ async function createConsultCheckout({ amountCents, feeCents, consultantAccountI
 
 // Cancel a live subscription so billing actually STOPS. Flipping our DB status alone
 // never stops Stripe from charging the card — this does.
-async function cancelSubscription(subscriptionId) {
+async function cancelSubscription(subscriptionId, opts) {
   const s = stripe();
   if (!s) return { ok: false, reason: 'stripe_not_configured' };
+  const atPeriodEnd = !!(opts && opts.atPeriodEnd);
   try {
-    await s.subscriptions.cancel(subscriptionId);
-    return { ok: true };
+    if (atPeriodEnd) {
+      // Stop the renewal but let the person keep the access they've already paid for through
+      // the end of the current billing period. Stripe fires customer.subscription.deleted at
+      // period end, which flips our row to canceled.
+      await s.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
+    } else {
+      await s.subscriptions.cancel(subscriptionId);
+    }
+    return { ok: true, atPeriodEnd };
   } catch (err) {
     // Already-canceled subscriptions report as such — treat that as success (idempotent).
     if (err && /No such subscription|already been canceled|resource_missing/i.test(err.message || '')) {

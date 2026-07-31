@@ -111,14 +111,18 @@
         b.addEventListener('click', async () => {
           if (!armed) {
             armed = true;
-            b.textContent = 'Tap again to confirm — this stops billing';
-            announce('Tap again to confirm canceling ' + label + '. This stops your billing.', true);
+            b.textContent = 'Tap again to confirm — stops the renewal';
+            announce('Tap again to confirm canceling ' + label + '. This stops the renewal — you keep full access until your current period ends.', true);
             return;
           }
           b.disabled = true;
           try {
-            await Kiln.api('/subscriptions/' + sub.id + '/cancel', { method: 'POST' });
-            announce(label + ' canceled. Billing has stopped. Anything you already downloaded is still yours.', true);
+            const r = await Kiln.api('/subscriptions/' + sub.id + '/cancel', { method: 'POST' });
+            if (r && r.ends_at_period_end) {
+              announce(label + ' will end at the close of your current period. You keep full access until then, and anything you\u2019ve downloaded is yours to keep.', true);
+            } else {
+              announce(label + ' canceled. Anything you already downloaded is still yours.', true);
+            }
             loadSubs();
           } catch (e) {
             b.disabled = false; armed = false; b.textContent = 'Cancel ' + label;
@@ -130,7 +134,11 @@
       const sculptor = active.find((s) => s.plan === 'sculptor');
       if (sculptor) {
         c.appendChild(el('p', 'msg ok', 'Sculptor plan active — unlimited concepts ($49.99/month).'));
-        c.appendChild(cancelSubBtn(sculptor, 'Sculptor'));
+        if (sculptor.cancel_at_period_end) {
+          c.appendChild(el('p', 'muted', 'Ending at the close of your current period — you keep full access until then.'));
+        } else {
+          c.appendChild(cancelSubBtn(sculptor, 'Sculptor'));
+        }
         return;
       }
       const makers = active.filter((s) => s.plan === 'maker');
@@ -140,7 +148,11 @@
           const name = m.concept_title ? '“' + m.concept_title + '”' : 'this concept';
           const line = el('div', 'sub-row'); line.style.margin = '6px 0';
           line.appendChild(el('p', 'muted', 'Maker — ' + name + ' ($2.99/month)'));
-          line.appendChild(cancelSubBtn(m, 'Maker for ' + name));
+          if (m.cancel_at_period_end) {
+            line.appendChild(el('p', 'muted', 'Ending at the close of your current period — access continues until then.'));
+          } else {
+            line.appendChild(cancelSubBtn(m, 'Maker for ' + name));
+          }
           c.appendChild(line);
         });
       } else {
