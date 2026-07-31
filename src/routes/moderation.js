@@ -49,8 +49,14 @@ router.post('/:listingId/decide', authenticate, authorize('staff', 'admin', 'mas
   }
   if (listing.status !== 'in_review') throw new ApiError(400, 'Listing is not in review.');
 
+  // Decide atomically: the status guard above can race two moderators, so the write itself is
+  // conditional on the listing still being in review. If someone decided a moment earlier, we
+  // report that cleanly instead of recording a second, conflicting decision.
   const newStatus = decision === 'approved' ? 'live' : 'rejected';
-  await query('UPDATE listings SET status=$2, updated_at=NOW() WHERE id=$1', [listing.id, newStatus]);
+  const upd = await query(
+    "UPDATE listings SET status=$2, updated_at=NOW() WHERE id=$1 AND status='in_review'",
+    [listing.id, newStatus]);
+  if (!upd.rowCount) throw new ApiError(409, 'This listing was just decided by another moderator.');
   const act = await query(
     `INSERT INTO moderation_actions (listing_id, moderator_id, decision, reason, notes)
      VALUES ($1,$2,$3,$4,$5) RETURNING *`,
