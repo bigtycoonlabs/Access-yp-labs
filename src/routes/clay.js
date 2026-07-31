@@ -19,6 +19,7 @@ const describe = require('../lib/describe');
 const { sendEmail } = require('../services/email');
 const protect = require('../lib/protect');
 const ingest = require('../lib/ingest');
+const docextract = require('../lib/docextract');
 const router = express.Router();
 
 // Persist a full Clay result: concept (create) or new assets (enhance) + a
@@ -291,6 +292,12 @@ router.post('/uploads', authenticate, [
         maxTokens: 900,
       }).catch(() => ({ ok: false }));
       if (desc && desc.ok && desc.text) { extracted = String(desc.text).slice(0, ingest.MAX_TEXT_CHARS); read_status = 'described'; }
+    } else if (kind === 'pdf') {
+      const r = await docextract.extractPdf(buf);
+      if (r.ok) { extracted = r.text; read_status = 'read'; } // else honest unreadable (scanned/no text layer)
+    } else if (kind === 'doc') {
+      const r = await docextract.extractDocx(buf);
+      if (r.ok) { extracted = r.text; read_status = 'read'; }
     } else if (kind !== 'binary') {
       extracted = ingest.extractText(buf);
       read_status = 'read';

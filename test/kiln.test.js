@@ -449,3 +449,23 @@ test('ingest outcomeLine is honest per read status', () => {
   assert.match(ingest.outcomeLine({ filename: 'x.bin', read_status: 'unreadable' }), /without guessing/);
   assert.match(ingest.outcomeLine({ filename: 'big.zip', skipped: 'too_large' }), /too large/);
 });
+
+test('ingest classifies pdf (magic + ext) and docx', () => {
+  const ingest = require('../src/lib/ingest');
+  const pdfMagic = Buffer.from('%PDF-1.4\n...', 'utf8');
+  assert.strictEqual(ingest.classify('paper.pdf', 'application/pdf', pdfMagic), 'pdf');
+  assert.strictEqual(ingest.classify('noext', null, pdfMagic), 'pdf'); // magic bytes win
+  assert.strictEqual(ingest.classify('brief.docx',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    Buffer.from([0x50, 0x4b, 0x03, 0x04])), 'doc');
+  // legacy .doc is not extractable -> falls through to binary
+  assert.strictEqual(ingest.classify('old.doc', 'application/msword', Buffer.from([0x00, 0x01, 0x02, 0x00])), 'binary');
+});
+
+test('docextract fails honestly on junk, never throws', async () => {
+  const d = require('../src/lib/docextract');
+  const pdf = await d.extractPdf(Buffer.from('not a pdf'));
+  assert.strictEqual(pdf.ok, false);
+  const doc = await d.extractDocx(Buffer.from('not a docx'));
+  assert.strictEqual(doc.ok, false);
+});

@@ -53,6 +53,10 @@ function classify(filename, mimeType, buf) {
   const e = ext(filename);
   const mime = String(mimeType || '').toLowerCase();
   if (IMAGE_MIME.test(mime) || IMAGE_EXT.has(e)) return 'image';
+  // PDFs and Word docs are binary but we CAN extract their text (handled in the route).
+  if (mime === 'application/pdf' || e === 'pdf'
+      || (buf && buf.length > 4 && buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46)) return 'pdf';
+  if (e === 'docx' || mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return 'doc';
   if (!isProbablyText(buf)) return 'binary'; // content is the real gate
   if (DATA_EXT.has(e)) return 'data';
   if (CODE_EXT.has(e)) return 'code';
