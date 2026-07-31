@@ -1,6 +1,6 @@
 const { query } = require('../config/db');
 const stripe = require('../services/stripe');
-const { planCents } = require('../lib/money');
+const { planCents, CONSULT_FEE_CENTS, CONSULT_PLATFORM_CENTS, CONSULT_CONSULTANT_CENTS } = require('../lib/money');
 
 // Stripe webhook. Mounted with express.raw BEFORE express.json in server.js.
 // Only a verified, real payment moves an order into escrow — we never mark an
@@ -39,6 +39,15 @@ async function stripeWebhook(req, res) {
           `INSERT INTO subscriptions (user_id, plan, concept_id, status, price_cents, stripe_subscription_id)
            VALUES ($1,$2,$3,'active',$4,$5)
            ON CONFLICT (stripe_subscription_id) DO NOTHING`, [md.user_id, md.plan, conceptId, price, stripeSubId]);
+      } else if (md.kind === 'consult' && md.engagement_id) {
+        // The consultant's $120 already routed to their connected account via the destination
+        // charge; record the money as landed and unlock the concept. State-guarded so a
+        // duplicate delivery of this event is a no-op.
+        await query(
+          `UPDATE consultant_engagements
+             SET state='paid', fee_cents=$2, platform_cut_cents=$3, consultant_cut_cents=$4, paid_at=now()
+           WHERE id=$1 AND state='nda_signed'`,
+          [md.engagement_id, CONSULT_FEE_CENTS, CONSULT_PLATFORM_CENTS, CONSULT_CONSULTANT_CENTS]);
       } else if (md.order_id) {
         await query(
           `UPDATE orders_transfers SET status='in_escrow'

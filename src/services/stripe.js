@@ -79,6 +79,37 @@ async function createEscrowCheckout({ amountCents, feeCents, sellerAccountId, or
 }
 
 
+// Consultant session checkout: a destination charge, exactly like a marketplace transfer.
+// The client pays the full fee; the platform's cut is the application fee; the rest is routed
+// to the consultant's own connected account. Same proven money path — consultants get paid
+// through Stripe like any other payee, and the door is open to future paid roles.
+async function createConsultCheckout({ amountCents, feeCents, consultantAccountId, engagementId, email, successUrl, cancelUrl }) {
+  const s = stripe();
+  if (!s) return { ok: false, reason: 'stripe_not_configured' };
+  try {
+    const session = await s.checkout.sessions.create({
+      mode: 'payment',
+      customer_email: email || undefined,
+      line_items: [{ price_data: { currency: 'usd', unit_amount: amountCents,
+        product_data: { name: `YP Labs consultant session #${engagementId}` } }, quantity: 1 }],
+      payment_intent_data: {
+        application_fee_amount: feeCents,
+        transfer_data: { destination: consultantAccountId },
+      },
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: { kind: 'consult', engagement_id: engagementId },
+    });
+    return { ok: true, url: session.url, sessionId: session.id };
+  } catch (err) {
+    console.error('createConsultCheckout FAILED — type:', err && err.type, '| code:', err && err.code,
+      '| param:', err && err.param, '| message:', err && err.message);
+    return { ok: false, reason: 'stripe_error', detail: (err && (err.code || err.type)) || 'unknown',
+      message: 'Could not start checkout with the payment processor, so nothing was charged. Please try again in a moment.' };
+  }
+}
+
+
 // Cancel a live subscription so billing actually STOPS. Flipping our DB status alone
 // never stops Stripe from charging the card — this does.
 async function cancelSubscription(subscriptionId) {
@@ -136,4 +167,4 @@ async function createPlanCheckout({ mode, priceCents, planName, userId, plan, co
   }
 }
 
-module.exports = { configured, constructEvent, createPlanCheckout, cancelSubscription, createConnectedAccount, createAccountLink, retrieveAccount, createEscrowCheckout };
+module.exports = { configured, constructEvent, createPlanCheckout, cancelSubscription, createConnectedAccount, createAccountLink, retrieveAccount, createEscrowCheckout, createConsultCheckout };

@@ -4,6 +4,7 @@ const { query } = require('../config/db');
 const { authenticate, authorize } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { CONSULT_FEE_CENTS, CONSULT_PLATFORM_CENTS, CONSULT_CONSULTANT_CENTS, CONSULT_WINDOW_HOURS } = require('../lib/money');
+const stripe = require('../services/stripe');
 const router = express.Router();
 
 // Apply to become a consultant (application-gated; staff auto-enroll separately).
@@ -124,21 +125,46 @@ router.post('/engagements/:id/nda', authenticate, asyncHandler(async (req, res) 
   res.json({ engagement: r.rows[0], note: 'NDA signed. The concept can now be shared with the consultant.' });
 }));
 
-// Client pays $150. Concept unlocks only after NDA is signed.
+// Client pays $150 — a real Stripe charge. The consultant's $120 is routed to their own
+// connected account and the platform keeps $30, exactly like a marketplace sale. The
+// engagement flips to 'paid' only when the verified webhook confirms the money landed — never
+// on optimism — and the concept unlocks then. We refuse to collect if the consultant has no
+// payout-ready account, so we never take money we can't pay out.
 router.post('/engagements/:id/pay', authenticate, asyncHandler(async (req, res) => {
   const e = await loadEngagement(req.params.id, req.user.id, 'client');
   if (!e.nda_signed_at) throw new ApiError(400, 'Consultant must sign the NDA before payment unlocks the concept.');
-  const r = await query(
-    `UPDATE consultant_engagements
-       SET state='paid', fee_cents=$2, platform_cut_cents=$3, consultant_cut_cents=$4
-     WHERE id=$1 AND state='nda_signed' RETURNING *`,
-    [req.params.id, CONSULT_FEE_CENTS, CONSULT_PLATFORM_CENTS, CONSULT_CONSULTANT_CENTS]);
-  if (!r.rows.length) throw new ApiError(400, 'Engagement is not ready for payment.');
-  res.json({ engagement: r.rows[0], concept_unlocked: true });
+  if (e.state !== 'nda_signed') throw new ApiError(400, 'Engagement is not ready for payment.');
+
+  if (!stripe.configured()) {
+    return res.json({ ok: false, reason: 'stripe_not_configured',
+      message: 'Payments aren’t configured on the platform yet, so nothing was charged.' });
+  }
+  // The consultant must have a payout-ready connected account, or there's nowhere to send their
+  // $120 — never take a client's money we can't pay out.
+  const pa = (await query('SELECT stripe_account_id, kyc_status FROM seller_accounts WHERE user_id=$1', [e.consultant_id])).rows[0];
+  if (!pa || !pa.stripe_account_id || pa.kyc_status !== 'verified') {
+    return res.json({ ok: false, reason: 'consultant_not_payable',
+      message: 'This consultant hasn’t finished setting up payouts yet, so payment can’t be collected. They need to complete payout onboarding first.' });
+  }
+
+  const me = (await query('SELECT email FROM users WHERE id=$1', [req.user.id])).rows[0];
+  const base = (process.env.CLIENT_URL || '').startsWith('https') ? process.env.CLIENT_URL : 'https://accessyplabs.com';
+  const checkout = await stripe.createConsultCheckout({
+    amountCents: CONSULT_FEE_CENTS, feeCents: CONSULT_PLATFORM_CENTS,
+    consultantAccountId: pa.stripe_account_id, engagementId: e.id, email: me && me.email,
+    successUrl: `${base}/dashboard.html?consult=paid`,
+    cancelUrl: `${base}/dashboard.html?consult=canceled`,
+  });
+  if (!checkout.ok) {
+    return res.status(502).json({ ok: false, message: checkout.message || 'Could not start checkout. Nothing was charged.' });
+  }
+  await query('UPDATE consultant_engagements SET payment_ref=$2 WHERE id=$1', [e.id, checkout.sessionId]);
+  res.json({ ok: true, checkout_url: checkout.url });
 }));
 
-// Consultant delivers the session: opens the 12-hour continuation window.
-// The delivering consultant always earns $120 on delivery.
+// Consultant delivers the session: opens the 12-hour continuation window. The consultant's
+// $120 was already routed to their connected account when the client paid (a Stripe
+// destination charge), so delivery is about the client's free-continuation window, not payment.
 router.post('/engagements/:id/deliver', authenticate, asyncHandler(async (req, res) => {
   await loadEngagement(req.params.id, req.user.id, 'consultant');
   const r = await query(
@@ -148,7 +174,7 @@ router.post('/engagements/:id/deliver', authenticate, asyncHandler(async (req, r
      WHERE id=$1 AND state='paid' RETURNING *`,
     [req.params.id, String(CONSULT_WINDOW_HOURS)]);
   if (!r.rows.length) throw new ApiError(400, 'Engagement must be paid before a session is delivered.');
-  res.json({ engagement: r.rows[0], consultant_earns_cents: CONSULT_CONSULTANT_CENTS });
+  res.json({ engagement: r.rows[0] });
 }));
 
 // Client continues free with the same consultant within the 12-hour window.

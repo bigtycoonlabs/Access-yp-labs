@@ -71,7 +71,7 @@
     try {
       const s = await Kiln.api('/sellers/status');
       if (!s.stripe_configured) { empty(c, 'Payouts are not configured on the platform yet. You can still create and list concepts; buyers can transact once payouts are enabled.'); return; }
-      if (s.onboarded && s.kyc_status === 'verified') { c.appendChild(el('p', 'msg ok', 'Payouts are ready. You can receive funds from sales.')); return; }
+      if (s.onboarded && s.kyc_status === 'verified') { c.appendChild(el('p', 'msg ok', 'Payouts are ready. You can receive funds from concept sales and from consultant sessions.')); return; }
       if (s.onboarded) {
         c.appendChild(el('p', null, 'Payout setup is in progress.'));
         c.appendChild(actionBtn('Refresh payout status', () => run(Kiln.api('/sellers/refresh', { method: 'POST' }), 'Refreshed.', loadPayouts), true));
@@ -81,7 +81,7 @@
         }));
         return;
       }
-      c.appendChild(el('p', null, 'Set up payouts so you can sell concepts and receive funds.'));
+      c.appendChild(el('p', null, 'Set up payouts so you can receive funds — from selling concepts and from consultant sessions you deliver.'));
       c.appendChild(actionBtn('Set up payouts', async () => {
         const r = await Kiln.api('/sellers/onboard', { method: 'POST' });
         if (r.url) location.href = r.url; else announce(r.message || 'Payouts are not configured yet.', true);
@@ -270,6 +270,19 @@
   }
 
   // ---------- Consultant engagements ----------
+  // Booking a consultant is a real Stripe charge: /pay returns a hosted checkout URL, and we
+  // send the client there. If the consultant hasn't set up payouts (or Stripe isn't configured),
+  // the server says so honestly and we surface that instead of charging anything.
+  async function payForSession(id) {
+    const res = await Kiln.api('/consultants/engagements/' + id + '/pay', { method: 'POST' });
+    if (res && res.ok && res.checkout_url) {
+      announce('Taking you to secure checkout.', true);
+      window.location.href = res.checkout_url;
+      return;
+    }
+    throw new Error((res && res.message) || 'Payment could not be started right now.');
+  }
+
   async function loadEngagements() {
     const c = document.getElementById('engagements'); c.innerHTML = '';
     try {
@@ -285,7 +298,7 @@
           if (e.state === 'accepted') A.appendChild(actionBtn('Sign NDA (required before concept is shared)', () => run(Kiln.api('/consultants/engagements/' + e.id + '/nda', { method: 'POST' }), 'NDA signed.', loadEngagements)));
           if (e.state === 'paid') A.appendChild(actionBtn('Mark session delivered', () => run(Kiln.api('/consultants/engagements/' + e.id + '/deliver', { method: 'POST' }), 'Session delivered.', loadEngagements)));
         } else {
-          if (e.state === 'nda_signed') A.appendChild(actionBtn('Pay $150 to unlock the session', () => run(Kiln.api('/consultants/engagements/' + e.id + '/pay', { method: 'POST' }), 'Paid. Concept unlocked to your consultant.', loadEngagements)));
+          if (e.state === 'nda_signed') A.appendChild(actionBtn('Pay $150 for this session', () => payForSession(e.id)));
           if (e.state === 'session_delivered') {
             A.appendChild(actionBtn('Continue (free, within 12 hours)', () => run(Kiln.api('/consultants/engagements/' + e.id + '/continue', { method: 'POST' }), 'Continuing with your consultant.', loadEngagements), true));
             A.appendChild(actionBtn('Confirm a launch resulted', () => run(Kiln.api('/consultants/engagements/' + e.id + '/confirm-launch', { method: 'POST' }), 'Launch confirmed.', loadEngagements), true));

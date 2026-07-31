@@ -394,3 +394,19 @@ test('concept expiry always warns before it expires', () => {
   assert.ok(exp.REMIND_AFTER_DAYS < exp.EXPIRE_AFTER_DAYS);
   assert.strictEqual(typeof exp.runExpirySweep, 'function');
 });
+
+// --- consultants get paid through Stripe: the checkout seam degrades honestly ---
+test('consultant checkout routes the platform fee and consultant cut, honestly unavailable with no key', async () => {
+  const stripe = require('../src/services/stripe');
+  const money = require('../src/lib/money');
+  assert.strictEqual(typeof stripe.createConsultCheckout, 'function');
+  // With no Stripe key configured it must report not-configured, never pretend to charge.
+  const r = await stripe.createConsultCheckout({
+    amountCents: money.CONSULT_FEE_CENTS, feeCents: money.CONSULT_PLATFORM_CENTS,
+    consultantAccountId: 'acct_test', engagementId: 'eng_test',
+  });
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(r.reason, 'stripe_not_configured');
+  // The client pays the full fee; platform fee + consultant cut reconcile to it exactly.
+  assert.strictEqual(money.CONSULT_PLATFORM_CENTS + money.CONSULT_CONSULTANT_CENTS, money.CONSULT_FEE_CENTS);
+});
