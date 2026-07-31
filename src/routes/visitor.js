@@ -83,17 +83,33 @@ router.post('/spark', asyncHandler(async (req, res) => {
   if (idea.length < 3) throw new ApiError(400, 'Tell me a little more about the idea.');
   if (idea.length > 2000) throw new ApiError(400, "That's a lot — give me the heart of it in a sentence or two.");
 
-  await query('INSERT INTO visitors (token) VALUES ($1) ON CONFLICT (token) DO NOTHING', [token]);
+  await query('INSERT INTO visitors (token, ip_hash) VALUES ($1,$2) ON CONFLICT (token) DO UPDATE SET ip_hash=COALESCE(EXCLUDED.ip_hash, visitors.ip_hash)', [token, ipHash(req)]);
   const today = new Date().toISOString().slice(0, 10);
-  const v = await query('SELECT taste_count, taste_day FROM visitors WHERE token=$1', [token]);
+  const v = await query('SELECT taste_count, taste_day, ip_hash FROM visitors WHERE token=$1', [token]);
   let used = v.rows[0] ? v.rows[0].taste_count : 0;
   const day = v.rows[0] && v.rows[0].taste_day ? new Date(v.rows[0].taste_day).toISOString().slice(0, 10) : null;
   if (day !== today) used = 0;
 
+  // Per-IP daily cap on teaser GENERATION. The per-token count above resets if a visitor
+  // rotates their cookie, so without this one source could run up unlimited LLM cost by
+  // clearing the cookie between requests. Summed across every token sharing this IP hash for
+  // today; generous enough for shared networks, a hard ceiling on the common abuse. (A
+  // determined attacker can still spoof X-Forwarded-For; the global IP rate limiter is the
+  // outer bound for that.)
+  const ipH = v.rows[0] ? v.rows[0].ip_hash : null;
+  let ipUsed = 0;
+  if (ipH) {
+    const ipRow = await query(
+      'SELECT COALESCE(SUM(taste_count),0)::int AS n FROM visitors WHERE ip_hash=$1 AND taste_day=$2',
+      [ipH, today]);
+    ipUsed = ipRow.rows[0] ? ipRow.rows[0].n : 0;
+  }
+  const IP_DAILY_CAP = 30;
+
   const t0 = Date.now();
   const providerAvailable = provider.available();
   let teaser = null;
-  if (used < 5 && providerAvailable) {
+  if (used < 5 && ipUsed < IP_DAILY_CAP && providerAvailable) {
     teaser = await shapeTeaser(idea);
     if (teaser) await query('UPDATE visitors SET taste_count=$2, taste_day=$3 WHERE token=$1', [token, used + 1, today]);
   }
