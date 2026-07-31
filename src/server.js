@@ -103,6 +103,15 @@ if (require.main === module) {
       .catch((e) => console.error('expiry sweep error:', e && e.message));
     setTimeout(sweep, 60 * 1000); // once, a minute after boot
     setInterval(sweep, DAY_MS);   // then daily
+
+    // Stale-build sweep: fail builds orphaned in 'building' by a restart and email the person
+    // the honest outcome, so no one is left waiting on a concept that will never arrive.
+    const { sweepStaleBuilds } = require('./services/builds');
+    const buildSweep = () => sweepStaleBuilds()
+      .then((r) => { if (r && r.stale_failed) console.log('stale build sweep:', JSON.stringify(r)); })
+      .catch((e) => console.error('stale build sweep error:', e && e.message));
+    setTimeout(buildSweep, 90 * 1000);           // shortly after boot
+    setInterval(buildSweep, 5 * 60 * 1000);      // then every 5 minutes
   }
 }
 module.exports = app;
