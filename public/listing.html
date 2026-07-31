@@ -30,7 +30,7 @@ function dreamHero(listing){
   box.appendChild(el('p',null,
     '“'+listing.title+'” is a '+cat+' business that Clay shaped end to end before it exists — the plan, the market and competitor research, the marketing, and a working demo, all already built out. It isn’t a template or a course. It’s the whole business, waiting for an owner.'));
   box.appendChild(el('p',null,
-    'Picture it live: a '+cat+' business with your name on it, up and running — one you didn’t have to dream up, research, or prove from a blank page, because that work is done. Claim it and it’s yours, exclusively, to build the rest of the way and run. Here’s exactly what it is and what it does:'));
+    'Picture it live: a '+cat+' business with your name on it, up and running — one you didn’t have to dream up, research, or prove from a blank page, because that work is done. Claim it below and it’s yours, exclusively, to build the rest of the way and run — or take the deeper look first: the demo, what’s inside, and what to know before you claim.'));
   return box;
 }
 
@@ -130,12 +130,10 @@ async function load(){
 
     const pb=window.proofBadge(listing,{full:true}); if(pb) detail.appendChild(pb);
 
-    loadPreview(detail);
-
-    await renderWaitlist(detail, listing.concept_id, id);
-
     if(!Kiln.isLoggedIn()){
       const back=encodeURIComponent(location.pathname+location.search);
+      loadPreview(detail);
+      await renderWaitlist(detail, listing.concept_id, id);
       const rp0=riskPanel(listing); if(rp0) detail.appendChild(rp0);
       const box=el('div','panel');
       box.appendChild(el('p',null,'This is a concept from the Dreamhold — a business you can own and build before it exists. Create a free account to claim it, place a bid, or follow it before it launches.'));
@@ -147,27 +145,8 @@ async function load(){
       announce('This concept is open to view. Create a free account to claim it, bid, or follow it before it launches.');
       return;
     }
-    renderPreviews(detail, id);
-    renderDemoDescription(detail, id);
-
-    // Now the fine print — clearly, but after you know what the dream is and does.
-    const rp=riskPanel(listing); if(rp) detail.appendChild(rp);
-
-    // Watch (always available)
-    const actions=el('div','actions');actions.style.display='flex';actions.style.gap='10px';actions.style.flexWrap='wrap';
-    const watch=el('button','btn secondary','Add to watchlist');watch.type='button';
-    watch.addEventListener('click',async()=>{try{await Kiln.api('/watches/'+id,{method:'POST'});announce('Added to your watchlist.',true);watch.textContent='On your watchlist';watch.disabled=true;}catch(e){announce(e.message,true);}});
-    const report=el('button','btn secondary','Report this listing');report.type='button';
-    report.addEventListener('click',async()=>{
-      const reason=window.prompt('Why are you reporting this listing? (policy concern, fraud, etc.)');
-      if(!reason)return;
-      try{await Kiln.api('/reports',{method:'POST',body:{target_type:'listing',target_id:id,reason}});announce('Thank you — staff will review this.',true);}
-      catch(e){announce(e.message,true);}
-    });
-    actions.appendChild(report);
-
+    // The claim/purchase action lives right here, up front, inside the listing — one tap starts it.
     if(isAuction && !closed){
-      // Bid form
       const bidWrap=el('div','panel');bidWrap.appendChild(el('h2',null,'Place a bid'));
       const bl=el('label',null,'Your bid in US dollars (must beat the current high)');bl.setAttribute('for','bid');
       const bi=el('input');bi.id='bid';bi.type='number';bi.min='50';bi.step='1';
@@ -184,19 +163,39 @@ async function load(){
         }catch(e){bout.appendChild(el('p','msg err',e.message));announce(e.message,true);bb.disabled=false;}
       });
       [bl,bi,bb,bout].forEach(n=>bidWrap.appendChild(n));detail.appendChild(bidWrap);
-      actions.appendChild(watch);detail.appendChild(actions);
-      return;
+    }else{
+      const buy=el('button','btn', isAuction?'Complete auction purchase (winner only)':'Claim this dream');buy.type='button';
+      buy.addEventListener('click',()=>openBuy(listing));
+      const bp=el('p');bp.id='claim-anchor';bp.style.margin='4px 0 12px';bp.appendChild(buy);detail.appendChild(bp);
     }
 
-    // Flat listing, or closed auction: allow purchase (backend gates auction winner).
-    const buy=el('button','btn', isAuction?'Complete auction purchase (winner only)':'Claim this dream');buy.type='button';
-    buy.addEventListener('click',()=>openBuy(listing));
-    actions.appendChild(buy);actions.appendChild(watch);detail.appendChild(actions);
+    // Then the deeper look — what it does and what's inside. Optional; you can already claim above.
+    loadPreview(detail);
+    renderPreviews(detail, id);
+    renderDemoDescription(detail, id);
+    await renderWaitlist(detail, listing.concept_id, id);
+
+    // The fine print — on the page here, and re-shown at the moment you claim.
+    const rp=riskPanel(listing); if(rp) detail.appendChild(rp);
+
+    // Secondary actions.
+    const actions=el('div','actions');actions.style.display='flex';actions.style.gap='10px';actions.style.flexWrap='wrap';
+    const watch=el('button','btn secondary','Add to watchlist');watch.type='button';
+    watch.addEventListener('click',async()=>{try{await Kiln.api('/watches/'+id,{method:'POST'});announce('Added to your watchlist.',true);watch.textContent='On your watchlist';watch.disabled=true;}catch(e){announce(e.message,true);}});
+    const report=el('button','btn secondary','Report this listing');report.type='button';
+    report.addEventListener('click',async()=>{
+      const reason=window.prompt('Why are you reporting this listing? (policy concern, fraud, etc.)');
+      if(!reason)return;
+      try{await Kiln.api('/reports',{method:'POST',body:{target_type:'listing',target_id:id,reason}});announce('Thank you — staff will review this.',true);}
+      catch(e){announce(e.message,true);}
+    });
+    actions.appendChild(watch);actions.appendChild(report);detail.appendChild(actions);
   }catch(e){statusEl.textContent='Could not load this listing: '+e.message;}
 }
 function openBuy(listing){
   const f=el('div','panel');f.appendChild(el('h2',null,'Complete your purchase'));
   f.appendChild(el('p','muted','This is a neutral, escrowed transfer. All sales are final — there are no refunds.'));
+  if(listing.risk_summary){f.appendChild(el('p','muted','Before you confirm — regulatory & licensing risk:'));f.appendChild(el('p',null,listing.risk_summary));}
   const mk=(txt)=>{const w=el('label');w.style.fontWeight='400';const c=el('input');c.type='checkbox';c.style.width='auto';c.style.minHeight='auto';c.style.marginRight='10px';w.appendChild(c);w.appendChild(document.createTextNode(' '+txt));f.appendChild(w);return c;}
   const a1=mk('I accept the transfer agreement.');
   const a2=mk('I acknowledge the risk in this concept.');
@@ -214,8 +213,10 @@ function openBuy(listing){
       announce('Order created. Awaiting seller payout onboarding.',true);
     }catch(e){out.appendChild(el('p','msg err',e.message));announce(e.message,true);go.disabled=false;}
   });
-  f.appendChild(go);f.appendChild(out);detail.appendChild(f);
-  focusEl(f.querySelector('h2'),'Purchase form opened.');
+  f.appendChild(go);f.appendChild(out);
+  const anchor=document.getElementById('claim-anchor');
+  if(anchor&&anchor.parentNode){anchor.parentNode.insertBefore(f,anchor.nextSibling);}else{detail.appendChild(f);}
+  focusEl(f.querySelector('h2'),'Purchase started — complete it below.');
 }
 async function renderDemoDescription(container, listingId){
   let desc=null;

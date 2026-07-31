@@ -59,12 +59,10 @@ function renderCard(l,into,leaping){
   const price=l.format==='auction'?('Auction from '+money(l.starting_bid_cents)):money(l.price_cents);
   c.innerHTML=(leaping?'<p class="muted" style="margin:0 0 4px;color:#8ce0ff;">A dream leaning toward you</p>':'')+
     '<h3>'+esc(l.title)+'</h3>'+
-    '<p class="muted">'+esc((l.category||'').replace(/_/g,' '))+' · '+esc((l.stage_label||'').replace(/_/g,' '))+' · by '+esc(l.seller_alias)+'</p>'+
-    (l.risk_summary?'<p class="muted"><strong>Risk noted:</strong> '+esc(l.risk_summary)+'</p>':'')+
+    '<p class="muted">'+esc((l.category||'').replace(/_/g,' '))+' · '+esc((l.stage_label||'').replace(/_/g,' '))+'</p>'+
     '<p class="price">'+price+'</p>';
-  const pb=window.proofBadge(l); if(pb) c.appendChild(pb);
   const a=document.createElement('a');a.className='btn';a.href='/listing.html?id='+encodeURIComponent(l.id);
-  a.textContent=leaping?'Claim this dream':'View details'; c.appendChild(a); into.appendChild(c);
+  a.textContent='Check it out'; c.appendChild(a); into.appendChild(c);
 }
 async function loadLeaping(){
   if(!Kiln.isLoggedIn())return;
