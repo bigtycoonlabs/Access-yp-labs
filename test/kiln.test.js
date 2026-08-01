@@ -941,3 +941,33 @@ test('worked_example is a real, read-only tool in the spine', () => {
   assert.ok(t && !t.irreversible && !t.requires_confirmation, 'read-only, no confirmation');
   assert.ok(t.required.includes('topic'));
 });
+
+// ── Derived memory patterns: grounded facts, never psychoanalysis or nagging ─
+const mem = require('../src/services/clay/memory');
+
+test('focusCategory only names a clear plurality, never a tie or a lone concept', () => {
+  assert.strictEqual(mem.focusCategory([{ category: 'remote_service', n: 3 }, { category: 'saas', n: 1 }]), 'remote_service');
+  assert.strictEqual(mem.focusCategory([{ category: 'a', n: 2 }, { category: 'b', n: 2 }]), null, 'a tie is not a focus');
+  assert.strictEqual(mem.focusCategory([{ category: 'a', n: 1 }]), null, 'one concept is not a pattern');
+  assert.strictEqual(mem.focusCategory([]), null);
+});
+
+test('a brand-new builder with no concepts yields no pattern context', () => {
+  assert.strictEqual(mem.renderPatterns({ conceptCount: 0 }), '');
+  assert.strictEqual(mem.renderPatterns(null), '');
+});
+
+test('patterns render as neutral facts, and say NOT to read motivation or nag', () => {
+  const out = mem.renderPatterns({ conceptCount: 4, categoryFocus: 'remote_service', listedCount: 1, operatingCount: 0, daysSinceLastActive: 3, accountAgeDays: 40 });
+  assert.ok(/4 concepts/.test(out), 'states the real count');
+  assert.ok(/remote service/.test(out), 'names the category focus in plain words');
+  assert.ok(/1 put on the Dreamhold/.test(out), 'notes what they listed');
+  assert.ok(/do NOT read motivation/i.test(out) && /never nag/i.test(out), 'guards against psychoanalysis and nagging');
+});
+
+test('staleness is only surfaced after a real gap, not for an active builder', () => {
+  const active = mem.renderPatterns({ conceptCount: 2, categoryFocus: null, listedCount: 0, operatingCount: 0, daysSinceLastActive: 3 });
+  assert.ok(!/days since/.test(active), 'no staleness note for a recently-active builder');
+  const stale = mem.renderPatterns({ conceptCount: 2, categoryFocus: null, listedCount: 0, operatingCount: 0, daysSinceLastActive: 30 });
+  assert.ok(/30 days since they last opened/.test(stale), 'surfaces a real gap plainly');
+});

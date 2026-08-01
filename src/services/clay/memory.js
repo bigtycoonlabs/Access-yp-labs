@@ -96,6 +96,71 @@ function renderMemoryContext(items) {
   );
 }
 
+// ── Derived patterns (read-only signals from real work) ────────────────────
+// Facts computed from the builder's actual concepts — how many, which category they concentrate
+// in, what they've listed or are operating — so Clay stays relevant and picks up where they are.
+// These are grounded in real rows, never psychoanalysis: Clay is told to use them for relevance,
+// not to read motivation into them and never to nag.
+
+function daysSince(ts) {
+  if (!ts) return null;
+  return Math.floor((Date.now() - new Date(ts).getTime()) / 86400000);
+}
+
+// A CLEAR focus is a single category that is both the most common and strictly ahead of the next —
+// a tie or a lone concept is not a pattern, so we say nothing rather than overclaim one.
+function focusCategory(categoryCounts) {
+  if (!Array.isArray(categoryCounts) || !categoryCounts.length) return null;
+  const top = categoryCounts[0];
+  if (!top || top.n < 2) return null;
+  const next = categoryCounts[1];
+  return (!next || top.n > next.n) ? top.category : null;
+}
+
+async function getPatterns(userId) {
+  if (!userId) return null;
+  const agg = await query(
+    `SELECT
+       (SELECT count(*)::int FROM concepts WHERE owner_id=$1) AS concept_count,
+       (SELECT count(*)::int FROM concepts WHERE owner_id=$1 AND is_operating=true) AS operating_count,
+       (SELECT count(*)::int FROM listings WHERE seller_id=$1 AND status <> 'withdrawn') AS listed_count,
+       (SELECT max(GREATEST(COALESCE(last_opened_at, to_timestamp(0)), updated_at)) FROM concepts WHERE owner_id=$1) AS last_active,
+       (SELECT created_at FROM users WHERE id=$1) AS created_at`,
+    [userId]);
+  const cats = await query(
+    `SELECT category, count(*)::int AS n FROM concepts WHERE owner_id=$1 AND category IS NOT NULL GROUP BY category ORDER BY n DESC`,
+    [userId]);
+  const row = agg.rows[0] || {};
+  const categoryCounts = cats.rows.map((r) => ({ category: r.category, n: r.n }));
+  return {
+    conceptCount: row.concept_count || 0,
+    operatingCount: row.operating_count || 0,
+    listedCount: row.listed_count || 0,
+    categoryFocus: focusCategory(categoryCounts),
+    categoryCounts,
+    daysSinceLastActive: daysSince(row.last_active),
+    accountAgeDays: daysSince(row.created_at) || 0,
+  };
+}
+
+// Render the patterns as neutral context. Nothing to say for a brand-new builder with no concepts.
+function renderPatterns(p) {
+  if (!p || !p.conceptCount) return '';
+  const bits = [`They have ${p.conceptCount} concept${p.conceptCount === 1 ? '' : 's'} in their Laboratory`];
+  if (p.categoryFocus) bits.push(`concentrated in ${String(p.categoryFocus).replace(/_/g, ' ')}`);
+  if (p.listedCount) bits.push(`${p.listedCount} put on the Dreamhold`);
+  if (p.operatingCount) bits.push(`${p.operatingCount} already operating`);
+  let facts = bits.join(', ') + '.';
+  if (p.daysSinceLastActive != null && p.daysSinceLastActive >= 14) {
+    facts += ` It's been about ${p.daysSinceLastActive} days since they last opened one.`;
+  }
+  return (
+    'THE SHAPE OF THEIR WORK SO FAR (derived from their real concepts — use it to stay relevant, ' +
+    'lean into what they care about, and pick up where they are; do NOT read motivation into it, ' +
+    'and never nag):\n' + facts
+  );
+}
+
 module.exports = {
   getMemories,
   rememberFact,
@@ -103,6 +168,9 @@ module.exports = {
   clearMemory,
   redactedMemoryForAdmin,
   renderMemoryContext,
+  focusCategory,
+  getPatterns,
+  renderPatterns,
   KEY_MAX,
   VALUE_MAX,
 };
