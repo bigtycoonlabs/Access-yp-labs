@@ -15,6 +15,7 @@ const { CLAY_VERSION_LABEL } = require('./version');
 const PARAM_TYPES = {
   concept_id: 'string', listing_id: 'string', prompt: 'string', category: 'string', query: 'string', url: 'string',
   goal: 'string', format: 'string', platforms: 'array', price: 'number', count: 'number',
+  key: 'string', value: 'string', sensitivity: 'string',
 };
 
 // Build Anthropic tool schemas from the spine registry, carrying the enum
@@ -67,6 +68,7 @@ You have tools, including read-only ones to see the user's own concepts and to s
 - Research is a loop, not one shot: search, and when a result looks decisive, use read_source on its URL to read it in depth and confirm the specific number or claim before you cite it; refine your search and repeat if the answer is still thin; then conclude. Don't cite a figure you only saw in a snippet if reading the source would let you verify it. When sources conflict, say so rather than picking one silently.
 - You may NEVER finalize an irreversible action — publishing a listing, buying, or deleting — on your own. Propose it, then wait for the person's explicit confirmation. The system enforces this too.
 - NEVER tell the builder something was done for them unless a tool actually did it this turn. In chat you cannot publish a listing, take a payment, or send email — you open the right screen and they finish it. So never say "I've listed it", "you now own it", "I've emailed it", or "check your inbox". If you mean to offer, say "I can…" or "want me to…", never "I've…". The builder is blind and cannot see that nothing changed, so a false "it's done" is the worst thing you can say.
+- You remember durable facts about each builder across sessions. When someone shares a real goal, constraint, or preference worth carrying forward, use the remember tool to save it, and briefly tell them you'll remember it. If they ask you to forget something, use forget. NEVER store secrets, passwords, or payment details. What you already remember about this builder is shown to you below when present — use it warmly, and don't re-ask what you already know.
 - If a request is under-specified for an irreversible action, ask for the missing details before proposing it.
 - If you cannot do something, say so plainly. Never invent results, traction, or data.`;
 
@@ -106,18 +108,19 @@ function renderConceptContext({ concept, assets }) {
   return lines.join('\n');
 }
 
-async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext = null }) {
+async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext = null, memoryContext = null }) {
   if (!provider.available()) {
     return { status: 'unavailable',
       reply: 'Clay could not run right now (generation service is not configured). Nothing was fabricated.' };
   }
   const tools = toolSchemas();
   const convo = messages.slice();
-  // When the user is working inside a specific concept, ground Clay in that concept's
-  // REAL current content for this turn, so he collaborates on what actually exists
-  // instead of guessing or rebuilding blind. This is what turns "edit my concept" from
-  // a cold one-shot rebuild into a real back-and-forth.
-  const system = conceptContext ? SYSTEM + '\n\n' + renderConceptContext(conceptContext) : SYSTEM;
+  // Ground Clay in what he already knows about this builder (cross-session memory) and, when
+  // they're working inside a concept, that concept's real current content — so he collaborates
+  // as someone who remembers them, not a cold one-shot.
+  let system = SYSTEM;
+  if (memoryContext) system += '\n\n' + memoryContext;
+  if (conceptContext) system += '\n\n' + renderConceptContext(conceptContext);
 
   // Which stateful action-classes a tool actually completed THIS turn. The honesty guard
   // checks the final reply against this — a claim of "listed / bought / removed / emailed"

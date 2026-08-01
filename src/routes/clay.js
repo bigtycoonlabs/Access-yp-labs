@@ -14,6 +14,7 @@ const { conceptEntitlement, redactLockedAssets } = require('../lib/entitlement')
 const agent = require('../services/clay/agent');
 const research = require('../services/clay/research');
 const { CLAY_VERSION, CLAY_VERSION_LABEL } = require('../services/clay/version');
+const memory = require('../services/clay/memory');
 const image = require('../services/image');
 const video = require('../services/video');
 const describe = require('../lib/describe');
@@ -599,6 +600,16 @@ function buildExecutors(user) {
       await persistResult(user.id, result, { conceptId: concept_id, mode: 'enhance', category: null, prompt: 'social:' + goal });
       return { status: 'answered', concept_id, coverage: result.coverage, message: result.message };
     },
+    remember: async ({ key, value, sensitivity }) => {
+      const ok = await memory.rememberFact(user.id, key, value, { sensitivity, source: 'builder_said' });
+      return ok
+        ? { status: 'remembered', key: String(key || '').trim().slice(0, memory.KEY_MAX) }
+        : { status: 'error', message: 'Nothing to remember — give me a short key and the fact.' };
+    },
+    forget: async ({ key }) => {
+      const ok = await memory.forgetFact(user.id, key);
+      return ok ? { status: 'forgotten', key } : { status: 'not_found', key };
+    },
   };
 }
 
@@ -623,7 +634,9 @@ router.post('/chat', authenticate, [
       conceptContext = { concept: c.rows[0], assets: redactLockedAssets(a.rows, !!ent.entitled) };
     }
   }
-  const out = await agent.runChat({ messages: req.body.messages, executors: buildExecutors(req.user), conceptContext });
+  const mems = await memory.getMemories(req.user.id).catch(() => []);
+  const memoryContext = memory.renderMemoryContext(mems);
+  const out = await agent.runChat({ messages: req.body.messages, executors: buildExecutors(req.user), conceptContext, memoryContext });
   // Tell the client what happened this turn: a background rebuild it can watch, or a
   // synchronous concept change it should refresh (new asset versions have new ids).
   const outcome = chatOutcomeFromTranscript(out.messages);
@@ -656,6 +669,10 @@ router.post('/chat/confirm', authenticate, [
     const r = await query('DELETE FROM concepts WHERE id=$1 AND owner_id=$2 RETURNING id', [params.concept_id, req.user.id]);
     if (!r.rows.length) throw new ApiError(404, 'Concept not found.');
     return res.json({ status: 'done', message: 'Concept deleted.' });
+  }
+  if (tool === 'clear_memory') {
+    const n = await memory.clearMemory(req.user.id);
+    return res.json({ status: 'done', message: `Cleared ${n} remembered ${n === 1 ? 'fact' : 'facts'}. I'll start fresh.` });
   }
   const exec = buildExecutors(req.user)[tool];
   if (exec) return res.json({ status: 'done', result: await exec(params) });

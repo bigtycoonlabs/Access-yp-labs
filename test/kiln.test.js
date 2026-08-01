@@ -638,3 +638,34 @@ test('Clay version is a single source of truth and labelled', () => {
   assert.strictEqual(CLAY_VERSION_LABEL, 'Clay ' + CLAY_VERSION);
   assert.ok(/^\d+\.\d+/.test(CLAY_VERSION), 'version is a number');
 });
+
+// ── Cross-session memory (ported from Arbo's memory layer) ──────────────────
+const memory = require('../src/services/clay/memory');
+
+test('renderMemoryContext turns facts into a grounding block, empty when none', () => {
+  assert.strictEqual(memory.renderMemoryContext([]), '');
+  const block = memory.renderMemoryContext([
+    { key: 'goal', value: 'launch a sober-living directory', sensitivity: 'normal' },
+    { key: 'city', value: 'Atlanta', sensitivity: 'normal' },
+  ]);
+  assert.ok(/WHAT YOU REMEMBER/.test(block));
+  assert.ok(/goal: launch a sober-living directory/.test(block));
+  assert.ok(/city: Atlanta/.test(block));
+});
+
+test('staff redaction hides private facts but counts them', () => {
+  const items = [
+    { key: 'goal', value: 'grow the agency', sensitivity: 'normal' },
+    { key: 'health', value: 'a private personal note', sensitivity: 'private' },
+  ];
+  const r = memory.redactedMemoryForAdmin(items);
+  assert.strictEqual(r.facts.length, 1, 'only the normal fact is shown to staff');
+  assert.strictEqual(r.facts[0].key, 'goal');
+  assert.strictEqual(r.privateCount, 1, 'the private fact is counted, not shown');
+  assert.ok(!JSON.stringify(r.facts).includes('private personal note'), 'private text never leaks to staff');
+});
+
+test('memory caps are sane bounds', () => {
+  assert.ok(memory.KEY_MAX > 0 && memory.KEY_MAX <= 200);
+  assert.ok(memory.VALUE_MAX >= 100);
+});

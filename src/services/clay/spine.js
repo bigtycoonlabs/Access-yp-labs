@@ -81,6 +81,22 @@ const TOOLS = {
     enums: {},
     summary: 'Permanently delete a concept and all of its materials.',
   },
+  remember: {
+    irreversible: false, requires_confirmation: false,
+    required: ['key', 'value'], optional: ['sensitivity'],
+    enums: { sensitivity: ['normal', 'private'] },
+    summary: 'Remember a durable fact about THIS builder across sessions — a real goal, constraint, or preference worth carrying forward. key is a short label, value is the fact. Mark sensitivity "private" for anything personal (never shown to staff). Never store secrets, passwords, or payment data. Tell the builder what you saved.',
+  },
+  forget: {
+    irreversible: false, requires_confirmation: false,
+    required: ['key'], enums: {},
+    summary: "Forget one remembered fact by its key, at the builder's request.",
+  },
+  clear_memory: {
+    irreversible: true, requires_confirmation: true,
+    required: [], enums: {},
+    summary: "Erase EVERYTHING you remember about this builder. Irreversible — needs their explicit confirmation.",
+  },
 };
 
 function getTool(name) { return TOOLS[name] || null; }
