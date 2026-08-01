@@ -4,6 +4,7 @@ const { query } = require('../config/db');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { parseCookies, setCookie } = require('../lib/cookies');
 const provider = require('../services/clay/provider');
+const publicChat = require('../services/clay/publicChat');
 const journal = require('../services/clay/journal');
 const router = express.Router();
 
@@ -128,6 +129,58 @@ router.post('/spark', asyncHandler(async (req, res) => {
     angle: teaser ? teaser.angle : null,
     inside: teaser ? teaser.inside : null,
   });
+}));
+
+// POST /api/ask { message, history? } — the PUBLIC brain. A logged-out visitor talks to the
+// SAME reasoning agent an account holder does, but under the public capability profile: only the
+// account-free tools (browse the live marketplace, read a listing, define a term), the visitor
+// prompt, and tight budgets. No fork, so the public Clay can't drift from the real one; no account
+// in scope, so nothing personal can be reached. Rate-limited per cookie and per IP like the teaser.
+router.post('/ask', asyncHandler(async (req, res) => {
+  const token = ensureToken(req, res);
+  const message = (req.body && typeof req.body.message === 'string') ? req.body.message.trim() : '';
+  if (message.length < 1) throw new ApiError(400, 'Ask me something.');
+  if (message.length > 2000) throw new ApiError(400, "That's a lot — give me the heart of it in a sentence or two.");
+
+  // Sanitize any prior turns the client replays: keep only user/assistant text, bounded, so the
+  // public surface can't be fed tool turns or an unbounded transcript.
+  const rawHist = Array.isArray(req.body && req.body.history) ? req.body.history.slice(-10) : [];
+  const history = [];
+  for (const m of rawHist) {
+    if (!m || typeof m !== 'object') continue;
+    if (m.role === 'user' && typeof m.content === 'string') history.push({ role: 'user', content: m.content.slice(0, 4000) });
+    else if (m.role === 'assistant' && typeof m.text === 'string') history.push({ role: 'assistant', text: m.text.slice(0, 4000) });
+  }
+
+  await query('INSERT INTO visitors (token, ip_hash) VALUES ($1,$2) ON CONFLICT (token) DO UPDATE SET ip_hash=COALESCE(EXCLUDED.ip_hash, visitors.ip_hash)', [token, ipHash(req)]);
+  const today = new Date().toISOString().slice(0, 10);
+  const v = await query('SELECT taste_count, taste_day, ip_hash FROM visitors WHERE token=$1', [token]);
+  let used = v.rows[0] ? v.rows[0].taste_count : 0;
+  const day = v.rows[0] && v.rows[0].taste_day ? new Date(v.rows[0].taste_day).toISOString().slice(0, 10) : null;
+  if (day !== today) used = 0;
+  const ipH = v.rows[0] ? v.rows[0].ip_hash : null;
+  let ipUsed = 0;
+  if (ipH) {
+    const ipRow = await query('SELECT COALESCE(SUM(taste_count),0)::int AS n FROM visitors WHERE ip_hash=$1 AND taste_day=$2', [ipH, today]);
+    ipUsed = ipRow.rows[0] ? ipRow.rows[0].n : 0;
+  }
+  // Anonymous-cost ceilings, shared with the teaser: a hard cap per cookie and a wider one per IP.
+  if (used >= 20 || ipUsed >= 60) {
+    return res.json({ reply: "You've reached today's free question limit. Create a free account and we can keep going with no cap — and I can actually build with you there.", bubbles: null, limited: true });
+  }
+
+  const t0 = Date.now();
+  if (!provider.available()) {
+    journal.recordRun({ kind: 'public_chat', mode: 'chat', resultStatus: 'unavailable', providerAvailable: false, durationMs: Date.now() - t0 });
+    return res.json({ reply: 'Clay could not answer right now (the service is briefly unavailable). Nothing was made up — please try again in a moment.', bubbles: null });
+  }
+
+  const messages = history.concat([{ role: 'user', content: message }]);
+  const out = await publicChat.runPublicChat({ messages });
+  await query('UPDATE visitors SET taste_count=$2, taste_day=$3 WHERE token=$1', [token, used + 1, today]);
+  journal.recordRun({ kind: 'public_chat', mode: 'chat', resultStatus: out.status === 'answered' ? 'answered' : (out.status || 'empty'), providerAvailable: true, durationMs: Date.now() - t0 });
+
+  res.json({ reply: out.reply || '', bubbles: out.bubbles || null, messages: Array.isArray(out.messages) ? out.messages : undefined });
 }));
 
 // GET /api/liveness — real, honest signals for the homepage. Only true counts:

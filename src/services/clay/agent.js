@@ -112,19 +112,21 @@ function renderConceptContext({ concept, assets }) {
   return lines.join('\n');
 }
 
-async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext = null, memoryContext = null }) {
+async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext = null, memoryContext = null, systemOverride = null, allowTools = null }) {
   if (!provider.available()) {
     return { status: 'unavailable',
       reply: 'Clay could not run right now (generation service is not configured). Nothing was fabricated.' };
   }
-  const tools = toolSchemas();
+  // Public surface hands the model ONLY the account-free tools; the authenticated surface gets all.
+  const tools = Array.isArray(allowTools) ? toolSchemas().filter((t) => allowTools.includes(t.name)) : toolSchemas();
   const convo = messages.slice();
   // Ground Clay in what he already knows about this builder (cross-session memory) and, when
   // they're working inside a concept, that concept's real current content — so he collaborates
-  // as someone who remembers them, not a cold one-shot.
-  let system = SYSTEM;
-  if (memoryContext) system += '\n\n' + memoryContext;
-  if (conceptContext) system += '\n\n' + renderConceptContext(conceptContext);
+  // as someone who remembers them, not a cold one-shot. A systemOverride (the public visitor
+  // prompt) replaces the account persona entirely and carries no account context.
+  let system = systemOverride || SYSTEM;
+  if (!systemOverride && memoryContext) system += '\n\n' + memoryContext;
+  if (!systemOverride && conceptContext) system += '\n\n' + renderConceptContext(conceptContext);
 
   // Which stateful action-classes a tool actually completed THIS turn. The honesty guard
   // checks the final reply against this — a claim of "listed / bought / removed / emailed"

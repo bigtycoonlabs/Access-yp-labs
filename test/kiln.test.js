@@ -858,3 +858,49 @@ test('tool-path effort is never a value OpenAI rejects with tools', () => {
     assert.ok(eff === 'none', `${model} must send none, got ${eff}`);
   }
 });
+
+// ── Public surface: one brain, gated — safe by construction ────────────────
+const cap = require('../src/services/clay/capabilityProfile');
+const pubChat = require('../src/services/clay/publicChat');
+const capAgent = require('../src/services/clay/agent');
+const { TOOLS: SPINE_TOOLS } = require('../src/services/clay/spine');
+
+test('public surface offers only account-free, read-only tools', () => {
+  assert.deepStrictEqual([...cap.ACCOUNT_FREE_TOOLS].sort(), ['define_term', 'get_listing', 'search_marketplace']);
+  for (const name of cap.ACCOUNT_FREE_TOOLS) {
+    assert.ok(SPINE_TOOLS[name], `${name} is a real tool`);
+    assert.ok(!SPINE_TOOLS[name].irreversible, `${name} must not be irreversible`);
+    assert.ok(!SPINE_TOOLS[name].requires_confirmation, `${name} must need no confirmation`);
+  }
+});
+
+test('every account or write tool is refused by name on the public surface', () => {
+  for (const name of ['get_concept', 'list_my_concepts', 'generate_concept', 'enhance_concept',
+    'generate_social_content', 'list_on_marketplace', 'purchase_concept', 'remove_concept',
+    'remember', 'forget', 'clear_memory', 'check_systems', 'research', 'read_source']) {
+    const r = cap.publicToolRefusal(name);
+    assert.ok(r && r.refused === true, `${name} must be refused`);
+    assert.ok(/account/i.test(r.note), 'refusal explains the account boundary honestly');
+  }
+  assert.strictEqual(cap.publicToolRefusal('define_term'), null, 'allowed tool is not refused');
+});
+
+test('the agent hands the public profile only its three tool schemas', () => {
+  const publicSchemas = capAgent.toolSchemas().filter((t) => cap.ACCOUNT_FREE_TOOLS.includes(t.name));
+  assert.strictEqual(publicSchemas.length, 3);
+  assert.deepStrictEqual(publicSchemas.map((t) => t.name).sort(), ['define_term', 'get_listing', 'search_marketplace']);
+});
+
+test('public executors are exactly the three, and provably read no user', () => {
+  const ex = pubChat.buildPublicExecutors();
+  assert.deepStrictEqual(Object.keys(ex).sort(), ['define_term', 'get_listing', 'search_marketplace']);
+  const src = Object.values(ex).map((f) => f.toString()).join('\n');
+  assert.ok(!/\buser\b/.test(src), 'no public executor may reference a user — nothing account-scoped is reachable');
+});
+
+test('the public profile is unauthenticated and read-only', () => {
+  const p = cap.publicProfile();
+  assert.strictEqual(p.hasAccount, false);
+  assert.strictEqual(p.canWrite, false);
+  assert.ok(p.systemPrompt.length > 200 && p.maxSteps <= 3);
+});
