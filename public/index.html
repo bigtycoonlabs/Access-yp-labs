@@ -60,6 +60,10 @@
       border:1px solid rgba(184,166,255,.5);background:rgba(255,255,255,.06);color:#f6f3ff;font-family:inherit;line-height:1.5;}
     .idea-wrap textarea::placeholder{color:#b8a6ff;opacity:.85;}
     .idea-wrap .cta{margin-top:12px;}
+    .ask-you{color:#c3bce0;font-weight:600;margin:12px 0 2px;}
+    .ask-clay{color:#f2eefb;margin:2px 0 9px;line-height:1.55;}
+    #ask-log{margin-top:14px;}
+    #ask-log:empty{display:none;}
     .build{margin-top:18px;}
     .build-lead{color:#8ce0ff;font-weight:700;font-size:18px;margin:0 0 6px;}
     .build-title{color:#fff;font-size:24px;margin:6px 0;}
@@ -144,6 +148,7 @@
         </div>
       </div>
       <p class="lead">Every concept comes with a business plan, a marketing strategy, real customer and competitor research, clearly-labeled regulatory and licensing risk, a working demo, and a build path you finish in your own tools. Clay never fabricates data — if something is directional, it says so plainly.</p>
+      <div id="ask-clay"></div>
     </section>
 
     <section aria-labelledby="dh-h">
@@ -263,6 +268,38 @@
     return wrap;
   }
 
+  function askClayBox(){
+    const wrap=el('div','idea-wrap');
+    const label=el('label',null,'Ask Clay anything — what this is, how it works, what a term means, or what’s for sale.');
+    label.setAttribute('for','ask-in');
+    const ta=document.createElement('textarea');ta.id='ask-in';ta.rows=2;ta.setAttribute('placeholder','What would you like to know?');
+    const btn=el('button','cta','Ask Clay');btn.type='button';
+    const log=el('div','build');log.id='ask-log';log.setAttribute('role','log');log.setAttribute('aria-live','polite');log.setAttribute('aria-label','Conversation with Clay');
+    let history=[];
+    async function send(){
+      const msg=(ta.value||'').trim();
+      if(msg.length<1){announce('Ask me something.',true);ta.focus();return;}
+      btn.disabled=true;
+      const you=el('p','ask-you');you.textContent='You: '+msg;log.appendChild(you);
+      const thinking=el('p','muted','Clay is thinking…');log.appendChild(thinking);announce('Clay is thinking.',false);
+      ta.value='';
+      try{
+        const r=await Kiln.api('/ask',{auth:false,method:'POST',body:{message:msg,history:history}});
+        thinking.remove();
+        if(r&&r.limited){const p=el('p','muted',r.reply||'');log.appendChild(p);const cta=el('a','cta solid','Create a free account');cta.href='/register.html';cta.style.marginTop='8px';log.appendChild(cta);announce(r.reply||'',true);return;}
+        const bubbles=(r&&Array.isArray(r.bubbles)&&r.bubbles.length)?r.bubbles:[(r&&r.reply)||'…'];
+        bubbles.forEach((b)=>{const p=el('p','ask-clay');p.textContent=b;log.appendChild(p);});
+        announce(bubbles[0]||'',true);
+        history.push({role:'user',content:msg});history.push({role:'assistant',text:(r&&r.reply)||''});
+        if(history.length>12)history=history.slice(-12);
+      }catch(e){thinking.remove();const p=el('p','err',(e&&e.message)||'Something went sideways — try that again.');log.appendChild(p);announce((e&&e.message)||'Error',true);}
+      finally{btn.disabled=false;ta.focus();}
+    }
+    btn.addEventListener('click',send);
+    wrap.appendChild(label);wrap.appendChild(ta);wrap.appendChild(btn);wrap.appendChild(log);
+    return wrap;
+  }
+
   async function render(){
     if(Kiln.isLoggedIn&&Kiln.isLoggedIn()){
       let name='';
@@ -295,6 +332,7 @@
     inner.appendChild(dreamholdLink());
   }
   render();
+  (function mountAsk(){var h=document.getElementById('ask-clay');if(h)h.appendChild(askClayBox());})();
 
   (async function liveness(){
     const box=document.getElementById('liveness');
