@@ -11,7 +11,14 @@ async function sendEmail({ to, subject, html, text }) {
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ from, to, subject, html, text }),
     });
-    if (!resp.ok) return { sent: false, reason: `resend_${resp.status}` };
+    if (!resp.ok) {
+      // Keep Resend's own explanation (e.g. "The from address is not verified", "domain
+      // not found") instead of just the status — so a failure is self-diagnosing forever.
+      let detail = '';
+      try { const b = await resp.json(); detail = b.message || b.error || (b.name ? String(b.name) : ''); }
+      catch (_) { try { detail = (await resp.text()).slice(0, 200); } catch (_2) {} }
+      return { sent: false, reason: `resend_${resp.status}${detail ? ': ' + String(detail).slice(0, 300) : ''}` };
+    }
     const data = await resp.json();
     return { sent: true, id: data.id };
   } catch (err) {
@@ -34,7 +41,12 @@ async function sendBatch(emails) {
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!resp.ok) return { sent: 0, failed: payload.length, reason: `resend_${resp.status}`, results: [] };
+    if (!resp.ok) {
+      let detail = '';
+      try { const b = await resp.json(); detail = b.message || b.error || (b.name ? String(b.name) : ''); }
+      catch (_) { try { detail = (await resp.text()).slice(0, 200); } catch (_2) {} }
+      return { sent: 0, failed: payload.length, reason: `resend_${resp.status}${detail ? ': ' + String(detail).slice(0, 300) : ''}`, results: [] };
+    }
     const data = await resp.json();
     const results = data.data || [];
     return { sent: results.length, failed: payload.length - results.length, results };

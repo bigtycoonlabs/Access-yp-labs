@@ -73,4 +73,78 @@ async function checkAndAlert() {
   return { sent: anySent, stats: s, reasons: a.reasons, recipients: staff.length };
 }
 
-module.exports = { recentStats, assess, checkAndAlert };
+// ---- systems self-check: what is actually connected, honestly ----
+// Clay's own read of his dependencies, so staff (and Clay, by voice) can tell at a glance
+// whether the brain, research, email, and payments are wired up — reading env PRESENCE only
+// (never secret values) plus the real last-outcome from the log. It never claims something
+// works that the record says failed.
+const provider = require('./provider');
+const research = require('./research');
+let stripeSvc = null; try { stripeSvc = require('../stripe'); } catch (_) { /* optional until deployed */ }
+
+async function systemsStatus() {
+  const env = process.env;
+
+  const reasoning = {
+    ok: provider.available(),
+    provider: provider.providerName(),
+    model: provider.available() ? provider.modelName() : null,
+  };
+
+  const researchOk = research.available();
+  const researchVia = env.SEARCH_API_KEY ? 'tavily' : (reasoning.provider === 'openai' ? 'openai_web_search' : null);
+
+  const emailConfigured = !!env.RESEND_API_KEY;
+  const emailFrom = env.EMAIL_FROM || 'Clay at Access YP Labs <clay@accessyplabs.com>';
+  let lastEmail = null;
+  try {
+    const r = await query('SELECT sent, reason, created_at FROM email_log ORDER BY created_at DESC LIMIT 1');
+    if (r.rows[0]) lastEmail = { sent: r.rows[0].sent, reason: r.rows[0].reason, at: r.rows[0].created_at };
+  } catch (_) { /* best-effort */ }
+
+  const stripeConfigured = !!(stripeSvc && stripeSvc.configured && stripeSvc.configured());
+  const webhookSecret = !!env.STRIPE_WEBHOOK_SECRET;
+  let stripeEvents = null;
+  try { const r = await query('SELECT count(*)::int AS n FROM stripe_events'); stripeEvents = r.rows[0].n; } catch (_) { /* best-effort */ }
+
+  const status = {
+    reasoning,
+    research: { ok: researchOk, via: researchVia },
+    email: { configured: emailConfigured, from: emailFrom, last: lastEmail },
+    payments: { secret_key: stripeConfigured, webhook_secret: webhookSecret, events_recorded: stripeEvents },
+  };
+  status.summary = summarizeSystems(status);
+  return status;
+}
+
+function summarizeSystems(s) {
+  const parts = [];
+  parts.push(s.reasoning.ok
+    ? `Clay's brain is connected — ${s.reasoning.provider}, model ${s.reasoning.model}.`
+    : `Clay's brain is NOT connected: no AI provider key is set.`);
+  parts.push(s.research.ok
+    ? `Web research is on, via ${s.research.via === 'tavily' ? 'Tavily' : 'OpenAI web search'}.`
+    : `Web research is off — Clay can't look things up on the web right now.`);
+  if (s.email.configured) {
+    if (s.email.last && s.email.last.sent === false) {
+      parts.push(`Email has a key set but the last send FAILED (${s.email.last.reason || 'unknown reason'}). Sending as ${s.email.from}.`);
+    } else if (s.email.last && s.email.last.sent === true) {
+      parts.push(`Email is working — the last send succeeded, from ${s.email.from}.`);
+    } else {
+      parts.push(`Email key is set (from ${s.email.from}); no sends recorded yet.`);
+    }
+  } else {
+    parts.push(`Email is NOT configured — no Resend key, so Clay can't send mail.`);
+  }
+  if (s.payments.secret_key) {
+    parts.push(s.payments.webhook_secret
+      ? `Payments are connected — Stripe key and webhook secret are both set.`
+      : `Stripe key is set but the WEBHOOK SECRET is missing, so payments would start but confirmations won't record.`);
+    if (s.payments.events_recorded === 0) parts.push(`No payment events have been recorded yet.`);
+  } else {
+    parts.push(`Payments are NOT connected — no Stripe secret key, so customers can't pay yet.`);
+  }
+  return parts.join(' ');
+}
+
+module.exports = { recentStats, assess, checkAndAlert, systemsStatus, summarizeSystems };

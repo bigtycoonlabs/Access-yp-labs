@@ -544,3 +544,42 @@ test('research is available on the OpenAI key alone — no separate search servi
     if (hadOpenAI === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = hadOpenAI;
   }
 });
+
+// ---- Clay's systems self-check tells the truth, never sugarcoats ----
+const health = require('../src/services/clay/health');
+
+test('systems summary reports a failed email as FAILED, not fine', () => {
+  const s = {
+    reasoning: { ok: true, provider: 'openai', model: 'gpt-5.5' },
+    research: { ok: true, via: 'openai_web_search' },
+    email: { configured: true, from: 'clay@accessyplabs.com', last: { sent: false, reason: 'resend_422: from not verified' } },
+    payments: { secret_key: true, webhook_secret: true, events_recorded: 0 },
+  };
+  const out = health.summarizeSystems(s);
+  assert.ok(/FAILED/.test(out), 'must flag the failed send');
+  assert.ok(/resend_422/.test(out), 'must surface the real reason');
+});
+
+test('systems summary says customers cannot pay when Stripe key is absent', () => {
+  const s = {
+    reasoning: { ok: true, provider: 'openai', model: 'gpt-5.5' },
+    research: { ok: true, via: 'openai_web_search' },
+    email: { configured: true, from: 'x', last: { sent: true, reason: null } },
+    payments: { secret_key: false, webhook_secret: false, events_recorded: null },
+  };
+  const out = health.summarizeSystems(s);
+  assert.ok(/can't pay|cannot pay|NOT connected/i.test(out), 'must warn payments are down');
+});
+
+test('systems summary flags a missing brain and missing research', () => {
+  const s = {
+    reasoning: { ok: false, provider: null, model: null },
+    research: { ok: false, via: null },
+    email: { configured: false, from: 'x', last: null },
+    payments: { secret_key: true, webhook_secret: false, events_recorded: 0 },
+  };
+  const out = health.summarizeSystems(s);
+  assert.ok(/NOT connected/.test(out), 'brain down');
+  assert.ok(/research is off/i.test(out), 'research down');
+  assert.ok(/WEBHOOK SECRET is missing/i.test(out), 'webhook secret gap');
+});

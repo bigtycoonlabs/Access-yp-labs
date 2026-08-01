@@ -547,6 +547,16 @@ function buildExecutors(user) {
       }
       return { available: true, url, content: r.content };
     },
+    check_systems: async () => {
+      const staff = ['staff', 'admin', 'master_staff'].includes(user && user.role);
+      if (!staff) {
+        return { available: false, note: 'A full systems check is staff-only. Tell the user this is a behind-the-scenes diagnostic you can\'t run for them, and offer to keep helping with their idea.' };
+      }
+      const s = await health.systemsStatus();
+      // Hand Clay the plain-English summary to speak, plus the structured facts. Never soften
+      // a failure into a success — report exactly what the record says.
+      return { available: true, note: s.summary, status: s };
+    },
     generate_concept: async ({ prompt, category }) => {
       // Run the 1–3 minute build in the background so the chat request returns fast; the
       // client watches progress by build id. Same pipeline as POST /clay/generate.
@@ -830,6 +840,14 @@ router.get('/journal', authenticate, authorize('staff', 'admin', 'master_staff')
 router.post('/health-check', authenticate, authorize('staff', 'admin', 'master_staff'), asyncHandler(async (req, res) => {
   const result = await health.checkAndAlert();
   res.json(result);
+}));
+
+// GET /api/clay/systems — staff-only honest readout of what's actually connected right now:
+// Clay's brain, web research, email sending, and Stripe payments. Reads env PRESENCE and the
+// real last-outcome from the logs; never exposes secret values. This is the "double-check
+// everything" surface — and the same truth Clay speaks via the check_systems tool.
+router.get('/systems', authenticate, authorize('staff', 'admin', 'master_staff'), asyncHandler(async (req, res) => {
+  res.json(await health.systemsStatus());
 }));
 
 module.exports = router;

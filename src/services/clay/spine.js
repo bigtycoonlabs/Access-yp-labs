@@ -41,6 +41,10 @@ const TOOLS = {
     irreversible: false, requires_confirmation: false, required: ['url'], enums: {},
     summary: 'Read one source URL in depth (fuller text) to verify a specific claim before citing it. Read-only.',
   },
+  check_systems: {
+    irreversible: false, requires_confirmation: false, required: [], enums: {},
+    summary: 'Staff only: honestly report whether Clay\'s brain, web research, email sending, and Stripe payments are actually connected right now. Read-only. Use when a staff member asks if the systems / email / payments are working.',
+  },
   generate_concept: {
     irreversible: false, requires_confirmation: false,
     required: ['prompt'],
