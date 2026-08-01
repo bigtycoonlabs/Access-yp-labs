@@ -167,7 +167,124 @@ async function chat({ system, messages, tools, maxTokens = 4000 }) {
   }
 }
 
+// ── Deep reasoning on tool turns via the Responses API ─────────────────────
+// This morning's fix bought Clay's tools back by turning reasoning OFF on the chat/completions
+// path. The Responses API supports tools AND reasoning together, so this path restores adaptive
+// reasoning on tool-dispatch turns. Two hard-won facts shape the design:
+//   1. Reasoning models 400 if you replay a native function_call in the input without its
+//      matching reasoning item. Rather than shuttle opaque reasoning items across a stateless
+//      provider and a client round-trip (fragile, and untestable from here), this path FOLDS
+//      prior tool history to plain text — so the replayed input carries no native function_call
+//      items and the reasoning-item requirement never triggers. The model still emits native
+//      tool calls on each turn (which the agent executes) and still sees every prior result.
+//   2. I cannot reach the live OpenAI API from here, so this path is wrapped in a fallback to
+//      the proven chat/completions path on ANY error or malformed result, plus an env
+//      kill-switch (CLAY_OPENAI_RESPONSES=0) to force the old path without a code change.
+
+function hasResponsesApi() {
+  try {
+    const c = openaiClient();
+    return !!(c && c.responses && typeof c.responses.create === 'function');
+  } catch (_) { return false; }
+}
+
+// Whether to attempt the Responses path: reasoning model, SDK support, and not killed by env.
+function shouldUseResponses(model, env = process.env) {
+  if (env.CLAY_OPENAI_RESPONSES === '0') return false;
+  if (!isReasoningModel(model)) return false;
+  return true;
+}
+
+// Pure: normalized messages → Responses `input`. Folds each prior tool call and its result to
+// text so no native function_call items appear in the replayed input (see fact #1 above).
+function toResponsesInput(messages) {
+  const input = [];
+  const nameById = {};
+  for (const m of messages || []) {
+    if (m.role === 'user') {
+      input.push({ role: 'user', content: String(m.content == null ? '' : m.content) });
+    } else if (m.role === 'assistant') {
+      const parts = [];
+      if (m.text) parts.push(String(m.text));
+      if (Array.isArray(m.tool_calls) && m.tool_calls.length) {
+        for (const t of m.tool_calls) nameById[t.id] = t.name;
+        parts.push('[Called ' + m.tool_calls.map((t) => `${t.name}(${JSON.stringify(t.input || {})})`).join(', ') + ']');
+      }
+      if (parts.length) input.push({ role: 'assistant', content: parts.join(' ') });
+    } else if (m.role === 'tool') {
+      const who = nameById[m.tool_call_id] || 'the tool';
+      input.push({ role: 'user', content: `Result from ${who}: ${String(m.content == null ? '' : m.content)}` });
+    }
+  }
+  return input;
+}
+
+// Pure: normalized tools → Responses function-tool shape (flat, no nested `function` object).
+function toResponsesTools(tools) {
+  return (tools || []).map((t) => ({ type: 'function', name: t.name, description: t.description, parameters: t.input_schema }));
+}
+
+// Pure: Responses output → normalized { text, tool_calls }. Handles the output_text convenience
+// and, failing that, walks output items for assistant message text and function_call items.
+function parseResponsesOutput(resp) {
+  const out = (resp && Array.isArray(resp.output)) ? resp.output : [];
+  let text = typeof (resp && resp.output_text) === 'string' ? resp.output_text : '';
+  if (!text) {
+    const chunks = [];
+    for (const it of out) {
+      if (it && it.type === 'message' && Array.isArray(it.content)) {
+        for (const c of it.content) {
+          if (c && (c.type === 'output_text' || c.type === 'text') && typeof c.text === 'string') chunks.push(c.text);
+        }
+      }
+    }
+    text = chunks.join('');
+  }
+  const tool_calls = [];
+  for (const it of out) {
+    if (it && it.type === 'function_call') {
+      let input = {};
+      try { input = JSON.parse(it.arguments || '{}'); } catch (_) { input = {}; }
+      tool_calls.push({ id: it.call_id || it.id, name: it.name, input });
+    }
+  }
+  return { text: text || '', tool_calls };
+}
+
+async function openaiChatResponses({ system, messages, tools, maxTokens }) {
+  const input = toResponsesInput(messages);
+  const inputChars = input.reduce((n, i) => n + (typeof i.content === 'string' ? i.content.length : 0), 0) + String(system || '').length;
+  const resp = await openaiClient().responses.create({
+    model: OPENAI_MODEL,
+    instructions: system,
+    input,
+    tools: toResponsesTools(tools),
+    reasoning: { effort: resolveEffort({ maxTokens, inputChars }) }, // real reasoning — never 'none' here
+    max_output_tokens: maxTokens,
+  });
+  const { text, tool_calls } = parseResponsesOutput(resp);
+  if (!text && !tool_calls.length) return { ok: false, reason: 'empty' }; // nothing usable → fall back
+  return { ok: true, text, tool_calls };
+}
+
+// Dispatcher: try the reasoning-capable Responses path, fall back to the proven path on ANY
+// error or empty result. Non-reasoning models and the kill-switch go straight to the fallback.
 async function openaiChat({ system, messages, tools, maxTokens }) {
+  if (shouldUseResponses(OPENAI_MODEL) && hasResponsesApi()) {
+    try {
+      const r = await openaiChatResponses({ system, messages, tools, maxTokens });
+      if (r && r.ok) return r;
+    } catch (err) {
+      console.error('[clay] Responses path failed, falling back to chat.completions:', err && err.message);
+    }
+  }
+  return openaiChatCompletions({ system, messages, tools, maxTokens });
+}
+
+// The proven tool path. gpt-5.5 on /v1/chat/completions requires reasoning_effort:'none'
+// alongside function tools (that was this morning's outage fix), so this path cannot reason —
+// but it works. It is now the FALLBACK beneath the Responses path above.
+async function openaiChatCompletions({ system, messages, tools, maxTokens }) {
   const oaMessages = [{ role: 'system', content: system }];
   for (const m of messages) {
     if (m.role === 'user') oaMessages.push({ role: 'user', content: m.content });
@@ -285,4 +402,4 @@ async function webSearch(query, { maxResults = 5, model = null } = {}) {
   }
 }
 
-module.exports = { available, providerName, modelName, complete, describeImage, chat, probe, autoEffort, resolveEffort, openaiToolTokenParams, webSearch, _parseOpenAISearch: parseOpenAISearch };
+module.exports = { available, providerName, modelName, complete, describeImage, chat, probe, autoEffort, resolveEffort, openaiToolTokenParams, webSearch, _parseOpenAISearch: parseOpenAISearch, shouldUseResponses, toResponsesInput, toResponsesTools, parseResponsesOutput };

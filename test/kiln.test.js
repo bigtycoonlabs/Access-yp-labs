@@ -984,3 +984,48 @@ test('every surface opens Clay from one canonical identity', () => {
   assert.ok(visitorSrc.includes('CLAY_IDENTITY'), 'the teaser opens from the shared identity');
   assert.ok(!/the AI builder at Access YP Labs/.test(agentSrc + visitorSrc), 'the old drifted persona line is gone');
 });
+
+// ── Deep reasoning on tool turns: Responses API migration (pure helpers) ─────
+test('shouldUseResponses: reasoning models yes, others no, kill-switch forces off', () => {
+  assert.strictEqual(provider.shouldUseResponses('gpt-5.5', {}), true);
+  assert.strictEqual(provider.shouldUseResponses('o4-mini', {}), true);
+  assert.strictEqual(provider.shouldUseResponses('claude-sonnet-4-5', {}), false, 'non-reasoning model uses the plain path');
+  assert.strictEqual(provider.shouldUseResponses('gpt-5.5', { CLAY_OPENAI_RESPONSES: '0' }), false, 'kill-switch forces the fallback');
+});
+
+test('toResponsesInput folds tool history to text — no native function_call items (avoids the reasoning-item 400)', () => {
+  const input = provider.toResponsesInput([
+    { role: 'user', content: 'what furnished rentals are listed?' },
+    { role: 'assistant', text: '', tool_calls: [{ id: 'c1', name: 'search_marketplace', input: { query: 'furnished' } }] },
+    { role: 'tool', tool_call_id: 'c1', content: '[{"title":"FamilyHub"}]' },
+    { role: 'user', content: 'tell me about the first one' },
+  ]);
+  // Every item is a plain role message; nothing is a structured function_call/output item.
+  assert.ok(input.every((i) => i.role && typeof i.content === 'string'), 'only plain role messages');
+  assert.ok(input.some((i) => i.role === 'assistant' && /Called search_marketplace/.test(i.content)), 'the call is described as text');
+  assert.ok(input.some((i) => i.role === 'user' && /Result from search_marketplace: /.test(i.content)), 'the result is attributed to the tool by name');
+});
+
+test('toResponsesTools emits the flat Responses function shape (no nested function object)', () => {
+  const t = provider.toResponsesTools([{ name: 'get_listing', description: 'd', input_schema: { type: 'object' } }]);
+  assert.deepStrictEqual(t[0], { type: 'function', name: 'get_listing', description: 'd', parameters: { type: 'object' } });
+});
+
+test('parseResponsesOutput extracts text and tool calls from a Responses payload', () => {
+  const withCall = provider.parseResponsesOutput({
+    output: [
+      { type: 'reasoning', summary: [] },
+      { type: 'function_call', call_id: 'fc_1', name: 'get_listing', arguments: '{"listing_id":"abc"}' },
+    ],
+  });
+  assert.strictEqual(withCall.text, '');
+  assert.deepStrictEqual(withCall.tool_calls, [{ id: 'fc_1', name: 'get_listing', input: { listing_id: 'abc' } }]);
+
+  const withText = provider.parseResponsesOutput({ output_text: 'here is the answer', output: [] });
+  assert.strictEqual(withText.text, 'here is the answer');
+  assert.strictEqual(withText.tool_calls.length, 0);
+
+  // Malformed arguments must never throw — they degrade to an empty input object.
+  const bad = provider.parseResponsesOutput({ output: [{ type: 'function_call', call_id: 'x', name: 'n', arguments: '{not json' }] });
+  assert.deepStrictEqual(bad.tool_calls[0].input, {});
+});
