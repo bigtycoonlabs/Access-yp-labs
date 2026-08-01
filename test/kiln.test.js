@@ -759,3 +759,33 @@ test('definitions are real, plain, and give no advice', () => {
 test('the glossary is comprehensive', () => {
   assert.ok(glossary.glossarySize() >= 80, 'covers the core of business terminology');
 });
+
+// ── Reasoning transparency (show the "why" before a recommendation) ─────────
+const reasoning = require('../src/services/clay/reasoning');
+
+test('a bare recommendation with no reasoning is flagged', () => {
+  assert.strictEqual(reasoning.recommendsWithoutReasoning('You should list it at $50.'), true);
+  assert.strictEqual(reasoning.recommendsWithoutReasoning("I'd go with the subscription model."), true);
+});
+
+test('a recommendation that shows its reasoning is NOT flagged', () => {
+  assert.strictEqual(
+    reasoning.recommendsWithoutReasoning("I'd price it at $50, because it clears your costs and still sits under the impulse-buy line most buyers won't think twice about."),
+    false,
+  );
+  assert.strictEqual(
+    reasoning.recommendsWithoutReasoning("Here's my thinking: your margin is thin and demand is unproven, so you should start with a small test batch."),
+    false,
+  );
+});
+
+test('a plain statement or answer is not treated as a recommendation', () => {
+  assert.strictEqual(reasoning.looksLikeRecommendation('Your concept is a private draft — nothing is public yet.'), false);
+  assert.strictEqual(reasoning.recommendsWithoutReasoning('EBITDA is your operating profit before interest, taxes, depreciation, and amortization.'), false);
+});
+
+test('the reasoning detectors are independent and sane', () => {
+  assert.strictEqual(reasoning.hasVisibleReasoning('I picked this because it lowers your upfront cost.'), true);
+  assert.strictEqual(reasoning.hasVisibleReasoning('Done.'), false);
+  assert.ok(reasoning.GUIDANCE.length > 40 && reasoning.NUDGE.length > 40);
+});

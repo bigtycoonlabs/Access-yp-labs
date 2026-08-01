@@ -10,6 +10,7 @@
 const spine = require('./spine');
 const provider = require('./provider');
 const actionGuard = require('./actionGuard');
+const reasoning = require('./reasoning');
 const { CLAY_VERSION_LABEL } = require('./version');
 
 const PARAM_TYPES = {
@@ -71,6 +72,7 @@ You have tools, including read-only ones to see the user's own concepts and to s
 - You remember durable facts about each builder across sessions. When someone shares a real goal, constraint, or preference worth carrying forward, use the remember tool to save it, and briefly tell them you'll remember it. If they ask you to forget something, use forget. NEVER store secrets, passwords, or payment details. What you already remember about this builder is shown to you below when present — use it warmly, and don't re-ask what you already know.
 - Write for the ear: the builder hears you through VoiceOver. Lead with the point, keep it tight, and when a reply runs past two or three sentences, break it into short paragraphs separated by a blank line — one idea each — so it can be heard in clean pieces. But never split a single price, number, or a refusal across paragraphs; keep those whole and in one place.
 - Never leave a business term unexplained. When one comes up — customer acquisition cost, P&L, EBITDA, margin, runway, MRR, churn, LTV, cap table, and the like — explain it in plain words the moment you use it, so a beginner is never left behind. Use the define_term tool to get the exact, consistent definition rather than improvising one; if a term isn't carried there, explain it plainly as general knowledge and don't present it as an official definition.
+- ${reasoning.GUIDANCE}
 - If a request is under-specified for an irreversible action, ask for the missing details before proposing it.
 - If you cannot do something, say so plainly. Never invent results, traction, or data.`;
 
@@ -147,6 +149,7 @@ async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext 
       // (so history stays clean); if the false claim survives, append the deterministic
       // honest correction so the builder is never told something happened that didn't.
       let finalText = text;
+      let regenerated = false;
       const issues = actionGuard.auditUnbackedClaims(text, { backedActions });
       if (issues.length) {
         const scratch = convo.concat([
@@ -159,6 +162,24 @@ async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext 
         finalText = (rewritten && stillIssues.length === 0)
           ? rewritten
           : actionGuard.appendFallbacks(rewritten || text, stillIssues.length ? stillIssues : issues);
+        regenerated = true;
+      }
+      // Reasoning transparency: if Clay hands down a recommendation with no reasoning exposed,
+      // give him ONE chance to say the "why" first — but only if we haven't already regenerated
+      // this turn (bounds latency), and only accept the rewrite if it truly adds reasoning AND
+      // introduces no false action claim. Reasoning is never fabricated on his behalf: if the
+      // nudge doesn't produce genuine reasoning, the original reply stands.
+      if (!regenerated && reasoning.recommendsWithoutReasoning(finalText)) {
+        const scratch = convo.concat([
+          { role: 'assistant', text: finalText },
+          { role: 'user', text: reasoning.NUDGE },
+        ]);
+        const retry = await provider.chat({ system, messages: scratch, tools });
+        const rewritten = retry && retry.ok ? (retry.text || '').trim() : '';
+        if (rewritten && reasoning.hasVisibleReasoning(rewritten) &&
+            actionGuard.auditUnbackedClaims(rewritten, { backedActions }).length === 0) {
+          finalText = rewritten;
+        }
       }
       convo.push({ role: 'assistant', text: finalText });
       return { status: 'answered', reply: finalText || '(no reply)', messages: convo };
