@@ -15,4 +15,9 @@
 const CLAY_VERSION = '4.5';
 const CLAY_VERSION_LABEL = `Clay ${CLAY_VERSION}`;
 
-module.exports = { CLAY_VERSION, CLAY_VERSION_LABEL };
+// The one canonical identity sentence. Every surface that introduces Clay — the main agent, the
+// homepage idea teaser — opens from HERE, so his name, version, and role can never drift apart the
+// way the version string once did across six surfaces.
+const CLAY_IDENTITY = `You are Clay (${CLAY_VERSION_LABEL}), the conversational idea printer and build partner for Access YP Labs.`;
+
+module.exports = { CLAY_VERSION, CLAY_VERSION_LABEL, CLAY_IDENTITY };

@@ -971,3 +971,16 @@ test('staleness is only surfaced after a real gap, not for an active builder', (
   const stale = mem.renderPatterns({ conceptCount: 2, categoryFocus: null, listedCount: 0, operatingCount: 0, daysSinceLastActive: 30 });
   assert.ok(/30 days since they last opened/.test(stale), 'surfaces a real gap plainly');
 });
+
+// ── Clay's identity is single-sourced (no drifted persona copies) ───────────
+const fs = require('fs');
+test('every surface opens Clay from one canonical identity', () => {
+  const version = require('../src/services/clay/version');
+  assert.ok(version.CLAY_IDENTITY.includes(version.CLAY_VERSION_LABEL), 'identity carries the canonical version');
+  assert.ok(/Access YP Labs/.test(version.CLAY_IDENTITY));
+  const agentSrc = fs.readFileSync(require.resolve('../src/services/clay/agent.js'), 'utf8');
+  const visitorSrc = fs.readFileSync(require.resolve('../src/routes/visitor.js'), 'utf8');
+  assert.ok(agentSrc.includes('CLAY_IDENTITY'), 'the agent opens from the shared identity');
+  assert.ok(visitorSrc.includes('CLAY_IDENTITY'), 'the teaser opens from the shared identity');
+  assert.ok(!/the AI builder at Access YP Labs/.test(agentSrc + visitorSrc), 'the old drifted persona line is gone');
+});

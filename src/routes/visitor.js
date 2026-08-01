@@ -1,6 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const { query } = require('../config/db');
+const { CLAY_IDENTITY } = require('../services/clay/version');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { parseCookies, setCookie } = require('../lib/cookies');
 const provider = require('../services/clay/provider');
@@ -55,7 +56,7 @@ router.get('/hello', asyncHandler(async (req, res) => {
 }));
 
 async function shapeTeaser(idea) {
-  const system = `You are Clay, the AI builder at Access YP Labs. A visitor just told you a business idea. Shape a TASTE of the concept you would build with them — not the full thing. Return ONLY minified JSON, no prose, no code fences, with exactly these keys:
+  const system = `${CLAY_IDENTITY} A visitor just told you a business idea. Shape a TASTE of the concept you would build with them — not the full thing. Return ONLY minified JSON, no prose, no code fences, with exactly these keys:
 {"title":"a sharp working name for the business, 6 words max",
 "angle":"one vivid sentence naming the wedge or positioning",
 "inside":["4 to 6 short items naming what the full build would include, e.g. 'Grounded market and competitor research', 'A pricing model', 'A launch waitlist page']}
