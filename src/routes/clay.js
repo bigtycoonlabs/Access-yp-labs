@@ -472,20 +472,21 @@ router.post('/render-image', authenticate, [
 // ---- Conversational, tool-calling Clay (spine-driven) ----
 // Reversible tools execute here; irreversible ones (money/publish/delete) can
 // never run without explicit confirmation via /chat/confirm.
-// Scan a returned chat transcript for a tool result that answered with a concept id
-// (generate_concept / enhance_concept). Lets the client know materials changed this
-// turn so it can re-fetch the current versions.
-function conceptMutationFromTranscript(messages) {
-  if (!Array.isArray(messages)) return null;
-  let found = null;
+// Scan a returned chat transcript for what Clay actually did this turn: kicked off a
+// background build (generate_concept / enhance_concept), or answered synchronously with a
+// concept id. Lets the client watch progress or refresh materials.
+function chatOutcomeFromTranscript(messages) {
+  if (!Array.isArray(messages)) return {};
+  const out = {};
   for (const m of messages) {
     if (!m || m.role !== 'tool' || typeof m.content !== 'string') continue;
     try {
       const o = JSON.parse(m.content);
-      if (o && o.status === 'answered' && typeof o.concept_id === 'string') found = o.concept_id;
+      if (o && o.status === 'building' && typeof o.build_id === 'string') out.build_id = o.build_id;
+      else if (o && o.status === 'answered' && typeof o.concept_id === 'string') out.concept_id = o.concept_id;
     } catch (_) { /* not JSON — ignore */ }
   }
-  return found;
+  return out;
 }
 
 function buildExecutors(user) {
@@ -546,10 +547,12 @@ function buildExecutors(user) {
       return { available: true, url, content: r.content };
     },
     generate_concept: async ({ prompt, category }) => {
-      const result = await clay.generate({ mode: 'create', category, prompt });
-      if (result.result_status !== 'answered') return { status: result.result_status, message: result.message };
-      const concept = await persistResult(user.id, result, { conceptId: null, mode: 'create', category, prompt });
-      return { status: 'answered', concept_id: concept.id, title: concept.title, coverage: result.coverage, source_check: result.source_check || null, message: result.message };
+      // Run the 1–3 minute build in the background so the chat request returns fast; the
+      // client watches progress by build id. Same pipeline as POST /clay/generate.
+      const buildId = await createBuild(user.id, 'Shaping your concept…');
+      runBuild({ user, mode: 'create', category: category || null, prompt, operating: false, conceptId: null, buildId })
+        .catch(() => {});
+      return { status: 'building', build_id: buildId, message: 'Shaping the concept now — this takes a minute or two, and you can watch it happen.' };
     },
     enhance_concept: async ({ concept_id, prompt }) => {
       const own = await query('SELECT id, title, category FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
@@ -564,10 +567,11 @@ function buildExecutors(user) {
       const groundedPrompt = currentContent
         ? `You are refining an EXISTING concept titled "${own.rows[0].title}". Here is its current content — keep what works and change only what the user asks for:\n\n${currentContent}\n\n--- THE CHANGE THE USER WANTS ---\n${prompt}`
         : prompt;
-      const result = await clay.generate({ mode: 'enhance', category: own.rows[0].category || null, prompt: groundedPrompt });
-      if (result.result_status !== 'answered') return { status: result.result_status, message: result.message };
-      const concept = await persistResult(user.id, result, { conceptId: concept_id, mode: 'enhance', category: null, prompt });
-      return { status: 'answered', concept_id: concept.id, coverage: result.coverage, source_check: result.source_check || null, message: result.message };
+      // Rebuild in the background so the chat stays responsive; client watches by build id.
+      const buildId = await createBuild(user.id, 'Refining your concept…');
+      runBuild({ user, mode: 'enhance', category: own.rows[0].category || null, prompt: groundedPrompt, operating: false, conceptId: concept_id, buildId })
+        .catch(() => {});
+      return { status: 'building', build_id: buildId, message: 'Refining the materials now — this takes a minute or two, and you can watch it happen.' };
     },
     generate_social_content: async ({ concept_id, platforms, goal, count }) => {
       const c = await query('SELECT id,title,category,risk_summary FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
@@ -599,11 +603,11 @@ router.post('/chat', authenticate, [
     }
   }
   const out = await agent.runChat({ messages: req.body.messages, executors: buildExecutors(req.user), conceptContext });
-  // Tell the client if Clay actually revised/created a concept this turn, so it can
-  // refresh the materials view (new asset versions have new ids). We read it off the
-  // tool results Clay recorded in the returned transcript.
-  const updated = conceptMutationFromTranscript(out.messages);
-  if (updated) { out.concept_updated = true; out.concept_id = updated; }
+  // Tell the client what happened this turn: a background rebuild it can watch, or a
+  // synchronous concept change it should refresh (new asset versions have new ids).
+  const outcome = chatOutcomeFromTranscript(out.messages);
+  if (outcome.build_id) out.build_id = outcome.build_id;
+  if (outcome.concept_id) { out.concept_updated = true; out.concept_id = outcome.concept_id; }
   res.json(out);
 }));
 

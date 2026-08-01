@@ -414,6 +414,13 @@
       announce(data.reply || 'Clay needs your confirmation to do that.', true);
       return;
     }
+    // Clay kicked off a rebuild in the background — watch it live. The chat request itself
+    // stayed fast; the 1–3 minute build runs on its own and streams progress here.
+    if (data.build_id) {
+      watchBuild(container, data.build_id);
+      announce(data.reply || 'Clay is rebuilding your materials — you can watch the progress below.', true);
+      return;
+    }
     // Clay actually revised the materials this turn — offer to review the new versions.
     if (data.concept_updated && data.concept_id) {
       currentConceptId = data.concept_id;
