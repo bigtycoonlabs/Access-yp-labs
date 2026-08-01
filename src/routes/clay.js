@@ -16,6 +16,7 @@ const research = require('../services/clay/research');
 const { CLAY_VERSION, CLAY_VERSION_LABEL } = require('../services/clay/version');
 const memory = require('../services/clay/memory');
 const pacing = require('../services/clay/pacing');
+const glossary = require('../services/clay/glossary');
 const image = require('../services/image');
 const video = require('../services/video');
 const describe = require('../lib/describe');
@@ -610,6 +611,12 @@ function buildExecutors(user) {
     forget: async ({ key }) => {
       const ok = await memory.forgetFact(user.id, key);
       return ok ? { status: 'forgotten', key } : { status: 'not_found', key };
+    },
+    define_term: async ({ term }) => {
+      const e = glossary.defineTerm(term);
+      return e
+        ? { found: true, term: e.term, definition: e.definition }
+        : { found: false, term, note: "Not in Clay's business glossary — explain it in plain words as general knowledge, not as an authoritative definition." };
     },
   };
 }

@@ -724,3 +724,38 @@ test('several distinct paragraphs split for the ear even under the word cap', ()
   assert.ok(b.length > 1, 'four distinct ideas should be heard as separate pieces');
   assert.ok(b.length <= 4);
 });
+
+// ── Business glossary (inline term explanations) ────────────────────────────
+const glossary = require('../src/services/clay/glossary');
+
+test('the named terms all resolve: CAC, P&L, EBITDA', () => {
+  assert.strictEqual(glossary.defineTerm('customer acquisition cost').term, 'Customer Acquisition Cost (CAC)');
+  assert.strictEqual(glossary.defineTerm('CAC').term, 'Customer Acquisition Cost (CAC)');
+  assert.strictEqual(glossary.defineTerm('P&L').term, 'Profit and Loss (P&L)');
+  assert.strictEqual(glossary.defineTerm('EBITDA').term, 'EBITDA');
+});
+
+test('aliases and phrased questions hit the canonical entry', () => {
+  assert.ok(glossary.defineTerm('pnl'));
+  assert.ok(glossary.defineTerm('p and l'));
+  assert.strictEqual(glossary.defineTerm('what does EBITDA mean?').term, 'EBITDA');
+  assert.strictEqual(glossary.defineTerm('ltv:cac').term, 'LTV:CAC Ratio');
+  assert.strictEqual(glossary.defineTerm('how does churn work').term, 'Churn Rate');
+  assert.ok(glossary.defineTerm('ROAS') && glossary.defineTerm('TAM') && glossary.defineTerm('MOQ'));
+});
+
+test('an uncarried term returns null (Clay explains it generally, not as official)', () => {
+  assert.strictEqual(glossary.defineTerm('flux capacitor'), null);
+  assert.strictEqual(glossary.defineTerm(''), null);
+});
+
+test('definitions are real, plain, and give no advice', () => {
+  const e = glossary.defineTerm('EBITDA');
+  assert.ok(e.definition.length > 60, 'a real definition, not a stub');
+  // no advice / hype verbs that would push a decision
+  assert.ok(!/\byou should\b|\bwe recommend\b|\bguaranteed\b/i.test(e.definition));
+});
+
+test('the glossary is comprehensive', () => {
+  assert.ok(glossary.glossarySize() >= 80, 'covers the core of business terminology');
+});

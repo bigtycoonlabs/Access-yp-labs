@@ -45,6 +45,11 @@ const TOOLS = {
     irreversible: false, requires_confirmation: false, required: [], enums: {},
     summary: 'Staff only: honestly report whether Clay\'s brain, web research, email sending, and Stripe payments are actually connected right now. Read-only. Use when a staff member asks if the systems / email / payments are working.',
   },
+  define_term: {
+    irreversible: false, requires_confirmation: false,
+    required: ['term'], enums: {},
+    summary: "Look up the plain-English definition of a BUSINESS term (customer acquisition cost, P&L, EBITDA, margin, runway, MRR, churn, LTV, cap table, and dozens more) from Clay's own curated glossary. Call it whenever the builder asks what a term means, or uses one they may not know, so the definition is consistent and correct. If it returns nothing, the term isn't carried: explain it yourself in plain words as general knowledge, not as an authoritative Clay definition.",
+  },
   generate_concept: {
     irreversible: false, requires_confirmation: false,
     required: ['prompt'],
