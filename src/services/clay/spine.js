@@ -50,6 +50,12 @@ const TOOLS = {
     required: ['term'], enums: {},
     summary: "Look up the plain-English definition of a BUSINESS term (customer acquisition cost, P&L, EBITDA, margin, runway, MRR, churn, LTV, cap table, and dozens more) from Clay's own curated glossary. Call it whenever the builder asks what a term means, or uses one they may not know, so the definition is consistent and correct. If it returns nothing, the term isn't carried: explain it yourself in plain words as general knowledge, not as an authoritative Clay definition.",
   },
+  worked_example: {
+    irreversible: false, requires_confirmation: false,
+    required: ['topic'], optional: ['concept_id'],
+    enums: { topic: ['margin', 'pricing_to_target', 'break_even', 'cac_ltv', 'runway', 'market_size'] },
+    summary: "Give the builder a concrete, spoken, step-by-step WORKED EXAMPLE of a core money concept — margin (what you keep per sale), pricing_to_target (what to charge to hit an income goal), break_even (sales until you stop losing money), cac_ltv (cost to get a customer vs what they're worth), runway (how long the money lasts), or market_size (how big the opportunity honestly is). Call it when a beginner is stuck on an abstraction or asks how something actually works. Optionally pass concept_id to anchor the example to their concept by name. The numbers it returns are round and ILLUSTRATIVE — a device to show the math, never a claim about their real business — and the example says so; keep it that way.",
+  },
   generate_concept: {
     irreversible: false, requires_confirmation: false,
     required: ['prompt'],

@@ -17,6 +17,7 @@ const { CLAY_VERSION, CLAY_VERSION_LABEL } = require('../services/clay/version')
 const memory = require('../services/clay/memory');
 const pacing = require('../services/clay/pacing');
 const glossary = require('../services/clay/glossary');
+const worked = require('../services/clay/workedExample');
 const image = require('../services/image');
 const video = require('../services/video');
 const describe = require('../lib/describe');
@@ -617,6 +618,16 @@ function buildExecutors(user) {
       return e
         ? { found: true, term: e.term, definition: e.definition }
         : { found: false, term, note: "Not in Clay's business glossary — explain it in plain words as general knowledge, not as an authoritative definition." };
+    },
+    worked_example: async ({ topic, concept_id }) => {
+      // Anchor to the builder's OWN concept by name only (illustrative numbers stay illustrative).
+      let conceptTitle = null;
+      if (concept_id) {
+        const r = await query('SELECT title FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
+        if (r.rows[0]) conceptTitle = r.rows[0].title;
+      }
+      const ex = worked.workedExample(topic, { conceptTitle });
+      return ex || { found: false, topic, note: "No canned worked example for that topic — build one yourself: pick round illustrative numbers, walk it step by step for the ear, and say plainly the numbers are illustrative, not a claim about their real business." };
     },
   };
 }

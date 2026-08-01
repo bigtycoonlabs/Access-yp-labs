@@ -904,3 +904,40 @@ test('the public profile is unauthenticated and read-only', () => {
   assert.strictEqual(p.canWrite, false);
   assert.ok(p.systemPrompt.length > 200 && p.maxSteps <= 3);
 });
+
+// ── Worked examples: concrete teaching, honestly labeled illustrative ───────
+const worked = require('../src/services/clay/workedExample');
+
+test('every worked example is labeled illustrative — never a real projection', () => {
+  for (const key of worked.exampleKeys()) {
+    const ex = worked.workedExample(key);
+    assert.ok(ex && ex.illustrative === true, `${key} must be flagged illustrative`);
+    assert.ok(/illustrative|example numbers/i.test(ex.example), `${key} text must say the numbers are illustrative`);
+    assert.ok(!/measurement of your real|claim about your real business(?!)/i.test(ex.example) || /not a/i.test(ex.example), 'must disclaim, not assert');
+  }
+});
+
+test('worked-example aliases resolve to the right concept', () => {
+  assert.strictEqual(worked.normalizeKey('profit margin'), 'margin');
+  assert.strictEqual(worked.normalizeKey('breakeven'), 'break_even');
+  assert.strictEqual(worked.normalizeKey('CAC'), 'cac_ltv');
+  assert.strictEqual(worked.normalizeKey('burn rate'), 'runway');
+  assert.strictEqual(worked.normalizeKey('TAM'), 'market_size');
+  assert.strictEqual(worked.normalizeKey('what to charge'), 'pricing_to_target');
+});
+
+test('anchoring to a concept uses its name but does NOT invent numbers about it', () => {
+  const ex = worked.workedExample('margin', { conceptTitle: 'Sober Living Intake Tool' });
+  assert.ok(ex.example.includes('Sober Living Intake Tool'), 'names the concept');
+  assert.ok(/illustrative|example numbers/i.test(ex.example), 'still labeled illustrative');
+});
+
+test('an unknown topic returns null so Clay teaches it plainly instead of faking a canned one', () => {
+  assert.strictEqual(worked.workedExample('quantum tunneling'), null);
+});
+
+test('worked_example is a real, read-only tool in the spine', () => {
+  const t = require('../src/services/clay/spine').TOOLS.worked_example;
+  assert.ok(t && !t.irreversible && !t.requires_confirmation, 'read-only, no confirmation');
+  assert.ok(t.required.includes('topic'));
+});
