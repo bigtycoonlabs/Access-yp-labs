@@ -94,13 +94,57 @@
     if (text != null) n.textContent = text;
     return n;
   }
+  // Clay's living mark — a bowl cradling the light. Each instance gets a unique gradient id
+  // so several marks on one page don't collide. It's purely decorative (the speaker row and
+  // build events carry the real text/announcements), so it's aria-hidden.
+  let _cmN = 0;
+  function clayMark() {
+    const id = 'cmg' + (++_cmN);
+    const wrap = el('span', 'clay-mark');
+    wrap.setAttribute('aria-hidden', 'true');
+    wrap.innerHTML =
+      '<svg viewBox="0 0 64 64" focusable="false" aria-hidden="true">' +
+      '<defs><radialGradient id="' + id + '" cx="0.5" cy="0.5" r="0.5">' +
+      '<stop offset="0" stop-color="#fff4e0"/><stop offset="0.34" stop-color="#ffd9a8"/>' +
+      '<stop offset="1" stop-color="#ffb877" stop-opacity="0"/></radialGradient></defs>' +
+      '<g fill="none" stroke-width="4" stroke-linecap="round">' +
+      '<path class="cm-l" stroke="#b8a6ff" d="M31 50 C 20 49, 15 36, 16 18"/>' +
+      '<path class="cm-r" stroke="#8ce0ff" d="M33 50 C 44 49, 49 36, 48 18"/></g>' +
+      '<g class="cm-light"><circle class="cm-glow" cx="32" cy="35" r="7.5" fill="url(#' + id + ')"/>' +
+      '<circle class="cm-core" cx="32" cy="35" r="3" fill="#ffd9a8"/></g></svg>';
+    return wrap;
+  }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  const REDUCE_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Friendly names for the materials Clay pulls from the flame, when an asset has no title.
+  function labelForType(t) {
+    const map = {
+      business_plan: 'Business plan', marketing_strategy: 'Marketing strategy',
+      build_path: 'Build path', roadmap: 'Build path', html_demo: 'Interactive demo',
+      built_site: 'Working demo', money_flow: 'Money flow', unit_economics: 'Money flow',
+      customer_research: 'Customer research', competitor_research: 'Competitor research',
+      regulatory_risk: 'Risk & regulation', image_prompt: 'Visual concept',
+      example_image: 'Visual concept', video_script: 'Video script', social: 'Social content'
+    };
+    if (map[t]) return map[t];
+    return String(t || 'Section').replace(/_/g, ' ').replace(/^\w/, function (c) { return c.toUpperCase(); });
+  }
   function message(who, label) {
     const m = el('div', 'message' + (who === 'you' ? ' you' : ''));
     // Identify every message by speaker, so VoiceOver announces who it's from ("Clay" / "You")
     // when you land on it — not just a floating line of text.
     m.setAttribute('role', 'group');
     m.setAttribute('aria-label', who === 'you' ? 'You' : 'Clay');
-    m.appendChild(el('p', 'who', label));
+    if (who === 'you') {
+      m.appendChild(el('p', 'who', label));
+    } else {
+      // Clay speaks with his living mark beside his name — animated, so whenever he's present
+      // he feels alive rather than a flat label.
+      const line = el('div', 'clay-line');
+      line.appendChild(clayMark());
+      line.appendChild(el('p', 'who', label));
+      m.appendChild(line);
+    }
     log.appendChild(m);
     return m;
   }
@@ -555,11 +599,18 @@
     log.style.borderLeft = '3px solid #d6c3b6';
     log.style.paddingLeft = '10px';
     log.style.margin = '8px 0';
+    // The flame: Clay's mark, working. The caption beside it is the live status, and the
+    // finished materials will emerge below it — pulled out of the flame one at a time.
+    const flameWrap = el('div', 'build-flame');
+    const flame = clayMark(); flame.classList.add('thinking');
+    const cap = el('span', 'bf-cap', 'Clay is shaping your concept…');
+    flameWrap.appendChild(flame); flameWrap.appendChild(cap);
+    log.appendChild(flameWrap);
     container.appendChild(log);
-    let shown = 0, tries = 0;
+    const setCap = function (t) { if (t) cap.textContent = t; };
+    const settle = function () { flame.classList.remove('thinking'); };
+    let shown = 0, tries = 0, lastBeat = 0;
     const startedAt = Date.now();
-    let heartbeat = null, lastBeat = 0;
-    const clearBeat = () => { if (heartbeat) { heartbeat.remove(); heartbeat = null; } };
     const maxTries = 140; // ~6 min at 2.5s, then hand off to the email
     const timer = setInterval(async () => {
       tries++;
@@ -568,16 +619,17 @@
       catch (e) { if (tries > 5) clearInterval(timer); return; }
       const notes = (data && data.notes) || [];
       if (notes.length > shown) {
-        clearBeat(); // real progress arrived — drop the heartbeat so notes stay last
         for (; shown < notes.length; shown++) {
-          log.appendChild(el('p', 'muted build-note', notes[shown].text));
+          setCap(notes[shown].text);
           announce(notes[shown].text); // polite: reads without cutting off
         }
       }
       if (data.status === 'done') {
-        clearInterval(timer); clearBeat();
+        clearInterval(timer); settle();
+        setCap('Your concept is taking shape — here’s what I pulled out:');
         if (data.concept_id) {
           currentConceptId = data.concept_id; setEditingConcept(true);
+          await revealMaterials(log, data.concept_id); // real assets, emerging one at a time
           const open = el('a', 'btn', 'Open your concept');
           open.href = '/app.html?concept=' + encodeURIComponent(data.concept_id);
           log.appendChild(open);
@@ -586,23 +638,65 @@
         log.appendChild(el('p', 'msg ok', msg));
         announce(msg, true); // honest: says whether it emailed or not
       } else if (data.status === 'failed') {
-        clearInterval(timer); clearBeat();
+        clearInterval(timer); settle();
+        setCap('Clay stopped — nothing was fabricated.');
         log.appendChild(el('p', 'msg err', data.message || 'Clay couldn’t finish this build. Nothing was fabricated — please try again.'));
         announce(data.message || 'Clay could not finish this build. Nothing was fabricated. Please try again.', true);
       } else if (tries >= maxTries) {
-        clearInterval(timer); clearBeat();
+        clearInterval(timer); settle();
+        setCap('Still working — I’ll email it the moment it’s ready.');
         log.appendChild(el('p', 'muted', 'Still working — I’ll email it to you the moment it’s ready, and it’ll be in your Laboratory.'));
         announce('Clay is still working. It will email you the moment it’s ready.', true);
       } else {
-        // Still building. The big writing step posts no sub-notes for a minute or two, so
-        // keep a live heartbeat (and an occasional spoken reassurance) — never a dead spot.
+        // Still building. The big writing step posts no sub-notes for a minute or two, so keep
+        // the caption alive with elapsed time (and an occasional spoken reassurance) — never a
+        // dead spot — but don't stomp a note that's still the freshest thing said.
         const secs = Math.round((Date.now() - startedAt) / 1000);
-        if (!heartbeat) { heartbeat = el('p', 'muted build-note'); heartbeat.style.opacity = '0.75'; log.appendChild(heartbeat); }
-        heartbeat.textContent = 'Still working… ' + secs + 's in. The big writing step normally takes a minute or two.';
+        if (notes.length === shown) {
+          setCap('Still working… ' + secs + 's in. The big writing step normally takes a minute or two.');
+        }
         if (secs - lastBeat >= 25) { lastBeat = secs; announce('Still working, ' + secs + ' seconds in. This is normal.'); }
       }
       scrollToLatest(log);
     }, 2500);
+  }
+
+  // Reveal a finished concept's REAL materials, drawn out of the flame one at a time. The
+  // sections were written together in the build's big step, so this is honest presentation —
+  // showing true, finished assets appear in sequence — not invented progress. Each lands with
+  // a warm edge that cools to cyan, is announced as it arrives, and shows a lock when the user
+  // hasn't kept the concept (present and visible, not yet openable).
+  async function revealMaterials(log, conceptId) {
+    let assets = [];
+    try {
+      const r = await Kiln.api('/concepts/' + conceptId);
+      assets = (r && r.assets ? r.assets : []).filter(function (a) { return a.is_current !== false; });
+    } catch (_) { return; }
+    if (!assets.length) return;
+    const tray = el('div', 'material-tray');
+    tray.setAttribute('role', 'list');
+    tray.setAttribute('aria-label', 'Your concept materials');
+    log.appendChild(tray);
+    for (let i = 0; i < assets.length; i++) {
+      const a = assets[i];
+      const name = a.title || labelForType(a.type);
+      await sleep(REDUCE_MOTION ? 300 : 620);
+      const card = el('div', 'material-card');
+      card.setAttribute('role', 'listitem');
+      card.appendChild(el('span', 'mc-edge'));
+      card.appendChild(el('span', 'mc-name', name));
+      if (a.locked) {
+        const lk = el('span', 'mc-lock'); lk.setAttribute('aria-hidden', 'true'); card.appendChild(lk);
+        card.setAttribute('aria-label', name + ', ready — locked until you keep this concept');
+      } else {
+        card.setAttribute('aria-label', name + ', ready');
+      }
+      tray.appendChild(card);
+      requestAnimationFrame(function () { card.classList.add('in'); });
+      setTimeout(function () { card.classList.add('cool'); }, 700); // warm → settles cool
+      announce(name + (a.locked ? ' — ready, locked until you keep the concept.' : ' — ready.'));
+      scrollToLatest(tray);
+    }
   }
 
   // ---- render Clay's result honestly by status ----

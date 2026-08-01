@@ -69,3 +69,56 @@ legend{font-weight:700;padding:0 6px;}
   padding:16px 18px;margin:14px 0;box-shadow:0 1px 3px rgba(28,25,23,.06);}
 .my-concepts .take-label{font-size:18px;}
 .my-concepts p{margin:0 0 10px;}
+
+/* ============================================================
+   Clay — the living mark (a bowl cradling the light) + the
+   "pulling the idea from the flame" build reveal. The mark
+   breathes/wanders at rest and speeds into a bright pulse while
+   Clay is working (.thinking). Reduced-motion falls back to a
+   calm steady glow, and every material still announces itself,
+   so nothing about this is motion-only.
+   ============================================================ */
+.clay-mark{display:inline-block;width:26px;height:26px;flex:0 0 auto;vertical-align:middle;line-height:0;}
+.clay-mark svg{width:100%;height:100%;display:block;overflow:visible;}
+.cm-light{transform-box:fill-box;transform-origin:center;animation:cm-drift 5.6s ease-in-out infinite;}
+.cm-glow{transform-box:fill-box;transform-origin:center;animation:cm-breathe 3.2s ease-in-out infinite;}
+.cm-core{transform-box:fill-box;transform-origin:center;animation:cm-spark 3.2s ease-in-out infinite;}
+.cm-l{animation:cm-sheenL 4.6s ease-in-out infinite;}
+.cm-r{animation:cm-sheenR 4.6s ease-in-out infinite;}
+.clay-mark.thinking .cm-light{animation-duration:2.5s;}
+.clay-mark.thinking .cm-glow,.clay-mark.thinking .cm-core{animation-duration:1.45s;}
+.clay-mark.thinking .cm-l,.clay-mark.thinking .cm-r{animation-duration:2.2s;}
+.clay-mark.thinking{filter:drop-shadow(0 0 5px rgba(255,184,119,.55));}
+@keyframes cm-drift{0%{transform:translate(0,0)}25%{transform:translate(1.4px,-1.2px)}50%{transform:translate(.4px,1.4px)}75%{transform:translate(-1.4px,-.5px)}100%{transform:translate(0,0)}}
+@keyframes cm-breathe{0%,100%{transform:scale(.8);opacity:.66}50%{transform:scale(1.2);opacity:1}}
+@keyframes cm-spark{0%,100%{fill:#ffd9a8;transform:scale(.92)}50%{fill:#fff4e0;transform:scale(1.06)}}
+@keyframes cm-sheenL{0%,100%{opacity:.82}50%{opacity:1}}
+@keyframes cm-sheenR{0%,100%{opacity:1}50%{opacity:.82}}
+
+/* Clay's speaker line in the lab: mark + name together */
+.message .clay-line{display:flex;align-items:center;gap:8px;margin:0 0 6px;}
+.message .clay-line .who{margin:0;}
+
+/* The build flame + materials emerging from it */
+.build-flame{display:flex;align-items:center;gap:12px;margin:2px 0 10px;}
+.build-flame .clay-mark{width:56px;height:56px;}
+.build-flame .bf-cap{color:#c3bce0;font-size:15px;font-weight:600;}
+.material-tray{display:flex;flex-direction:column;gap:9px;margin:6px 0 4px;}
+.material-card{position:relative;display:flex;align-items:center;gap:10px;min-height:40px;
+  padding:9px 12px 9px 16px;border-radius:10px;background:rgba(21,15,40,.9);
+  border:1px solid rgba(184,166,255,.18);opacity:0;transform:translateY(6px);
+  transition:opacity .5s ease,transform .5s ease,border-color .8s ease;}
+.material-card .mc-edge{position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:2px;
+  background:#ffd9a8;transition:background .9s ease;}
+.material-card.in{opacity:1;transform:none;}
+.material-card.cool .mc-edge{background:#8ce0ff;}
+.material-card .mc-name{color:#f2eefb;font-size:15px;font-weight:600;}
+.material-card .mc-lock{margin-left:auto;width:14px;height:14px;flex:0 0 auto;opacity:.7;
+  background:no-repeat center/contain;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='5' y='11' width='14' height='9' rx='2' fill='none' stroke='%23a79fce' stroke-width='2'/%3E%3Cpath d='M8 11 V8 a4 4 0 0 1 8 0 v3' fill='none' stroke='%23a79fce' stroke-width='2'/%3E%3C/svg%3E");}
+.material-card .mc-lock-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);}
+@media (prefers-reduced-motion:reduce){
+  .cm-light,.cm-glow,.cm-core,.cm-l,.cm-r{animation:none!important;}
+  .cm-glow{transform:scale(1)!important;opacity:.9!important;}
+  .material-card{transition:opacity .3s ease;transform:none;}
+}
