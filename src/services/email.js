@@ -1,3 +1,17 @@
+// The known-good sender. A live 422 ("Invalid `from` field") showed the deployed EMAIL_FROM
+// had been set to a malformed value; every send failed on it even though this default is valid
+// (a real test send from this exact address succeeds). resolveFrom() makes that impossible to
+// hit again: if EMAIL_FROM isn't a shape Resend accepts — a bare address or "Name <address>" —
+// we fall back to this default rather than let one bad env var break all email.
+const DEFAULT_FROM = 'Clay at Access YP Labs <clay@accessyplabs.com>';
+function resolveFrom() {
+  const raw = String(process.env.EMAIL_FROM || '').trim();
+  if (!raw) return DEFAULT_FROM;
+  if (/<\s*[^<>@\s]+@[^<>@\s]+\.[^<>@\s]+\s*>/.test(raw)) return raw; // Name <email@domain.tld>
+  if (/^[^<>@\s]+@[^<>@\s]+\.[^<>@\s]+$/.test(raw)) return raw;       // bare email@domain.tld
+  return DEFAULT_FROM;
+}
+
 // Read an error response body ONCE and return the most human-readable explanation available.
 // Reading raw text FIRST (not resp.json()) is deliberate: if the body isn't the JSON shape we
 // expected, resp.json() would consume it and leave nothing to fall back to, so the real reason
@@ -17,7 +31,7 @@ async function resendErrorDetail(resp) {
 // (never records a send that did not happen).
 async function sendEmail({ to, subject, html, text }) {
   const key = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM || 'Clay at Access YP Labs <clay@accessyplabs.com>';
+  const from = resolveFrom();
   if (!key) return { sent: false, reason: 'email_not_configured' };
   try {
     const resp = await fetch('https://api.resend.com/emails', {
@@ -42,7 +56,7 @@ async function sendEmail({ to, subject, html, text }) {
 // Honest: never claims a send it didn't make.
 async function sendBatch(emails) {
   const key = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM || 'Clay at Access YP Labs <clay@accessyplabs.com>';
+  const from = resolveFrom();
   const batch = (emails || []).slice(0, 100);
   if (!key) return { sent: 0, failed: batch.length, reason: 'email_not_configured', results: [] };
   if (!batch.length) return { sent: 0, failed: 0, results: [] };
@@ -65,4 +79,4 @@ async function sendBatch(emails) {
   }
 }
 
-module.exports = { sendEmail, sendBatch, resendErrorDetail };
+module.exports = { sendEmail, sendBatch, resendErrorDetail, resolveFrom, DEFAULT_FROM };

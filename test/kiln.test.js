@@ -1048,3 +1048,26 @@ test('resendErrorDetail keeps the real reason for every body shape (the 422 that
   assert.strictEqual(await emailSvc.resendErrorDetail({ text: async () => '' }), '');
   assert.strictEqual(await emailSvc.resendErrorDetail({ text: async () => { throw new Error('unreadable'); } }), '');
 });
+
+// ── The 'from' guard: a malformed EMAIL_FROM can never break email again ─────
+test('resolveFrom falls back to the known-good sender when EMAIL_FROM is malformed', () => {
+  const saved = process.env.EMAIL_FROM;
+  try {
+    delete process.env.EMAIL_FROM;
+    assert.strictEqual(emailSvc.resolveFrom(), emailSvc.DEFAULT_FROM, 'unset -> default');
+    process.env.EMAIL_FROM = '   ';
+    assert.strictEqual(emailSvc.resolveFrom(), emailSvc.DEFAULT_FROM, 'blank -> default');
+    // The exact live failure: a display name with no address. Resend rejected every send on it.
+    process.env.EMAIL_FROM = 'Clay at Access YP Labs';
+    assert.strictEqual(emailSvc.resolveFrom(), emailSvc.DEFAULT_FROM, 'name-only -> default (the real bug)');
+    // Valid shapes are kept exactly as given.
+    process.env.EMAIL_FROM = 'Clay at Access YP Labs <clay@accessyplabs.com>';
+    assert.strictEqual(emailSvc.resolveFrom(), 'Clay at Access YP Labs <clay@accessyplabs.com>', 'Name <email> kept');
+    process.env.EMAIL_FROM = 'clay@accessyplabs.com';
+    assert.strictEqual(emailSvc.resolveFrom(), 'clay@accessyplabs.com', 'bare email kept');
+    process.env.EMAIL_FROM = '  Clay <clay@accessyplabs.com>  ';
+    assert.strictEqual(emailSvc.resolveFrom(), 'Clay <clay@accessyplabs.com>', 'trimmed, valid kept');
+  } finally {
+    if (saved === undefined) delete process.env.EMAIL_FROM; else process.env.EMAIL_FROM = saved;
+  }
+});

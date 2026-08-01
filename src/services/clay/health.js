@@ -1,5 +1,5 @@
 const { query } = require('../../config/db');
-const { sendEmail } = require('../email');
+const { sendEmail, resolveFrom } = require('../email');
 
 // Health monitor over Clay's append-only audit trail. It turns the record of what
 // Clay actually did into an early warning: if the generation provider drops, or the
@@ -97,7 +97,7 @@ async function systemsStatus() {
   const researchVia = env.SEARCH_API_KEY ? 'tavily' : (reasoning.provider === 'openai' ? 'openai_web_search' : null);
 
   const emailConfigured = !!env.RESEND_API_KEY;
-  const emailFrom = env.EMAIL_FROM || 'Clay at Access YP Labs <clay@accessyplabs.com>';
+  const emailFrom = resolveFrom(); // the sender actually used, after the malformed-EMAIL_FROM guard
   let lastEmail = null;
   try {
     const r = await query('SELECT sent, reason, created_at FROM email_log ORDER BY created_at DESC LIMIT 1');
