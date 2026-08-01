@@ -15,6 +15,7 @@ const agent = require('../services/clay/agent');
 const research = require('../services/clay/research');
 const { CLAY_VERSION, CLAY_VERSION_LABEL } = require('../services/clay/version');
 const memory = require('../services/clay/memory');
+const pacing = require('../services/clay/pacing');
 const image = require('../services/image');
 const video = require('../services/video');
 const describe = require('../lib/describe');
@@ -642,6 +643,10 @@ router.post('/chat', authenticate, [
   const outcome = chatOutcomeFromTranscript(out.messages);
   if (outcome.build_id) out.build_id = outcome.build_id;
   if (outcome.concept_id) { out.concept_updated = true; out.concept_id = outcome.concept_id; }
+  // Pace the reply for the ear: split a long answer into clean, VoiceOver-sized pieces the
+  // conversation log announces one at a time. A confirmation, a refusal, or anything not a
+  // plain answer is treated as serious and kept whole.
+  out.bubbles = pacing.bubblesFor(out.reply || '', { serious: out.status !== 'answered' });
   res.json(out);
 }));
 

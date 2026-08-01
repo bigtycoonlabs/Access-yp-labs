@@ -452,17 +452,22 @@
       announce('Clay could not run right now. Nothing was changed.', true);
       return;
     }
-    container.appendChild(el('p', null, data.reply || '(no reply)'));
+    // Pace the reply: render each server-provided bubble as its own paragraph so the
+    // conversation log (an aria-live region) announces them one at a time, with a natural
+    // pause between ideas, instead of dumping one wall of speech. Falls back to a single
+    // reply for older responses.
+    var bubbles = (Array.isArray(data.bubbles) && data.bubbles.length) ? data.bubbles : [data.reply || '(no reply)'];
+    bubbles.forEach(function (b) { container.appendChild(el('p', null, b)); });
     if (data.status === 'confirmation_required' && data.confirmation) {
       renderChatConfirm(container, data.confirmation);
-      announce(data.reply || 'Clay needs your confirmation to do that.', true);
+      announce(bubbles[0] || 'Clay needs your confirmation to do that.', true);
       return;
     }
     // Clay kicked off a rebuild in the background — watch it live. The chat request itself
     // stayed fast; the 1–3 minute build runs on its own and streams progress here.
     if (data.build_id) {
       watchBuild(container, data.build_id);
-      announce(data.reply || 'Clay is rebuilding your materials — you can watch the progress below.', true);
+      announce(bubbles[0] || 'Clay is rebuilding your materials — you can watch the progress below.', true);
       return;
     }
     // Clay actually revised the materials this turn — offer to review the new versions.
@@ -474,7 +479,7 @@
       acts.appendChild(rev);
       container.appendChild(acts);
     }
-    announce(data.reply || 'Clay replied.');
+    announce(bubbles[0] || 'Clay replied.');
   }
 
   function renderChatConfirm(container, c) {

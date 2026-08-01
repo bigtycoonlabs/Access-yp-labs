@@ -669,3 +669,58 @@ test('memory caps are sane bounds', () => {
   assert.ok(memory.KEY_MAX > 0 && memory.KEY_MAX <= 200);
   assert.ok(memory.VALUE_MAX >= 100);
 });
+
+// ── Message pacing (ported from Arbo's pacing) ──────────────────────────────
+const pacing = require('../src/services/clay/pacing');
+
+test('a short reply stays a single message', () => {
+  const b = pacing.bubblesFor('Your concept is a private draft — nothing is public yet.');
+  assert.strictEqual(b.length, 1);
+});
+
+test('empty reply yields no bubbles (never an empty bubble)', () => {
+  assert.deepStrictEqual(pacing.bubblesFor(''), []);
+  assert.deepStrictEqual(pacing.bubblesFor('   '), []);
+});
+
+test('a long multi-paragraph reply splits on paragraph breaks, capped', () => {
+  const para = (n) => `Paragraph ${n}: ` + 'here is a genuinely distinct idea that carries real weight and takes a full breath to say aloud clearly '.repeat(1);
+  const long = [para(1), para(2), para(3), para(4), para(5), para(6)].join('\n\n');
+  const b = pacing.bubblesFor(long);
+  assert.ok(b.length > 1, 'it should become a sequence');
+  assert.ok(b.length <= 4, 'never explodes into a slideshow');
+});
+
+test('serious content is NEVER fragmented, however long', () => {
+  const para = 'This is a careful explanation with many words that would normally be split into several separate spoken pieces for easier listening. '.repeat(6);
+  const long = para + '\n\n' + para + '\n\n' + para;
+  const b = pacing.bubblesFor(long, { serious: true });
+  assert.strictEqual(b.length, 1, 'a refusal / number / bad news stays whole');
+});
+
+test('a tiny trailing fragment merges into the message before it', () => {
+  const words = 'idea number one carries genuine weight and needs its own clear moment to land with the listener here now today '.repeat(2);
+  const text = words + '\n\n' + words + '\n\n' + 'Okay?';
+  const b = pacing.intoMessages(text, 'sequence');
+  assert.ok(!b.includes('Okay?'), 'the two-word fragment is not its own bubble');
+  assert.ok(b[b.length - 1].endsWith('Okay?'), 'it rides on the previous message');
+});
+
+test('shapeFor is conservative: short=single, very long=sequence', () => {
+  assert.strictEqual(pacing.shapeFor({ text: 'short and done.' }), 'single');
+  const long = 'word '.repeat(pacing.SPLIT_ABOVE_WORDS + 20);
+  assert.strictEqual(pacing.shapeFor({ text: long }), 'sequence');
+  assert.strictEqual(pacing.shapeFor({ text: long, serious: true }), 'single');
+});
+
+test('several distinct paragraphs split for the ear even under the word cap', () => {
+  const r = [
+    "Here's the shape of your idea.",
+    "The core is a searchable listing of vetted homes buyers will pay to access.",
+    "Revenue comes two ways: a listing fee from operators and a placement fee per filled bed.",
+    "Want the business plan next, or the build path first?",
+  ].join('\n\n');
+  const b = pacing.bubblesFor(r);
+  assert.ok(b.length > 1, 'four distinct ideas should be heard as separate pieces');
+  assert.ok(b.length <= 4);
+});
