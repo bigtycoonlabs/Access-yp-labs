@@ -90,6 +90,10 @@ function renderConceptContext({ concept, assets }) {
     lines.push('(No materials built yet.)');
   } else {
     for (const a of list) {
+      if (a.locked) {
+        lines.push(`\n[${a.type}] ${a.title || ''}\n(LOCKED — the user has not unlocked this section. You do NOT have its contents and must never reveal or invent them. You may say what this kind of section is for in general terms, and invite them to keep this concept with Maker or subscribe to Sculptor to work on it.)`);
+        continue;
+      }
       const body = String(a.body || '').replace(/\s+/g, ' ').trim().slice(0, 1400);
       lines.push(`\n[${a.type}] ${a.title || ''}\n${body || '(empty)'}`);
     }

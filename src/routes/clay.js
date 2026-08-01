@@ -10,7 +10,7 @@ const provider = require('../services/clay/provider');
 const journal = require('../services/clay/journal');
 const retrieval = require('../services/clay/retrieval');
 const health = require('../services/clay/health');
-const { conceptEntitlement } = require('../lib/entitlement');
+const { conceptEntitlement, redactLockedAssets } = require('../lib/entitlement');
 const agent = require('../services/clay/agent');
 const research = require('../services/clay/research');
 const image = require('../services/image');
@@ -499,9 +499,10 @@ function buildExecutors(user) {
       const c = await query('SELECT id, title, category, stage, risk_summary FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
       if (!c.rows.length) return { error: 'Concept not found.' };
       const a = await query("SELECT type, title, body FROM assets WHERE concept_id=$1 AND is_current=true ORDER BY created_at", [concept_id]);
-      const materials = a.rows.map((m) => ({
-        type: m.type, title: m.title,
-        content: String(m.body || '').replace(/\s+/g, ' ').trim().slice(0, 1500),
+      const ent = await conceptEntitlement(user, concept_id);
+      const materials = redactLockedAssets(a.rows, !!ent.entitled).map((m) => ({
+        type: m.type, title: m.title, locked: !!m.locked,
+        content: m.locked ? '' : String(m.body || '').replace(/\s+/g, ' ').trim().slice(0, 1500),
       }));
       return { concept: c.rows[0], materials };
     },
@@ -599,7 +600,10 @@ router.post('/chat', authenticate, [
       const a = await query(
         "SELECT type, title, body FROM assets WHERE concept_id=$1 AND is_current=true ORDER BY created_at",
         [req.body.concept_id]);
-      conceptContext = { concept: c.rows[0], assets: a.rows };
+      // Never feed Clay content the user hasn't unlocked — otherwise chat becomes a paywall
+      // bypass ("read me my build path"). Redaction blanks locked bodies and flags them.
+      const ent = await conceptEntitlement(req.user, req.body.concept_id);
+      conceptContext = { concept: c.rows[0], assets: redactLockedAssets(a.rows, !!ent.entitled) };
     }
   }
   const out = await agent.runChat({ messages: req.body.messages, executors: buildExecutors(req.user), conceptContext });

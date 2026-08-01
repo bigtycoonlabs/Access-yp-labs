@@ -486,3 +486,16 @@ test('renderConceptContext grounds Clay in the concept being edited', () => {
   const empty = agent.renderConceptContext({ concept: { id: 'c0', title: 'X' }, assets: [] });
   assert.ok(empty.includes('No materials built yet'), 'handles no materials');
 });
+
+test('renderConceptContext never leaks a locked section', () => {
+  const block = agent.renderConceptContext({
+    concept: { id: 'c9', title: 'Secret Sauce Co' },
+    assets: [
+      { type: 'business_plan', title: 'Plan', body: 'Freely previewable summary.' },
+      { type: 'build_path', title: 'Build Path', body: '', locked: true },
+    ],
+  });
+  assert.ok(block.includes('Freely previewable summary'), 'preview content is shown');
+  assert.ok(block.includes('LOCKED'), 'locked section is marked locked');
+  assert.ok(block.includes('never reveal or invent'), 'Clay is told not to reveal it');
+});
