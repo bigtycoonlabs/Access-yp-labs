@@ -499,3 +499,48 @@ test('renderConceptContext never leaks a locked section', () => {
   assert.ok(block.includes('LOCKED'), 'locked section is marked locked');
   assert.ok(block.includes('never reveal or invent'), 'Clay is told not to reveal it');
 });
+
+// ---- Clay research via OpenAI's own web_search (no separate service) ----
+const wsProvider = require('../src/services/clay/provider');
+const wsResearch = require('../src/services/clay/research');
+
+test('parseOpenAISearch pulls the synthesis and real cited sources', () => {
+  const resp = {
+    output: [
+      { type: 'web_search_call', status: 'completed', action: { type: 'search', query: 'furnished rental demand' } },
+      { type: 'message', role: 'assistant', content: [
+        { type: 'output_text', text: 'Demand for furnished rentals is rising in mid-size US metros.',
+          annotations: [
+            { type: 'url_citation', url: 'https://example.com/a', title: 'Market Report A' },
+            { type: 'url_citation', url: 'https://example.com/b', title: 'Report B' },
+            { type: 'url_citation', url: 'https://example.com/a', title: 'dup should dedupe' },
+          ] },
+      ] },
+    ],
+  };
+  const r = wsProvider._parseOpenAISearch(resp);
+  assert.strictEqual(r.searched, true);
+  assert.strictEqual(r.results.length, 2); // deduped by url
+  assert.strictEqual(r.results[0].url, 'https://example.com/a');
+  assert.ok(/furnished rentals/i.test(r.answer));
+});
+
+test('parseOpenAISearch is honest when nothing was searched', () => {
+  const r = wsProvider._parseOpenAISearch({ output: [] });
+  assert.strictEqual(r.searched, false);
+  assert.deepStrictEqual(r.results, []);
+  assert.strictEqual(r.answer, null);
+});
+
+test('research is available on the OpenAI key alone — no separate search service', () => {
+  const hadTavily = process.env.SEARCH_API_KEY;
+  const hadOpenAI = process.env.OPENAI_API_KEY;
+  delete process.env.SEARCH_API_KEY;
+  process.env.OPENAI_API_KEY = 'sk-test';
+  try {
+    assert.strictEqual(wsResearch.available(), true); // OpenAI can web-search natively
+  } finally {
+    if (hadTavily === undefined) delete process.env.SEARCH_API_KEY; else process.env.SEARCH_API_KEY = hadTavily;
+    if (hadOpenAI === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = hadOpenAI;
+  }
+});

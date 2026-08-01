@@ -1,23 +1,38 @@
 // Clay's research capability — grounded, or honestly absent.
 //
 // The whole point of research here is to replace confident recall with real,
-// cited sources. So: if a search backend is configured (SEARCH_API_KEY), we do
-// a real web search and return results WITH their source URLs, so Clay can cite
-// them and the user can verify. If it is NOT configured, we say so plainly and
-// return nothing — Clay must never dress up model recall as researched fact.
+// cited sources. So: when a search backend is available, we do a real web search
+// and return results WITH their source URLs, so Clay can cite them and the user
+// can verify. When none is available, we say so plainly and return nothing —
+// Clay must never dress up model recall as researched fact.
 //
-// Backend: Tavily (built for LLM grounding; returns clean results + an optional
-// synthesized answer, each tied to a source). Set SEARCH_API_KEY to a Tavily key
-// (tvly-...). SEARCH_PROVIDER is reserved for future backends; Tavily is default.
+// Two backends, in preference order:
+//   1. Tavily (SEARCH_API_KEY, tvly-...) — purpose-built for LLM grounding, cheap
+//      and fast, returns clean results + a synthesized answer. Preferred if set.
+//   2. OpenAI's own hosted web_search tool (via the Responses API) — needs NO extra
+//      service or key beyond OPENAI_API_KEY, which the platform already uses. This
+//      is why Clay can research on the OpenAI key alone: the model searches the live
+//      web and returns a grounded synthesis with real url citations.
+// SEARCH_PROVIDER is reserved for future backends; the above order is the default.
+
+const provider = require('./provider');
+
+function tavilyConfigured() { return !!process.env.SEARCH_API_KEY; }
 
 function available() {
-  return !!process.env.SEARCH_API_KEY;
+  if (tavilyConfigured()) return true;               // Tavily configured
+  return provider.providerName() === 'openai';        // OpenAI can web-search natively — no extra service
 }
 
 async function search(query, { maxResults = 5 } = {}) {
-  if (!available()) return { available: false, reason: 'not_configured', results: [] };
   const q = String(query || '').trim();
-  if (!q) return { available: true, reason: 'empty_query', results: [] };
+  if (!q) return { available: available(), reason: 'empty_query', results: [] };
+  if (tavilyConfigured()) return tavilySearch(q, { maxResults });
+  if (provider.providerName() === 'openai') return provider.webSearch(q, { maxResults });
+  return { available: false, reason: 'not_configured', results: [] };
+}
+
+async function tavilySearch(q, { maxResults = 5 } = {}) {
   try {
     const resp = await fetch('https://api.tavily.com/search', {
       method: 'POST',
@@ -48,13 +63,13 @@ async function search(query, { maxResults = 5 } = {}) {
   }
 }
 
-module.exports = { available, search, extract };
-
 // Pull the fuller, cleaned text of a specific source URL so Clay can verify
 // specifics (a number, a claim, a regulation) before citing it — the "read the
-// source in depth" step of a real research loop. Honest degradation as above.
+// source in depth" step of a real research loop. Tavily-only; degrades honestly
+// when Tavily isn't configured (the OpenAI backend already returns grounded
+// synthesis inline, so a separate extract step isn't required there).
 async function extract(url) {
-  if (!available()) return { available: false, reason: 'not_configured', content: '' };
+  if (!tavilyConfigured()) return { available: false, reason: 'not_configured', content: '' };
   const u = String(url || '').trim();
   if (!u) return { available: true, reason: 'empty_url', content: '' };
   try {
@@ -75,3 +90,5 @@ async function extract(url) {
     return { available: true, reason: err.message, content: '' };
   }
 }
+
+module.exports = { available, search, extract };

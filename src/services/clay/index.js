@@ -11,7 +11,7 @@ const research = require('./research');
 // is off or comes back empty, returns '' and generation proceeds unchanged —
 // honest labelling in the prompt still applies.
 async function gatherGrounding(prompt, category) {
-  const empty = { text: '', sources: [] };
+  const empty = { text: '', sources: [], answers: [] };
   if (!research.available()) return empty;
   const seed = String(prompt || '').replace(/\s+/g, ' ').trim().slice(0, 160);
   if (!seed && !category) return empty;
@@ -21,22 +21,28 @@ async function gatherGrounding(prompt, category) {
   ];
   const blocks = [];
   const sources = [];
-  for (const q of queries) {
-    try {
-      const r = await research.search(q, { maxResults: 4 });
-      if (r.available && r.results && r.results.length) {
-        r.results.forEach((s) => sources.push(s));
-        const lines = r.results.map((s, i) => `[${i + 1}] ${s.title} — ${s.url}\n${s.snippet}`).join('\n\n');
-        blocks.push(`Search: "${q}"\n${r.answer ? 'Summary: ' + r.answer + '\n' : ''}${lines}`);
-      }
-    } catch (_) { /* best-effort; never block generation on research */ }
+  const answers = [];
+  // Run the queries concurrently — each can be a full model web-search call, so doing them
+  // in parallel keeps research from doubling the wait. Order is preserved for stable output.
+  const settled = await Promise.all(queries.map(async (q) => {
+    try { return { q, r: await research.search(q, { maxResults: 4 }) }; }
+    catch (_) { return { q, r: null }; }
+  }));
+  for (const { q, r } of settled) {
+    if (!r || !r.available) continue;
+    const res = (r.results || []);
+    if (!res.length && !r.answer) continue; // nothing usable came back for this query
+    res.forEach((s) => sources.push(s));
+    if (r.answer) answers.push(r.answer);
+    const lines = res.map((s, i) => `[${i + 1}] ${s.title} — ${s.url}\n${s.snippet}`).join('\n\n');
+    blocks.push(`Search: "${q}"\n${r.answer ? 'Summary: ' + r.answer + '\n' : ''}${lines}`.trim());
   }
-  if (!blocks.length) return empty;
+  if (!blocks.length) return { text: '', sources: [], answers: [] };
   const text = ['',
     'GROUNDING — these are REAL web search results. Use them to write customer_research, competitor_research, and regulatory_risk, and CITE the sources you use by title and URL. Do not contradict them. If they are thin or silent on a point, say what is missing rather than inventing it. Anything you assert that is NOT supported by these results must be labelled clearly as your own reasoning, not researched fact.',
     ...blocks,
   ].join('\n');
-  return { text, sources };
+  return { text, sources, answers };
 }
 
 // Self-check: after Clay writes the research sections, hold them up against the
@@ -45,12 +51,17 @@ async function gatherGrounding(prompt, category) {
 // the page themselves) is told exactly which figures to treat with caution.
 // Best-effort: if it can't run, we simply don't show a check rather than faking
 // a clean bill of health.
-async function selfCheckSources(sections, sources) {
-  if (!sources || !sources.length) return null;
+async function selfCheckSources(sections, sources, answers = []) {
+  const hasMaterial = (sources && sources.length) || (answers && answers.length);
+  if (!hasMaterial) return null;
   const researchText = [sections.customer_research, sections.competitor_research, sections.regulatory_risk]
     .filter(Boolean).join('\n\n');
   if (!researchText.trim()) return null;
-  const sourceText = sources.map((s, i) => `[${i + 1}] ${s.title} — ${s.url}\n${s.snippet}`).join('\n\n');
+  const srcLines = (sources || []).map((s, i) => `[${i + 1}] ${s.title} — ${s.url}\n${s.snippet}`).join('\n\n');
+  const synth = (answers && answers.length)
+    ? 'SYNTHESIZED WEB FINDINGS (grounded search summaries):\n' + answers.join('\n---\n')
+    : '';
+  const sourceText = [srcLines, synth].filter((x) => x && x.trim()).join('\n\n');
   const sys = 'You are a careful fact-checker. You are given research writing and the ONLY sources that were available when it was written. Identify concrete factual claims in the writing — market sizes, growth rates, dollar figures, named competitors, specific regulations, dates — that are NOT supported by the sources. Be fair: general reasoning, strategy, and clearly-hedged statements are fine and should not be flagged; only flag concrete claims presented as fact that the sources do not back. Reply with a short plain-text list, each item on its own line starting with "- ". If every concrete claim is supported, reply with exactly: All concrete claims are supported by the sources.';
   const user = `RESEARCH WRITING:\n${researchText.slice(0, 6000)}\n\nSOURCES:\n${sourceText.slice(0, 6000)}`;
   try {
@@ -217,12 +228,15 @@ async function generate({ mode, category, prompt, operating = false, priorWork =
                    status: classifySection(sections[a.type]) }))
     .filter((a) => a.status === 'answered');
 
+  const groundingAnswers = grounding.answers || [];
   let source_check = null;
-  if (assets.length && grounding.sources.length) {
-    source_check = await selfCheckSources(sections, grounding.sources);
+  if (assets.length && (grounding.sources.length || groundingAnswers.length)) {
+    source_check = await selfCheckSources(sections, grounding.sources, groundingAnswers);
   }
-  // Proof signals persisted on the concept so the marketplace can show them.
-  const research_grounded = grounding.sources.length > 0;
+  // Proof signals persisted on the concept so the marketplace can show them. Research counts
+  // as grounded if it cited real sources OR produced a grounded web synthesis (the OpenAI
+  // backend sometimes summarizes without discrete url citations).
+  const research_grounded = grounding.sources.length > 0 || groundingAnswers.length > 0;
   const source_count = grounding.sources.length;
   let claims_verified = null; // null = self-check didn't run; true = clean; false = flagged
   if (source_check != null) {

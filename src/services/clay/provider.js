@@ -217,4 +217,58 @@ async function probe(model) {
     detail: out.error || 'The model call failed for an unknown reason.' };
 }
 
-module.exports = { available, providerName, modelName, complete, describeImage, chat, probe, autoEffort, resolveEffort };
+// ---- live web search via the provider's own hosted tool ----
+// So Clay can research with just the OpenAI key — no separate search service. Uses the
+// Responses API web_search tool (gpt-5.x supports it; Chat Completions web_search_options
+// does NOT and 400s on gpt-5). Returns the model's grounded synthesis plus the real source
+// URLs it cited, or an honest empty/unavailable signal — never fabricated sources.
+function parseOpenAISearch(resp) {
+  const out = Array.isArray(resp && resp.output) ? resp.output : [];
+  const searched = out.some((o) => o && o.type === 'web_search_call');
+  const sources = []; const seen = new Set();
+  let answer = '';
+  for (const item of out) {
+    if (item && item.type === 'message' && Array.isArray(item.content)) {
+      for (const c of item.content) {
+        if (!c) continue;
+        if (typeof c.text === 'string') answer += c.text;
+        const anns = c.annotations || [];
+        for (const a of anns) {
+          if (a && a.type === 'url_citation' && a.url && !seen.has(a.url)) {
+            seen.add(a.url);
+            sources.push({ title: a.title || a.url, url: a.url, snippet: '' });
+          }
+        }
+      }
+    }
+  }
+  if (!answer && typeof resp.output_text === 'string') answer = resp.output_text;
+  return { available: true, searched, results: sources, answer: (answer || '').trim() || null };
+}
+
+async function webSearch(query, { maxResults = 5, model = null } = {}) {
+  const p = providerName();
+  const q = String(query || '').trim();
+  if (!q) return { available: true, searched: false, results: [], answer: null };
+  if (p !== 'openai') {
+    // Only OpenAI's hosted web_search is wired today; an Anthropic backend can be added later.
+    return { available: false, reason: 'no_web_search_backend', results: [], answer: null };
+  }
+  try {
+    const mdl = model || process.env.OPENAI_SEARCH_MODEL || OPENAI_MODEL;
+    const resp = await openaiClient().responses.create({
+      model: mdl,
+      tools: [{ type: 'web_search' }],
+      tool_choice: 'auto',
+      max_output_tokens: 8192, // gpt-5.x burns reasoning tokens; too small returns status:incomplete
+      input: 'Research the open web for current, factual information to answer the following, then give a concise sourced summary with real citations. Search at most twice. If the web has little on it, say so plainly rather than guessing.\n\n' + q.slice(0, 500),
+    }, { timeout: 90000 });
+    const parsed = parseOpenAISearch(resp);
+    parsed.results = parsed.results.slice(0, maxResults);
+    return parsed;
+  } catch (err) {
+    return { available: true, searched: false, results: [], answer: null, reason: (err && err.message) || 'search_failed' };
+  }
+}
+
+module.exports = { available, providerName, modelName, complete, describeImage, chat, probe, autoEffort, resolveEffort, webSearch, _parseOpenAISearch: parseOpenAISearch };
