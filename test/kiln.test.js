@@ -471,3 +471,18 @@ test('docextract fails honestly on junk, never throws', async () => {
   const doc = await d.extractDocx(Buffer.from('not a docx'));
   assert.strictEqual(doc.ok, false);
 });
+
+test('renderConceptContext grounds Clay in the concept being edited', () => {
+  const block = agent.renderConceptContext({
+    concept: { id: 'concept-123', title: 'Neighborhood Tool Library', category: 'remote_service', stage: 'concept', risk_summary: 'licensing varies by city' },
+    assets: [{ type: 'business_plan', title: 'Plan', body: 'Members pay $12/mo to borrow tools.' }],
+  });
+  // It must carry the real id, the real content, and steer edits through enhance_concept.
+  assert.ok(block.includes('concept-123'), 'includes concept id');
+  assert.ok(block.includes('Neighborhood Tool Library'), 'includes title');
+  assert.ok(block.includes('Members pay $12/mo'), 'includes current content');
+  assert.ok(block.includes('enhance_concept'), 'tells Clay how to make edits');
+  // Empty concept still renders safely.
+  const empty = agent.renderConceptContext({ concept: { id: 'c0', title: 'X' }, assets: [] });
+  assert.ok(empty.includes('No materials built yet'), 'handles no materials');
+});

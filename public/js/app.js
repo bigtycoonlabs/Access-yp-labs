@@ -23,6 +23,10 @@
   // refines THAT concept (a new version) instead of spawning a fresh one. Cleared
   // by choosing "Create" or "Start a fresh concept".
   let currentConceptId = null;
+  // Running back-and-forth with Clay while refining the CURRENT concept. Sent to
+  // /clay/chat each turn (the server returns the canonical transcript to replay).
+  // Reset whenever we switch concepts or start fresh, so contexts never bleed.
+  let chatHistory = [];
   // The three pieces anyone can see and keep refining for free. Must match the server's
   // PREVIEW_TYPES in lib/entitlement.js. Everything else is built and updated but stays
   // locked until the concept is kept.
@@ -197,7 +201,7 @@
   // ---- mode toggle ----
   function setMode(next) {
     mode = next;
-    if (next === 'create' && currentConceptId) { currentConceptId = null; }
+    if (next === 'create' && currentConceptId) { currentConceptId = null; chatHistory = []; }
     document.getElementById('mode-create').setAttribute('aria-pressed', String(next === 'create'));
     document.getElementById('mode-enhance').setAttribute('aria-pressed', String(next === 'enhance'));
     const opWrap = document.getElementById('operating-wrap');
@@ -215,6 +219,7 @@
     try {
       const { concept, assets, entitled } = await Kiln.api('/concepts/' + id);
       currentConceptId = concept.id;
+      chatHistory = [];
       setEditingConcept(true); // refining an existing concept — hide the create/enhance toggles
       const m = message('clay', 'Clay');
       m.appendChild(el('p', null, 'Picking up where we left off on “' + (concept.title || 'your concept') + '.” Everything you built is still here — tell me what to change or add and I’ll refine this same concept. You can start a fresh one anytime.'));
@@ -257,6 +262,7 @@
 
   function startFreshConcept() {
     currentConceptId = null;
+    chatHistory = [];
     setEditingConcept(false);
     const m = message('clay', 'Clay');
     m.appendChild(el('p', null, 'Fresh start — this next idea will be its own concept. What are we building?'));
@@ -352,6 +358,19 @@
     thinking.appendChild(think);
 
     try {
+      // Refining an existing concept by text → a real back-and-forth with Clay, grounded
+      // in the concept's current content. Fast for questions and discussion; Clay only
+      // rebuilds materials when you actually ask him to. (File attachments still go
+      // through the builder, which knows how to fold them in.)
+      if (currentConceptId && !pendingUploadIds.length) {
+        chatHistory.push({ role: 'user', content: prompt });
+        const data = await Kiln.api('/clay/chat', { method: 'POST', body: { messages: chatHistory, concept_id: currentConceptId } });
+        if (Array.isArray(data.messages)) chatHistory = data.messages;
+        thinking.removeChild(think);
+        renderChatReply(thinking, data);
+        return;
+      }
+
       const operatingEl = document.getElementById('operating');
       const operating = mode === 'enhance' && !!(operatingEl && operatingEl.checked);
       const body = { mode, category, prompt, operating, concept_id: currentConceptId || undefined };
@@ -381,6 +400,92 @@
     }
   }
   sendBtn.addEventListener('click', send);
+
+  // ---- render a conversational reply from Clay (concept-editing chat) ----
+  function renderChatReply(container, data) {
+    if (!data || data.status === 'unavailable') {
+      container.appendChild(el('p', 'msg err', (data && data.reply) || 'Clay couldn’t run just now — and he never makes things up, so nothing was changed.'));
+      announce('Clay could not run right now. Nothing was changed.', true);
+      return;
+    }
+    container.appendChild(el('p', null, data.reply || '(no reply)'));
+    if (data.status === 'confirmation_required' && data.confirmation) {
+      renderChatConfirm(container, data.confirmation);
+      announce(data.reply || 'Clay needs your confirmation to do that.', true);
+      return;
+    }
+    // Clay actually revised the materials this turn — offer to review the new versions.
+    if (data.concept_updated && data.concept_id) {
+      currentConceptId = data.concept_id;
+      const acts = el('div', 'actions');
+      const rev = el('button', 'btn secondary', 'Review updated materials'); rev.type = 'button';
+      rev.addEventListener('click', () => showConceptMaterials(container, data.concept_id));
+      acts.appendChild(rev);
+      container.appendChild(acts);
+    }
+    announce(data.reply || 'Clay replied.');
+  }
+
+  function renderChatConfirm(container, c) {
+    const acts = el('div', 'actions');
+    const label = c.tool === 'purchase_concept' ? 'Yes, open the purchase'
+      : c.tool === 'list_on_marketplace' ? 'Yes, open the listing flow'
+      : c.tool === 'remove_concept' ? 'Yes, delete it' : 'Yes, do it';
+    const yes = el('button', 'btn', label); yes.type = 'button';
+    yes.addEventListener('click', () => confirmChatAction(container, c, yes));
+    const no = el('button', 'btn secondary', 'Not now'); no.type = 'button';
+    no.addEventListener('click', () => { announce('Okay — holding off. Nothing was changed.', true); });
+    acts.appendChild(yes); acts.appendChild(no);
+    container.appendChild(acts);
+    if (yes.focus) yes.focus();
+  }
+
+  async function confirmChatAction(container, c, btn) {
+    if (btn) btn.disabled = true;
+    try {
+      const r = await Kiln.api('/clay/chat/confirm', { method: 'POST', body: { tool: c.tool, params: c.params } });
+      if (r.status === 'handoff' && r.url) {
+        container.appendChild(el('p', null, r.message || 'Opening the next step.'));
+        announce(r.message || 'Opening the next step.', true);
+        setTimeout(() => { location.href = r.url; }, 1200);
+        return;
+      }
+      container.appendChild(el('p', null, r.message || 'Done.'));
+      announce(r.message || 'Done.', true);
+      if (c.tool === 'remove_concept') { currentConceptId = null; chatHistory = []; setEditingConcept(false); }
+    } catch (e) {
+      container.appendChild(el('p', 'msg err', 'That didn’t go through — nothing was changed.'));
+      announce('That action did not go through. Nothing was changed.', true);
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  // Re-fetch and show the concept's CURRENT materials (new versions after an edit).
+  async function showConceptMaterials(container, conceptId) {
+    try {
+      const { assets, entitled } = await Kiln.api('/concepts/' + conceptId);
+      const current = (assets || []).filter((a) => a.is_current !== false);
+      if (!current.length) { announce('No materials yet.', true); return; }
+      const acts = el('div', 'actions');
+      const isEntitled = entitled !== false;
+      const locked = [];
+      current.forEach((a) => {
+        if (isEntitled || PREVIEW_TYPES.includes(a.type)) {
+          const b = el('button', 'btn secondary', 'View: ' + (a.title || a.type)); b.type = 'button';
+          b.addEventListener('click', () => viewAsset(container, a.id, a.title || a.type));
+          acts.appendChild(b);
+        } else { locked.push(a.title || a.type); }
+      });
+      const dl = el('button', 'btn', 'Download package'); dl.type = 'button';
+      dl.addEventListener('click', () => exportConcept(container, conceptId));
+      acts.appendChild(dl);
+      container.appendChild(acts);
+      if (locked.length) lockedNotice(container, conceptId, locked);
+      announce('Updated materials ready to view.', true);
+    } catch (e) {
+      announce('Couldn’t load the materials just now.', true);
+    }
+  }
 
   // ---- attach files for Clay to use (code, images, graphics, documents) ----
   function readFileAsBase64(file) {

@@ -472,6 +472,22 @@ router.post('/render-image', authenticate, [
 // ---- Conversational, tool-calling Clay (spine-driven) ----
 // Reversible tools execute here; irreversible ones (money/publish/delete) can
 // never run without explicit confirmation via /chat/confirm.
+// Scan a returned chat transcript for a tool result that answered with a concept id
+// (generate_concept / enhance_concept). Lets the client know materials changed this
+// turn so it can re-fetch the current versions.
+function conceptMutationFromTranscript(messages) {
+  if (!Array.isArray(messages)) return null;
+  let found = null;
+  for (const m of messages) {
+    if (!m || m.role !== 'tool' || typeof m.content !== 'string') continue;
+    try {
+      const o = JSON.parse(m.content);
+      if (o && o.status === 'answered' && typeof o.concept_id === 'string') found = o.concept_id;
+    } catch (_) { /* not JSON — ignore */ }
+  }
+  return found;
+}
+
 function buildExecutors(user) {
   return {
     list_my_concepts: async () => {
@@ -481,8 +497,12 @@ function buildExecutors(user) {
     get_concept: async ({ concept_id }) => {
       const c = await query('SELECT id, title, category, stage, risk_summary FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
       if (!c.rows.length) return { error: 'Concept not found.' };
-      const a = await query("SELECT type, title FROM assets WHERE concept_id=$1 AND is_current=true ORDER BY created_at", [concept_id]);
-      return { concept: c.rows[0], materials: a.rows };
+      const a = await query("SELECT type, title, body FROM assets WHERE concept_id=$1 AND is_current=true ORDER BY created_at", [concept_id]);
+      const materials = a.rows.map((m) => ({
+        type: m.type, title: m.title,
+        content: String(m.body || '').replace(/\s+/g, ' ').trim().slice(0, 1500),
+      }));
+      return { concept: c.rows[0], materials };
     },
     search_marketplace: async ({ query: q, category }) => {
       const clauses = ["l.status='live'"]; const args = [];
@@ -532,7 +552,19 @@ function buildExecutors(user) {
       return { status: 'answered', concept_id: concept.id, title: concept.title, coverage: result.coverage, source_check: result.source_check || null, message: result.message };
     },
     enhance_concept: async ({ concept_id, prompt }) => {
-      const result = await clay.generate({ mode: 'enhance', prompt });
+      const own = await query('SELECT id, title, category FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
+      if (!own.rows.length) return { status: 'error', message: 'Concept not found.' };
+      const a = await query("SELECT type, title, body FROM assets WHERE concept_id=$1 AND is_current=true ORDER BY created_at", [concept_id]);
+      // Ground the refinement in the concept's OWN current content so Clay builds on what
+      // already exists. Without this, enhance rebuilt from the bare instruction and
+      // refused short edits ("I can't tell what the business is from this message alone").
+      const currentContent = a.rows.map((m) =>
+        `[${m.type}] ${m.title || ''}\n${String(m.body || '').replace(/\s+/g, ' ').trim().slice(0, 2000)}`
+      ).join('\n\n');
+      const groundedPrompt = currentContent
+        ? `You are refining an EXISTING concept titled "${own.rows[0].title}". Here is its current content — keep what works and change only what the user asks for:\n\n${currentContent}\n\n--- THE CHANGE THE USER WANTS ---\n${prompt}`
+        : prompt;
+      const result = await clay.generate({ mode: 'enhance', category: own.rows[0].category || null, prompt: groundedPrompt });
       if (result.result_status !== 'answered') return { status: result.result_status, message: result.message };
       const concept = await persistResult(user.id, result, { conceptId: concept_id, mode: 'enhance', category: null, prompt });
       return { status: 'answered', concept_id: concept.id, coverage: result.coverage, source_check: result.source_check || null, message: result.message };
@@ -549,10 +581,29 @@ function buildExecutors(user) {
 }
 
 // POST /api/clay/chat  { messages: [...] }
-router.post('/chat', authenticate, [body('messages').isArray({ min: 1 })], asyncHandler(async (req, res) => {
+router.post('/chat', authenticate, [
+  body('messages').isArray({ min: 1 }),
+  body('concept_id').optional().isUUID(),
+], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-  const out = await agent.runChat({ messages: req.body.messages, executors: buildExecutors(req.user) });
+  let conceptContext = null;
+  if (req.body.concept_id) {
+    const c = await query('SELECT id, title, category, stage, risk_summary FROM concepts WHERE id=$1 AND owner_id=$2',
+      [req.body.concept_id, req.user.id]);
+    if (c.rows.length) {
+      const a = await query(
+        "SELECT type, title, body FROM assets WHERE concept_id=$1 AND is_current=true ORDER BY created_at",
+        [req.body.concept_id]);
+      conceptContext = { concept: c.rows[0], assets: a.rows };
+    }
+  }
+  const out = await agent.runChat({ messages: req.body.messages, executors: buildExecutors(req.user), conceptContext });
+  // Tell the client if Clay actually revised/created a concept this turn, so it can
+  // refresh the materials view (new asset versions have new ids). We read it off the
+  // tool results Clay recorded in the returned transcript.
+  const updated = conceptMutationFromTranscript(out.messages);
+  if (updated) { out.concept_updated = true; out.concept_id = updated; }
   res.json(out);
 }));
 

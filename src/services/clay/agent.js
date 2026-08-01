@@ -71,16 +71,49 @@ You have tools, including read-only ones to see the user's own concepts and to s
 // via injected executors; returns a confirmation request (without acting) for
 // irreversible ones. `messages` is the normalized transcript; `executors` maps
 // tool name -> async (params) => resultObject.
-async function runChat({ messages, executors = {}, maxSteps = 6 }) {
+// Render the concept the user is actively editing into an authoritative context
+// block for Clay's system prompt. Real, current content — trimmed so a long package
+// still fits — so Clay can discuss specifics, answer questions, and make grounded
+// refinements instead of rebuilding from a one-line message.
+function renderConceptContext({ concept, assets }) {
+  const lines = [];
+  lines.push('=== THE CONCEPT YOU ARE WORKING ON WITH THE USER RIGHT NOW ===');
+  lines.push(`concept_id: ${concept.id}`);
+  lines.push(`Title: ${concept.title || '(untitled)'}`);
+  if (concept.category) lines.push(`Category: ${concept.category}`);
+  if (concept.stage) lines.push(`Stage: ${concept.stage}`);
+  if (concept.risk_summary) lines.push(`Noted risk: ${String(concept.risk_summary).slice(0, 400)}`);
+  lines.push('');
+  lines.push('ITS CURRENT MATERIALS — this is the real, current content. Collaborate on THIS. Never claim it says something it does not, and do not rebuild it from scratch unless the user asks:');
+  const list = Array.isArray(assets) ? assets : [];
+  if (!list.length) {
+    lines.push('(No materials built yet.)');
+  } else {
+    for (const a of list) {
+      const body = String(a.body || '').replace(/\s+/g, ' ').trim().slice(0, 1400);
+      lines.push(`\n[${a.type}] ${a.title || ''}\n${body || '(empty)'}`);
+    }
+  }
+  lines.push('');
+  lines.push(`HOW TO WORK HERE: For questions, discussion, or feedback, just talk — do NOT rebuild anything. Only when the user actually wants the materials changed, call enhance_concept with concept_id="${concept.id}" and a prompt describing the specific change to make, building on the content above. Keep small talk fast; save rebuilding for real revisions.`);
+  return lines.join('\n');
+}
+
+async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext = null }) {
   if (!provider.available()) {
     return { status: 'unavailable',
       reply: 'Clay could not run right now (generation service is not configured). Nothing was fabricated.' };
   }
   const tools = toolSchemas();
   const convo = messages.slice();
+  // When the user is working inside a specific concept, ground Clay in that concept's
+  // REAL current content for this turn, so he collaborates on what actually exists
+  // instead of guessing or rebuilding blind. This is what turns "edit my concept" from
+  // a cold one-shot rebuild into a real back-and-forth.
+  const system = conceptContext ? SYSTEM + '\n\n' + renderConceptContext(conceptContext) : SYSTEM;
 
   for (let step = 0; step < maxSteps; step++) {
-    const resp = await provider.chat({ system: SYSTEM, messages: convo, tools });
+    const resp = await provider.chat({ system, messages: convo, tools });
     if (!resp.ok) {
       return { status: 'unavailable',
         reply: resp.reason === 'unavailable'
@@ -129,4 +162,4 @@ async function runChat({ messages, executors = {}, maxSteps = 6 }) {
   return { status: 'answered', reply: 'Clay reached its step limit for this turn. Ask me to continue.', messages: convo };
 }
 
-module.exports = { toolSchemas, planToolInvocation, runChat };
+module.exports = { toolSchemas, planToolInvocation, runChat, renderConceptContext };
