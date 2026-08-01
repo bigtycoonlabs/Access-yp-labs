@@ -71,6 +71,8 @@
     .clay-speaker{display:flex;align-items:center;gap:9px;margin:0 0 10px;}
     .clay-speaker .nm{color:#fff;font-weight:700;font-size:16px;}
     .clay-speaker .sub{color:#c3bce0;font-weight:500;font-size:13px;}
+    .clay-ver{color:#8ce0ff;font-weight:700;font-size:14px;margin:2px 0 12px;letter-spacing:.02em;}
+    .clay-ver:empty{display:none;}
     .clay-mark{display:inline-block;width:28px;height:28px;flex:0 0 auto;line-height:0;}
     .clay-mark svg{width:100%;height:100%;display:block;overflow:visible;}
     .cm-light{transform-box:fill-box;transform-origin:center;animation:cm-drift 5.6s ease-in-out infinite;}
@@ -129,6 +131,7 @@
   <main id="main" class="wrap">
     <section aria-labelledby="clay-h">
       <h2 id="clay-h">Meet Clay, your partner</h2>
+      <p class="clay-ver" id="clay-ver" aria-live="polite"></p>
       <p class="lead">Clay is a conversational AI that shapes an idea into a complete, ownable business concept — and stays on as your partner long after. Clay works with you two ways:</p>
       <div class="cards">
         <div class="card">
@@ -313,6 +316,18 @@
     box.hidden=false;
   })();
 })();
+
+  // Clay's live version — read from the single server source (services/clay/version.js)
+  // so the badge can never drift from what Clay says about himself. Speakable for VoiceOver.
+  (function(){
+    fetch('/api/clay/version').then(function(r){return r.ok?r.json():null;}).then(function(d){
+      if(!d||!d.version)return;
+      var e=document.getElementById('clay-ver');
+      if(!e)return;
+      e.textContent='Version '+d.version+' — live';
+      e.setAttribute('aria-label','Clay is on version '+d.version+', the current live release.');
+    }).catch(function(){});
+  })();
 </script>
 </body>
 </html>

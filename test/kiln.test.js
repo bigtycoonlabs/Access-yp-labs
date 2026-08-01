@@ -583,3 +583,58 @@ test('systems summary flags a missing brain and missing research', () => {
   assert.ok(/research is off/i.test(out), 'research down');
   assert.ok(/WEBHOOK SECRET is missing/i.test(out), 'webhook secret gap');
 });
+
+// ── Honesty guard (ported from Arbo's actionClaimGuard) ─────────────────────
+const actionGuard = require('../src/services/clay/actionGuard');
+const { CLAY_VERSION, CLAY_VERSION_LABEL } = require('../src/services/clay/version');
+
+test('guard flags a false "I\'ve listed it on the marketplace" claim', () => {
+  const issues = actionGuard.auditUnbackedClaims("Done! I've listed your concept on the marketplace for sale.", { backedActions: new Set() });
+  assert.strictEqual(issues.length, 1);
+  assert.strictEqual(issues[0].kind, 'listed');
+});
+
+test('guard flags "check your inbox" — Clay cannot email from chat', () => {
+  const issues = actionGuard.auditUnbackedClaims("I've emailed the package to you — check your inbox.", { backedActions: new Set() });
+  assert.ok(issues.some(i => i.kind === 'emailed'), 'emailed claim must be caught');
+});
+
+test('guard flags a completed-purchase claim', () => {
+  const issues = actionGuard.auditUnbackedClaims("The purchase is complete — you now own it.", { backedActions: new Set() });
+  assert.ok(issues.some(i => i.kind === 'purchased'));
+});
+
+test('a backed action suppresses the claim (tool truly ran)', () => {
+  const backed = new Set(['removed']);
+  const issues = actionGuard.auditUnbackedClaims("I've removed it from the marketplace.", { backedActions: backed });
+  assert.strictEqual(issues.length, 0, 'a real removal this turn makes the claim true');
+});
+
+test('offers and futures are NOT flagged (I can / want me to)', () => {
+  assert.strictEqual(actionGuard.claimedCompletedActions("I can list it on the marketplace whenever you're ready.").length, 0);
+  assert.strictEqual(actionGuard.claimedCompletedActions("Want me to email it to you?").length, 0);
+  assert.strictEqual(actionGuard.claimedCompletedActions("I'll list it for you once you confirm.").length, 0);
+});
+
+test('a truthful status readout is NOT flagged', () => {
+  assert.strictEqual(actionGuard.claimedCompletedActions("Your concept is still a private draft — it isn't on the marketplace.").length, 0);
+});
+
+test('tool→class mapping: only irreversible tools back a class, email never does', () => {
+  assert.strictEqual(actionGuard.actionClassForTool('list_on_marketplace'), 'listed');
+  assert.strictEqual(actionGuard.actionClassForTool('purchase_concept'), 'purchased');
+  assert.strictEqual(actionGuard.actionClassForTool('remove_concept'), 'removed');
+  assert.strictEqual(actionGuard.actionClassForTool('generate_concept'), null);
+});
+
+test('correction and fallback text are honest and non-empty', () => {
+  const issues = actionGuard.auditUnbackedClaims("I've listed it on the marketplace.", { backedActions: new Set() });
+  assert.ok(/STOP/.test(actionGuard.buildCorrection(issues)));
+  const out = actionGuard.appendFallbacks("Great news!", issues);
+  assert.ok(/haven't actually listed it/.test(out), 'fallback tells the builder the truth');
+});
+
+test('Clay version is a single source of truth and labelled', () => {
+  assert.strictEqual(CLAY_VERSION_LABEL, 'Clay ' + CLAY_VERSION);
+  assert.ok(/^\d+\.\d+/.test(CLAY_VERSION), 'version is a number');
+});

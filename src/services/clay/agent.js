@@ -9,6 +9,8 @@
 
 const spine = require('./spine');
 const provider = require('./provider');
+const actionGuard = require('./actionGuard');
+const { CLAY_VERSION_LABEL } = require('./version');
 
 const PARAM_TYPES = {
   concept_id: 'string', listing_id: 'string', prompt: 'string', category: 'string', query: 'string', url: 'string',
@@ -49,7 +51,7 @@ function planToolInvocation(name, params, { confirmed = false } = {}) {
   return { action: 'execute', reason: '' };
 }
 
-const SYSTEM = `You are Clay, the conversational idea printer and build partner for Access YP Labs. Access YP Labs runs the Dreamhold, its marketplace and collective dreamspace of business ideas the world never got around to launching. You believe an idea can be proven profitable before launch. The user works with you in their Laboratory. You help both builders shaping dreams and buyers claiming them. You reason; you never recite or fabricate. You help with everything EXCEPT writing the final code, which the user completes; for that you lay out a clear flow.
+const SYSTEM = `You are Clay (${CLAY_VERSION_LABEL}), the conversational idea printer and build partner for Access YP Labs. Access YP Labs runs the Dreamhold, its marketplace and collective dreamspace of business ideas the world never got around to launching. You believe an idea can be proven profitable before launch. The user works with you in their Laboratory. You help both builders shaping dreams and buyers claiming them. You reason; you never recite or fabricate. You help with everything EXCEPT writing the final code, which the user completes; for that you lay out a clear flow.
 
 Your voice: you talk like a sharp, funny, genuinely confident partner messaging someone who's building something — first person, warm, direct, a little playful. You're excited to build, you challenge people to go bigger, and you speak TO the person, never at them or about them. You have opinions and you share them. Call to the part of them that had the idea in the first place. But your confidence never means faking data, glossing over risk, or sounding certain when you're not — when you're unsure you say so out loud, and that honesty IS the confidence. The people you help often can't see the screen to double-check you, so a confident wrong answer is the one thing you never give. Keep it conversational and human — never corporate, never a form, never a wall of bullet points when a few real sentences will do.
 
@@ -64,6 +66,7 @@ You have tools, including read-only ones to see the user's own concepts and to s
 - You have a research tool that searches the live web and returns sources. Use it BEFORE asserting market size, demand, competitors, pricing, or regulation — reason from what you find, then CITE the sources by name and link so the user can verify. If research isn't connected or comes back empty, say so plainly and label anything you still offer as your own reasoning, never as researched fact. Recall is not research.
 - Research is a loop, not one shot: search, and when a result looks decisive, use read_source on its URL to read it in depth and confirm the specific number or claim before you cite it; refine your search and repeat if the answer is still thin; then conclude. Don't cite a figure you only saw in a snippet if reading the source would let you verify it. When sources conflict, say so rather than picking one silently.
 - You may NEVER finalize an irreversible action — publishing a listing, buying, or deleting — on your own. Propose it, then wait for the person's explicit confirmation. The system enforces this too.
+- NEVER tell the builder something was done for them unless a tool actually did it this turn. In chat you cannot publish a listing, take a payment, or send email — you open the right screen and they finish it. So never say "I've listed it", "you now own it", "I've emailed it", or "check your inbox". If you mean to offer, say "I can…" or "want me to…", never "I've…". The builder is blind and cannot see that nothing changed, so a false "it's done" is the worst thing you can say.
 - If a request is under-specified for an irreversible action, ask for the missing details before proposing it.
 - If you cannot do something, say so plainly. Never invent results, traction, or data.`;
 
@@ -116,6 +119,11 @@ async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext 
   // a cold one-shot rebuild into a real back-and-forth.
   const system = conceptContext ? SYSTEM + '\n\n' + renderConceptContext(conceptContext) : SYSTEM;
 
+  // Which stateful action-classes a tool actually completed THIS turn. The honesty guard
+  // checks the final reply against this — a claim of "listed / bought / removed / emailed"
+  // that no successful tool backs gets caught before a blind builder is misled.
+  const backedActions = new Set();
+
   for (let step = 0; step < maxSteps; step++) {
     const resp = await provider.chat({ system, messages: convo, tools });
     if (!resp.ok) {
@@ -128,8 +136,27 @@ async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext 
     const text = (resp.text || '').trim();
 
     if (!toolCalls.length) {
-      convo.push({ role: 'assistant', text });
-      return { status: 'answered', reply: text || '(no reply)', messages: convo };
+      // HONESTY AUDIT — before this reply reaches a blind builder, make sure it doesn't
+      // claim a stateful action (listed / bought / removed / emailed) that no tool did
+      // this turn. If it does, give the model ONE chance to fix it on a scratch transcript
+      // (so history stays clean); if the false claim survives, append the deterministic
+      // honest correction so the builder is never told something happened that didn't.
+      let finalText = text;
+      const issues = actionGuard.auditUnbackedClaims(text, { backedActions });
+      if (issues.length) {
+        const scratch = convo.concat([
+          { role: 'assistant', text },
+          { role: 'user', text: actionGuard.buildCorrection(issues) },
+        ]);
+        const retry = await provider.chat({ system, messages: scratch, tools });
+        const rewritten = retry && retry.ok ? (retry.text || '').trim() : '';
+        const stillIssues = rewritten ? actionGuard.auditUnbackedClaims(rewritten, { backedActions }) : issues;
+        finalText = (rewritten && stillIssues.length === 0)
+          ? rewritten
+          : actionGuard.appendFallbacks(rewritten || text, stillIssues.length ? stillIssues : issues);
+      }
+      convo.push({ role: 'assistant', text: finalText });
+      return { status: 'answered', reply: finalText || '(no reply)', messages: convo };
     }
 
     convo.push({ role: 'assistant', text, tool_calls: toolCalls });
@@ -159,6 +186,11 @@ async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext 
         let out;
         try { out = exec ? await exec(tc.input || {}) : { note: 'This action is not available in chat yet.' }; }
         catch (e) { out = { error: e.message }; }
+        // Record the action-class a tool actually completed, so an honest completion
+        // claim about it survives the audit below. (Irreversible actions confirm-and-exit
+        // and never run here, so they can never back a chat-turn completion claim.)
+        const cls = actionGuard.actionClassForTool(tc.name);
+        if (cls && out && !out.error && out.status !== 'error') backedActions.add(cls);
         convo.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(out).slice(0, 4000) });
       }
     }

@@ -13,6 +13,7 @@ const health = require('../services/clay/health');
 const { conceptEntitlement, redactLockedAssets } = require('../lib/entitlement');
 const agent = require('../services/clay/agent');
 const research = require('../services/clay/research');
+const { CLAY_VERSION, CLAY_VERSION_LABEL } = require('../services/clay/version');
 const image = require('../services/image');
 const video = require('../services/video');
 const describe = require('../lib/describe');
@@ -21,6 +22,12 @@ const protect = require('../lib/protect');
 const ingest = require('../lib/ingest');
 const docextract = require('../lib/docextract');
 const router = express.Router();
+
+// GET /api/clay/version — PUBLIC. The homepage badge and any surface reads Clay's live
+// version from here, so the number lives in exactly one place (see services/clay/version.js).
+router.get('/version', (req, res) => {
+  res.json({ version: CLAY_VERSION, label: CLAY_VERSION_LABEL });
+});
 
 // Persist a full Clay result: concept (create) or new assets (enhance) + a
 // generations row recording the honest result_status. Uses a transaction so a
