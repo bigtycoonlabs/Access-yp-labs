@@ -12,7 +12,7 @@ const router = express.Router();
 // same high-water mark and both land, letting a bid that doesn't truly beat the current high
 // slip in.
 router.post('/:listingId', authenticate, [
-  body('amount_cents').isInt({ min: PRICE_FLOOR_CENTS }),
+  body('amount_cents').isInt({ min: PRICE_FLOOR_CENTS }).toInt(),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });

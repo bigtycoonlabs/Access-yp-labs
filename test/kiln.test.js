@@ -789,3 +789,45 @@ test('the reasoning detectors are independent and sane', () => {
   assert.strictEqual(reasoning.hasVisibleReasoning('Done.'), false);
   assert.ok(reasoning.GUIDANCE.length > 40 && reasoning.NUDGE.length > 40);
 });
+
+// ── Health check now covers the whole current system ───────────────────────
+test('systems summary reports version, memory, and glossary when present', () => {
+  const s = {
+    version: 'Clay 4.5',
+    reasoning: { ok: true, provider: 'openai', model: 'gpt-5.5' },
+    research: { ok: true, via: 'openai_web_search' },
+    email: { configured: true, from: 'x', last: { sent: true, reason: null } },
+    payments: { secret_key: true, webhook_secret: true, events_recorded: 2 },
+    memory: { ok: true, facts_stored: 5 },
+    knowledge: { glossary_terms: 84 },
+  };
+  const out = health.summarizeSystems(s);
+  assert.ok(/Clay 4\.5/.test(out), 'reports version');
+  assert.ok(/memory is reachable/i.test(out) && /5 facts/.test(out), 'reports memory reachable + count');
+  assert.ok(/84 business terms/.test(out), 'reports glossary coverage');
+});
+
+test('systems summary flags memory as unreachable honestly', () => {
+  const s = {
+    version: 'Clay 4.5',
+    reasoning: { ok: true, provider: 'openai', model: 'gpt-5.5' },
+    research: { ok: true, via: 'openai_web_search' },
+    email: { configured: false, from: 'x', last: null },
+    payments: { secret_key: false, webhook_secret: false, events_recorded: null },
+    memory: { ok: false, facts_stored: null },
+    knowledge: { glossary_terms: 84 },
+  };
+  const out = health.summarizeSystems(s);
+  assert.ok(/memory is NOT reachable/i.test(out), 'flags memory down, does not pretend it is fine');
+});
+
+test('summary still works for a legacy status object without the new fields', () => {
+  const s = {
+    reasoning: { ok: true, provider: 'openai', model: 'gpt-5.5' },
+    research: { ok: true, via: 'openai_web_search' },
+    email: { configured: true, from: 'x', last: { sent: true, reason: null } },
+    payments: { secret_key: true, webhook_secret: true, events_recorded: 0 },
+  };
+  const out = health.summarizeSystems(s);
+  assert.ok(out.length > 20 && !/undefined/.test(out), 'no crash, no undefined leakage');
+});

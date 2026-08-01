@@ -80,6 +80,8 @@ async function checkAndAlert() {
 // works that the record says failed.
 const provider = require('./provider');
 const research = require('./research');
+const { CLAY_VERSION_LABEL } = require('./version');
+const { glossarySize } = require('./glossary');
 let stripeSvc = null; try { stripeSvc = require('../stripe'); } catch (_) { /* optional until deployed */ }
 
 async function systemsStatus() {
@@ -107,11 +109,20 @@ async function systemsStatus() {
   let stripeEvents = null;
   try { const r = await query('SELECT count(*)::int AS n FROM stripe_events'); stripeEvents = r.rows[0].n; } catch (_) { /* best-effort */ }
 
+  // Cross-session memory: prove the table is actually readable, not just assumed. If this
+  // query throws (missing table, bad search_path), memory is reported down honestly rather
+  // than the feature silently failing the next time a builder expects to be remembered.
+  let memoryOk = false; let memoryFacts = null;
+  try { const r = await query('SELECT count(*)::int AS n FROM clay_memory'); memoryFacts = r.rows[0].n; memoryOk = true; } catch (_) { memoryOk = false; }
+
   const status = {
+    version: CLAY_VERSION_LABEL,
     reasoning,
     research: { ok: researchOk, via: researchVia },
     email: { configured: emailConfigured, from: emailFrom, last: lastEmail },
     payments: { secret_key: stripeConfigured, webhook_secret: webhookSecret, events_recorded: stripeEvents },
+    memory: { ok: memoryOk, facts_stored: memoryFacts },
+    knowledge: { glossary_terms: glossarySize() },
   };
   status.summary = summarizeSystems(status);
   return status;
@@ -119,6 +130,7 @@ async function systemsStatus() {
 
 function summarizeSystems(s) {
   const parts = [];
+  if (s.version) parts.push(`Clay is running ${s.version}.`);
   parts.push(s.reasoning.ok
     ? `Clay's brain is connected — ${s.reasoning.provider}, model ${s.reasoning.model}.`
     : `Clay's brain is NOT connected: no AI provider key is set.`);
@@ -143,6 +155,14 @@ function summarizeSystems(s) {
     if (s.payments.events_recorded === 0) parts.push(`No payment events have been recorded yet.`);
   } else {
     parts.push(`Payments are NOT connected — no Stripe secret key, so customers can't pay yet.`);
+  }
+  if (s.memory) {
+    parts.push(s.memory.ok
+      ? `Cross-session memory is reachable${s.memory.facts_stored != null ? ` — ${s.memory.facts_stored} fact${s.memory.facts_stored === 1 ? '' : 's'} stored across all builders` : ''}.`
+      : `Cross-session memory is NOT reachable right now — Clay can't read what it remembered, so it may re-ask things it should know.`);
+  }
+  if (s.knowledge && typeof s.knowledge.glossary_terms === 'number') {
+    parts.push(`Clay can define ${s.knowledge.glossary_terms} business terms in plain language.`);
   }
   return parts.join(' ');
 }

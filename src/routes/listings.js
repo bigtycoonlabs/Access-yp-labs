@@ -32,8 +32,8 @@ async function meetsBaseline(conceptId) {
 router.post('/', authenticate, [
   body('concept_id').isUUID(),
   body('format').isIn(['flat', 'auction']),
-  body('price_cents').optional().isInt({ min: PRICE_FLOOR_CENTS }),
-  body('starting_bid_cents').optional().isInt({ min: PRICE_FLOOR_CENTS }),
+  body('price_cents').optional().isInt({ min: PRICE_FLOOR_CENTS }).toInt(),
+  body('starting_bid_cents').optional().isInt({ min: PRICE_FLOOR_CENTS }).toInt(),
   body('stage_label').optional().isIn(['concept', 'in_build', 'prepared_to_start']),
   body('auction_close_at').optional().isISO8601(),
   body('risk_disclosed').isBoolean(),
@@ -104,8 +104,8 @@ router.post('/:id/withdraw', authenticate, asyncHandler(async (req, res) => {
 // listing buyers may already be acting on.
 router.patch('/:id', authenticate, [
   body('format').optional().isIn(['flat', 'auction']),
-  body('price_cents').optional().isInt({ min: PRICE_FLOOR_CENTS }),
-  body('starting_bid_cents').optional().isInt({ min: PRICE_FLOOR_CENTS }),
+  body('price_cents').optional().isInt({ min: PRICE_FLOOR_CENTS }).toInt(),
+  body('starting_bid_cents').optional().isInt({ min: PRICE_FLOOR_CENTS }).toInt(),
   body('stage_label').optional().isIn(['concept', 'in_build', 'prepared_to_start']),
   body('completion_target').optional().isString().isLength({ max: 200 }),
   body('auction_close_at').optional().isISO8601(),
