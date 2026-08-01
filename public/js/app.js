@@ -209,7 +209,10 @@
       }
     } catch (_) {}
     m.appendChild(el('p', null, opening));
-    await renderMyConcepts(m, myConcepts);
+    // Hannah's feedback: finished concepts read better BELOW the chat window, not stacked
+    // inside Clay's opening message. Render them into the dedicated area beneath the composer;
+    // fall back to the message only if that container somehow isn't present.
+    await renderMyConcepts(document.getElementById('my-concepts-area') || m, myConcepts);
     // Offer to tune the Dreamhold from the lab — opt-in, never a gate. Skipped if they're
     // already tuned, or arrived mid-flow with an idea already sitting in the box.
     if (prefs && !prefs.onboarded && !(promptEl && promptEl.value)) maybeOfferTuning();

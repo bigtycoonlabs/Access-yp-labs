@@ -2,7 +2,7 @@
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Your laboratory — Access YP Labs</title><link rel="stylesheet" href="/css/kiln.css"/>
 <style>
-  .composer{position:sticky;bottom:0;background:var(--sand);padding:16px 0 8px;border-top:1px solid var(--line);}
+  .composer{background:var(--sand);padding:16px 0 8px;border-top:1px solid var(--line);}
   .modes{display:flex;gap:10px;margin:0 0 12px;flex-wrap:wrap;}
   .mode-btn[aria-pressed="true"]{background:var(--clay-dark);color:#fff;}
   .mode-btn{background:#fff;color:var(--clay-dark);border:1.5px solid var(--clay);}
@@ -13,13 +13,12 @@
   .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
   .asset-body{white-space:pre-wrap;background:#faf7f2;border:1px solid var(--line);border-radius:10px;padding:16px;margin-top:10px;font-size:16px;}
   .coverage{font-size:15px;color:var(--muted);margin-top:8px;}
-  /* On a phone the sticky composer + a 40vh empty log left no room to see
-     anything. Let the page flow naturally: composer in normal order, and the
-     log reserves no blank height until there are messages. DOM order unchanged. */
-  @media (max-width:640px){
-    .composer{position:static;border-top:none;padding-top:8px;}
-    .log{min-height:0;}
-  }
+  /* The finished-concepts area now lives BELOW the chat window (a new user found that
+     clearer to read). Since content sits beneath it, the composer flows in normal order
+     instead of sticking to the bottom, so nothing can overlap the concepts on any screen.
+     A separator sets the concepts area apart, but only when there are concepts to show. */
+  #my-concepts-area:not(:empty){margin-top:24px;padding-top:8px;border-top:1px solid var(--line);}
+  @media (max-width:640px){ .log{min-height:0;} }
 </style>
 </head><body>
 <a class="skip" href="#composer">Skip to the message box</a>
@@ -75,6 +74,7 @@
       <button type="button" class="btn" id="send">Send to Clay</button>
     </div>
   </div>
+  <div id="my-concepts-area"></div>
 </main>
 <footer class="site"><div class="wrap"><p>The Dreamhold is a neutral marketplace and is not a party to any transaction between members. Concepts are pre-proven starting points, not guarantees of income.</p></div>
       <nav aria-label="Legal" class="legal-links" style="margin-top:10px">
