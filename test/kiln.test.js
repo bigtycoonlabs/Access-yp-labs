@@ -1029,3 +1029,22 @@ test('parseResponsesOutput extracts text and tool calls from a Responses payload
   const bad = provider.parseResponsesOutput({ output: [{ type: 'function_call', call_id: 'x', name: 'n', arguments: '{not json' }] });
   assert.deepStrictEqual(bad.tool_calls[0].input, {});
 });
+
+// ── Email failure logging is self-diagnosing whatever shape the provider returns ─
+const emailSvc = require('../src/services/email');
+
+test('resendErrorDetail keeps the real reason for every body shape (the 422 that reached the log blank)', async () => {
+  // Standard Resend error JSON — the friendly message is surfaced.
+  const msg = await emailSvc.resendErrorDetail({ text: async () => JSON.stringify({ statusCode: 422, message: 'The accessyplabs.com domain is not verified.', name: 'validation_error' }) });
+  assert.ok(/domain is not verified/.test(msg), 'friendly message surfaced');
+  // A shape WITHOUT message/error/name must NOT drop to blank — it keeps the raw body,
+  // which is exactly the case that previously logged a bare "resend_422".
+  const odd = await emailSvc.resendErrorDetail({ text: async () => '{"unexpected":"shape"}' });
+  assert.ok(odd && odd.length > 0, 'an unexpected JSON shape is still captured, never dropped');
+  // Non-JSON body is captured verbatim.
+  const plain = await emailSvc.resendErrorDetail({ text: async () => 'Bad Request' });
+  assert.strictEqual(plain, 'Bad Request');
+  // Empty body degrades cleanly, never throws.
+  assert.strictEqual(await emailSvc.resendErrorDetail({ text: async () => '' }), '');
+  assert.strictEqual(await emailSvc.resendErrorDetail({ text: async () => { throw new Error('unreadable'); } }), '');
+});

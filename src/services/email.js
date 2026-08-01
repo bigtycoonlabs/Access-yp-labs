@@ -1,3 +1,17 @@
+// Read an error response body ONCE and return the most human-readable explanation available.
+// Reading raw text FIRST (not resp.json()) is deliberate: if the body isn't the JSON shape we
+// expected, resp.json() would consume it and leave nothing to fall back to, so the real reason
+// gets silently dropped — which is exactly how two live 422s reached the log as a bare
+// "resend_422" with no explanation. Capturing raw text keeps a failure self-diagnosing whatever
+// shape the provider returns.
+async function resendErrorDetail(resp) {
+  let raw = '';
+  try { raw = await resp.text(); } catch (_) { return ''; }
+  if (!raw) return '';
+  try { const b = JSON.parse(raw); return String(b.message || b.error || b.name || raw).slice(0, 300); }
+  catch (_) { return String(raw).slice(0, 300); }
+}
+
 // Dual-channel delivery: Clay's packages are both downloadable AND emailed.
 // Uses Resend if configured; otherwise reports honestly that it did not send
 // (never records a send that did not happen).
@@ -14,10 +28,8 @@ async function sendEmail({ to, subject, html, text }) {
     if (!resp.ok) {
       // Keep Resend's own explanation (e.g. "The from address is not verified", "domain
       // not found") instead of just the status — so a failure is self-diagnosing forever.
-      let detail = '';
-      try { const b = await resp.json(); detail = b.message || b.error || (b.name ? String(b.name) : ''); }
-      catch (_) { try { detail = (await resp.text()).slice(0, 200); } catch (_2) {} }
-      return { sent: false, reason: `resend_${resp.status}${detail ? ': ' + String(detail).slice(0, 300) : ''}` };
+      const detail = await resendErrorDetail(resp);
+      return { sent: false, reason: `resend_${resp.status}${detail ? ': ' + detail : ''}` };
     }
     const data = await resp.json();
     return { sent: true, id: data.id };
@@ -42,10 +54,8 @@ async function sendBatch(emails) {
       body: JSON.stringify(payload),
     });
     if (!resp.ok) {
-      let detail = '';
-      try { const b = await resp.json(); detail = b.message || b.error || (b.name ? String(b.name) : ''); }
-      catch (_) { try { detail = (await resp.text()).slice(0, 200); } catch (_2) {} }
-      return { sent: 0, failed: payload.length, reason: `resend_${resp.status}${detail ? ': ' + String(detail).slice(0, 300) : ''}`, results: [] };
+      const detail = await resendErrorDetail(resp);
+      return { sent: 0, failed: payload.length, reason: `resend_${resp.status}${detail ? ': ' + detail : ''}`, results: [] };
     }
     const data = await resp.json();
     const results = data.data || [];
@@ -55,4 +65,4 @@ async function sendBatch(emails) {
   }
 }
 
-module.exports = { sendEmail, sendBatch };
+module.exports = { sendEmail, sendBatch, resendErrorDetail };
