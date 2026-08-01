@@ -122,3 +122,26 @@ legend{font-weight:700;padding:0 6px;}
   .cm-glow{transform:scale(1)!important;opacity:.9!important;}
   .material-card{transition:opacity .3s ease;transform:none;}
 }
+
+/* ============================================================
+   Mobile — keep the whole screen usable on a phone. A new user
+   reported the screen was unreadable on mobile: oversized
+   headings, wide padding, a wrapping nav, and (in the lab) a
+   tall sticky composer left almost no room for content. These
+   rules only change presentation at narrow widths — the DOM
+   order is untouched, so VoiceOver reads exactly as before.
+   ============================================================ */
+@media (max-width: 640px){
+  html{ -webkit-text-size-adjust:100%; }
+  body{ font-size:17px; }
+  .wrap{ padding:0 16px; }
+  h1{ font-size:26px; }
+  h2{ font-size:20px; margin:22px 0 10px; }
+  h3{ font-size:18px; }
+  header.site .bar{ padding:12px 0; gap:10px; }
+  nav.top{ display:flex; flex-wrap:wrap; gap:8px 16px; }
+  nav.top a{ margin-left:0; font-size:16px; }
+  /* Never let a wide child force sideways scrolling on a phone. */
+  img, pre, textarea, table, video, iframe{ max-width:100%; }
+  body{ overflow-x:hidden; overflow-wrap:break-word; word-break:break-word; }
+}

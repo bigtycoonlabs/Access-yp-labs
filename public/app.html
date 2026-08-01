@@ -13,6 +13,13 @@
   .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
   .asset-body{white-space:pre-wrap;background:#faf7f2;border:1px solid var(--line);border-radius:10px;padding:16px;margin-top:10px;font-size:16px;}
   .coverage{font-size:15px;color:var(--muted);margin-top:8px;}
+  /* On a phone the sticky composer + a 40vh empty log left no room to see
+     anything. Let the page flow naturally: composer in normal order, and the
+     log reserves no blank height until there are messages. DOM order unchanged. */
+  @media (max-width:640px){
+    .composer{position:static;border-top:none;padding-top:8px;}
+    .log{min-height:0;}
+  }
 </style>
 </head><body>
 <a class="skip" href="#composer">Skip to the message box</a>
