@@ -55,6 +55,20 @@ function openaiTokenParams(maxTokens, model, opts = {}) {
   return { max_tokens: maxTokens };
 }
 
+// Token params for a TOOL-using chat turn. gpt-5.x on /v1/chat/completions returns a hard 400
+// if a reasoning_effort of low/medium/high is sent alongside function tools — it requires
+// 'none' (or the separate /v1/responses endpoint). Clay's agent turns ARE tool dispatch, not
+// deep analysis, so 'none' is the right setting here regardless; the heavy reasoning lives on
+// the non-tool complete() path (concept generation, validation, self-critique), which is
+// untouched. Pinning 'none' keeps the whole agent working instead of 400-ing on every turn.
+// Non-reasoning models (gpt-4o-class) keep max_tokens and never carry reasoning_effort.
+function openaiToolTokenParams(maxTokens, model) {
+  if (isReasoningModel(model || OPENAI_MODEL)) {
+    return { max_completion_tokens: maxTokens, reasoning_effort: 'none' };
+  }
+  return { max_tokens: maxTokens };
+}
+
 function providerName() {
   if (OpenAI && process.env.OPENAI_API_KEY) return 'openai';
   if (Anthropic && process.env.ANTHROPIC_API_KEY) return 'anthropic';
@@ -168,7 +182,7 @@ async function openaiChat({ system, messages, tools, maxTokens }) {
     }
   }
   const oaTools = tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } }));
-  const resp = await openaiClient().chat.completions.create({ model: OPENAI_MODEL, ...openaiTokenParams(maxTokens), messages: oaMessages, tools: oaTools });
+  const resp = await openaiClient().chat.completions.create({ model: OPENAI_MODEL, ...openaiToolTokenParams(maxTokens), messages: oaMessages, tools: oaTools });
   const choice = resp.choices?.[0]?.message || {};
   const tool_calls = (choice.tool_calls || []).map((tc) => {
     let input = {};
@@ -271,4 +285,4 @@ async function webSearch(query, { maxResults = 5, model = null } = {}) {
   }
 }
 
-module.exports = { available, providerName, modelName, complete, describeImage, chat, probe, autoEffort, resolveEffort, webSearch, _parseOpenAISearch: parseOpenAISearch };
+module.exports = { available, providerName, modelName, complete, describeImage, chat, probe, autoEffort, resolveEffort, openaiToolTokenParams, webSearch, _parseOpenAISearch: parseOpenAISearch };

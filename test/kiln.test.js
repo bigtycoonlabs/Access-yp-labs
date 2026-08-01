@@ -831,3 +831,30 @@ test('summary still works for a legacy status object without the new fields', ()
   const out = health.summarizeSystems(s);
   assert.ok(out.length > 20 && !/undefined/.test(out), 'no crash, no undefined leakage');
 });
+
+// ── Provider: tool calls must not send reasoning_effort that OpenAI rejects ──
+// gpt-5.x on /v1/chat/completions 400s if function tools are sent with a
+// low/medium/high reasoning_effort. The tool path must pin 'none'.
+test('tool-path params pin reasoning_effort to none for a reasoning model', () => {
+  const p = provider.openaiToolTokenParams(4000, 'gpt-5.5');
+  assert.strictEqual(p.reasoning_effort, 'none', "must be 'none', never low/medium/high");
+  assert.strictEqual(p.max_completion_tokens, 4000);
+  assert.ok(!('max_tokens' in p), 'reasoning models use max_completion_tokens');
+});
+
+test('tool-path params also pin none for o-series reasoning models', () => {
+  assert.strictEqual(provider.openaiToolTokenParams(2000, 'o3').reasoning_effort, 'none');
+});
+
+test('tool-path params omit reasoning_effort entirely for non-reasoning models', () => {
+  const p = provider.openaiToolTokenParams(4000, 'gpt-4o');
+  assert.ok(!('reasoning_effort' in p), 'gpt-4o must not carry reasoning_effort');
+  assert.strictEqual(p.max_tokens, 4000);
+});
+
+test('tool-path effort is never a value OpenAI rejects with tools', () => {
+  for (const model of ['gpt-5.5', 'gpt-5', 'o3', 'o4-mini']) {
+    const eff = provider.openaiToolTokenParams(4000, model).reasoning_effort;
+    assert.ok(eff === 'none', `${model} must send none, got ${eff}`);
+  }
+});
