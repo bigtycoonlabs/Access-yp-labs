@@ -197,7 +197,7 @@
       const list = words.length === 1 ? words[0] : (words.slice(0, -1).join(', ') + ' and ' + words[words.length - 1]);
       opening = 'Welcome back. You told me you’re drawn to ' + list + ' — so what’s it going to be: shape one of those, or chase something brand new? “Create” starts fresh; “Enhance” sharpens something you’ve already got.';
     } else {
-      opening = "I'm Clay. Here's how this works: you bring me an idea — any idea, half-formed is fine — and we pressure-test it, sharpen it, and build the whole thing out together: the plan, the research, the marketing, a working demo. It stays your idea; I just help bring it to life. Pick “Create” to start something new, or “Enhance” to sharpen an idea you already have or a business you already run. So — what's the one that's been living in your head?";
+      opening = "I'm Clay. Here's how this works: you bring me an idea — any idea, half-formed is fine — and we pressure-test it, sharpen it, and build the whole thing out together: the plan, the research, the marketing, a working demo. It stays your idea; I just help bring it to life — and it stays private: everything you build lives in your Laboratory, and nothing goes on the Dreamhold marketplace unless you choose to list it. Pick “Create” to start something new, or “Enhance” to sharpen an idea you already have or a business you already run. So — what's the one that's been living in your head?";
     }
     // If they handed Clay an idea from the homepage before signing up, it's
     // waiting for them here — greet them with it and pre-fill the box.
@@ -830,6 +830,14 @@
       actions.appendChild(consultBtn);
       container.appendChild(actions);
 
+      // A brand-new user asked whether finishing a build auto-posts to the Dreamhold. It does
+      // not — say so right here, at the moment they'd wonder. Only for listable (not operating)
+      // concepts, since operating ones are never listed for sale at all.
+      if (data.concept && !data.concept.is_operating) {
+        const priv = el('p', 'muted');
+        priv.textContent = 'Private to your Laboratory — this isn’t posted anywhere automatically. It only reaches the Dreamhold if you choose “List this in the Dreamhold,” and even then it goes to review first, never straight to sale.';
+        container.appendChild(priv);
+      }
       // Not kept yet: name the pieces that are built and waiting, with one way to unlock
       // them all. The business plan, marketing strategy, and demo stay free above.
       if (data.entitled === false && data.concept) {
