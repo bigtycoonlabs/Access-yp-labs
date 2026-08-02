@@ -617,7 +617,7 @@
     container.appendChild(log);
     const setCap = function (t) { if (t) cap.textContent = t; };
     const settle = function () { flame.classList.remove('thinking'); };
-    let shown = 0, tries = 0, lastBeat = 0;
+    let shown = 0, tries = 0, lastBeat = 0, lastNoteAt = Date.now();
     const startedAt = Date.now();
     const maxTries = 140; // ~6 min at 2.5s, then hand off to the email
     const timer = setInterval(async () => {
@@ -631,6 +631,7 @@
           setCap(notes[shown].text);
           announce(notes[shown].text); // polite: reads without cutting off
         }
+        lastNoteAt = Date.now();
       }
       if (data.status === 'done') {
         clearInterval(timer); settle();
@@ -656,12 +657,12 @@
         log.appendChild(el('p', 'muted', 'Still working — I’ll email it to you the moment it’s ready, and it’ll be in your Laboratory.'));
         announce('Clay is still working. It will email you the moment it’s ready.', true);
       } else {
-        // Still building. The big writing step posts no sub-notes for a minute or two, so keep
-        // the caption alive with elapsed time (and an occasional spoken reassurance) — never a
-        // dead spot — but don't stomp a note that's still the freshest thing said.
+        // Still building. Keep the last real note on screen between updates; only fall back to
+        // a gentle, generic status if Clay's narration genuinely goes quiet for a while — so the
+        // caption reads as real work in progress, not a clock repeating the same line.
         const secs = Math.round((Date.now() - startedAt) / 1000);
-        if (notes.length === shown) {
-          setCap('Still working… ' + secs + 's in. The big writing step normally takes a minute or two.');
+        if (notes.length === shown && Date.now() - lastNoteAt > 20000) {
+          setCap('Still working… ' + secs + 's in.');
         }
         if (secs - lastBeat >= 25) { lastBeat = secs; announce('Still working, ' + secs + ' seconds in. This is normal.'); }
       }

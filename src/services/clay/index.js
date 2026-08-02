@@ -199,8 +199,41 @@ async function generate({ mode, category, prompt, operating = false, priorWork =
     }
   }
 
-  await note('Writing the full concept now — this is the big step, about a minute or two…');
-  const out = await provider.complete({ system, user: userMsgFull, json: true, maxTokens: 12000 });
+  // A genuine first read on THIS idea, the way a person reacts before getting to work — real
+  // thoughts, not filler. Best-effort and fast; if it can't run we simply skip it. It is an
+  // explicitly provisional first impression and never claims anything is finished.
+  try {
+    const fr = await provider.complete({
+      system: 'You are Clay, about to shape a business concept. In 2–3 sentences (under 55 words, no lists, no headers), give your honest FIRST READ on the idea below: the most promising angle, and the one thing you will be most careful about. Open with "First read:" and speak straight to the person. This comes BEFORE the full build — do not claim anything is done, and do not invent facts.',
+      user: (prompt || category || 'a business idea') + (grounding.text ? '\n\nEarly research signals:\n' + String(grounding.text).slice(0, 1500) : ''),
+      json: false, maxTokens: 200,
+    });
+    if (fr && fr.ok && fr.text && fr.text.trim()) await note(fr.text.trim().slice(0, 600));
+  } catch (_) { /* the first read is a nicety; it must never block or slow the build */ }
+
+  // The long write is a single model call, so on its own it would go silent for a minute or two
+  // and the client would loop a timer. Narrate the real pieces being written as it works — each
+  // note names an ACTUAL section of the concept, present-tense (work in progress, never
+  // "finished"), so the person watches Clay move through the build instead of a repeating clock.
+  await note('Writing it all out now — I’ll call out each piece as I go.');
+  const STAGE_NOTES = [
+    'Shaping the business plan — the model, the money, and the first real customer.',
+    'Now the marketing strategy — who hears about this first, and how they find you.',
+    'Building the working demo you’ll be able to click through.',
+    'Mapping the build path — the concrete steps to stand this up.',
+    'Labeling the risks and any licensing honestly — no hand-waving.',
+    'Tightening the language and making sure every piece fits together…',
+  ];
+  let stageIdx = 0;
+  const stageTimer = setInterval(() => {
+    if (stageIdx < STAGE_NOTES.length) note(STAGE_NOTES[stageIdx++]);
+  }, 14000);
+  let out;
+  try {
+    out = await provider.complete({ system, user: userMsgFull, json: true, maxTokens: 12000 });
+  } finally {
+    clearInterval(stageTimer);
+  }
   if (!out.ok) {
     return { result_status: 'unavailable',
       message: out.reason === 'unavailable'
