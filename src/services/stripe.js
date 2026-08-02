@@ -171,6 +171,8 @@ async function createPlanCheckout({ mode, priceCents, planName, userId, plan, co
     console.error('createPlanCheckout FAILED — type:', err && err.type, '| code:', err && err.code,
       '| param:', err && err.param, '| message:', err && err.message);
     return { ok: false, reason: 'stripe_error', detail: (err && (err.code || err.type)) || 'unknown',
+      stripe_type: (err && err.type) || null, stripe_code: (err && err.code) || null,
+      stripe_param: (err && err.param) || null, stripe_message: (err && err.message) || null,
       message: 'Could not start checkout with the payment processor, so nothing was charged. Please try again in a moment.' };
   }
 }

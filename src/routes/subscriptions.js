@@ -58,6 +58,19 @@ router.post('/', authenticate, [
     cancelUrl: `${base}/dashboard.html?sub=canceled`,
   });
   if (!checkout.ok) {
+    // Record the real Stripe reason so staff can read it on the dashboard (the operators are
+    // blind and can't read Railway logs). Best-effort — a diagnostic write must never change
+    // the outcome of the request. stripe_not_configured means no key at all, which we still log.
+    try {
+      await query(
+        `INSERT INTO checkout_errors (user_id, kind, plan, concept_id, stripe_type, stripe_code, stripe_param, message)
+         VALUES ($1,'plan',$2,$3,$4,$5,$6,$7)`,
+        [req.user.id, plan, conceptId || null,
+         checkout.stripe_type || (checkout.reason === 'stripe_not_configured' ? 'not_configured' : null),
+         checkout.stripe_code || checkout.detail || null,
+         checkout.stripe_param || null,
+         checkout.stripe_message || checkout.reason || null]);
+    } catch (_) { /* never let logging break the response */ }
     const msg = checkout.reason === 'stripe_not_configured'
       ? 'Billing is not configured on the platform yet, so nothing was charged.'
       : (checkout.message || 'Could not start checkout right now, so nothing was charged. Please try again.');

@@ -27,7 +27,31 @@ router.get('/overview', authenticate, authorize('staff', 'admin', 'master_staff'
       FROM clay_runs`);
     let clayRecent = null;
     try { clayRecent = await health.recentStats(); } catch (_) { clayRecent = null; }
-    res.json({ counts: counts.rows[0], clay_all: clayAll.rows[0], clay_recent: clayRecent });
+    // Payments diagnostic: env PRESENCE only (never the secret itself) plus the real Stripe
+    // reason from the most recent failed checkouts — so staff can see exactly why a subscribe
+    // failed without reading server logs.
+    let checkoutErrors = [];
+    try {
+      const ce = await query(
+        `SELECT created_at, plan, stripe_type, stripe_code, stripe_param, message
+           FROM checkout_errors ORDER BY created_at DESC LIMIT 5`);
+      checkoutErrors = ce.rows;
+    } catch (_) { checkoutErrors = []; }
+    const payments = {
+      secret_key_present: !!process.env.STRIPE_SECRET_KEY,
+      secret_key_kind: (function (k) {
+        if (!k) return 'missing';
+        if (k.startsWith('sk_live_')) return 'sk_live (standard, live)';
+        if (k.startsWith('sk_test_')) return 'sk_test (standard, test)';
+        if (k.startsWith('rk_')) return 'rk (restricted — may lack permissions)';
+        if (k.startsWith('pk_')) return 'pk (PUBLISHABLE — wrong key type)';
+        if (k.startsWith('whsec_')) return 'whsec (WEBHOOK SECRET — wrong key type)';
+        return 'unrecognized prefix';
+      })(process.env.STRIPE_SECRET_KEY || ''),
+      webhook_secret_present: !!process.env.STRIPE_WEBHOOK_SECRET,
+      recent_errors: checkoutErrors,
+    };
+    res.json({ counts: counts.rows[0], clay_all: clayAll.rows[0], clay_recent: clayRecent, payments });
   }));
 
 // Testing mode — a staff member's own switch between two ways of experiencing the platform:

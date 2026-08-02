@@ -27,7 +27,8 @@
          <a class="btn secondary" href="/admin-consultants.html" style="margin-left:8px">Consultant applications</a></p>
     </section>
     <section aria-labelledby="p-h"><h2 id="p-h">People &amp; ideas</h2><div class="grid" id="people"></div></section>
-    <section aria-labelledby="m-h"><h2 id="m-h">Money</h2><div class="grid" id="money"></div></section>
+    <section aria-labelledby="m-h"><h2 id="m-h">Money</h2><div class="grid" id="money"></div>
+      <div id="payments" style="margin-top:16px"></div></section>
     <section aria-labelledby="c-h"><h2 id="c-h">Clay</h2><div class="grid" id="clay"></div>
       <p><a class="btn secondary" href="/admin-clay.html">Open the Clay health screen</a></p></section>
   </div>
@@ -65,6 +66,35 @@ async function load(){
   const money=document.getElementById('money'); money.innerHTML='';
   stat(money,c.maker_subs,'Maker plans ($2.99/concept)');
   stat(money,c.sculptor_subs,'Sculptor plans ($49.99/mo)');
+
+  // Payments diagnostic — the exact reason a subscribe failed, readable (and speakable) here
+  // instead of buried in server logs.
+  const pay = d.payments || {};
+  const pbox = document.getElementById('payments'); pbox.innerHTML='';
+  pbox.appendChild(el('h3', null, 'Payments configuration'));
+  const cfg = el('ul');
+  const keyLi = el('li', null, 'Stripe secret key: ' + (pay.secret_key_kind || 'unknown'));
+  if (/wrong key type|restricted|missing|unrecognized/.test(pay.secret_key_kind || '')) keyLi.style.color = '#b3261e';
+  cfg.appendChild(keyLi);
+  cfg.appendChild(el('li', null, 'Webhook signing secret: ' + (pay.webhook_secret_present ? 'present' : 'MISSING')));
+  pbox.appendChild(cfg);
+  pbox.appendChild(el('h3', null, 'Recent checkout failures'));
+  const errs = pay.recent_errors || [];
+  if (!errs.length) {
+    pbox.appendChild(el('p', 'muted', 'No checkout failures recorded — good sign.'));
+  } else {
+    const ul = el('ul');
+    errs.forEach(function (e) {
+      const when = e.created_at ? new Date(e.created_at).toLocaleString() : '';
+      const what = (e.stripe_type || e.stripe_code || 'error') + (e.stripe_code && e.stripe_type ? ' (' + e.stripe_code + ')' : '');
+      ul.appendChild(el('li', null, when + ' — ' + what + ': ' + (e.message || '')));
+    });
+    pbox.appendChild(ul);
+  }
+  const newest = errs.length ? ((errs[0].stripe_type || errs[0].stripe_code || 'error') + ': ' + (errs[0].message || '')) : '';
+  announce('Payments: secret key ' + (pay.secret_key_kind || 'unknown')
+    + ', webhook secret ' + (pay.webhook_secret_present ? 'present' : 'missing') + '. '
+    + (errs.length ? (errs.length + ' recent checkout failure' + (errs.length === 1 ? '' : 's') + '. Newest — ' + newest) : 'No recent checkout failures.'), true);
 
   const clay=document.getElementById('clay'); clay.innerHTML='';
   stat(clay,a.total,'Clay runs (all time)');
