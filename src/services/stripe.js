@@ -68,6 +68,7 @@ async function createEscrowCheckout({ amountCents, feeCents, sellerAccountId, or
       success_url: successUrl,
       cancel_url: cancelUrl,
       metadata: { order_id: orderId },
+      managed_payments: { enabled: false }, // standard checkout — see note on the plan checkout
     });
     return { ok: true, url: session.url, sessionId: session.id };
   } catch (err) {
@@ -99,6 +100,7 @@ async function createConsultCheckout({ amountCents, feeCents, consultantAccountI
       success_url: successUrl,
       cancel_url: cancelUrl,
       metadata: { kind: 'consult', engagement_id: engagementId },
+      managed_payments: { enabled: false }, // standard checkout — see note on the plan checkout
     });
     return { ok: true, url: session.url, sessionId: session.id };
   } catch (err) {
@@ -163,6 +165,11 @@ async function createPlanCheckout({ mode, priceCents, planName, userId, plan, co
       success_url: successUrl,
       cancel_url: cancelUrl,
       metadata: { kind: 'subscription', user_id: userId, plan, concept_id: conceptId || '' },
+      // Managed Payments is on by default on this account and requires a product tax code on
+      // every inline price; we don't set one, so Stripe rejected the checkout. Disable it here
+      // to use standard checkout. To adopt Managed Payments (Stripe handling sales tax), set a
+      // chosen product tax code on each price instead — a deliberate tax decision.
+      managed_payments: { enabled: false },
     });
     return { ok: true, url: session.url, sessionId: session.id };
   } catch (err) {
