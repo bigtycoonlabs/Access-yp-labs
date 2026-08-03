@@ -432,7 +432,7 @@ router.post('/seed', authenticate, authorize('staff', 'admin', 'master_staff'), 
   }
   // Fire-and-forget for a fast response, but never silent: on success runSeed emails staff to
   // review; on failure we email staff the reason, so a manual seed always ends with an answer.
-  seed.runSeed()
+  seed.runSeed({ source: 'manual' })
     .then((r) => { if (r && !r.ok) return seed.emailStaffSeedFailed(r); })
     .catch((e) => seed.emailStaffSeedFailed({ reason: 'error', error: e && e.message }));
   return res.status(202).json({
@@ -444,8 +444,8 @@ router.post('/seed', authenticate, authorize('staff', 'admin', 'master_staff'), 
 // GET /api/clay/seed-schedule — STAFF ONLY. The current auto-seed cadence and how much Clay has
 // seeded today / all-time.
 router.get('/seed-schedule', authenticate, authorize('staff', 'admin', 'master_staff'), asyncHandler(async (req, res) => {
-  const s = await seedScheduler.status();
-  res.json({ ok: true, schedule: s, image_ready: image.configured() });
+  const [s, recent] = await Promise.all([seedScheduler.status(), seed.recentRuns(20)]);
+  res.json({ ok: true, schedule: s, recent_runs: recent, image_ready: image.configured() });
 }));
 
 // POST /api/clay/seed-schedule  { enabled?, daily_target?, min_gap_minutes? } — STAFF ONLY. Turn

@@ -258,7 +258,7 @@ async function emailStaffSeedFailed({ reason, error }) {
 
 // Full pipeline: invent -> novelty -> build -> persist (Clay/origin clay_seed) -> listing
 // in_review -> email staff. Returns an honest summary object; never throws.
-async function runSeed() {
+async function runSeedCore() {
   try {
     if (!provider.available()) return { ok: false, reason: 'unavailable' };
     const clayUser = await getClayUser();
@@ -331,4 +331,45 @@ async function runSeed() {
   }
 }
 
-module.exports = { runSeed, getClayUser, ensurePenName, setPenName, chooseNewPenName, emailStaffSeedFailed, CLAY_EMAIL, DAILY_CAP };
+// Persist a record of one seed attempt and its outcome, so staff can see WHY seeding did or didn't
+// produce a concept — without reading server logs. Best-effort: this NEVER throws and never changes
+// a seed's result. Maps runSeedCore's return shape to a seed_runs row.
+async function recordSeedRun(out, source) {
+  const o = out || { ok: false, reason: 'no_result' };
+  try {
+    await query(
+      `INSERT INTO seed_runs (source, ok, reason, concept_id, listing_id, title, emailed, detail)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [source === 'scheduled' ? 'scheduled' : 'manual',
+       !!o.ok,
+       o.ok ? 'seeded' : (o.reason || 'unknown'),
+       o.concept_id || null,
+       o.listing_id || null,
+       o.title || null,
+       (typeof o.emailed === 'boolean' ? o.emailed : null),
+       o.error || null]);
+  } catch (e) {
+    console.error('recordSeedRun failed:', e && e.message);
+  }
+}
+
+// Public entry point: run one seed and persist an observability record of the outcome. `source`
+// distinguishes a staff-triggered run ('manual') from the scheduler ('scheduled'). The record is
+// best-effort; the seed's own result is returned unchanged whether or not logging succeeds.
+async function runSeed(meta = {}) {
+  const out = await runSeedCore();
+  await recordSeedRun(out, meta && meta.source);
+  return out;
+}
+
+// Recent seed attempts (newest first) for the staff seed dashboard — the queryable history that
+// makes silent failures visible.
+async function recentRuns(limit = 20) {
+  const n = Math.max(1, Math.min(100, Number(limit) || 20));
+  const r = await query(
+    `SELECT id, source, ok, reason, concept_id, listing_id, title, emailed, detail, created_at
+       FROM seed_runs ORDER BY created_at DESC LIMIT $1`, [n]);
+  return r.rows;
+}
+
+module.exports = { runSeed, recentRuns, getClayUser, ensurePenName, setPenName, chooseNewPenName, emailStaffSeedFailed, CLAY_EMAIL, DAILY_CAP };

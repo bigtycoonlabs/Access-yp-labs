@@ -39,7 +39,7 @@ async function tick() {
   if (!claimed) return { ok: false, reason: 'not_due' };
 
   try {
-    const out = await seed.runSeed();
+    const out = await seed.runSeed({ source: 'scheduled' });
     console.log('scheduled seed:', JSON.stringify(out));
     return out || { ok: false, reason: 'no_result' };
   } catch (e) {
