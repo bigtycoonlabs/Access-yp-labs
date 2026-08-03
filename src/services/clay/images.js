@@ -6,6 +6,7 @@
 
 const { query } = require('../../config/db');
 const image = require('../image');       // provider-agnostic render seam (dormant until configured)
+const storage = require('../storage');   // object storage for image bytes (optional)
 const provider = require('./provider');  // for the prompt + alt text
 const budget = require('./imageBudget');
 
@@ -43,13 +44,27 @@ async function generateOne(concept, opts = {}) {
   const rendered = await image.renderImage({ prompt: brief.prompt });
   if (rendered.status !== 'answered') return { ok: false, reason: rendered.status || 'unavailable', message: rendered.message };
 
-  const src = rendered.url
-    || (rendered.image_base64 ? ('data:' + (rendered.media_type || 'image/png') + ';base64,' + rendered.image_base64) : null);
+  // Turn the render into something we can store + display. Prefer object storage (keeps the DB
+  // lean); fall back to an inline data URL if storage isn't configured or the upload fails, so
+  // images always work either way.
+  let src = rendered.url || null;
+  let storageRef = rendered.url || null;
+  if (!src && rendered.image_base64) {
+    if (storage.configured()) {
+      const up = await storage.uploadImage({
+        base64: rendered.image_base64,
+        mediaType: rendered.media_type || 'image/png',
+        key: storage.keyFor(concept.id, rendered.media_type),
+      });
+      if (up.ok) { src = up.url; storageRef = up.key; }
+    }
+    if (!src) src = 'data:' + (rendered.media_type || 'image/png') + ';base64,' + rendered.image_base64;
+  }
   if (!src) return { ok: false, reason: 'empty' };
 
   // Consume a budget slot (free first, then a purchased credit — atomic). If nothing's left at this
   // instant, don't save: we'd rather waste one render than store an unpaid image.
-  const spent = await budget.consumeOne(concept.id, ownerId, { source, altText: brief.alt, storageRef: rendered.url || null });
+  const spent = await budget.consumeOne(concept.id, ownerId, { source, altText: brief.alt, storageRef });
   if (!spent.ok) return { ok: false, reason: 'no_budget', budget: pre };
 
   // Store as an example_image asset: the alt text is the title (so the vault reads it out), the
