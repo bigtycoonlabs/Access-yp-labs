@@ -1102,32 +1102,54 @@
     const submit = el('button', 'btn', 'Submit listing for review'); submit.type = 'button';
     const out = el('div'); out.setAttribute('role', 'alert'); out.setAttribute('aria-live', 'assertive');
 
+    function showErr(m) { out.textContent = ''; out.appendChild(el('p', 'msg err', m)); announce(m, true); }
+
     submit.addEventListener('click', async () => {
       out.textContent = '';
       const dollars = parseInt(price.value, 10);
-      if (!dollars || dollars < 10) { out.appendChild(el('p', 'msg err', 'Price must be at least $10.')); announce('Price must be at least $10.', true); return; }
-      if (!risk.checked || !own.checked) { out.appendChild(el('p', 'msg err', 'Please confirm both acknowledgments.')); announce('Please confirm both acknowledgments.', true); return; }
-      submit.disabled = true; announce('Submitting your listing…');
+      if (!dollars || dollars < 10) { showErr('Set a price of at least $10, then submit again.'); price.focus(); return; }
+      const missing = [];
+      if (!risk.checked) missing.push('the risk disclosure');
+      if (!own.checked) missing.push('the ownership transfer');
+      if (missing.length) {
+        showErr('Before submitting, check ' + missing.join(' and ') + ' above — both boxes are required.');
+        (!risk.checked ? risk : own).focus();
+        return;
+      }
+      submit.disabled = true; announce('Submitting your listing for review…');
+      // Step 1 — create the draft listing.
+      let listing;
       try {
         const body = { concept_id: conceptId, format: fmt.value, risk_disclosed: true, ownership_ack: true };
         if (fmt.value === 'flat') body.price_cents = dollars * 100; else body.starting_bid_cents = dollars * 100;
-        const { listing } = await Kiln.api('/listings', { method: 'POST', body });
-        await Kiln.api('/listings/' + listing.id + '/submit', { method: 'POST' });
-        out.appendChild(el('p', 'msg ok', 'Listing submitted for review. It goes live once a moderator approves it.'));
-        announce('Listing submitted for review.', true);
-        submit.disabled = true;
+        const res = await Kiln.api('/listings', { method: 'POST', body });
+        listing = res && res.listing;
       } catch (e) {
-        let m = e.message;
+        if (e.sessionExpired) { announce('Your session expired. Taking you to sign in.', true); return goSignIn(); }
+        let m = e.message || 'Couldn’t create the listing.';
         if (e.data && e.data.details && e.data.details.needs) {
           const n = e.data.details.needs;
-          const missing = Object.entries(n).filter(([, v]) => !v).map(([k]) => k.replace(/_/g, ' '));
-          m += ' Still needed: ' + missing.join(', ') + '.';
+          const miss = Object.entries(n).filter((kv) => !kv[1]).map((kv) => kv[0].replace(/_/g, ' '));
+          if (miss.length) m += ' Still needed: ' + miss.join(', ') + '.';
         }
-        out.appendChild(el('p', 'msg err', m)); announce(m, true); submit.disabled = false;
+        showErr(m); submit.disabled = false; return;
       }
+      if (!listing || !listing.id) { showErr('The listing didn’t come back correctly, so nothing was submitted. Please try again.'); submit.disabled = false; return; }
+      // Step 2 — send it for review.
+      try {
+        await Kiln.api('/listings/' + listing.id + '/submit', { method: 'POST' });
+      } catch (e) {
+        if (e.sessionExpired) { announce('Your session expired. Taking you to sign in.', true); return goSignIn(); }
+        showErr('The listing was created but couldn’t be sent for review: ' + (e.message || 'unknown error') + '. You can submit it from your dashboard.');
+        submit.disabled = false; return;
+      }
+      out.appendChild(el('p', 'msg ok', 'Listing submitted for review. It goes live once a moderator approves it.'));
+      announce('Listing submitted for review. It goes live once a moderator approves it.', true);
+      submit.disabled = true;
     });
 
-    [fmtLabel, fmt, priceLabel, price, riskWrap, ownWrap, submit, out].forEach((n) => form.appendChild(n));
+    const ackIntro = el('p', 'muted', 'Two confirmations are required before you can submit — please check both boxes below.');
+    [fmtLabel, fmt, priceLabel, price, ackIntro, riskWrap, ownWrap, submit, out].forEach((n) => form.appendChild(n));
     container.appendChild(form);
     focusEl(fmt, 'Listing form opened.');
   }
