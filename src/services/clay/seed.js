@@ -16,6 +16,7 @@
 
 const { query, getClient } = require('../../config/db');
 const clay = require('./index');
+const economics = require('./economics');
 const provider = require('./provider');
 const embeddings = require('./retrieval-embeddings');
 const protect = require('../../lib/protect');
@@ -243,6 +244,8 @@ async function runSeed() {
       return { ok: false, reason: 'build_' + (result.result_status || 'failed') };
     }
     const concept = await persistSeed(clayUser.id, result, { category: idea.category, embeddingLit: novelty.vector });
+    // Bonus: real computed unit economics on the seed too (defensive — never blocks the seed).
+    try { await economics.computeAndAttach(concept.id); } catch (_) { /* economics is a bonus */ }
 
     if (!(await hasBaseline(concept.id))) {
       // Concept is saved but not listable — leave it, don't fabricate a listing.

@@ -107,6 +107,7 @@ async function computeAndAttach(conceptId) {
   const block = formatEconomicsBody(assumptions, computed, unitLabel);
 
   const client = await getClient();
+  let fullBody = block;
   try {
     await client.query('BEGIN');
     const cur = await client.query(
@@ -116,21 +117,21 @@ async function computeAndAttach(conceptId) {
     const priorBody = cur.rows.length ? (cur.rows[0].body || '') : '';
     const title = (cur.rows.length && cur.rows[0].title) ? cur.rows[0].title : 'Payments, pricing & unit economics';
     const nextVersion = (mx.rows[0].maxv || 0) + 1;
-    const newBody = block + (priorBody ? '\n\n---\n\n' + priorBody : '');
+    fullBody = block + (priorBody ? '\n\n---\n\n' + priorBody : '');
     if (cur.rows.length) {
       await client.query("UPDATE assets SET is_current=false WHERE concept_id=$1 AND type='money_flow' AND is_current=true", [conceptId]);
     }
     await client.query(
       `INSERT INTO assets (concept_id, type, title, body, is_baseline, scan_status, version, is_current)
        VALUES ($1,'money_flow',$2,$3,false,'not_required',$4,true)`,
-      [conceptId, title, newBody, nextVersion]);
+      [conceptId, title, fullBody, nextVersion]);
     await client.query('COMMIT');
   } catch (e) {
     await client.query('ROLLBACK');
     return { ok: false, reason: 'persist_failed', error: e.message };
   } finally { client.release(); }
 
-  return { ok: true, body: block, computed, assumptions, unit_label: unitLabel };
+  return { ok: true, body: block, full: fullBody, computed, assumptions, unit_label: unitLabel };
 }
 
 module.exports = { computeAndAttach, deriveAssumptions, formatEconomicsBody };

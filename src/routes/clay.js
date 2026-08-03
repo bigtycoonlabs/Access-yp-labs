@@ -222,6 +222,19 @@ async function runBuild({ user, mode, category, prompt, operating, conceptId, bu
       grounded: !!result.research_grounded, sourceCount: result.source_count || 0, durationMs });
     retrieval.embedAndStore(concept.id, [result.title, result.risk_summary, prompt].filter(Boolean).join('. ')).catch(() => {});
 
+    // Upgrade the money section from model-written numbers to COMPUTED ones. A bonus step:
+    // wrapped so it can never affect the build — if it fails, the concept keeps the written
+    // narrative and the package still ships. When it succeeds, patch the in-memory result so
+    // the emailed package matches what's saved.
+    try {
+      await onProgress('Computing the real unit economics…');
+      const econ = await economics.computeAndAttach(concept.id);
+      if (econ && econ.ok && econ.full) {
+        const mf = (result.assets || []).find((a) => a.type === 'money_flow');
+        if (mf) mf.body = econ.full;
+      }
+    } catch (_) { /* economics is a bonus; never fail the build over it */ }
+
     // Email the package — but CHECK the result and be honest. If it didn't send, we say
     // so and point to the Laboratory rather than promising a mail that isn't coming.
     let emailed = { sent: false, reason: 'unknown' };
