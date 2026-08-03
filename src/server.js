@@ -52,6 +52,7 @@ app.use('/api',               require('./routes/visitor'));
 app.use('/api/bids',          require('./routes/bids'));
 app.use('/api/watches',       require('./routes/watches'));
 app.use('/api/orders',        require('./routes/orders'));
+app.use('/api/movers',        require('./routes/movers'));
 app.use('/api/consultants',   require('./routes/consultants'));
 app.use('/api/moderation',    require('./routes/moderation'));
 app.use('/api/reports',       require('./routes/reports'));

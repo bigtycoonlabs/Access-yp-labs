@@ -26,9 +26,20 @@ function platformFeeCents(amountCents) { return Math.round(amountCents * PLATFOR
 function sellerNetCents(amountCents) { return amountCents - platformFeeCents(amountCents); }
 function isAboveFloor(amountCents) { return Number.isInteger(amountCents) && amountCents >= PRICE_FLOOR_CENTS; }
 
+// Dream Mover referral commission. A mover who drives a sale through their promo link
+// earns 5% of the sale — paid OUT OF the platform's 20% take, never out of the seller's
+// share. So on an attributed sale the seller still nets 80%, the mover gets 5%, and the
+// platform keeps 15%. This keeps sellers strictly better off when movers promote them.
+const MOVER_RATE = 0.05;
+function moverCommissionCents(amountCents) { return Math.round(amountCents * MOVER_RATE); }
+function platformNetAfterMoverCents(amountCents) {
+  return platformFeeCents(amountCents) - moverCommissionCents(amountCents);
+}
+
 module.exports = {
   PLATFORM_RATE, PRICE_FLOOR_CENTS,
   CONSULT_FEE_CENTS, CONSULT_PLATFORM_CENTS, CONSULT_CONSULTANT_CENTS, CONSULT_WINDOW_HOURS,
   MAKER_CENTS, SCULPTOR_CENTS, CONCEPT_ACCESS_DAYS, PLANS, planCents,
   platformFeeCents, sellerNetCents, isAboveFloor,
+  MOVER_RATE, moverCommissionCents, platformNetAfterMoverCents,
 };

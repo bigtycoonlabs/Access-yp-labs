@@ -3,7 +3,8 @@ const { body, validationResult } = require('express-validator');
 const { query, getClient } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
-const { platformFeeCents } = require('../lib/money');
+const { platformFeeCents, moverCommissionCents } = require('../lib/money');
+const { normalizeSlug } = require('../lib/movers');
 const stripe = require('../services/stripe');
 const router = express.Router();
 
@@ -14,6 +15,7 @@ router.post('/', authenticate, [
   body('agreement_accepted').isBoolean(),
   body('risk_ack').isBoolean(),
   body('no_refund_ack').isBoolean(),
+  body('mover').optional().isString(),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
@@ -57,12 +59,25 @@ router.post('/', authenticate, [
   }
   const fee = platformFeeCents(amount);
 
+  // Dream Mover attribution: if the buyer arrived through a mover's promo link, credit that
+  // mover — but never in a self-dealing case (a mover can't earn on their own listing, and
+  // can't earn on their own purchase). The commission itself is settled later, at release.
+  let moverId = null;
+  if (req.body.mover) {
+    const slug = normalizeSlug(req.body.mover);
+    if (slug) {
+      const mv = await query("SELECT user_id FROM dream_movers WHERE slug=$1 AND status='active'", [slug]);
+      const cand = mv.rows[0] && mv.rows[0].user_id;
+      if (cand && cand !== req.user.id && cand !== listing.seller_id) moverId = cand;
+    }
+  }
+
   const r = await query(
     `INSERT INTO orders_transfers
        (listing_id, buyer_id, seller_id, amount_cents, platform_fee_cents,
-        status, agreement_accepted, risk_ack, no_refund_ack)
-     VALUES ($1,$2,$3,$4,$5,'created',true,true,true) RETURNING *`,
-    [listing_id, req.user.id, listing.seller_id, amount, fee]);
+        status, agreement_accepted, risk_ack, no_refund_ack, referred_by_mover_id)
+     VALUES ($1,$2,$3,$4,$5,'created',true,true,true,$6) RETURNING *`,
+    [listing_id, req.user.id, listing.seller_id, amount, fee, moverId]);
   const order = r.rows[0];
 
   // Attempt escrow checkout if a verified seller Connect account exists.
@@ -152,6 +167,15 @@ router.post('/:id/release', authenticate, asyncHandler(async (req, res) => {
       [order.buyer_id, conceptId]);
     const done = await client.query(
       `UPDATE orders_transfers SET status='released' WHERE id=$1 RETURNING *`, [order.id]);
+    // Dream Mover commission: if a mover drove this sale, accrue their 5% now — inside the
+    // same transaction as the transfer, keyed UNIQUE by order so it can only ever be
+    // recorded once. It's paid out of the platform's take; the seller's 80% is untouched.
+    if (order.referred_by_mover_id) {
+      await client.query(
+        `INSERT INTO mover_earnings (mover_id, order_id, listing_id, amount_cents)
+         VALUES ($1,$2,$3,$4) ON CONFLICT (order_id) DO NOTHING`,
+        [order.referred_by_mover_id, order.id, order.listing_id, moverCommissionCents(order.amount_cents)]);
+    }
     await client.query('COMMIT');
     // Stop the seller's real Stripe billing for the concept they just sold. Post-commit and
     // best-effort: never hold a DB lock across an external call, and a Stripe hiccup here must
