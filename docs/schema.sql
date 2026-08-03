@@ -272,3 +272,22 @@ CREATE INDEX IF NOT EXISTS idx_moderation_listing ON yp_labs.moderation_actions(
 -- =====================================================================
 -- End additive migration. New tables: 15. Reuses existing yp_labs.users.
 -- =====================================================================
+
+-- Image economy (see src/lib/imageCredits.js for limits/pricing; migration image_credits_foundation).
+-- Per-concept image usage log: 'images used this month' is COUNT(*) since the month start.
+CREATE TABLE IF NOT EXISTS image_generations (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  concept_id  uuid NOT NULL REFERENCES concepts(id) ON DELETE CASCADE,
+  user_id     uuid REFERENCES users(id) ON DELETE SET NULL,
+  source      text NOT NULL DEFAULT 'auto'  CHECK (source IN ('auto','manual')),
+  billed      text NOT NULL DEFAULT 'free'  CHECK (billed IN ('free','paid')),
+  alt_text    text,
+  storage_ref text,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+-- Purchased "Extras" image credits per concept (packs add, paid generations decrement; no expiry).
+CREATE TABLE IF NOT EXISTS concept_image_credits (
+  concept_id uuid PRIMARY KEY REFERENCES concepts(id) ON DELETE CASCADE,
+  balance    integer NOT NULL DEFAULT 0 CHECK (balance >= 0),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
