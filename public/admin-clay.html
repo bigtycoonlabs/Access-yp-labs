@@ -44,6 +44,7 @@
       <p class="muted">When on, Clay adds a couple of concepts a day to the review queue on its own, spaced out. Everything still goes through the <a href="/moderation.html">review queue</a> — nothing is public until you approve it.</p>
       <p id="schedstatus" role="status" aria-live="polite" class="muted">Loading the schedule…</p>
       <p><button type="button" class="btn secondary" id="schedtoggle" disabled>Loading…</button></p>
+      <div id="schedtargets" role="group" aria-label="Concepts per day"></div>
       <p id="schedresult" role="status" aria-live="polite" class="muted"></p>
     </section>
     <section aria-labelledby="rec-h">
@@ -206,6 +207,26 @@ function renderSchedule(s){
     + ' minutes apart. ' + s.seeded_today + ' seeded today (' + s.seeded_total + ' all-time). Last seed: ' + last + '.';
   if(st) st.textContent = line;
   if(tg){ tg.disabled=false; tg.textContent = s.enabled ? 'Turn auto-seeding OFF' : 'Turn auto-seeding ON'; }
+  var tt=document.getElementById('schedtargets');
+  if(tt){
+    tt.innerHTML='';
+    [1,2,3].forEach(function(n){
+      var b=el('button','btn secondary',n+' a day'); b.type='button'; b.style.marginRight='6px';
+      if(s.daily_target===n){ b.setAttribute('aria-pressed','true'); b.disabled=true; b.textContent=n+' a day (current)'; }
+      else { b.setAttribute('aria-pressed','false'); b.addEventListener('click',function(){ setTarget(n); }); }
+      tt.appendChild(b);
+    });
+  }
+}
+async function setTarget(n){
+  var out=document.getElementById('schedresult');
+  out.textContent='Setting the daily number to '+n+'…';
+  try{
+    var r=await Kiln.api('/clay/seed-schedule',{method:'POST',body:{daily_target:n}});
+    renderSchedule(r && r.schedule);
+    var msg=(r && r.message) || ('Now up to '+n+' a day.');
+    out.textContent=msg; announce(msg,true);
+  }catch(e){ out.textContent=e.message||'Could not update the daily number.'; announce(out.textContent,true); }
 }
 async function loadSchedule(){
   try{ var r=await Kiln.api('/clay/seed-schedule'); renderSchedule(r && r.schedule); }

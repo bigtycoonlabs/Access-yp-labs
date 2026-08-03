@@ -103,6 +103,11 @@ async function load(){
   stat(clay,answeredPct+'%','Answered');
   stat(clay,a.last_24h,'Runs in last 24h');
   stat(clay,a.provider_down,'Runs with provider down');
+  const sd=d.seed;
+  if(sd){
+    stat(clay, sd.seeded_today+'/'+sd.daily_target, 'Auto-seeds today');
+    stat(clay, sd.enabled?'ON':'OFF', 'Auto-seeding');
+  }
 
   // Image economy — usage this month and real Extras pack revenue.
   const im = d.images || {};

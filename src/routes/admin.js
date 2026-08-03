@@ -5,6 +5,7 @@ const { asyncHandler } = require('../lib/http');
 const health = require('../services/clay/health');
 const image = require('../services/image');
 const storage = require('../services/storage');
+const seedScheduler = require('../services/clay/seedScheduler');
 
 const router = express.Router();
 
@@ -82,7 +83,10 @@ router.get('/overview', authenticate, authorize('staff', 'admin', 'master_staff'
       };
     } catch (_) { imagesBlock = { configured: image.configured(), error: true }; }
 
-    res.json({ counts: counts.rows[0], clay_all: clayAll.rows[0], clay_recent: clayRecent, payments, images: imagesBlock });
+    let seedBlock = null;
+    try { seedBlock = await seedScheduler.status(); } catch (_) { seedBlock = null; }
+
+    res.json({ counts: counts.rows[0], clay_all: clayAll.rows[0], clay_recent: clayRecent, payments, images: imagesBlock, seed: seedBlock });
   }));
 
 // Testing mode — a staff member's own switch between two ways of experiencing the platform:
