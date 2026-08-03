@@ -8,6 +8,7 @@ const spine = require('../services/clay/spine');
 const clay = require('../services/clay');
 const seed = require('../services/clay/seed');
 const economics = require('../services/clay/economics');
+const images = require('../services/clay/images');
 const provider = require('../services/clay/provider');
 const journal = require('../services/clay/journal');
 const retrieval = require('../services/clay/retrieval');
@@ -432,6 +433,32 @@ router.post('/concept/:id/economics', authenticate, asyncHandler(async (req, res
   }
   res.json({ ok: true, body: r.body,
     message: 'Computed the real unit economics from Clay’s estimates and added them to this concept’s money section.' });
+}));
+
+// POST /api/clay/concept/:id/image  { kind? } — generate ONE image for a concept if the monthly
+// allowance (or a purchased Extras pack) has room. Owner or staff. Honest + dormant: until an image
+// key is configured AND the OpenAI org is verified, it reports 'unavailable' and nothing is charged.
+router.post('/concept/:id/image', authenticate, asyncHandler(async (req, res) => {
+  const c = await query('SELECT id, owner_id, title, category FROM concepts WHERE id=$1', [req.params.id]);
+  if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
+  const concept = c.rows[0];
+  const isOwner = concept.owner_id === req.user.id;
+  const isStaff = ['staff', 'admin', 'master_staff'].includes(req.user.role);
+  if (!isOwner && !isStaff) throw new ApiError(403, 'This isn’t your concept.');
+  const kind = (typeof req.body.kind === 'string' && req.body.kind.trim()) ? req.body.kind.trim().slice(0, 40) : 'logo';
+  const r = await images.generateOne(concept, { kind, source: 'manual', ownerId: concept.owner_id });
+  if (!r.ok) {
+    const msgs = {
+      unavailable: 'Image generation isn’t switched on yet, so nothing was made and nothing was charged.',
+      no_budget: 'This concept has used its image allowance for the month. Buy an Extras pack to make more.',
+      no_brief: 'Clay couldn’t compose the image just now, so nothing was made and nothing was charged.',
+      empty: 'The image service returned nothing, so nothing was saved.',
+    };
+    return res.status(200).json({ ok: false, reason: r.reason, message: msgs[r.reason] || ('Couldn’t make the image right now (' + r.reason + ').'), budget: r.budget || null });
+  }
+  const left = r.budget ? (r.budget.total_remaining + ' image' + (r.budget.total_remaining === 1 ? '' : 's') + ' left this month.') : '';
+  res.json({ ok: true, asset_id: r.asset_id, alt: r.alt, billed: r.billed, budget: r.budget,
+    message: 'Made a new image and added it to this concept. ' + left });
 }));
 
 // GET /api/clay/build/:id — live progress for a build the user started, so the client can

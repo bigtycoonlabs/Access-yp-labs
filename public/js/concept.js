@@ -57,7 +57,23 @@
     announce('Loading ' + label + '…');
     try {
       var r = await Kiln.api('/assets/' + assetId);
-      var body = el('div', 'asset-body', (r.asset && r.asset.body) || '(empty)');
+      var asset = r.asset || {};
+      var body;
+      var raw = String(asset.body || '');
+      var isImage = asset.type === 'example_image'
+        || /^data:image\//i.test(raw)
+        || /^https?:\/\/\S+\.(png|jpe?g|webp|gif)(\?\S*)?$/i.test(raw);
+      if (isImage && raw) {
+        body = el('div', 'asset-body');
+        var img = document.createElement('img');
+        img.src = raw;
+        img.alt = asset.title || label;   // the description Clay wrote, spoken by VoiceOver
+        img.style.maxWidth = '100%';
+        img.style.height = 'auto';
+        body.appendChild(img);
+      } else {
+        body = el('div', 'asset-body', asset.body || '(empty)');
+      }
       body.setAttribute('tabindex', '-1');
       body.setAttribute('role', 'region');
       body.setAttribute('aria-label', label);
