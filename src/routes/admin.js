@@ -3,6 +3,8 @@ const { query } = require('../config/db');
 const { authenticate, authorize } = require('../middleware/auth');
 const { asyncHandler } = require('../lib/http');
 const health = require('../services/clay/health');
+const image = require('../services/image');
+const storage = require('../services/storage');
 
 const router = express.Router();
 
@@ -51,7 +53,36 @@ router.get('/overview', authenticate, authorize('staff', 'admin', 'master_staff'
       webhook_secret_present: !!process.env.STRIPE_WEBHOOK_SECRET,
       recent_errors: checkoutErrors,
     };
-    res.json({ counts: counts.rows[0], clay_all: clayAll.rows[0], clay_recent: clayRecent, payments });
+    // Image economy: usage this month + Extras pack revenue, plus whether generation/storage are
+    // switched on. Every figure is a live count; revenue is the real sum of purchases.
+    let imagesBlock = { configured: false };
+    try {
+      const im = await query(`
+        SELECT
+          (SELECT COUNT(*) FROM image_generations WHERE created_at >= date_trunc('month', now()))::int AS month,
+          (SELECT COUNT(*) FROM image_generations WHERE created_at >= date_trunc('month', now()) AND source='auto')::int AS month_auto,
+          (SELECT COUNT(*) FROM image_generations WHERE created_at >= date_trunc('month', now()) AND billed='paid')::int AS month_paid,
+          (SELECT COUNT(*) FROM image_generations)::int AS total,
+          (SELECT COALESCE(SUM(balance),0) FROM concept_image_credits)::int AS credits_outstanding,
+          (SELECT COUNT(*) FROM image_pack_purchases WHERE created_at >= date_trunc('month', now()))::int AS packs_month,
+          (SELECT COALESCE(SUM(price_cents),0) FROM image_pack_purchases WHERE created_at >= date_trunc('month', now()))::int AS pack_rev_month,
+          (SELECT COALESCE(SUM(price_cents),0) FROM image_pack_purchases)::int AS pack_rev_total`);
+      const r = im.rows[0];
+      imagesBlock = {
+        configured: image.configured(),          // image generation switched on?
+        storage_configured: storage.configured(), // bucket uploads on? (else inline data URLs)
+        generated_this_month: r.month,
+        auto_this_month: r.month_auto,
+        paid_this_month: r.month_paid,
+        generated_all_time: r.total,
+        credits_outstanding: r.credits_outstanding,
+        packs_sold_this_month: r.packs_month,
+        pack_revenue_this_month_cents: r.pack_rev_month,
+        pack_revenue_all_time_cents: r.pack_rev_total,
+      };
+    } catch (_) { imagesBlock = { configured: image.configured(), error: true }; }
+
+    res.json({ counts: counts.rows[0], clay_all: clayAll.rows[0], clay_recent: clayRecent, payments, images: imagesBlock });
   }));
 
 // Testing mode — a staff member's own switch between two ways of experiencing the platform:

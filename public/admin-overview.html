@@ -31,6 +31,8 @@
       <div id="payments" style="margin-top:16px"></div></section>
     <section aria-labelledby="c-h"><h2 id="c-h">Clay</h2><div class="grid" id="clay"></div>
       <p><a class="btn secondary" href="/admin-clay.html">Open the Clay health screen</a></p></section>
+    <section aria-labelledby="i-h"><h2 id="i-h">Images</h2><div class="grid" id="images"></div>
+      <div id="images-cfg" style="margin-top:16px"></div></section>
   </div>
 </main>
 <script src="/js/a11y.js"></script><script src="/js/api.js"></script><script src="/js/nav.js"></script>
@@ -101,6 +103,27 @@ async function load(){
   stat(clay,answeredPct+'%','Answered');
   stat(clay,a.last_24h,'Runs in last 24h');
   stat(clay,a.provider_down,'Runs with provider down');
+
+  // Image economy — usage this month and real Extras pack revenue.
+  const im = d.images || {};
+  const ihost = document.getElementById('images'); ihost.innerHTML='';
+  stat(ihost, im.generated_this_month||0, 'Images this month');
+  stat(ihost, im.auto_this_month||0, 'Auto (on build)');
+  stat(ihost, im.paid_this_month||0, 'Paid (from packs)');
+  stat(ihost, im.credits_outstanding||0, 'Extras credits outstanding');
+  stat(ihost, im.packs_sold_this_month||0, 'Packs sold this month');
+  stat(ihost, '$'+(((im.pack_revenue_this_month_cents||0)/100).toFixed(2)), 'Pack revenue this month');
+  const icfg=document.getElementById('images-cfg'); icfg.innerHTML='';
+  icfg.appendChild(el('h3', null, 'Image configuration'));
+  const iul = el('ul');
+  const genLi = el('li', null, 'Image generation: ' + (im.configured ? 'ON' : 'OFF — nothing is generated or charged until configured'));
+  if (!im.configured) genLi.style.color = '#8a6d00';
+  iul.appendChild(genLi);
+  iul.appendChild(el('li', null, 'Image storage: ' + (im.storage_configured ? 'Supabase bucket' : 'inline data URLs — set SUPABASE_URL + key to use the bucket')));
+  icfg.appendChild(iul);
+  announce('Images: ' + (im.generated_this_month||0) + ' generated this month, '
+    + (im.packs_sold_this_month||0) + ' Extras pack' + (im.packs_sold_this_month===1?'':'s') + ' sold for $'
+    + (((im.pack_revenue_this_month_cents||0)/100).toFixed(2)) + '. Generation is ' + (im.configured?'on':'off') + '.', true);
 }
 load();
 </script>
