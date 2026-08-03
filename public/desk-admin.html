@@ -1,0 +1,129 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Clay's Desk — review — Access YP Labs</title><link rel="stylesheet" href="/css/kiln.css"/>
+<style>
+  .draft{border:1px solid var(--line);border-left-width:5px;border-left-color:#8e63ce;border-radius:10px;background:#fff;padding:16px 18px;margin:12px 0;}
+  .draft h3{margin:0 0 4px;font-size:20px;}
+  .draft .kind{display:inline-block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-radius:999px;padding:2px 10px;background:#efe9ff;color:#3a2ba6;margin:0 0 8px;}
+  .draft .dek{color:#555;margin:0 0 10px;}
+  .draft .body p{margin:0 0 10px;max-width:70ch;}
+  .draft .acts{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;}
+</style>
+<meta name="robots" content="noindex, nofollow"/>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs</a>
+  <nav class="top" aria-label="Primary"><a href="/admin-clay.html">Clay health</a><a href="/moderation.html">Moderation</a><a href="/desk">The Desk</a></nav>
+</div></header>
+<main id="main" class="wrap">
+  <h1>Clay's Desk — review</h1>
+  <p class="muted">Clay drafts help articles and short stories for the public Desk. Nothing is public until you publish it here. You can also ask Clay to draft a new one now.</p>
+  <div id="gate" role="status" aria-live="polite" class="muted">Checking access…</div>
+  <div id="console" hidden>
+    <section aria-labelledby="compose-h">
+      <h2 id="compose-h">Ask Clay to draft one</h2>
+      <p class="acts" style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button type="button" class="btn" id="draft-help">Draft a help article</button>
+        <button type="button" class="btn secondary" id="draft-story">Draft a story</button>
+      </p>
+      <p id="composeresult" role="status" aria-live="polite" class="muted"></p>
+    </section>
+    <section aria-labelledby="drafts-h">
+      <h2 id="drafts-h">Waiting for your approval</h2>
+      <p id="draftsstatus" role="status" aria-live="polite" class="muted">Loading drafts…</p>
+      <div id="drafts" class="stack"></div>
+    </section>
+  </div>
+</main>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script><script src="/js/nav.js"></script>
+<script>
+const gate=document.getElementById('gate');
+function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+function say(msg){ try{ announce(msg,true); }catch(_){} }
+function goSignIn(){
+  var msg='Your session has ended. Taking you to sign in.';
+  say(msg); if(gate){ gate.hidden=false; gate.textContent=msg; }
+  setTimeout(function(){ location.href='/login.html?session=expired'; }, 1400);
+}
+
+function renderDrafts(list){
+  var wrap=document.getElementById('drafts');
+  var status=document.getElementById('draftsstatus');
+  wrap.textContent='';
+  if(!list || !list.length){ status.textContent='No drafts waiting. Ask Clay to draft one above, or wait — he drafts on his own every few days.'; return; }
+  status.textContent = list.length===1 ? 'One draft waiting.' : (list.length+' drafts waiting.');
+  list.forEach(function(d){
+    var card=el('article','draft');
+    card.appendChild(el('div','kind', d.kind==='story'?'Story':'Help'));
+    card.appendChild(el('h3',null, d.title||'Untitled'));
+    if(d.dek) card.appendChild(el('p','dek', d.dek));
+    var body=el('div','body');
+    String(d.body||'').split(/\n{2,}/).forEach(function(p){ var t=p.trim(); if(t) body.appendChild(el('p',null,t)); });
+    card.appendChild(body);
+    var acts=el('div','acts');
+    var pub=el('button','btn','Publish to the Desk');
+    pub.type='button';
+    pub.addEventListener('click',function(){ decide(d.id,'publish',pub,d.title); });
+    var arc=el('button','btn secondary','Archive (discard)');
+    arc.type='button';
+    arc.addEventListener('click',function(){ decide(d.id,'archive',arc,d.title); });
+    acts.appendChild(pub); acts.appendChild(arc);
+    card.appendChild(acts);
+    wrap.appendChild(card);
+  });
+}
+
+async function decide(id, action, btn, title){
+  btn.disabled=true;
+  try{
+    await Kiln.api('/desk/'+id+'/'+action,{method:'POST'});
+    say(action==='publish' ? ('Published: '+title) : ('Archived: '+title));
+    await loadDrafts();
+  }catch(e){
+    if(e.sessionExpired || e.status===401) return goSignIn();
+    btn.disabled=false;
+    say('That did not go through. Please try again.');
+  }
+}
+
+async function compose(kind, btn){
+  var out=document.getElementById('composeresult');
+  btn.disabled=true; out.textContent='Clay is writing… this takes a moment.';
+  try{
+    var r=await Kiln.api('/desk/compose',{method:'POST',body:{kind:kind}});
+    if(r && r.ok){ out.textContent='Clay drafted: '+(r.title||'a new piece')+'. It is below, waiting for your approval.'; say(out.textContent); await loadDrafts(); }
+    else { out.textContent='Clay could not draft one right now'+(r&&r.reason?(' ('+String(r.reason).replace(/_/g,' ')+')'):'')+'. Nothing was posted.'; say(out.textContent); }
+  }catch(e){
+    if(e.sessionExpired || e.status===401) return goSignIn();
+    out.textContent='That did not go through. Please try again.'; say(out.textContent);
+  }finally{ btn.disabled=false; }
+}
+
+async function loadDrafts(){
+  try{
+    var r=await Kiln.api('/desk/drafts');
+    renderDrafts(r && r.drafts || []);
+  }catch(e){
+    if(e.sessionExpired || e.status===401) return goSignIn();
+    document.getElementById('draftsstatus').textContent='Could not load drafts right now.';
+  }
+}
+
+async function init(){
+  try{
+    // A cheap authed call doubles as the access check; 401/403 routes to sign-in or an honest message.
+    await Kiln.api('/desk/drafts');
+  }catch(e){
+    if(e.sessionExpired || e.status===401) return goSignIn();
+    gate.hidden=false; gate.textContent='This page is for the platform owner. If that is you, sign in first.'; return;
+  }
+  gate.hidden=true;
+  document.getElementById('console').hidden=false;
+  document.getElementById('draft-help').addEventListener('click',function(){ compose('help',this); });
+  document.getElementById('draft-story').addEventListener('click',function(){ compose('story',this); });
+  loadDrafts();
+}
+init();
+</script>
+</body></html>

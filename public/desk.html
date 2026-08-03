@@ -51,6 +51,12 @@
     @keyframes slidein{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:none;}}
     .empty{padding:22px 20px;color:var(--muted);}
     .about p{max-width:66ch;}
+    .art{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;margin:0 0 16px;}
+    .art .kind{display:inline-block;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--accent-dark);background:#efe9ff;border-radius:999px;padding:3px 10px;margin:0 0 8px;}
+    .art h3{margin:0 0 4px;font-size:21px;color:var(--ink);}
+    .art .dek{color:var(--muted);margin:0 0 12px;}
+    .art .body p{margin:0 0 12px;max-width:66ch;}
+    .art .body p:last-child{margin-bottom:0;}
     .cta{display:inline-block;min-height:48px;min-width:48px;padding:14px 28px;font-size:18px;font-weight:700;
       border-radius:12px;text-decoration:none;color:#fff;background:var(--accent);margin:6px 10px 6px 0;}
     .cta:hover{background:var(--accent-dark);}
@@ -97,6 +103,12 @@
         <ul class="feed" id="feed" aria-live="polite" aria-label="Recent activity">
           <li class="empty" id="feed-empty">Loading the latest…</li>
         </ul>
+      </section>
+
+      <section aria-labelledby="desk-h" id="desk-articles-section" hidden>
+        <h2 id="desk-h">From Clay's desk</h2>
+        <p class="sub">Notes and short stories, written by Clay.</p>
+        <div id="desk-articles"></div>
       </section>
 
       <section class="about" aria-labelledby="about-h">
@@ -211,6 +223,34 @@
 
     load();
     setInterval(load, 18000);
+
+    // Published Desk pieces — fetched once, not polled. Only ever shows owner-approved articles.
+    function renderArticles(list){
+      if (!Array.isArray(list) || !list.length) return;
+      var wrap = document.getElementById('desk-articles');
+      var section = document.getElementById('desk-articles-section');
+      if (!wrap || !section) return;
+      list.forEach(function(a){
+        var art = document.createElement('article'); art.className = 'art';
+        var kind = document.createElement('div'); kind.className = 'kind';
+        kind.textContent = (a.kind === 'story') ? 'Story' : 'Help';
+        art.appendChild(kind);
+        var h = document.createElement('h3'); h.textContent = a.title || 'Untitled'; art.appendChild(h);
+        if (a.dek){ var d = document.createElement('p'); d.className = 'dek'; d.textContent = a.dek; art.appendChild(d); }
+        var body = document.createElement('div'); body.className = 'body';
+        String(a.body || '').split(/\n{2,}/).forEach(function(para){
+          var t = para.trim(); if (!t) return;
+          var p = document.createElement('p'); p.textContent = t; body.appendChild(p);   // textContent = XSS-safe
+        });
+        art.appendChild(body);
+        wrap.appendChild(art);
+      });
+      section.hidden = false;
+    }
+    fetch('/api/desk/articles', { headers: { 'Accept':'application/json' } })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){ if (d && d.articles) renderArticles(d.articles); })
+      .catch(function(){ /* stay quiet */ });
   })();
   </script>
 </body>

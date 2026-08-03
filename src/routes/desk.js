@@ -18,6 +18,8 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/db');
 const { asyncHandler } = require('../lib/http');
+const { authenticate, authorize } = require('../middleware/auth');
+const deskCompose = require('../services/clay/deskCompose');
 
 // Friendly labels for the category enum tokens. Only ever shown for PUBLIC live listings.
 const CATEGORY_LABELS = {
@@ -78,6 +80,44 @@ router.get('/', asyncHandler(async (req, res) => {
 
   res.set('Cache-Control', 'public, max-age=10');
   res.json({ pulse, feed, generated_at: new Date().toISOString() });
+}));
+
+// GET /api/desk/articles — PUBLISHED Desk pieces only (public). Fetched once on page load, not
+// polled, so it can carry full bodies. Draft/archived pieces never appear here.
+router.get('/articles', asyncHandler(async (req, res) => {
+  let articles = [];
+  try { articles = await deskCompose.publishedArticles(12); }
+  catch (e) { console.error('desk articles error:', e && e.message); }
+  res.set('Cache-Control', 'public, max-age=30');
+  res.json({ articles });
+}));
+
+// GET /api/desk/drafts — pending Desk pieces awaiting a human's decision (staff).
+router.get('/drafts', authenticate, authorize('staff', 'admin', 'master_staff'), asyncHandler(async (req, res) => {
+  res.json({ drafts: await deskCompose.listDrafts(20) });
+}));
+
+// POST /api/desk/compose — have Clay draft a new Desk piece on demand (owner). Body: { kind, topic? }.
+// It only ever creates a DRAFT; publishing is a separate, deliberate step.
+router.post('/compose', authenticate, authorize('master_staff'), asyncHandler(async (req, res) => {
+  const kind = req.body && req.body.kind === 'story' ? 'story' : 'help';
+  const topic = req.body && typeof req.body.topic === 'string' ? req.body.topic.slice(0, 120) : null;
+  const out = await deskCompose.composePiece({ kind, topic, source: 'manual' });
+  res.json(out);
+}));
+
+// POST /api/desk/:id/publish — an owner approves a draft, making it public on the Desk.
+router.post('/:id/publish', authenticate, authorize('master_staff'), asyncHandler(async (req, res) => {
+  const row = await deskCompose.publish(req.params.id, req.user.id);
+  if (!row) return res.status(404).json({ error: 'No such draft (it may already be published or archived).' });
+  res.json({ ok: true, published: row });
+}));
+
+// POST /api/desk/:id/archive — take a piece down / discard a draft (owner).
+router.post('/:id/archive', authenticate, authorize('master_staff'), asyncHandler(async (req, res) => {
+  const row = await deskCompose.archive(req.params.id);
+  if (!row) return res.status(404).json({ error: 'No such piece.' });
+  res.json({ ok: true, archived: row });
 }));
 
 module.exports = router;

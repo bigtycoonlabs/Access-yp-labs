@@ -136,6 +136,16 @@ if (require.main === module) {
       .catch((e) => console.error('weekly review error:', e && e.message));
     setTimeout(reviewTick, 5 * 60 * 1000);        // a few minutes after boot
     setInterval(reviewTick, 6 * 60 * 60 * 1000);  // then every 6 hours (DB claim gates it to weekly)
+
+    // Clay drafting Desk pieces (help articles + witty stories). The tick claims a slot atomically
+    // and only drafts when the pending queue is small, so it's gentle by design. It ONLY creates
+    // drafts — nothing is ever published without an owner approving it. A failure can't crash boot.
+    const deskCompose = require('./services/clay/deskCompose');
+    const deskTick = () => deskCompose.tick()
+      .then((r) => { if (r && r.ok) console.log('desk piece drafted:', JSON.stringify(r)); })
+      .catch((e) => console.error('desk compose error:', e && e.message));
+    setTimeout(deskTick, 8 * 60 * 1000);          // a few minutes after boot
+    setInterval(deskTick, 12 * 60 * 60 * 1000);   // then twice a day (DB claim gates it to ~3 days)
   }
 }
 module.exports = app;
