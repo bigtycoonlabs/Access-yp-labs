@@ -24,7 +24,14 @@
 //              LLC's opportunity hub (siblings Penny at Access Your Place, Arbo at Access YP Flow),
 //              so he can point a person to a sibling when it genuinely helps — while the wall
 //              between brands stays absolute: no content, data, or person ever crosses.
-const CLAY_VERSION = '4.7';
+//   4.7 → 4.8  Clay got stricter on PATH and PROOF (from his own weekly review: 8 concepts, zero
+//              recorded paths — he was helping in the fog). He now treats the path question as a
+//              gate before deepening a concept and records it immediately, and he holds proof as
+//              behavior not compliments: a concept is only as strong as the real evidence behind
+//              it, so he always attaches a concrete next proof step a stranger can act on, with a
+//              go-or-kill line set in advance, and places each concept honestly (customer clarity
+//              → proof → ready to package). Generated concepts now ship a real proof step too.
+const CLAY_VERSION = '4.8';
 const CLAY_VERSION_LABEL = `Clay ${CLAY_VERSION}`;
 
 // The one canonical identity sentence. Every surface that introduces Clay — the main agent, the
