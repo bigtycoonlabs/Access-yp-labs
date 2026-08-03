@@ -43,6 +43,7 @@
       <h3 id="sched-h" style="margin-top:14px">Auto-seed schedule</h3>
       <p class="muted">When on, Clay adds a couple of concepts a day to the review queue on its own, spaced out. Everything still goes through the <a href="/moderation.html">review queue</a> — nothing is public until you approve it.</p>
       <p id="schedstatus" role="status" aria-live="polite" class="muted">Loading the schedule…</p>
+      <p id="schedimg" class="muted"></p>
       <p><button type="button" class="btn secondary" id="schedtoggle" disabled>Loading…</button></p>
       <div id="schedtargets" role="group" aria-label="Concepts per day"></div>
       <p id="schedresult" role="status" aria-live="polite" class="muted"></p>
@@ -197,8 +198,14 @@ if(sb){
 
 // ---- Auto-seed schedule ----
 var schedState = null;
-function renderSchedule(s){
+function renderSchedule(s, imageReady){
   schedState = s || null;
+  var ig = document.getElementById('schedimg');
+  if(ig){
+    if(imageReady === false){ ig.textContent = 'Image generation is off — new seeds will have no visuals until it’s configured.'; ig.style.color='#8a6d00'; }
+    else if(imageReady === true){ ig.textContent = 'Image generation is on — new seeds will include a couple of visuals.'; ig.style.color=''; }
+    else { ig.textContent=''; }
+  }
   var st = document.getElementById('schedstatus');
   var tg = document.getElementById('schedtoggle');
   if(!s){ if(st) st.textContent='Schedule unavailable.'; if(tg){ tg.disabled=true; tg.textContent='Unavailable'; } return; }
@@ -223,13 +230,13 @@ async function setTarget(n){
   out.textContent='Setting the daily number to '+n+'…';
   try{
     var r=await Kiln.api('/clay/seed-schedule',{method:'POST',body:{daily_target:n}});
-    renderSchedule(r && r.schedule);
+    renderSchedule(r && r.schedule, r && r.image_ready);
     var msg=(r && r.message) || ('Now up to '+n+' a day.');
     out.textContent=msg; announce(msg,true);
   }catch(e){ out.textContent=e.message||'Could not update the daily number.'; announce(out.textContent,true); }
 }
 async function loadSchedule(){
-  try{ var r=await Kiln.api('/clay/seed-schedule'); renderSchedule(r && r.schedule); }
+  try{ var r=await Kiln.api('/clay/seed-schedule'); renderSchedule(r && r.schedule, r && r.image_ready); }
   catch(e){ renderSchedule(null); }
 }
 var stog=document.getElementById('schedtoggle');
@@ -242,7 +249,7 @@ if(stog){
     out.textContent = next ? 'Turning auto-seeding on…' : 'Turning auto-seeding off…';
     try{
       var r=await Kiln.api('/clay/seed-schedule',{method:'POST',body:{enabled:next}});
-      renderSchedule(r && r.schedule);
+      renderSchedule(r && r.schedule, r && r.image_ready);
       var msg=(r && r.message) || 'Updated.';
       out.textContent=msg; announce(msg,true);
     }catch(e){ out.textContent=e.message||'Could not update the schedule.'; announce(out.textContent,true); stog.disabled=false; }

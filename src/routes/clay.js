@@ -441,7 +441,7 @@ router.post('/seed', authenticate, authorize('staff', 'admin', 'master_staff'), 
 // seeded today / all-time.
 router.get('/seed-schedule', authenticate, authorize('staff', 'admin', 'master_staff'), asyncHandler(async (req, res) => {
   const s = await seedScheduler.status();
-  res.json({ ok: true, schedule: s });
+  res.json({ ok: true, schedule: s, image_ready: image.configured() });
 }));
 
 // POST /api/clay/seed-schedule  { enabled?, daily_target?, min_gap_minutes? } — STAFF ONLY. Turn
@@ -454,7 +454,7 @@ router.post('/seed-schedule', authenticate, authorize('staff', 'admin', 'master_
   if (body.daily_target != null && Number.isInteger(Number(body.daily_target))) patch.dailyTarget = Number(body.daily_target);
   if (body.min_gap_minutes != null && Number.isInteger(Number(body.min_gap_minutes))) patch.minGapMinutes = Number(body.min_gap_minutes);
   const s = await seedScheduler.configure(patch);
-  res.json({ ok: true, schedule: s,
+  res.json({ ok: true, schedule: s, image_ready: image.configured(),
     message: s && s.enabled
       ? 'Auto-seeding is ON — Clay will add up to ' + s.daily_target + ' concept' + (s.daily_target === 1 ? '' : 's') + ' a day to the review queue.'
       : 'Auto-seeding is OFF — Clay only seeds when you ask.' });
