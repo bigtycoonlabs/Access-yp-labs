@@ -165,6 +165,82 @@
     if (btn) { btn.disabled = false; btn.textContent = 'Compute the real numbers'; }
   }
 
+  // ---- Extras: per-concept image budget, packs, and manual generation ----
+  function extrasSummary(b) {
+    var s = b.used_this_month + ' of ' + b.monthly_included + ' monthly image'
+      + (b.monthly_included === 1 ? '' : 's') + ' used — ' + b.free_remaining + ' left this month.';
+    if (b.purchased_balance > 0) s += ' Plus ' + b.purchased_balance + ' from your Extras packs.';
+    return s;
+  }
+
+  async function refreshExtras(conceptId, sect) {
+    try {
+      var r = await Kiln.api('/clay/concept/' + conceptId + '/images');
+      if (!r || !r.ok) return;
+      var line = sect.querySelector('.extras-summary');
+      if (line) line.textContent = extrasSummary(r.budget || {});
+    } catch (e) { /* leave the last summary in place */ }
+  }
+
+  async function makeImage(conceptId, btn, sect) {
+    var status = sect.querySelector('.extras-status');
+    var was = btn.textContent; btn.disabled = true; btn.textContent = 'Making an image…';
+    if (status) status.textContent = 'Making an image…';
+    try {
+      var r = await Kiln.api('/clay/concept/' + conceptId + '/image', { method: 'POST', body: { kind: 'logo' } });
+      var msg = (r && r.message) ? r.message : (r && r.ok ? 'Image added to your vault.' : 'Couldn’t make an image right now.');
+      if (status) status.textContent = msg;
+      announce(msg, true);
+      await refreshExtras(conceptId, sect);
+    } catch (e) {
+      if (e.sessionExpired) return goSignIn();
+      var m = e.message || 'Couldn’t make an image right now.';
+      if (status) status.textContent = m; announce(m, true);
+    }
+    btn.disabled = false; btn.textContent = was;
+  }
+
+  async function buyPack(conceptId, packId, btn, sect) {
+    var status = sect.querySelector('.extras-status');
+    var was = btn.textContent; btn.disabled = true; btn.textContent = 'Opening checkout…';
+    try {
+      var r = await Kiln.api('/clay/concept/' + conceptId + '/image-pack', { method: 'POST', body: { pack_id: packId } });
+      if (r && r.ok && r.url) { announce('Opening secure checkout.', true); window.location.href = r.url; return; }
+      var m = (r && r.message) ? r.message : 'Couldn’t start checkout, so nothing was charged.';
+      if (status) status.textContent = m; announce(m, true);
+    } catch (e) {
+      if (e.sessionExpired) return goSignIn();
+      var m2 = e.message || 'Couldn’t start checkout, so nothing was charged.';
+      if (status) status.textContent = m2; announce(m2, true);
+    }
+    btn.disabled = false; btn.textContent = was;
+  }
+
+  async function loadExtras(conceptId) {
+    try {
+      var r = await Kiln.api('/clay/concept/' + conceptId + '/images');
+      if (!r || !r.ok) return;   // owner/staff only — skip quietly for anyone else
+      var sect = el('section', 'extras'); sect.setAttribute('aria-label', 'Extras — images');
+      sect.appendChild(el('h2', null, 'Extras — images'));
+      sect.appendChild(el('p', 'extras-summary', extrasSummary(r.budget || {})));
+      var acts = el('div', 'actions');
+      var mk = el('button', 'btn secondary', 'Make an image'); mk.type = 'button';
+      mk.addEventListener('click', function () { makeImage(conceptId, mk, sect); });
+      acts.appendChild(mk);
+      (r.packs || []).forEach(function (p) {
+        var lbl = 'Buy ' + p.images + ' more images — $' + (p.price_cents / 100).toFixed(2);
+        var pb = el('button', 'btn secondary', lbl); pb.type = 'button';
+        pb.addEventListener('click', function () { buyPack(conceptId, p.id, pb, sect); });
+        acts.appendChild(pb);
+      });
+      sect.appendChild(acts);
+      var status = el('p', 'muted extras-status');
+      status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
+      sect.appendChild(status);
+      actionsEl.appendChild(sect);
+    } catch (e) { /* skip silently */ }
+  }
+
   (async function load() {
     try {
       var data = await Kiln.api('/concepts/' + id);
@@ -235,6 +311,7 @@
       econ.addEventListener('click', function () { computeEconomics(id, econ); });
       cActs.appendChild(econ);
       actionsEl.appendChild(cActs);
+      loadExtras(id);
 
       // ---- keep / unlock, only when something is actually locked ----
       if (!entitled && lockedCount) {
