@@ -9,6 +9,8 @@ const clay = require('../services/clay');
 const seed = require('../services/clay/seed');
 const economics = require('../services/clay/economics');
 const images = require('../services/clay/images');
+const imageBudget = require('../services/clay/imageBudget');
+const imageCredits = require('../lib/imageCredits');
 const provider = require('../services/clay/provider');
 const journal = require('../services/clay/journal');
 const retrieval = require('../services/clay/retrieval');
@@ -255,6 +257,27 @@ async function runBuild({ user, mode, category, prompt, operating, conceptId, bu
       note: emailed.sent
         ? 'Done — your concept is ready, and I’ve emailed it to you.'
         : 'Done — your concept is ready. (I couldn’t send the email this time — open it from the link.)' });
+
+    // Sparingly auto-make a couple of key visuals — only on a concept's FIRST build, only within
+    // its monthly image budget, and only if image generation is configured. The build is already
+    // marked done above, so this is pure bonus: dormant (a no-op) until a key is set, wrapped so a
+    // failure can never touch the build's status, the package, or the email.
+    try {
+      if (image.configured() && !(await imageBudget.hasAutoImages(concept.id))) {
+        const [plan, used, purchased] = await Promise.all([
+          imageBudget.planFor(user.id),
+          imageBudget.usedThisMonth(concept.id),
+          imageBudget.purchasedBalance(concept.id),
+        ]);
+        const n = imageCredits.autoBudget({ plan, usedThisMonth: used, purchased, isFirstBuild: true });
+        const kinds = ['logo', 'hero image'];
+        for (let i = 0; i < n; i++) {
+          await images.generateOne(
+            { id: concept.id, owner_id: user.id, title: result.title || concept.title, category },
+            { kind: kinds[i] || 'product mockup', source: 'auto', ownerId: user.id });
+        }
+      }
+    } catch (_) { /* images are a bonus; never let them affect the build */ }
   } catch (e) {
     const durationMs = Date.now() - t0;
     await journal.recordRun({ actorId: user.id, kind: 'generate', mode, category,

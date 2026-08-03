@@ -22,6 +22,10 @@ const embeddings = require('./retrieval-embeddings');
 const protect = require('../../lib/protect');
 const { sendEmail } = require('../email');
 const { CATEGORIES } = require('./tools');
+const images = require('./images');
+const imageBudget = require('./imageBudget');
+const imageCredits = require('../../lib/imageCredits');
+const image = require('../image');
 
 const CLAY_EMAIL = 'clay@accessyplabs.com';
 const PRICE_MIN_CENTS = 1000;    // $10
@@ -246,6 +250,25 @@ async function runSeed() {
     const concept = await persistSeed(clayUser.id, result, { category: idea.category, embeddingLit: novelty.vector });
     // Bonus: real computed unit economics on the seed too (defensive — never blocks the seed).
     try { await economics.computeAndAttach(concept.id); } catch (_) { /* economics is a bonus */ }
+
+    // Bonus visuals on the seed too — sparingly, within Clay's own image budget, dormant until
+    // image generation is configured. Never blocks the seed.
+    try {
+      if (image.configured() && !(await imageBudget.hasAutoImages(concept.id))) {
+        const [plan, used, purchased] = await Promise.all([
+          imageBudget.planFor(clayUser.id),
+          imageBudget.usedThisMonth(concept.id),
+          imageBudget.purchasedBalance(concept.id),
+        ]);
+        const n = imageCredits.autoBudget({ plan, usedThisMonth: used, purchased, isFirstBuild: true });
+        const kinds = ['logo', 'hero image'];
+        for (let i = 0; i < n; i++) {
+          await images.generateOne(
+            { id: concept.id, owner_id: clayUser.id, title: result.title || concept.title, category: idea.category },
+            { kind: kinds[i] || 'product mockup', source: 'auto', ownerId: clayUser.id });
+        }
+      }
+    } catch (_) { /* images are a bonus on seeds too */ }
 
     if (!(await hasBaseline(concept.id))) {
       // Concept is saved but not listable — leave it, don't fabricate a listing.

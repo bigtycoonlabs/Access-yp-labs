@@ -27,6 +27,13 @@ async function purchasedBalance(conceptId) {
   return r.rows.length ? r.rows[0].balance : 0;
 }
 
+// Has this concept already had images made automatically? Used to keep auto-generation to a
+// concept's first build only, so enhancements don't quietly spend the allowance.
+async function hasAutoImages(conceptId) {
+  const r = await query("SELECT 1 FROM image_generations WHERE concept_id=$1 AND source='auto' LIMIT 1", [conceptId]);
+  return r.rows.length > 0;
+}
+
 // The full picture for a concept (used this month, free remaining, purchased balance, can_generate).
 async function budgetFor(conceptId, ownerId, planOverride) {
   const plan = planOverride || await planFor(ownerId);
@@ -66,4 +73,4 @@ async function grantCredits(conceptId, images) {
     [conceptId, images]);
 }
 
-module.exports = { planFor, usedThisMonth, purchasedBalance, budgetFor, consumeOne, grantCredits };
+module.exports = { planFor, usedThisMonth, purchasedBalance, hasAutoImages, budgetFor, consumeOne, grantCredits };
