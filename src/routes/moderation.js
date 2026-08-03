@@ -25,7 +25,7 @@ router.get('/queue', authenticate, authorize('staff', 'admin', 'master_staff'),
 // must recuse and cannot decide. Every decision is written to the audit log.
 router.post('/:listingId/decide', authenticate, authorize('staff', 'admin', 'master_staff'), [
   body('decision').isIn(['approved', 'rejected']),
-  body('reason').optional().isIn(REASONS),
+  body('reason').optional({ values: 'falsy' }).isIn(REASONS),
   body('notes').optional().isString(),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
