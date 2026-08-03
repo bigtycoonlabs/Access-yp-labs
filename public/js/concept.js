@@ -241,6 +241,83 @@
     } catch (e) { /* skip silently */ }
   }
 
+  // ---- Creator Path: where are you taking THIS concept? (per-concept intent) ----
+  // The plan shapes how Clay coaches this concept and is settable in plain conversation too; this is
+  // the visible, screen-reader-first control for it. There is no wrong answer and no ceiling.
+  async function savePlan(conceptId, pathId, label, status) {
+    status.textContent = 'Saving…';
+    try {
+      await Kiln.api('/clay/concept/' + conceptId + '/path', { method: 'POST', body: { path: pathId } });
+      status.textContent = 'Saved. Clay will help you ' + (label ? label.toLowerCase() : 'with this') + '.';
+      announce('Plan saved: ' + label + '.', true);
+    } catch (e) {
+      if (e.sessionExpired) return goSignIn();
+      status.textContent = 'Could not save that just now, so nothing changed.';
+      announce('Could not save your plan.', true);
+    }
+  }
+
+  function earnDisclosure() {
+    var wrap = el('div', 'earn-wrap');
+    var region = el('div', 'earn-region'); region.id = 'earn-region'; region.hidden = true;
+    region.setAttribute('role', 'region'); region.setAttribute('aria-label', 'Ways to earn here');
+    var btn = el('button', 'btn secondary', 'See the ways to earn here'); btn.type = 'button';
+    btn.setAttribute('aria-expanded', 'false'); btn.setAttribute('aria-controls', region.id);
+    btn.addEventListener('click', async function () {
+      var open = btn.getAttribute('aria-expanded') === 'true';
+      if (open) { region.hidden = true; btn.setAttribute('aria-expanded', 'false'); btn.textContent = 'See the ways to earn here'; return; }
+      if (!region.dataset.loaded) {
+        try {
+          var r = await Kiln.api('/clay/earning-paths');
+          (r.earning_paths || []).forEach(function (p) {
+            region.appendChild(el('h3', null, p.title));
+            region.appendChild(el('p', null, p.how));
+          });
+          region.dataset.loaded = '1';
+        } catch (e) { region.appendChild(el('p', 'muted', 'Couldn’t load these right now.')); }
+      }
+      region.hidden = false; btn.setAttribute('aria-expanded', 'true'); btn.textContent = 'Hide the ways to earn';
+      announce('Ways to earn shown.');
+    });
+    wrap.appendChild(btn); wrap.appendChild(region);
+    return wrap;
+  }
+
+  async function renderPlan(conceptId) {
+    var host = el('section', 'plan-section');
+    host.setAttribute('aria-label', 'Your plan for this concept');
+    host.appendChild(el('h2', null, 'Your plan for this concept'));
+    host.appendChild(el('p', 'muted', 'Tell Clay where you’re taking this one — it shapes how he helps, and you can change it anytime. There’s no wrong answer and no ceiling: a concept can go as far as you want.'));
+    var status = el('p', 'muted'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
+    try {
+      var r = await Kiln.api('/clay/concept/' + conceptId + '/path');
+      var current = (r.intent && r.intent.path) || null;
+      var fs = el('fieldset', 'plan-choices');
+      fs.appendChild(el('legend', null, 'Choose a plan'));
+      (r.paths || []).forEach(function (p) {
+        var row = el('div', 'plan-choice');
+        var input = document.createElement('input');
+        input.type = 'radio'; input.name = 'plan-' + conceptId;
+        input.id = 'plan-' + conceptId + '-' + p.id; input.value = p.id;
+        if (current === p.id) input.checked = true;
+        input.addEventListener('change', function () { if (input.checked) savePlan(conceptId, p.id, p.label, status); });
+        var lab = el('label'); lab.setAttribute('for', input.id);
+        lab.appendChild(el('strong', null, p.label));
+        lab.appendChild(document.createTextNode(' — ' + (p.short || '')));
+        row.appendChild(input); row.appendChild(lab);
+        fs.appendChild(row);
+      });
+      host.appendChild(fs);
+      host.appendChild(status);
+      if (r.intent && r.intent.note) { host.appendChild(el('p', 'muted', 'Your note: ' + r.intent.note)); }
+    } catch (e) {
+      if (e.sessionExpired) return;
+      host.appendChild(el('p', 'muted', 'Your plan options couldn’t load right now.'));
+    }
+    host.appendChild(earnDisclosure());
+    assetsEl.parentNode.insertBefore(host, assetsEl);
+  }
+
   (async function load() {
     try {
       var data = await Kiln.api('/concepts/' + id);
@@ -251,6 +328,8 @@
       document.title = (concept.title || 'Your concept') + ' — Access YP Labs';
       titleEl.textContent = concept.title || 'Your concept';
       if (concept.clays_take) { takeEl.textContent = concept.clays_take; takeEl.hidden = false; }
+
+      renderPlan(id);
 
       assetsEl.appendChild(el('h2', null, 'Your vault' + (assets.length ? ' — ' + assets.length + ' section' + (assets.length === 1 ? '' : 's') : '')));
 
