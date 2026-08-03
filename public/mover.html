@@ -1,0 +1,69 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>A Dream Mover — Access YP Labs</title><link rel="stylesheet" href="/css/kiln.css"/>
+<style>
+.dream{border:1px solid var(--line);border-radius:12px;background:#fff;padding:18px;margin:14px 0;}
+.dream h3{margin:0 0 6px;}
+.pay{font-weight:700;color:#0b804b;}
+.tag{display:inline-block;background:#f3f3f3;border-radius:6px;padding:2px 8px;font-size:13px;color:var(--muted);margin-right:6px;}
+</style>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs</a>
+  <nav class="top" aria-label="Primary"><a href="/marketplace.html">The Dreamhold</a></nav>
+</div></header>
+<main id="main" class="wrap">
+  <div id="head"><h1 id="title" tabindex="-1">A Dream Mover</h1></div>
+  <div id="status" role="status" aria-live="polite" class="muted">Loading…</div>
+  <div id="dreams"></div>
+</main>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script><script src="/js/nav.js"></script>
+<script>
+const slug=new URLSearchParams(location.search).get('slug')||'';
+const headEl=document.getElementById('head'), titleEl=document.getElementById('title'),
+      statusEl=document.getElementById('status'), dreamsEl=document.getElementById('dreams');
+function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+function money(c){return '$'+((c||0)/100).toFixed(2);}
+
+async function init(){
+  if(!slug){ statusEl.textContent='No Dream Mover specified.'; return; }
+  try{
+    const data=await Kiln.api('/movers/'+encodeURIComponent(slug),{auth:false});
+    const m=data.mover||{};
+    titleEl.textContent=m.headline||('@'+m.slug+' — Dream Mover');
+    if(m.bio){ headEl.appendChild(el('p','muted',m.bio)); }
+    statusEl.textContent='';
+    render(data.dreams||[]);
+    titleEl.focus();
+    announce('Promo page for '+(m.headline||m.slug)+'. '+((data.dreams||[]).length)+' Dreams.',false);
+  }catch(e){
+    statusEl.textContent = e.status===404 ? 'This Dream Mover page was not found.' : (e.message||'Could not load this page.');
+  }
+}
+
+function render(dreams){
+  dreamsEl.innerHTML='';
+  if(!dreams.length){ dreamsEl.appendChild(el('p','muted','No Dreams here yet — check back soon.')); return; }
+  const selling=dreams.filter(d=>d.own), champ=dreams.filter(d=>!d.own);
+  if(selling.length){ dreamsEl.appendChild(el('h2',null,'Dreams they’re selling')); selling.forEach(d=>dreamsEl.appendChild(card(d))); }
+  if(champ.length){ dreamsEl.appendChild(el('h2',null,'Dreams they’re championing')); champ.forEach(d=>dreamsEl.appendChild(card(d))); }
+}
+
+function card(d){
+  const c=el('div','dream');
+  c.appendChild(el('h3',null,d.title||'Untitled Dream'));
+  const tags=el('p');
+  if(d.category){ tags.appendChild(el('span','tag',String(d.category).replace(/_/g,' '))); }
+  tags.appendChild(el('span','tag',money(d.price_cents)));
+  c.appendChild(tags);
+  if(d.risk_summary){ c.appendChild(el('p','muted',d.risk_summary)); }
+  const link=el('a','btn',d.own?'View this Dream':'View this Dream');
+  link.href=d.promo_url; link.setAttribute('role','button');
+  c.appendChild(link);
+  return c;
+}
+
+init();
+</script>
+</body></html>

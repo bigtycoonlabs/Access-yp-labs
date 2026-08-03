@@ -1,0 +1,151 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Become a Dream Mover — Access YP Labs</title><link rel="stylesheet" href="/css/kiln.css"/>
+<style>
+.card{border:1px solid var(--line);border-radius:12px;background:#fff;padding:18px;margin:14px 0;}
+.field{margin:12px 0;} .field label{display:block;font-weight:600;margin-bottom:6px;}
+.field input,.field textarea{width:100%;box-sizing:border-box;padding:12px;font-size:16px;border:1px solid var(--line);border-radius:8px;}
+.field textarea{min-height:80px;}
+.earn{display:flex;gap:20px;flex-wrap:wrap;margin:8px 0;}
+.earn .big{font-size:28px;font-weight:700;margin:0;} .earn .lbl{margin:0;color:var(--muted);}
+.dream{border:1px solid var(--line);border-radius:10px;padding:14px;margin:10px 0;}
+.dream h3{margin:0 0 4px;} .pay{font-weight:700;color:#0b804b;}
+</style>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs</a>
+  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/marketplace.html">The Dreamhold</a></nav>
+</div></header>
+<main id="main" class="wrap">
+  <h1>Become a Dream Mover</h1>
+  <p class="muted">Promote Dreams you believe in. When one sells through your link, you earn <strong>5% of the sale</strong> — paid by us, out of our cut, so the creator still keeps their full share. Build a promo page, champion the Dreams you love, and earn on every sale you drive.</p>
+  <div id="gate" role="status" aria-live="polite" class="muted">Loading…</div>
+  <div id="panel" hidden></div>
+  <div id="result" role="alert" aria-live="assertive"></div>
+</main>
+<script src="/js/a11y.js"></script><script src="/js/api.js"></script><script src="/js/nav.js"></script>
+<script>
+const gate=document.getElementById('gate'), panel=document.getElementById('panel'), result=document.getElementById('result');
+function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+function money(c){return '$'+((c||0)/100).toFixed(2);}
+function say(m,alert){result.textContent=m;announce(m,!!alert);}
+function goSignIn(){announce('Please sign in.',true);setTimeout(function(){location.href='/login.html?session=expired';},1200);}
+
+let state={enrolled:false,mover:null,earnings:null,promoted:new Set()};
+
+async function init(){
+  if(!Kiln.isLoggedIn()){location.replace('/login.html');return;}
+  try{ await load(); }
+  catch(e){ if(e.sessionExpired||e.status===401) return goSignIn(); gate.textContent=e.message||'Could not load.'; }
+}
+
+async function load(){
+  const me=await Kiln.api('/movers/me');
+  state.enrolled=me.enrolled; state.mover=me.mover||null; state.earnings=me.earnings||null;
+  gate.hidden=true; panel.hidden=false;
+  render();
+}
+
+function render(){
+  panel.innerHTML='';
+  if(!state.enrolled){ renderEnroll(); return; }
+  renderDashboard();
+}
+
+function renderEnroll(){
+  const c=el('div','card');
+  c.appendChild(el('h2',null,'Start your promo page'));
+  c.appendChild(el('p','muted','Pick a handle for your page — 3 to 32 letters, numbers, or hyphens. This becomes your public link.'));
+  const f1=el('div','field'); const l1=el('label',null,'Your handle'); l1.setAttribute('for','slug'); f1.appendChild(l1);
+  const slug=el('input'); slug.id='slug'; slug.type='text'; slug.maxLength=32; slug.setAttribute('autocapitalize','none'); slug.setAttribute('autocomplete','off'); f1.appendChild(slug); c.appendChild(f1);
+  const f2=el('div','field'); const l2=el('label',null,'Headline (optional)'); l2.setAttribute('for','headline'); f2.appendChild(l2);
+  const hd=el('input'); hd.id='headline'; hd.type='text'; hd.maxLength=120; f2.appendChild(hd); c.appendChild(f2);
+  const f3=el('div','field'); const l3=el('label',null,'Short intro (optional)'); l3.setAttribute('for','bio'); f3.appendChild(l3);
+  const bio=el('textarea'); bio.id='bio'; bio.maxLength=600; f3.appendChild(bio); c.appendChild(f3);
+  const btn=el('button','btn','Create my promo page'); btn.type='button';
+  btn.addEventListener('click',async()=>{
+    const s=slug.value.trim(); if(!s){announce('Enter a handle.',true);slug.focus();return;}
+    btn.disabled=true; say('Creating your promo page…');
+    try{ await Kiln.api('/movers/enroll',{method:'POST',body:{slug:s,headline:hd.value||undefined,bio:bio.value||undefined}});
+      say('You are a Dream Mover! Your page is ready.',true); await load();
+    }catch(e){ if(e.sessionExpired) return goSignIn(); say(e.message||'Could not create your page.',true); btn.disabled=false; }
+  });
+  c.appendChild(btn); panel.appendChild(c);
+}
+
+function renderDashboard(){
+  const m=state.mover, e=state.earnings||{pending_cents:0,paid_cents:0,sales:0};
+  const link=location.origin+'/mover.html?slug='+encodeURIComponent(m.slug);
+
+  // Earnings
+  const ec=el('div','card'); ec.appendChild(el('h2',null,'Your earnings'));
+  const row=el('div','earn');
+  const p1=el('div'); p1.appendChild(el('p','big',money(e.pending_cents))); p1.appendChild(el('p','lbl','Pending')); row.appendChild(p1);
+  const p2=el('div'); p2.appendChild(el('p','big',money(e.paid_cents))); p2.appendChild(el('p','lbl','Paid out')); row.appendChild(p2);
+  const p3=el('div'); p3.appendChild(el('p','big',String(e.sales||0))); p3.appendChild(el('p','lbl','Sales you drove')); row.appendChild(p3);
+  ec.appendChild(row);
+  ec.appendChild(el('p','muted','You earn 5% of every Dream that sells through your link. Payouts arrive once your earnings are ready to send.'));
+  panel.appendChild(ec);
+
+  // Promo page link
+  const lc=el('div','card'); lc.appendChild(el('h2',null,'Your promo page'));
+  const lp=el('p'); lp.appendChild(document.createTextNode('Share this link: '));
+  const a=el('a',null,link); a.href=link; lp.appendChild(a); lc.appendChild(lp);
+  const copy=el('button','btn secondary','Copy my link'); copy.type='button';
+  copy.addEventListener('click',()=>{ if(navigator.clipboard){navigator.clipboard.writeText(link);} say('Link copied.',true); });
+  lc.appendChild(copy);
+  panel.appendChild(lc);
+
+  // Edit page
+  const uc=el('div','card'); uc.appendChild(el('h2',null,'Customize your page'));
+  const fh=el('div','field'); const lh=el('label',null,'Headline'); lh.setAttribute('for','e-headline'); fh.appendChild(lh);
+  const hi=el('input'); hi.id='e-headline'; hi.type='text'; hi.maxLength=120; hi.value=m.headline||''; fh.appendChild(hi); uc.appendChild(fh);
+  const fb=el('div','field'); const lb=el('label',null,'Short intro'); lb.setAttribute('for','e-bio'); fb.appendChild(lb);
+  const bi=el('textarea'); bi.id='e-bio'; bi.maxLength=600; bi.value=m.bio||''; fb.appendChild(bi); uc.appendChild(fb);
+  const save=el('button','btn','Save my page'); save.type='button';
+  save.addEventListener('click',async()=>{ save.disabled=true; say('Saving…');
+    try{ await Kiln.api('/movers/me',{method:'PUT',body:{headline:hi.value,bio:bi.value}}); say('Saved.',true); await load(); }
+    catch(err){ if(err.sessionExpired) return goSignIn(); say(err.message||'Could not save.',true); save.disabled=false; }
+  });
+  uc.appendChild(save); panel.appendChild(uc);
+
+  // Dreams to promote
+  const dc=el('div','card'); dc.appendChild(el('h2',null,'Dreams to promote'));
+  dc.appendChild(el('p','muted','Add live Dreams to your page. The amount shown is what you earn if that Dream sells through your link.'));
+  const list=el('div'); list.id='promo-list'; dc.appendChild(list);
+  panel.appendChild(dc);
+  loadDreams();
+}
+
+async function loadDreams(){
+  const list=document.getElementById('promo-list'); if(!list) return;
+  list.textContent='Loading Dreams…';
+  try{
+    const {listings}=await Kiln.api('/listings',{auth:false});
+    // Which ones am I already promoting? (from my public page)
+    let mine=new Set();
+    try{ const pg=await Kiln.api('/movers/'+encodeURIComponent(state.mover.slug)); (pg.dreams||[]).forEach(d=>{ if(!d.own) mine.add(d.id); }); }catch(_){}
+    list.innerHTML='';
+    if(!listings.length){ list.textContent='No live Dreams to promote right now.'; return; }
+    listings.forEach(l=>{
+      const d=el('div','dream');
+      d.appendChild(el('h3',null,l.title||'Untitled Dream'));
+      const pay=el('p'); pay.appendChild(el('span','pay','You earn '+money(Math.round((l.price_cents||0)*0.05)))); pay.appendChild(document.createTextNode(' if it sells through your link ('+money(l.price_cents)+' Dream).')); d.appendChild(pay);
+      const on=mine.has(l.id);
+      const btn=el('button', on?'btn secondary':'btn', on?'On your page — remove':'Promote on my page'); btn.type='button';
+      btn.addEventListener('click',async()=>{ btn.disabled=true;
+        try{
+          if(mine.has(l.id)){ await Kiln.api('/movers/promote/'+l.id,{method:'DELETE'}); mine.delete(l.id); btn.textContent='Promote on my page'; btn.className='btn'; say('Removed from your page.',true); }
+          else { await Kiln.api('/movers/promote',{method:'POST',body:{listing_id:l.id}}); mine.add(l.id); btn.textContent='On your page — remove'; btn.className='btn secondary'; say('Added to your page.',true); }
+        }catch(e){ if(e.sessionExpired) return goSignIn(); say(e.message||'Could not update.',true); }
+        btn.disabled=false;
+      });
+      d.appendChild(btn); list.appendChild(d);
+    });
+  }catch(e){ if(e.sessionExpired) return goSignIn(); list.textContent='Could not load Dreams: '+(e.message||''); }
+}
+
+init();
+</script>
+</body></html>
