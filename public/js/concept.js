@@ -121,6 +121,34 @@
     if (btn) btn.disabled = false;
   }
 
+  // Compute REAL unit economics for this concept (the platform does the math; Clay only estimates
+  // the inputs). Shows the computed figures right here and upgrades the money section for next time.
+  async function computeEconomics(conceptId, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = 'Computing the real numbers…'; }
+    announce('Computing the real unit economics. This can take a moment.');
+    try {
+      var r = await Kiln.api('/clay/concept/' + conceptId + '/economics', { method: 'POST' });
+      if (r && r.ok && r.body) {
+        var out = document.getElementById('econ-out');
+        if (!out) {
+          out = el('div', 'asset-body'); out.id = 'econ-out'; out.setAttribute('tabindex', '-1');
+          out.setAttribute('role', 'region'); out.setAttribute('aria-label', 'Computed unit economics');
+          var host = document.getElementById('concept-actions');
+          if (host) host.appendChild(out);
+        }
+        out.hidden = false; out.textContent = r.body;
+        announce(r.message || 'Computed the real unit economics.', true);
+        if (window.focusEl) focusEl(out, 'Computed unit economics');
+      } else {
+        announce((r && r.message) || 'Couldn’t compute the numbers right now, so nothing was changed.', true);
+      }
+    } catch (e) {
+      if (e.sessionExpired) return goSignIn();
+      announce(e.message || 'Couldn’t compute the numbers right now.', true);
+    }
+    if (btn) { btn.disabled = false; btn.textContent = 'Compute the real numbers'; }
+  }
+
   (async function load() {
     try {
       var data = await Kiln.api('/concepts/' + id);
@@ -187,6 +215,9 @@
       var consult = el('a', 'btn secondary', 'Book a consultant');
       consult.href = '/consultants.html?concept=' + encodeURIComponent(id);
       cActs.appendChild(consult);
+      var econ = el('button', 'btn secondary', 'Compute the real numbers'); econ.type = 'button';
+      econ.addEventListener('click', function () { computeEconomics(id, econ); });
+      cActs.appendChild(econ);
       actionsEl.appendChild(cActs);
 
       // ---- keep / unlock, only when something is actually locked ----

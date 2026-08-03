@@ -7,6 +7,7 @@ const { MODES, CATEGORIES, PLATFORMS, SOCIAL_GOALS } = require('../services/clay
 const spine = require('../services/clay/spine');
 const clay = require('../services/clay');
 const seed = require('../services/clay/seed');
+const economics = require('../services/clay/economics');
 const provider = require('../services/clay/provider');
 const journal = require('../services/clay/journal');
 const retrieval = require('../services/clay/retrieval');
@@ -395,6 +396,29 @@ router.post('/seed', authenticate, authorize('staff', 'admin', 'master_staff'), 
     status: 'seeding',
     message: 'Clay is inventing and building a seed concept now. It will appear in the review queue and staff will be emailed when it’s ready — nothing goes live until you approve it.',
   });
+}));
+
+// POST /api/clay/concept/:id/economics — compute REAL unit economics for a concept and upgrade its
+// money_flow section with the computed numbers. Owner or staff. Additive: never touches the build.
+router.post('/concept/:id/economics', authenticate, asyncHandler(async (req, res) => {
+  const c = await query('SELECT owner_id FROM concepts WHERE id=$1', [req.params.id]);
+  if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
+  const isOwner = c.rows[0].owner_id === req.user.id;
+  const isStaff = ['staff', 'admin', 'master_staff'].includes(req.user.role);
+  if (!isOwner && !isStaff) throw new ApiError(403, 'This isn’t your concept.');
+  if (!provider.available()) {
+    return res.status(200).json({ ok: false, reason: 'unavailable',
+      message: 'Clay’s builder isn’t connected right now, so the numbers can’t be estimated — and Clay never invents figures, so nothing was changed.' });
+  }
+  const r = await economics.computeAndAttach(req.params.id);
+  if (!r.ok) {
+    const msg = r.reason === 'unavailable'
+      ? 'Clay couldn’t estimate the inputs right now, so nothing was changed and no figures were invented.'
+      : 'Couldn’t compute the economics right now, so nothing was changed.';
+    return res.status(200).json({ ok: false, reason: r.reason, message: msg });
+  }
+  res.json({ ok: true, body: r.body,
+    message: 'Computed the real unit economics from Clay’s estimates and added them to this concept’s money section.' });
 }));
 
 // GET /api/clay/build/:id — live progress for a build the user started, so the client can
