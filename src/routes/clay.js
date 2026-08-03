@@ -8,6 +8,7 @@ const spine = require('../services/clay/spine');
 const clay = require('../services/clay');
 const seed = require('../services/clay/seed');
 const seedScheduler = require('../services/clay/seedScheduler');
+const intent = require('../services/clay/intent');
 const economics = require('../services/clay/economics');
 const images = require('../services/clay/images');
 const imageBudget = require('../services/clay/imageBudget');
@@ -685,7 +686,11 @@ function chatOutcomeFromTranscript(messages) {
 function buildExecutors(user) {
   return {
     list_my_concepts: async () => {
-      const r = await query('SELECT id, title, category, stage FROM concepts WHERE owner_id=$1 ORDER BY created_at DESC LIMIT 50', [user.id]);
+      const r = await query(
+        `SELECT c.id, c.title, c.category, c.stage, ci.path
+           FROM concepts c
+           LEFT JOIN concept_intents ci ON ci.concept_id=c.id AND ci.user_id=$1
+          WHERE c.owner_id=$1 ORDER BY c.created_at DESC LIMIT 50`, [user.id]);
       return { concepts: r.rows };
     },
     get_concept: async ({ concept_id }) => {
@@ -697,7 +702,11 @@ function buildExecutors(user) {
         type: m.type, title: m.title, locked: !!m.locked,
         content: m.locked ? '' : String(m.body || '').replace(/\s+/g, ' ').trim().slice(0, 1500),
       }));
-      return { concept: c.rows[0], materials };
+      const ci = await intent.getIntent(concept_id, user.id).catch(() => null);
+      const path = ci
+        ? { path: ci.path, label: ci.label, note: ci.note }
+        : { path: null, note: "The creator hasn't set a plan for this concept yet — ask whether they want to build it themselves, refine it to sell, or are still exploring, then record it with set_concept_path.", options: intent.PATHS.map((p) => ({ id: p.id, label: p.label, short: p.short })) };
+      return { concept: c.rows[0], materials, path };
     },
     search_marketplace: async ({ query: q, category }) => {
       const clauses = ["l.status='live'"]; const args = [];
@@ -795,6 +804,14 @@ function buildExecutors(user) {
       const ok = await memory.forgetFact(user.id, key);
       return ok ? { status: 'forgotten', key } : { status: 'not_found', key };
     },
+    set_concept_path: async ({ concept_id, path, note }) => {
+      const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
+      if (!own.rows.length) return { status: 'error', message: 'Concept not found.' };
+      const r = await intent.setIntent(concept_id, user.id, path, note, 'clay');
+      if (!r.ok) return { status: 'error', message: r.reason === 'invalid_path' ? 'That isn\'t a valid path.' : 'Could not record the path.' };
+      return { status: 'path_set', path: r.intent.path, label: r.intent.label, note: r.intent.note,
+        message: `Got it — this concept's plan is now "${r.intent.label}". I'll coach toward that.` };
+    },
     define_term: async ({ term }) => {
       const e = glossary.defineTerm(term);
       return e
@@ -814,6 +831,40 @@ function buildExecutors(user) {
   };
 }
 
+// GET /api/clay/concept/:id/path — the creator's plan for this concept, plus the menu of paths so
+// the UI can present the choice. Owner (or staff) only.
+router.get('/concept/:id/path', authenticate, asyncHandler(async (req, res) => {
+  const c = await query('SELECT owner_id FROM concepts WHERE id=$1', [req.params.id]);
+  if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
+  const isOwner = c.rows[0].owner_id === req.user.id;
+  const isStaff = ['staff', 'admin', 'master_staff'].includes(req.user.role);
+  if (!isOwner && !isStaff) throw new ApiError(403, 'This isn’t your concept.');
+  const current = await intent.getIntent(req.params.id, c.rows[0].owner_id);
+  res.json({ ok: true, intent: current, paths: intent.PATHS });
+}));
+
+// POST /api/clay/concept/:id/path  { path, note? } — the creator sets their plan for this concept.
+// Owner only. Reversible; the creator can change it anytime.
+router.post('/concept/:id/path', authenticate, [
+  body('path').isString(),
+  body('note').optional({ values: 'falsy' }).isString(),
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  const c = await query('SELECT owner_id FROM concepts WHERE id=$1', [req.params.id]);
+  if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (c.rows[0].owner_id !== req.user.id) throw new ApiError(403, 'This isn’t your concept.');
+  const r = await intent.setIntent(req.params.id, req.user.id, req.body.path, req.body.note, 'user');
+  if (!r.ok) throw new ApiError(400, r.reason === 'invalid_path' ? 'Choose one of the offered paths.' : 'Could not save your plan.');
+  res.json({ ok: true, intent: r.intent });
+}));
+
+// GET /api/clay/earning-paths — the ways a creator can earn on the platform. One source of truth
+// Clay teaches from and the UI can show, so the potential is always in front of people.
+router.get('/earning-paths', authenticate, asyncHandler(async (req, res) => {
+  res.json({ ok: true, earning_paths: intent.EARNING_PATHS });
+}));
+
 // POST /api/clay/chat  { messages: [...] }
 router.post('/chat', authenticate, [
   body('messages').isArray({ min: 1 }),
@@ -832,7 +883,8 @@ router.post('/chat', authenticate, [
       // Never feed Clay content the user hasn't unlocked — otherwise chat becomes a paywall
       // bypass ("read me my build path"). Redaction blanks locked bodies and flags them.
       const ent = await conceptEntitlement(req.user, req.body.concept_id);
-      conceptContext = { concept: c.rows[0], assets: redactLockedAssets(a.rows, !!ent.entitled) };
+      const conceptIntent = await intent.getIntent(req.body.concept_id, req.user.id).catch(() => null);
+      conceptContext = { concept: c.rows[0], assets: redactLockedAssets(a.rows, !!ent.entitled), intent: conceptIntent };
     }
   }
   const mems = await memory.getMemories(req.user.id).catch(() => []);
