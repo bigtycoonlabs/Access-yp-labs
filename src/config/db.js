@@ -1,12 +1,21 @@
 const { Pool } = require('pg');
 
-// Pin every connection to the yp_labs schema. This is a hard isolation
-// guarantee: unqualified queries can only ever touch YP Labs tables, never
-// yp_flow_arbo (YP Flow) or public (Access Your Place).
+// Pin every connection to the yp_labs schema FIRST. This is a hard isolation
+// guarantee: unqualified queries resolve app objects only in yp_labs, never
+// yp_flow_arbo (YP Flow) or public (Access Your Place) — those are not on the
+// path, so a brand can never touch another brand's tables.
+//
+// `extensions` follows yp_labs on the path so pgvector's `vector` type and its
+// `<=>` similarity operator resolve at runtime (Supabase installs pgvector in
+// the `extensions` schema). This is required by the embedding writes/reads in
+// seed.js and retrieval.js — without it, `::vector` casts throw
+// `type "vector" does not exist`. yp_labs stays first, so every app table still
+// resolves to yp_labs; `extensions` holds only extension types/operators (no
+// tables), so cross-brand isolation is fully preserved.
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
-  options: '-c search_path=yp_labs',
+  options: '-c search_path=yp_labs,extensions',
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
