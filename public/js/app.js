@@ -178,7 +178,25 @@
       }
     } catch (_) {}
     // Opening an existing concept to keep refining it — skip the generic opening.
-    if (openId) { await loadConceptIntoWorkspace(openId); return; }
+    if (openId) {
+      await loadConceptIntoWorkspace(openId);
+      // Deep-links from the concept workspace: open the listing form, or pre-load an edit
+      // request for one section. Editing the loaded concept is already the refine path, so we
+      // just prime the message box — no mode toggle needed.
+      const action = params.get('action');
+      const editType = (params.get('edit') || '').toLowerCase();
+      if (action === 'list') {
+        openListingForm(log, openId);
+      } else if (/^[a-z_]{2,40}$/.test(editType)) {
+        const editTitle = params.get('editTitle') || editType.replace(/_/g, ' ');
+        if (promptEl) {
+          promptEl.value = 'Please revise the “' + editTitle + '” — here’s what I’d like changed: ';
+          promptEl.focus();
+        }
+        announce('Editing the ' + editTitle + '. Tell Clay what to change, then send.', true);
+      }
+      return;
+    }
     // Figure out whether this is a returning builder BEFORE greeting them. Their own concepts
     // are the truth — someone with work in progress must never be greeted like a first-timer,
     // even if they never filled in interests.
@@ -273,25 +291,14 @@
       renderClaysTake(m, concept);
       const current = (assets || []).filter((a) => a.is_current !== false);
       if (current.length) {
+        workspaceHandoff(m, concept.id, current, { demo: current.some((a) => a.type === 'html_demo' || a.type === 'built_site') });
         const acts = el('div', 'actions');
-        const isEntitled = entitled !== false;
-        const lockedNames = [];
-        current.forEach((a) => {
-          if (isEntitled || PREVIEW_TYPES.includes(a.type)) {
-            const b = el('button', 'btn secondary', 'View: ' + (a.title || a.type)); b.type = 'button';
-            b.addEventListener('click', () => viewAsset(m, a.id, a.title || a.type));
-            acts.appendChild(b);
-          } else {
-            lockedNames.push(a.title || a.label || a.type);
-          }
-        });
-        const dl = el('button', 'btn', 'Download package'); dl.type = 'button';
-        dl.addEventListener('click', () => exportConcept(m, concept.id));
-        acts.appendChild(dl);
         const fresh = el('button', 'btn secondary', 'Start a fresh concept instead'); fresh.type = 'button';
         fresh.addEventListener('click', startFreshConcept);
         acts.appendChild(fresh);
         m.appendChild(acts);
+        const isEntitled = entitled !== false;
+        const lockedNames = current.filter((a) => !(isEntitled || PREVIEW_TYPES.includes(a.type))).map((a) => a.title || a.label || a.type);
         lockedNotice(m, concept.id, lockedNames);
       }
       announce('Continuing your concept: ' + (concept.title || 'your concept') + '. Add a message to refine it.', true);
@@ -525,22 +532,11 @@
       const { assets, entitled } = await Kiln.api('/concepts/' + conceptId);
       const current = (assets || []).filter((a) => a.is_current !== false);
       if (!current.length) { announce('No materials yet.', true); return; }
-      const acts = el('div', 'actions');
+      workspaceHandoff(container, conceptId, current, { demo: current.some((a) => a.type === 'html_demo' || a.type === 'built_site') });
       const isEntitled = entitled !== false;
-      const locked = [];
-      current.forEach((a) => {
-        if (isEntitled || PREVIEW_TYPES.includes(a.type)) {
-          const b = el('button', 'btn secondary', 'View: ' + (a.title || a.type)); b.type = 'button';
-          b.addEventListener('click', () => viewAsset(container, a.id, a.title || a.type));
-          acts.appendChild(b);
-        } else { locked.push(a.title || a.type); }
-      });
-      const dl = el('button', 'btn', 'Download package'); dl.type = 'button';
-      dl.addEventListener('click', () => exportConcept(container, conceptId));
-      acts.appendChild(dl);
-      container.appendChild(acts);
+      const locked = current.filter((a) => !(isEntitled || PREVIEW_TYPES.includes(a.type))).map((a) => a.title || a.type);
       if (locked.length) lockedNotice(container, conceptId, locked);
-      announce('Updated materials ready to view.', true);
+      announce('Your updated materials are ready in your concept workspace.', true);
     } catch (e) {
       announce('Couldn’t load the materials just now.', true);
     }
@@ -706,6 +702,9 @@
       announce(name + (a.locked ? ' — ready, locked until you keep the concept.' : ' — ready.'));
       scrollToLatest(tray);
     }
+    // The cards named each section; add one clear next step into the calm workspace.
+    workspaceHandoff(log, conceptId, assets, { quiet: true, demo: assets.some((a) => a.type === 'html_demo' || a.type === 'built_site') });
+    announce('Your concept is ready. Open your workspace to view, download, or edit each section.', true);
   }
 
   // ---- render Clay's result honestly by status ----
@@ -758,6 +757,33 @@
     if (c.clays_take) announce('Clay’s take: ' + c.clays_take);
   }
 
+  // One calm handoff instead of stacking a "View" button per asset in the chat log: name what
+  // Clay built, then send the person to a dedicated, screen-reader-first workspace page where
+  // each section can be viewed, downloaded, and sent back for an edit. Pass { quiet:true } when
+  // the caller already listed the section names, so we show only the button. { demo:true } adds
+  // a live-demo link.
+  function workspaceHandoff(container, conceptId, assets, opts) {
+    opts = opts || {};
+    const current = (assets || []).filter((a) => a && a.is_current !== false);
+    const titles = current.map((a) => a.title || a.label || (a.type || '').replace(/_/g, ' ')).filter(Boolean);
+    if (titles.length && !opts.quiet) {
+      const summary = el('p', 'muted');
+      summary.textContent = 'Clay built ' + titles.length + ' section' + (titles.length === 1 ? '' : 's') + ': ' + titles.join(', ') + '.';
+      container.appendChild(summary);
+    }
+    const acts = el('div', 'actions');
+    const open = el('a', 'btn', 'Open your concept workspace');
+    open.href = '/concept.html?id=' + encodeURIComponent(conceptId);
+    acts.appendChild(open);
+    if (opts.demo) {
+      const d = el('a', 'btn secondary', 'Open the live demo');
+      d.href = '/sandbox.html?concept=' + encodeURIComponent(conceptId);
+      acts.appendChild(d);
+    }
+    container.appendChild(acts);
+    return open;
+  }
+
   function renderResult(container, data) {
     if (data.status === 'answered') {
       container.appendChild(el('p', null, data.message || 'Here is your concept.'));
@@ -778,58 +804,22 @@
           ? 'Source check passed. Every concrete claim is supported by the sources.'
           : 'Source check: some claims may not be fully supported. Details are shown below.', true);
       }
-      const actions = el('div', 'actions');
       const entitled = data.entitled !== false;
-      const lockedNames = [];
-      (data.assets || []).forEach((a) => {
-        if (entitled || PREVIEW_TYPES.includes(a.type)) {
-          const b = el('button', 'btn secondary', 'View: ' + (a.title || a.type));
-          b.type = 'button';
-          b.addEventListener('click', () => viewAsset(container, a.id, a.title || a.type));
-          actions.appendChild(b);
-        } else {
-          lockedNames.push(a.title || a.label || a.type);
-        }
-      });
-      const dl = el('button', 'btn', 'Download package'); dl.type = 'button';
-      dl.addEventListener('click', () => exportConcept(container, data.concept.id));
-      actions.appendChild(dl);
-      if ((data.assets || []).some((a) => a.type === 'html_demo' || a.type === 'built_site')) {
-        const demoBtn = el('a', 'btn', 'Open live demo');
-        demoBtn.href = '/sandbox.html?concept=' + encodeURIComponent(data.concept.id);
-        actions.appendChild(demoBtn);
-      }
-      if (data.concept && data.concept.is_operating) {
-        // A running business is never listed for sale. Offer a complementary dream instead.
-        if (data.dreamhold_suggestion && data.dreamhold_suggestion.reason) {
-          container.appendChild(el('p', 'muted', 'Clay suggests: ' + data.dreamhold_suggestion.reason));
-        }
-        const findBtn = el('a', 'btn', 'Find a complementary dream in the Dreamhold');
-        const cat = data.dreamhold_suggestion && data.dreamhold_suggestion.category;
+      const lockedNames = (data.assets || [])
+        .filter((a) => !(entitled || PREVIEW_TYPES.includes(a.type)))
+        .map((a) => a.title || a.label || a.type);
+      // Calm handoff: one button to the concept workspace (view / download / edit each piece
+      // there), plus the live demo if there is one — instead of a wall of per-asset buttons.
+      const hasDemo = (data.assets || []).some((a) => a.type === 'html_demo' || a.type === 'built_site');
+      workspaceHandoff(container, data.concept.id, data.assets, { demo: hasDemo });
+      // A running business is never listed for sale — still offer a complementary dream if Clay named one.
+      if (data.concept && data.concept.is_operating && data.dreamhold_suggestion && data.dreamhold_suggestion.reason) {
+        container.appendChild(el('p', 'muted', 'Clay suggests: ' + data.dreamhold_suggestion.reason));
+        const findBtn = el('a', 'btn secondary', 'Find a complementary dream in the Dreamhold');
+        const cat = data.dreamhold_suggestion.category;
         findBtn.href = '/marketplace.html?entered=1' + (cat ? ('&category=' + encodeURIComponent(cat)) : '');
-        actions.appendChild(findBtn);
-      } else {
-        const listBtn = el('button', 'btn', 'List this in the Dreamhold'); listBtn.type = 'button';
-        listBtn.addEventListener('click', () => openListingForm(container, data.concept.id));
-        actions.appendChild(listBtn);
+        container.appendChild(findBtn);
       }
-      const socialBtn = el('button', 'btn secondary', 'Generate social content'); socialBtn.type = 'button';
-      socialBtn.addEventListener('click', () => openSocialForm(container, data.concept.id));
-      actions.appendChild(socialBtn);
-      if ((data.assets || []).some((a) => a.type === 'image_prompt' || a.type === 'example_image')) {
-        const imgBtn = el('button', 'btn secondary', 'Render a photo'); imgBtn.type = 'button';
-        imgBtn.addEventListener('click', () => openImageRender(container, data.concept.id));
-        actions.appendChild(imgBtn);
-      }
-      if ((data.assets || []).some((a) => a.type === 'video_script')) {
-        const vidBtn = el('button', 'btn secondary', 'Render a video'); vidBtn.type = 'button';
-        vidBtn.addEventListener('click', () => openVideoRender(container, data.concept.id));
-        actions.appendChild(vidBtn);
-      }
-      const consultBtn = el('a', 'btn secondary', 'Book a consultant about this');
-      consultBtn.href = '/consultants.html?concept=' + encodeURIComponent(data.concept.id);
-      actions.appendChild(consultBtn);
-      container.appendChild(actions);
 
       // A brand-new user asked whether finishing a build auto-posts to the Dreamhold. It does
       // not — say so right here, at the moment they'd wonder. Only for listable (not operating)
