@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Desk — Access YP Labs</title>
+  <meta name="description" content="The Desk: a live, honest look at the ideas of the future taking shape, getting proven, and finding their owner at Access YP Labs.">
+  <style>
+    :root{
+      --void:#0b0817; --dream:#b8a6ff; --dream2:#8ce0ff; --glow:#ffd9a8;
+      --paper:#f7f5ff; --ink:#191630; --muted:#585272; --line:#e6e0f5;
+      --accent:#4c3bd4; --accent-dark:#3a2ba6; --focus:#1e40af;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;background:var(--paper);color:var(--ink);
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:18px;line-height:1.6;}
+    a{color:var(--accent-dark);}
+    a:focus-visible,button:focus-visible,.cta:focus-visible{outline:3px solid var(--focus);outline-offset:3px;border-radius:4px;}
+    .skip{position:absolute;left:-999px;top:0;background:var(--ink);color:#fff;padding:12px 20px;z-index:100;}
+    .skip:focus{left:0;}
+    .wrap{max-width:920px;margin:0 auto;padding:0 24px;}
+    header.top{color:#f2eefb;background:
+      radial-gradient(120% 80% at 15% -20%, rgba(140,224,255,.18), transparent 55%),
+      radial-gradient(120% 90% at 95% 120%, rgba(184,166,255,.30), transparent 55%), var(--void);}
+    .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:22px 0;}
+    .brand strong{font-size:20px;letter-spacing:.02em;}
+    .bar nav a{color:#e7e1f7;text-decoration:none;font-size:16px;display:inline-block;min-height:44px;line-height:44px;padding:0 8px;}
+    .hero{padding:44px 0 20px;}
+    .hero h1{font-size:clamp(30px,6vw,48px);line-height:1.1;margin:0 0 12px;max-width:20ch;text-wrap:balance;}
+    .hero p{font-size:19px;color:#e7e1f7;max-width:56ch;margin:0;}
+    /* Pulse — the live numbers, glowing on the void. */
+    .pulse{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:26px 0 44px;}
+    @media (max-width:640px){.pulse{grid-template-columns:1fr;gap:12px;}}
+    .stat{background:rgba(255,255,255,.05);border:1px solid rgba(184,166,255,.25);border-radius:16px;padding:22px;}
+    .stat .n{font-size:clamp(30px,7vw,46px);font-weight:800;color:#fff;line-height:1;
+      text-shadow:0 0 26px rgba(184,166,255,.35);transition:text-shadow .5s ease;}
+    .stat .n.bump{text-shadow:0 0 40px rgba(140,224,255,.7);}
+    .stat .l{margin-top:8px;font-size:15px;color:#cfc6ee;}
+    main{padding:44px 0 72px;}
+    section{margin:0 0 40px;}
+    h2{font-size:24px;color:var(--accent-dark);margin:0 0 6px;}
+    .sub{color:var(--muted);margin:0 0 18px;font-size:16px;}
+    /* Feed */
+    .feed{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden;}
+    .feed li{padding:16px 20px;border-top:1px solid var(--line);}
+    .feed li:first-child{border-top:0;}
+    .feed .line{margin:0;}
+    .feed .meta{color:var(--muted);font-size:14px;margin:4px 0 0;}
+    .feed .em{color:var(--accent-dark);font-weight:600;}
+    .feed li.new{animation:slidein .5s ease both;}
+    @keyframes slidein{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:none;}}
+    .empty{padding:22px 20px;color:var(--muted);}
+    .about p{max-width:66ch;}
+    .cta{display:inline-block;min-height:48px;min-width:48px;padding:14px 28px;font-size:18px;font-weight:700;
+      border-radius:12px;text-decoration:none;color:#fff;background:var(--accent);margin:6px 10px 6px 0;}
+    .cta:hover{background:var(--accent-dark);}
+    .cta.ghost{background:transparent;color:var(--accent-dark);border:2px solid var(--accent);}
+    footer{border-top:1px solid var(--line);color:var(--muted);font-size:15px;padding:28px 0 48px;}
+    footer a{display:inline-block;min-height:44px;line-height:44px;}
+    @media (prefers-reduced-motion: reduce){
+      .feed li.new{animation:none;}
+      .stat .n{transition:none;}
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to main content</a>
+
+  <header class="top">
+    <div class="wrap">
+      <div class="bar">
+        <div class="brand"><strong>Access YP Labs</strong></div>
+        <nav aria-label="Primary">
+          <a href="/">Home</a>
+          <a href="/dreamhold.html">Dreamhold</a>
+          <a href="/values.html">Values</a>
+        </nav>
+      </div>
+      <div class="hero">
+        <h1>The Desk</h1>
+        <p>A live, honest look at the ideas of the future — taking shape, getting proven, and finding their owner.</p>
+      </div>
+      <!-- The pulse. aria-live so a screen reader hears the numbers change, but only when they actually do. -->
+      <ul class="pulse" aria-label="Live platform pulse" aria-live="polite">
+        <li class="stat"><div class="n" id="n-shaped">—</div><div class="l">ideas shaped, all time</div></li>
+        <li class="stat"><div class="n" id="n-week">—</div><div class="l">shaped in the last 7 days</div></li>
+        <li class="stat"><div class="n" id="n-hold">—</div><div class="l">live in the Dreamhold</div></li>
+      </ul>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="wrap">
+      <section aria-labelledby="feed-h">
+        <h2 id="feed-h">Taking shape</h2>
+        <p class="sub">Real activity as it happens. Ideas still being shaped stay private — you'll only ever see that <em>an</em> idea took shape, never whose or what. Ideas that reach the Dreamhold are already for sale, so those we can name.</p>
+        <ul class="feed" id="feed" aria-live="polite" aria-label="Recent activity">
+          <li class="empty" id="feed-empty">Loading the latest…</li>
+        </ul>
+      </section>
+
+      <section class="about" aria-labelledby="about-h">
+        <h2 id="about-h">What this is</h2>
+        <p>Everyone carries businesses they never got around to building. At Access YP Labs, Clay helps you shape one of those ideas into a complete, pre-proven concept — with real research behind it — and then sell it or build it on your own terms. The Desk is where you can watch that happen: the whitespace, being filled, one idea at a time.</p>
+        <p style="margin-top:18px">
+          <a class="cta" href="/">Shape your idea</a>
+          <a class="cta ghost" href="/dreamhold.html">Explore the Dreamhold</a>
+        </p>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      Access YP Labs is a brand of Set Up Your Place LLC. The Dreamhold is a neutral marketplace; it is not a party to any transaction between members. Concepts are pre-proven starting points, not guarantees of income.
+      <br>
+      <a href="/">Home</a> · <a href="/values.html">Values</a> · <a href="/dreamhold.html">Dreamhold</a>
+    </div>
+  </footer>
+
+  <script>
+  (function(){
+    var seen = {};           // feed item keys we've already shown, so we only animate/announce new ones
+    var first = true;        // first render: fill silently, don't animate the whole list
+    var nums = { shaped:null, week:null, hold:null };
+
+    function coarseTime(iso){
+      var t = new Date(iso).getTime();
+      if (isNaN(t)) return '';
+      var mins = Math.round((Date.now() - t) / 60000);
+      if (mins < 60) return 'in the last hour';
+      if (mins < 60*24) return 'earlier today';
+      if (mins < 60*24*7) return 'this week';
+      return 'recently';
+    }
+
+    function setNum(id, key, val){
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (nums[key] === val) return;            // unchanged: don't touch the DOM (keeps aria-live quiet)
+      nums[key] = val;
+      el.textContent = String(val);
+      el.classList.remove('bump');
+      // reflow then add, so the glow re-triggers on each real change
+      void el.offsetWidth;
+      el.classList.add('bump');
+    }
+
+    function itemKey(it){ return it.kind + '|' + it.at + '|' + (it.title || ''); }
+
+    function makeItem(it){
+      var li = document.createElement('li');
+      var p = document.createElement('p'); p.className = 'line';
+      if (it.kind === 'arrived'){
+        var em = document.createElement('span'); em.className = 'em';
+        em.textContent = '\u201C' + (it.title || 'A new concept') + '\u201D';   // textContent = XSS-safe
+        p.appendChild(em);
+        p.appendChild(document.createTextNode(' just entered the Dreamhold.'));
+      } else {
+        var em2 = document.createElement('span'); em2.className = 'em';
+        em2.textContent = 'A new idea';
+        p.appendChild(em2);
+        p.appendChild(document.createTextNode(' just took shape.'));
+      }
+      li.appendChild(p);
+      var meta = document.createElement('p'); meta.className = 'meta';
+      var bits = [];
+      if (it.kind === 'arrived' && it.category) bits.push(it.category);
+      bits.push(coarseTime(it.at));
+      meta.textContent = bits.filter(Boolean).join(' \u00B7 ');
+      li.appendChild(meta);
+      return li;
+    }
+
+    function render(data){
+      var p = data.pulse || {};
+      setNum('n-shaped','shaped', p.ideas_shaped || 0);
+      setNum('n-week','week', p.ideas_shaped_7d || 0);
+      setNum('n-hold','hold', p.in_dreamhold || 0);
+
+      var feed = Array.isArray(data.feed) ? data.feed : [];
+      var list = document.getElementById('feed');
+      var empty = document.getElementById('feed-empty');
+
+      if (!feed.length){
+        if (empty){ empty.textContent = "It's quiet right now — be the one who shapes the next idea."; }
+        return;
+      }
+      if (empty && empty.parentNode) empty.parentNode.removeChild(empty);
+
+      // Prepend only genuinely new items (newest first). On the very first load, fill without motion.
+      var toAdd = [];
+      feed.forEach(function(it){ var k = itemKey(it); if (!seen[k]){ seen[k] = true; toAdd.push(it); } });
+      // feed comes newest-first; insert so newest ends up on top
+      toAdd.reverse().forEach(function(it){
+        var li = makeItem(it);
+        if (!first) li.classList.add('new');
+        list.insertBefore(li, list.firstChild);
+      });
+      // keep the list from growing without bound in a long session
+      while (list.children.length > 20) list.removeChild(list.lastChild);
+      first = false;
+    }
+
+    function load(){
+      fetch('/api/desk', { headers: { 'Accept':'application/json' } })
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(d){ if (d) render(d); })
+        .catch(function(){ /* stay quiet; try again next tick */ });
+    }
+
+    load();
+    setInterval(load, 18000);
+  })();
+  </script>
+</body>
+</html>
