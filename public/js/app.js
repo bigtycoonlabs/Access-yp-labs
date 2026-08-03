@@ -180,7 +180,7 @@
     // Opening an existing concept to keep refining it — skip the generic opening.
     if (openId) {
       await loadConceptIntoWorkspace(openId);
-      // Deep-links from the concept workspace: open the listing form, or pre-load an edit
+      // Deep-links from the concept vault: open the listing form, or pre-load an edit
       // request for one section. Editing the loaded concept is already the refine path, so we
       // just prime the message box — no mode toggle needed.
       const action = params.get('action');
@@ -291,7 +291,7 @@
       renderClaysTake(m, concept);
       const current = (assets || []).filter((a) => a.is_current !== false);
       if (current.length) {
-        workspaceHandoff(m, concept.id, current, { demo: current.some((a) => a.type === 'html_demo' || a.type === 'built_site') });
+        vaultHandoff(m, concept.id, current, { demo: current.some((a) => a.type === 'html_demo' || a.type === 'built_site') });
         const acts = el('div', 'actions');
         const fresh = el('button', 'btn secondary', 'Start a fresh concept instead'); fresh.type = 'button';
         fresh.addEventListener('click', startFreshConcept);
@@ -532,11 +532,11 @@
       const { assets, entitled } = await Kiln.api('/concepts/' + conceptId);
       const current = (assets || []).filter((a) => a.is_current !== false);
       if (!current.length) { announce('No materials yet.', true); return; }
-      workspaceHandoff(container, conceptId, current, { demo: current.some((a) => a.type === 'html_demo' || a.type === 'built_site') });
+      vaultHandoff(container, conceptId, current, { demo: current.some((a) => a.type === 'html_demo' || a.type === 'built_site') });
       const isEntitled = entitled !== false;
       const locked = current.filter((a) => !(isEntitled || PREVIEW_TYPES.includes(a.type))).map((a) => a.title || a.type);
       if (locked.length) lockedNotice(container, conceptId, locked);
-      announce('Your updated materials are ready in your concept workspace.', true);
+      announce('Your updated materials are ready in your vault.', true);
     } catch (e) {
       announce('Couldn’t load the materials just now.', true);
     }
@@ -702,9 +702,9 @@
       announce(name + (a.locked ? ' — ready, locked until you keep the concept.' : ' — ready.'));
       scrollToLatest(tray);
     }
-    // The cards named each section; add one clear next step into the calm workspace.
-    workspaceHandoff(log, conceptId, assets, { quiet: true, demo: assets.some((a) => a.type === 'html_demo' || a.type === 'built_site') });
-    announce('Your concept is ready. Open your workspace to view, download, or edit each section.', true);
+    // The cards named each section; add one clear next step into the calm vault.
+    vaultHandoff(log, conceptId, assets, { quiet: true, demo: assets.some((a) => a.type === 'html_demo' || a.type === 'built_site') });
+    announce('Your concept is ready. Open your vault to view, download, or edit each section.', true);
   }
 
   // ---- render Clay's result honestly by status ----
@@ -758,21 +758,21 @@
   }
 
   // One calm handoff instead of stacking a "View" button per asset in the chat log: name what
-  // Clay built, then send the person to a dedicated, screen-reader-first workspace page where
+  // Clay built, then send the person to a dedicated, screen-reader-first vault page where
   // each section can be viewed, downloaded, and sent back for an edit. Pass { quiet:true } when
   // the caller already listed the section names, so we show only the button. { demo:true } adds
   // a live-demo link.
-  function workspaceHandoff(container, conceptId, assets, opts) {
+  function vaultHandoff(container, conceptId, assets, opts) {
     opts = opts || {};
     const current = (assets || []).filter((a) => a && a.is_current !== false);
     const titles = current.map((a) => a.title || a.label || (a.type || '').replace(/_/g, ' ')).filter(Boolean);
     if (titles.length && !opts.quiet) {
       const summary = el('p', 'muted');
-      summary.textContent = 'Clay built ' + titles.length + ' section' + (titles.length === 1 ? '' : 's') + ': ' + titles.join(', ') + '.';
+      summary.textContent = 'Clay built ' + titles.length + ' section' + (titles.length === 1 ? '' : 's') + ' and gathered them into your vault: ' + titles.join(', ') + '.';
       container.appendChild(summary);
     }
     const acts = el('div', 'actions');
-    const open = el('a', 'btn', 'Open your concept workspace');
+    const open = el('a', 'btn', 'Open your vault');
     open.href = '/concept.html?id=' + encodeURIComponent(conceptId);
     acts.appendChild(open);
     if (opts.demo) {
@@ -808,10 +808,10 @@
       const lockedNames = (data.assets || [])
         .filter((a) => !(entitled || PREVIEW_TYPES.includes(a.type)))
         .map((a) => a.title || a.label || a.type);
-      // Calm handoff: one button to the concept workspace (view / download / edit each piece
+      // Calm handoff: one button to the concept vault (view / download / edit each piece
       // there), plus the live demo if there is one — instead of a wall of per-asset buttons.
       const hasDemo = (data.assets || []).some((a) => a.type === 'html_demo' || a.type === 'built_site');
-      workspaceHandoff(container, data.concept.id, data.assets, { demo: hasDemo });
+      vaultHandoff(container, data.concept.id, data.assets, { demo: hasDemo });
       // A running business is never listed for sale — still offer a complementary dream if Clay named one.
       if (data.concept && data.concept.is_operating && data.dreamhold_suggestion && data.dreamhold_suggestion.reason) {
         container.appendChild(el('p', 'muted', 'Clay suggests: ' + data.dreamhold_suggestion.reason));

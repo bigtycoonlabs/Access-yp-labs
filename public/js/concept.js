@@ -1,4 +1,4 @@
-// Concept workspace — a calm, screen-reader-first home for ONE concept's materials.
+// Concept vault — a calm, screen-reader-first home for ONE concept's materials.
 // The Laboratory chat now sends people here with a single button instead of stacking a
 // "View" button per asset in the conversation (which was overwhelming with VoiceOver).
 // Here each section can be viewed, downloaded, and sent back to Clay for an edit.
@@ -121,7 +121,7 @@
       titleEl.textContent = concept.title || 'Your concept';
       if (concept.clays_take) { takeEl.textContent = concept.clays_take; takeEl.hidden = false; }
 
-      assetsEl.appendChild(el('h2', null, 'Your materials' + (assets.length ? ' — ' + assets.length + ' section' + (assets.length === 1 ? '' : 's') : '')));
+      assetsEl.appendChild(el('h2', null, 'Your vault' + (assets.length ? ' — ' + assets.length + ' section' + (assets.length === 1 ? '' : 's') : '')));
 
       if (!assets.length) {
         assetsEl.appendChild(el('p', 'muted', 'Nothing is built here yet. Head back to your Laboratory and Clay will build this out with you.'));
@@ -188,7 +188,7 @@
         actionsEl.appendChild(keepBox);
       }
 
-      announce('Concept workspace for ' + (concept.title || 'your concept') + '. ' + assets.length + ' section' + (assets.length === 1 ? '' : 's') + ' listed, each with View, Download, and Request an edit.', true);
+      announce('Your vault for ' + (concept.title || 'your concept') + '. ' + assets.length + ' section' + (assets.length === 1 ? '' : 's') + ' listed, each with View, Download, and Request an edit.', true);
       focusEl(titleEl);
     } catch (e) {
       if (e.sessionExpired) return goSignIn();
