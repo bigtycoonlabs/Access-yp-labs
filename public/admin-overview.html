@@ -41,11 +41,20 @@ const gate=document.getElementById('gate');
 function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
 function pct(n,d){return d>0?Math.round((n/d)*100):0;}
 function stat(host,big,lbl){const d=el('div','stat');d.appendChild(el('p','big',String(big)));d.appendChild(el('p','lbl',lbl));host.appendChild(d);}
+function goSignIn(){
+  var msg='Your session has ended. Taking you to sign in.';
+  try{ announce(msg,true); }catch(_){}
+  if(gate){ gate.hidden=false; gate.textContent=msg; }
+  setTimeout(function(){ location.href='/login.html?session=expired'; }, 1400);
+}
 
 async function load(){
   let d;
   try{ d=await Kiln.api('/admin/overview'); }
-  catch(e){ gate.textContent = e.status===403 ? 'This page is for staff only.' : (e.message||'Could not load.'); return; }
+  catch(e){
+    if(e.sessionExpired || e.status===401) return goSignIn();
+    gate.textContent = e.status===403 ? 'This page is for staff only.' : (e.message||'Could not load.'); return;
+  }
   gate.hidden=true; document.getElementById('console').hidden=false;
 
   const c=d.counts, a=d.clay_all;

@@ -64,10 +64,22 @@ function when(iso){try{return new Date(iso).toLocaleString();}catch(_){return is
 
 function stat(big,lbl){const d=el('div','stat');d.appendChild(el('p','big',String(big)));d.appendChild(el('p','lbl',lbl));return d;}
 
+// Session ended (no/expired token that couldn't refresh): tell the user plainly and send them to
+// sign in, instead of surfacing a raw "Authorization token required".
+function goSignIn(){
+  var msg='Your session has ended. Taking you to sign in.';
+  try{ announce(msg,true); }catch(_){}
+  if(gate){ gate.hidden=false; gate.textContent=msg; }
+  setTimeout(function(){ location.href='/login.html?session=expired'; }, 1400);
+}
+
 async function load(){
   let data;
   try{ data=await Kiln.api('/clay/journal'); }
-  catch(e){ gate.textContent = e.status===403 ? 'This page is for staff only.' : (e.message||'Could not load.'); return; }
+  catch(e){
+    if(e.sessionExpired || e.status===401) return goSignIn();
+    gate.textContent = e.status===403 ? 'This page is for staff only.' : (e.message||'Could not load.'); return;
+  }
   gate.hidden=true;
   document.getElementById('console').hidden=false;
 
@@ -191,7 +203,7 @@ if(sb){
         ?'Clay is building a seed concept now. It’ll appear in the review queue in a minute or two, and staff will be emailed.'
         :'Done.');
       out.textContent=msg; announce(msg,true);
-    }catch(e){ out.textContent=e.message||'Could not start seeding.'; announce(out.textContent,true); }
+    }catch(e){ if(e.sessionExpired) return goSignIn(); out.textContent=e.message||'Could not start seeding.'; announce(out.textContent,true); }
     finally{ sb.disabled=false; }
   });
 }
@@ -233,11 +245,11 @@ async function setTarget(n){
     renderSchedule(r && r.schedule, r && r.image_ready);
     var msg=(r && r.message) || ('Now up to '+n+' a day.');
     out.textContent=msg; announce(msg,true);
-  }catch(e){ out.textContent=e.message||'Could not update the daily number.'; announce(out.textContent,true); }
+  }catch(e){ if(e.sessionExpired) return goSignIn(); out.textContent=e.message||'Could not update the daily number.'; announce(out.textContent,true); }
 }
 async function loadSchedule(){
   try{ var r=await Kiln.api('/clay/seed-schedule'); renderSchedule(r && r.schedule, r && r.image_ready); }
-  catch(e){ renderSchedule(null); }
+  catch(e){ if(e.sessionExpired) return goSignIn(); renderSchedule(null); }
 }
 var stog=document.getElementById('schedtoggle');
 if(stog){
@@ -252,7 +264,7 @@ if(stog){
       renderSchedule(r && r.schedule, r && r.image_ready);
       var msg=(r && r.message) || 'Updated.';
       out.textContent=msg; announce(msg,true);
-    }catch(e){ out.textContent=e.message||'Could not update the schedule.'; announce(out.textContent,true); stog.disabled=false; }
+    }catch(e){ if(e.sessionExpired) return goSignIn(); out.textContent=e.message||'Could not update the schedule.'; announce(out.textContent,true); stog.disabled=false; }
   });
 }
 loadSchedule();
