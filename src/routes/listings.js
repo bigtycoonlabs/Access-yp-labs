@@ -71,7 +71,7 @@ router.post('/', authenticate, [
     `INSERT INTO listings
        (concept_id, seller_id, format, price_cents, starting_bid_cents, auction_close_at,
         completion_target, stage_label, status, risk_disclosed, ownership_ack)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,COALESCE($8,'concept'),'draft',true,true)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,COALESCE($8,'concept')::concept_stage,'draft',true,true)
      RETURNING *`,
     [concept_id, req.user.id, format, price_cents || null, starting_bid_cents || null,
      auction_close_at || null, completion_target || null, stage_label]);
