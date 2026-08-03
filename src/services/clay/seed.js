@@ -113,7 +113,10 @@ async function inventIdea(avoidTitles) {
   const system = 'You are Clay, an AI that shapes real, launchable small businesses. You never fabricate. '
     + 'Invent ONE genuinely simple, quick-to-start, and UNIQUE small business an ordinary person could begin '
     + 'from home with little money. It must be a virtual, remote, or micro business, not a large operation. '
-    + 'Avoid anything generic or already common. Respond with ONLY a JSON object, no prose.';
+    + 'Avoid anything generic or already common. It must genuinely hold up — a real business a creator would '
+    + 'want to build or a buyer would want to own — because the Dreamhold is only worth what sits on it; a shelf '
+    + 'of weak filler ideas is worthless, so seed only something you would stand behind. '
+    + 'Respond with ONLY a JSON object, no prose.';
   const avoid = (avoidTitles && avoidTitles.length) ? ('\nAvoid ideas close to these: ' + avoidTitles.slice(0, 20).join('; ') + '.') : '';
   const user = 'Return the idea as JSON with exactly these keys:\n'
     + '{ "title": short name, "category": one of ' + JSON.stringify(CATEGORIES) + ', '
