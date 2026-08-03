@@ -124,6 +124,16 @@ if (require.main === module) {
       .catch((e) => console.error('seed scheduler error:', e && e.message));
     setTimeout(seedTick, 2 * 60 * 1000);         // a couple minutes after boot
     setInterval(seedTick, 30 * 60 * 1000);       // then every 30 minutes
+
+    // Clay's weekly self-and-platform review. The tick claims a weekly slot atomically in the DB,
+    // so checking every few hours is safe — it only actually runs once a week, emails the team,
+    // and changes nothing. ON by default; a failure can't crash boot.
+    const weeklyReview = require('./services/clay/weeklyReview');
+    const reviewTick = () => weeklyReview.tick()
+      .then((r) => { if (r && r.ok) console.log('weekly review done:', JSON.stringify(r)); })
+      .catch((e) => console.error('weekly review error:', e && e.message));
+    setTimeout(reviewTick, 5 * 60 * 1000);        // a few minutes after boot
+    setInterval(reviewTick, 6 * 60 * 60 * 1000);  // then every 6 hours (DB claim gates it to weekly)
   }
 }
 module.exports = app;

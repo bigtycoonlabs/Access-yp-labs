@@ -20,6 +20,8 @@ const health = require('../services/clay/health');
 const { conceptEntitlement, redactLockedAssets } = require('../lib/entitlement');
 const agent = require('../services/clay/agent');
 const research = require('../services/clay/research');
+const staffNotify = require('../services/clay/staffNotify');
+const weeklyReview = require('../services/clay/weeklyReview');
 const { CLAY_VERSION, CLAY_VERSION_LABEL } = require('../services/clay/version');
 const memory = require('../services/clay/memory');
 const pacing = require('../services/clay/pacing');
@@ -465,6 +467,19 @@ router.post('/seed-schedule', authenticate, authorize('staff', 'admin', 'master_
       : 'Auto-seeding is OFF — Clay only seeds when you ask.' });
 }));
 
+// POST /api/clay/weekly-review — run Clay's weekly self-and-platform review on demand. Owner-only
+// (the scheduler runs it weekly on its own). It emails the team and logs; it changes nothing.
+router.post('/weekly-review', authenticate, authorize('master_staff'), asyncHandler(async (req, res) => {
+  const out = await weeklyReview.runWeeklyReview({ source: 'manual' });
+  res.json(out);
+}));
+
+// GET /api/clay/staff-notes — the recent notes Clay has sent the team (staff visibility).
+router.get('/staff-notes', authenticate, authorize('staff', 'admin', 'master_staff'), asyncHandler(async (req, res) => {
+  const notes = await staffNotify.recentNotes(30);
+  res.json({ notes });
+}));
+
 // POST /api/clay/concept/:id/economics — compute REAL unit economics for a concept and upgrade its
 // money_flow section with the computed numbers. Owner or staff. Additive: never touches the build.
 router.post('/concept/:id/economics', authenticate, asyncHandler(async (req, res) => {
@@ -758,6 +773,19 @@ function buildExecutors(user) {
       // Hand Clay the plain-English summary to speak, plus the structured facts. Never soften
       // a failure into a success — report exactly what the record says.
       return { available: true, note: s.summary, status: s };
+    },
+    notify_staff: async ({ subject, body }) => {
+      // Clay flagging something to the team. Available from any session (he may notice a real
+      // platform issue while helping anyone), but capped and logged so it can't be turned into
+      // spam. It never claims delivery it can't stand behind.
+      const r = await staffNotify.notifyStaff({ kind: 'clay_note', subject, body });
+      if (r.skipped === 'daily_cap') return { sent: false, note: "I've already sent the team as many notes as I should today, so I'm holding this one — I won't claim it went out." };
+      if (r.skipped === 'deduped') return { sent: false, note: "I flagged something like this to the team recently, so I won't send a duplicate." };
+      if (r.skipped === 'empty') return { sent: false, note: 'A note to the team needs both a subject and a body.' };
+      return {
+        sent: r.sent, recipients: r.recipients,
+        note: r.sent ? 'Sent to the team.' : 'I recorded the note, but the email may not have gone out — do not tell the user it definitely reached them.',
+      };
     },
     generate_concept: async ({ prompt, category }) => {
       // Run the 1–3 minute build in the background so the chat request returns fast; the

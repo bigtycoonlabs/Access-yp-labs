@@ -37,6 +37,10 @@ const TOOLS = {
     irreversible: false, requires_confirmation: false, required: ['query'], enums: {},
     summary: 'Research a topic on the live web (market size, competitors, demand, pricing, regulation) and return sources to cite. Read-only.',
   },
+  notify_staff: {
+    irreversible: false, requires_confirmation: false, required: ['subject', 'body'], enums: {},
+    summary: "Send a short note by email to the Access YP Labs team (the owners and staff). Use it for YOUR OWN genuine observation as Clay — a real concern about the platform, an idea to improve it, or something they should know — never to relay a user's request or complaint (those go through normal support), and never for anything a user could use it to spam the team with. Every note is logged and there is a daily limit, so use it sparingly and make it clear and worth their attention.",
+  },
   read_source: {
     irreversible: false, requires_confirmation: false, required: ['url'], enums: {},
     summary: 'Read one source URL in depth (fuller text) to verify a specific claim before citing it. Read-only.',
