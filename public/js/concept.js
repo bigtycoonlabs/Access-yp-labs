@@ -110,6 +110,17 @@
     if (btn) btn.disabled = false;
   }
 
+  // Unlimited (Sculptor) — offered alongside per-concept Maker at the keep moment.
+  async function goUnlimited(btn) {
+    if (btn) btn.disabled = true;
+    try {
+      var r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'sculptor' } });
+      if (r && r.url) { location.href = r.url; return; }
+      announce((r && r.message) || 'Billing isn’t set up yet, so nothing was charged.', true);
+    } catch (e) { if (e.sessionExpired) return goSignIn(); announce(e.message, true); }
+    if (btn) btn.disabled = false;
+  }
+
   (async function load() {
     try {
       var data = await Kiln.api('/concepts/' + id);
@@ -185,6 +196,9 @@
         var kb = el('button', 'btn', 'Keep this concept — $2.99'); kb.type = 'button';
         kb.addEventListener('click', function () { keep(id, kb); });
         keepBox.appendChild(kb);
+        var unlim = el('button', 'btn secondary', 'Or go unlimited — $49.99/month'); unlim.type = 'button';
+        unlim.addEventListener('click', function () { goUnlimited(unlim); });
+        keepBox.appendChild(unlim);
         actionsEl.appendChild(keepBox);
       }
 

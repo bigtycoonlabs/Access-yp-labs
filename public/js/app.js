@@ -62,6 +62,27 @@
     if (btn) btn.disabled = false;
   }
 
+  // Start unlimited (Sculptor) checkout — offered right alongside per-concept Maker, so at the
+  // moment someone decides to pay they can choose to unlock everything, not just this one.
+  async function goUnlimited(btn) {
+    if (btn) btn.disabled = true;
+    try {
+      const r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'sculptor' } });
+      if (r && r.url) { location.href = r.url; return; }
+      announce((r && r.message) || 'Billing isn’t set up yet, so nothing was charged.', true);
+    } catch (e) {
+      if (e.sessionExpired) { goSignIn(); return; }
+      announce(e.message, true);
+    }
+    if (btn) btn.disabled = false;
+  }
+  // The unlimited option as a ready-to-append button, so every keep surface offers the same choice.
+  function sculptorButton() {
+    const b = el('button', 'btn secondary', 'Or go unlimited — $49.99/month'); b.type = 'button';
+    b.addEventListener('click', () => goUnlimited(b));
+    return b;
+  }
+
   // Names the pieces that are built and waiting, with one clear way to unlock them all.
   function lockedNotice(container, conceptId, names) {
     if (!names || !names.length) return;
@@ -72,6 +93,7 @@
     const kb = el('button', 'btn', 'Unlock everything — $2.99'); kb.type = 'button';
     kb.addEventListener('click', () => keepConcept(conceptId, kb));
     box.appendChild(kb);
+    box.appendChild(sculptorButton());
     container.appendChild(box);
   }
   // Whether Clay's generation provider is connected. When it isn't, we say so
@@ -841,6 +863,7 @@
           const kb = el('button', 'btn', 'Keep this concept — $2.99'); kb.type = 'button';
           kb.addEventListener('click', () => keepConcept(data.concept.id, kb));
           keep.appendChild(kb);
+          keep.appendChild(sculptorButton());
           container.appendChild(keep);
         }
       }
@@ -942,6 +965,7 @@
         const kb = el('button', 'btn', 'Unlock everything — $2.99'); kb.type = 'button';
         kb.addEventListener('click', () => keepConcept(cid, kb));
         box.appendChild(kb);
+        box.appendChild(sculptorButton());
         container.appendChild(box);
         focusEl(box, label + ' is locked until you keep this concept.');
         return;
