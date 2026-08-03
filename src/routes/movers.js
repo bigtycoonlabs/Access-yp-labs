@@ -4,6 +4,7 @@ const { query } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { normalizeSlug, isValidSlug, commissionDisplay } = require('../lib/movers');
+const stripe = require('../services/stripe');
 const router = express.Router();
 
 // Enroll as a Dream Mover, or update your promo page. Idempotent per user: the same
@@ -42,7 +43,16 @@ router.get('/me', authenticate, asyncHandler(async (req, res) => {
             COALESCE(SUM(amount_cents) FILTER (WHERE status='paid'), 0)::int    AS paid_cents,
             COUNT(*)::int AS sales
        FROM mover_earnings WHERE mover_id=$1`, [req.user.id]);
-  res.json({ enrolled: true, mover: m.rows[0], earnings: e.rows[0] });
+  // Payouts land in the same connected account a seller receives sale proceeds on — one
+  // payout account per person. 'verified' means they can cash out.
+  const acct = await query('SELECT stripe_account_id, kyc_status FROM seller_accounts WHERE user_id=$1', [req.user.id]);
+  const row = acct.rows[0] || null;
+  const payout = {
+    onboarded: !!(row && row.stripe_account_id),
+    kyc_status: row ? row.kyc_status : 'not_started',
+    stripe_configured: stripe.configured(),
+  };
+  res.json({ enrolled: true, mover: m.rows[0], earnings: e.rows[0], payout });
 }));
 
 // Update my page or pause/resume being a mover.
@@ -89,6 +99,51 @@ router.delete('/promote/:listingId', authenticate, asyncHandler(async (req, res)
   await query('DELETE FROM mover_promotions WHERE mover_id=$1 AND listing_id=$2',
     [req.user.id, req.params.listingId]);
   res.json({ ok: true });
+}));
+
+// Cash out. A mover sends their pending earnings to their own connected account. Each
+// earning becomes its own Stripe transfer, keyed by the earning id, so a retry (or a
+// double-tap, or two concurrent calls) can never pay the same earning twice. The transfer
+// is made outside any DB transaction — we never hold a lock across a Stripe call — and the
+// ledger row flips to 'paid' only if it was still 'pending', which also guards concurrency.
+router.post('/payout', authenticate, asyncHandler(async (req, res) => {
+  const me = await query('SELECT 1 FROM dream_movers WHERE user_id=$1', [req.user.id]);
+  if (!me.rows.length) throw new ApiError(403, 'Enroll as a Dream Mover first.');
+  if (!stripe.configured()) {
+    return res.json({ ok: false, reason: 'stripe_not_configured', message: 'Payouts are not enabled on the platform yet.' });
+  }
+  const acct = (await query('SELECT stripe_account_id FROM seller_accounts WHERE user_id=$1', [req.user.id])).rows[0];
+  if (!acct || !acct.stripe_account_id) {
+    return res.json({ ok: false, reason: 'no_account', message: 'Set up your payout account first, then you can cash out.' });
+  }
+  // Source of truth for readiness is Stripe, not our cached status.
+  const a = await stripe.retrieveAccount(acct.stripe_account_id);
+  if (!a.ok || !a.payouts_enabled) {
+    return res.json({ ok: false, reason: 'payouts_disabled', message: 'Your payout account is not ready yet. Finish setting it up, then try again.' });
+  }
+
+  const pend = await query(
+    "SELECT id, amount_cents FROM mover_earnings WHERE mover_id=$1 AND status='pending' ORDER BY created_at ASC",
+    [req.user.id]);
+  if (!pend.rows.length) {
+    return res.json({ ok: true, paid_count: 0, paid_cents: 0, failed: 0, message: 'No earnings to pay out yet.' });
+  }
+
+  let paidCount = 0, paidCents = 0, failed = 0;
+  for (const e of pend.rows) {
+    const t = await stripe.createTransfer({
+      amountCents: e.amount_cents,
+      destinationAccountId: acct.stripe_account_id,
+      idempotencyKey: 'mover_earn_' + e.id,
+      metadata: { kind: 'mover_commission', earning_id: e.id, mover_id: req.user.id },
+    });
+    if (!t.ok) { failed++; continue; }
+    const upd = await query(
+      "UPDATE mover_earnings SET status='paid', paid_at=now(), stripe_transfer_id=$2 WHERE id=$1 AND status='pending'",
+      [e.id, t.transferId]);
+    if (upd.rowCount) { paidCount++; paidCents += e.amount_cents; }
+  }
+  res.json({ ok: true, paid_count: paidCount, paid_cents: paidCents, failed });
 }));
 
 // PUBLIC promo page data — a mover's shopfront. Their headline, the Dreams they're

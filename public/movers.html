@@ -42,7 +42,7 @@ async function init(){
 
 async function load(){
   const me=await Kiln.api('/movers/me');
-  state.enrolled=me.enrolled; state.mover=me.mover||null; state.earnings=me.earnings||null;
+  state.enrolled=me.enrolled; state.mover=me.mover||null; state.earnings=me.earnings||null; state.payout=me.payout||null;
   gate.hidden=true; panel.hidden=false;
   render();
 }
@@ -85,7 +85,38 @@ function renderDashboard(){
   const p2=el('div'); p2.appendChild(el('p','big',money(e.paid_cents))); p2.appendChild(el('p','lbl','Paid out')); row.appendChild(p2);
   const p3=el('div'); p3.appendChild(el('p','big',String(e.sales||0))); p3.appendChild(el('p','lbl','Sales you drove')); row.appendChild(p3);
   ec.appendChild(row);
-  ec.appendChild(el('p','muted','You earn 5% of every Dream that sells through your link. Payouts arrive once your earnings are ready to send.'));
+
+  // Payout controls: cash out to the same connected account a seller receives sales on.
+  const pending=(e.pending_cents)||0, po=state.payout||{};
+  const pc=el('div'); pc.style.marginTop='10px';
+  if(!po.stripe_configured){
+    pc.appendChild(el('p','muted','Payouts aren’t switched on for the platform yet. Your earnings are being tracked and will be ready to send soon.'));
+  } else if(!po.onboarded || po.kyc_status!=='verified'){
+    pc.appendChild(el('p','muted','To cash out, set up your payout account — the same secure Stripe account you’d use to receive your own sales.'));
+    const setup=el('button','btn','Set up payouts'); setup.type='button';
+    setup.addEventListener('click',async()=>{ setup.disabled=true; say('Opening secure payout setup…');
+      try{ const r=await Kiln.api('/sellers/onboard',{method:'POST'}); if(r&&r.ok&&r.url){ location.href=r.url; } else { say((r&&r.message)||'Could not start payout setup.',true); setup.disabled=false; } }
+      catch(err){ if(err.sessionExpired) return goSignIn(); say(err.message||'Could not start payout setup.',true); setup.disabled=false; } });
+    pc.appendChild(setup);
+    if(po.onboarded){
+      const ref=el('button','btn secondary','I finished — check my status'); ref.type='button'; ref.style.marginLeft='8px';
+      ref.addEventListener('click',async()=>{ ref.disabled=true; say('Checking your payout account…');
+        try{ await Kiln.api('/sellers/refresh',{method:'POST'}); await load(); say('Status updated.',true); }
+        catch(err){ if(err.sessionExpired) return goSignIn(); ref.disabled=false; say('Could not check status.',true); } });
+      pc.appendChild(ref);
+    }
+  } else if(pending>0){
+    const btn=el('button','btn','Cash out '+money(pending)); btn.type='button';
+    btn.addEventListener('click',async()=>{ btn.disabled=true; say('Sending your payout…');
+      try{ const r=await Kiln.api('/movers/payout',{method:'POST'});
+        if(r&&r.ok){ say('Paid out '+money(r.paid_cents)+' across '+r.paid_count+' sale'+(r.paid_count===1?'':'s')+'.'+(r.failed?(' '+r.failed+' couldn’t be sent and will be retried.'):''),true); await load(); }
+        else { say((r&&r.message)||'Could not cash out right now.',true); btn.disabled=false; } }
+      catch(err){ if(err.sessionExpired) return goSignIn(); say(err.message||'Could not cash out right now.',true); btn.disabled=false; } });
+    pc.appendChild(btn);
+  } else {
+    pc.appendChild(el('p','muted','No earnings to cash out yet. Promote Dreams below — you earn 5% of every sale you drive.'));
+  }
+  ec.appendChild(pc);
   panel.appendChild(ec);
 
   // Promo page link

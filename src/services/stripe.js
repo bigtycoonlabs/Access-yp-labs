@@ -137,6 +137,26 @@ async function cancelSubscription(subscriptionId, opts) {
   }
 }
 
+// Pay a Dream Mover their earned commission: a Connect transfer from the platform balance
+// to the mover's own connected account (the same account a seller receives sale proceeds
+// on). The idempotency key makes a retry return the SAME transfer, so a crash between the
+// transfer and the ledger write can never double-pay.
+async function createTransfer({ amountCents, destinationAccountId, idempotencyKey, metadata }) {
+  const s = stripe();
+  if (!s) return { ok: false, reason: 'stripe_not_configured' };
+  try {
+    const tr = await s.transfers.create(
+      { amount: amountCents, currency: 'usd', destination: destinationAccountId, metadata: metadata || {} },
+      idempotencyKey ? { idempotencyKey } : undefined);
+    return { ok: true, transferId: tr.id };
+  } catch (err) {
+    console.error('createTransfer FAILED — type:', err && err.type, '| code:', err && err.code,
+      '| message:', err && err.message);
+    return { ok: false, reason: 'stripe_error', detail: (err && (err.code || err.type)) || 'unknown',
+      message: (err && err.message) || 'The payout could not be sent.' };
+  }
+}
+
 // Verify + parse a webhook event from the raw request body.
 function constructEvent(rawBody, signature) {
   const s = stripe();
@@ -211,4 +231,4 @@ async function createImagePackCheckout({ userId, conceptId, pack, email, success
   }
 }
 
-module.exports = { configured, constructEvent, createPlanCheckout, cancelSubscription, createConnectedAccount, createAccountLink, retrieveAccount, createEscrowCheckout, createConsultCheckout, createImagePackCheckout };
+module.exports = { configured, constructEvent, createPlanCheckout, cancelSubscription, createConnectedAccount, createAccountLink, retrieveAccount, createEscrowCheckout, createConsultCheckout, createImagePackCheckout, createTransfer };
