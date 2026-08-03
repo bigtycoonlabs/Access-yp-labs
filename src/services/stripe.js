@@ -184,4 +184,31 @@ async function createPlanCheckout({ mode, priceCents, planName, userId, plan, co
   }
 }
 
-module.exports = { configured, constructEvent, createPlanCheckout, cancelSubscription, createConnectedAccount, createAccountLink, retrieveAccount, createEscrowCheckout, createConsultCheckout };
+// One-time purchase of an "Extras" image pack for a concept. Platform revenue (no seller
+// transfer): the person buys extra image credits that attach to one concept.
+async function createImagePackCheckout({ userId, conceptId, pack, email, successUrl, cancelUrl }) {
+  const s = stripe();
+  if (!s) return { ok: false, reason: 'stripe_not_configured' };
+  try {
+    const session = await s.checkout.sessions.create({
+      mode: 'payment',
+      customer_email: email || undefined,
+      line_items: [{ price_data: { currency: 'usd', unit_amount: pack.price_cents,
+        product_data: { name: 'Access YP Labs — ' + pack.label + ' (Extras)' } }, quantity: 1 }],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: { kind: 'image_pack', user_id: userId, concept_id: conceptId, pack_id: pack.id, images: String(pack.images) },
+      managed_payments: { enabled: false }, // standard checkout — see note on the plan checkout
+    });
+    return { ok: true, url: session.url, sessionId: session.id };
+  } catch (err) {
+    console.error('createImagePackCheckout FAILED — type:', err && err.type, '| code:', err && err.code,
+      '| param:', err && err.param, '| message:', err && err.message);
+    return { ok: false, reason: 'stripe_error', detail: (err && (err.code || err.type)) || 'unknown',
+      stripe_type: (err && err.type) || null, stripe_code: (err && err.code) || null,
+      stripe_param: (err && err.param) || null, stripe_message: (err && err.message) || null,
+      message: 'Could not start checkout with the payment processor, so nothing was charged. Please try again in a moment.' };
+  }
+}
+
+module.exports = { configured, constructEvent, createPlanCheckout, cancelSubscription, createConnectedAccount, createAccountLink, retrieveAccount, createEscrowCheckout, createConsultCheckout, createImagePackCheckout };

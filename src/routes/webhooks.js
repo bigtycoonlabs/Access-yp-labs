@@ -1,5 +1,6 @@
 const { query } = require('../config/db');
 const stripe = require('../services/stripe');
+const imageBudget = require('../services/clay/imageBudget');
 const { planCents, CONSULT_FEE_CENTS, CONSULT_PLATFORM_CENTS, CONSULT_CONSULTANT_CENTS } = require('../lib/money');
 
 // Stripe webhook. Mounted with express.raw BEFORE express.json in server.js.
@@ -48,6 +49,20 @@ async function stripeWebhook(req, res) {
              SET state='paid', fee_cents=$2, platform_cut_cents=$3, consultant_cut_cents=$4, paid_at=now()
            WHERE id=$1 AND state='nda_signed'`,
           [md.engagement_id, CONSULT_FEE_CENTS, CONSULT_PLATFORM_CENTS, CONSULT_CONSULTANT_CENTS]);
+      } else if (md.kind === 'image_pack' && md.concept_id && md.images) {
+        // Extras image pack. Grant the credits to the concept exactly once, keyed by the Stripe
+        // session id: the purchase row is inserted first, and credits are added only if that
+        // insert actually happened (so a duplicate event delivery can't double-credit).
+        const images = parseInt(md.images, 10) || 0;
+        const sessionId = event.data.object.id;
+        if (images > 0 && sessionId) {
+          const ins = await query(
+            `INSERT INTO image_pack_purchases (stripe_session_id, concept_id, user_id, pack_id, images, price_cents)
+             VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (stripe_session_id) DO NOTHING RETURNING id`,
+            [sessionId, md.concept_id, md.user_id || null, md.pack_id || null, images,
+             event.data.object.amount_total || 0]);
+          if (ins.rows.length) await imageBudget.grantCredits(md.concept_id, images);
+        }
       } else if (md.order_id) {
         await query(
           `UPDATE orders_transfers SET status='in_escrow'

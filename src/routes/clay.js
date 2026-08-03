@@ -24,6 +24,7 @@ const pacing = require('../services/clay/pacing');
 const glossary = require('../services/clay/glossary');
 const worked = require('../services/clay/workedExample');
 const image = require('../services/image');
+const stripe = require('../services/stripe');
 const video = require('../services/video');
 const describe = require('../lib/describe');
 const { sendEmail } = require('../services/email');
@@ -482,6 +483,53 @@ router.post('/concept/:id/image', authenticate, asyncHandler(async (req, res) =>
   const left = r.budget ? (r.budget.total_remaining + ' image' + (r.budget.total_remaining === 1 ? '' : 's') + ' left this month.') : '';
   res.json({ ok: true, asset_id: r.asset_id, alt: r.alt, billed: r.billed, budget: r.budget,
     message: 'Made a new image and added it to this concept. ' + left });
+}));
+
+// GET /api/clay/concept/:id/images — the image budget for a concept (used this month, free
+// remaining, purchased balance) plus the Extras packs on offer. Owner or staff.
+router.get('/concept/:id/images', authenticate, asyncHandler(async (req, res) => {
+  const c = await query('SELECT id, owner_id FROM concepts WHERE id=$1', [req.params.id]);
+  if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
+  const concept = c.rows[0];
+  const isStaff = ['staff', 'admin', 'master_staff'].includes(req.user.role);
+  if (concept.owner_id !== req.user.id && !isStaff) throw new ApiError(403, 'This isn’t your concept.');
+  const budget = await imageBudget.budgetFor(concept.id, concept.owner_id);
+  res.json({ ok: true, budget, packs: imageCredits.PACKS });
+}));
+
+// POST /api/clay/concept/:id/image-pack  { pack_id } — buy an Extras image pack for a concept.
+// Standalone one-time purchase; credits are granted by the Stripe webhook on payment. Owner/staff.
+router.post('/concept/:id/image-pack', authenticate, asyncHandler(async (req, res) => {
+  const pack = imageCredits.packById(String(req.body.pack_id || ''));
+  if (!pack) throw new ApiError(400, 'Choose one of the Extras packs.');
+  const c = await query('SELECT id, owner_id, title FROM concepts WHERE id=$1', [req.params.id]);
+  if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
+  const concept = c.rows[0];
+  const isStaff = ['staff', 'admin', 'master_staff'].includes(req.user.role);
+  if (concept.owner_id !== req.user.id && !isStaff) throw new ApiError(403, 'This isn’t your concept.');
+  const base = (process.env.CLIENT_URL || '').startsWith('https') ? process.env.CLIENT_URL : 'https://accessyplabs.com';
+  const checkout = await stripe.createImagePackCheckout({
+    userId: req.user.id, conceptId: concept.id, pack, email: req.user.email,
+    successUrl: `${base}/concept.html?id=${concept.id}&extras=done`,
+    cancelUrl: `${base}/concept.html?id=${concept.id}&extras=canceled`,
+  });
+  if (!checkout.ok) {
+    // Record the real Stripe reason for staff (blind operators can't read Railway logs).
+    try {
+      await query(
+        `INSERT INTO checkout_errors (user_id, kind, plan, concept_id, stripe_type, stripe_code, stripe_param, message)
+         VALUES ($1,'image_pack',$2,$3,$4,$5,$6,$7)`,
+        [req.user.id, pack.id, concept.id,
+         checkout.stripe_type || (checkout.reason === 'stripe_not_configured' ? 'not_configured' : null),
+         checkout.stripe_code || checkout.detail || null, checkout.stripe_param || null,
+         checkout.stripe_message || checkout.reason || null]);
+    } catch (_) { /* never let logging break the response */ }
+    const msg = checkout.reason === 'stripe_not_configured'
+      ? 'Billing isn’t configured on the platform yet, so nothing was charged.'
+      : (checkout.message || 'Could not start checkout, so nothing was charged.');
+    return res.status(200).json({ ok: false, reason: checkout.reason, message: msg });
+  }
+  res.json({ ok: true, url: checkout.url, message: 'Opening secure checkout for ' + pack.label + ' — $' + (pack.price_cents / 100).toFixed(2) + '.' });
 }));
 
 // GET /api/clay/build/:id — live progress for a build the user started, so the client can
