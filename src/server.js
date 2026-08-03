@@ -112,6 +112,17 @@ if (require.main === module) {
       .catch((e) => console.error('stale build sweep error:', e && e.message));
     setTimeout(buildSweep, 90 * 1000);           // shortly after boot
     setInterval(buildSweep, 5 * 60 * 1000);      // then every 5 minutes
+
+    // Auto-seed scheduler: when staff enable it, Clay tops up the Dreamhold review queue on a
+    // cadence (a couple a day, spaced out). Every seed lands in 'in_review' — nothing goes live
+    // without staff approval. Default OFF; the tick claims a slot atomically, so it's safe across
+    // restarts and multiple instances, and a failure can't crash boot.
+    const seedScheduler = require('./services/clay/seedScheduler');
+    const seedTick = () => seedScheduler.tick()
+      .then((r) => { if (r && r.ok) console.log('scheduled seed done:', JSON.stringify(r)); })
+      .catch((e) => console.error('seed scheduler error:', e && e.message));
+    setTimeout(seedTick, 2 * 60 * 1000);         // a couple minutes after boot
+    setInterval(seedTick, 30 * 60 * 1000);       // then every 30 minutes
   }
 }
 module.exports = app;

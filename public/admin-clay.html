@@ -40,6 +40,11 @@
       <p class="muted">Ask Clay to invent, build, and post one seed concept under his pen name. It goes to the <a href="/moderation.html">review queue</a> — nothing is public until you approve it there.</p>
       <p><button type="button" class="btn" id="seedbtn">Seed a concept</button></p>
       <p id="seedresult" role="status" aria-live="polite" class="muted"></p>
+      <h3 id="sched-h" style="margin-top:14px">Auto-seed schedule</h3>
+      <p class="muted">When on, Clay adds a couple of concepts a day to the review queue on its own, spaced out. Everything still goes through the <a href="/moderation.html">review queue</a> — nothing is public until you approve it.</p>
+      <p id="schedstatus" role="status" aria-live="polite" class="muted">Loading the schedule…</p>
+      <p><button type="button" class="btn secondary" id="schedtoggle" disabled>Loading…</button></p>
+      <p id="schedresult" role="status" aria-live="polite" class="muted"></p>
     </section>
     <section aria-labelledby="rec-h">
       <h2 id="rec-h">Most recent runs</h2>
@@ -188,6 +193,41 @@ if(sb){
     finally{ sb.disabled=false; }
   });
 }
+
+// ---- Auto-seed schedule ----
+var schedState = null;
+function renderSchedule(s){
+  schedState = s || null;
+  var st = document.getElementById('schedstatus');
+  var tg = document.getElementById('schedtoggle');
+  if(!s){ if(st) st.textContent='Schedule unavailable.'; if(tg){ tg.disabled=true; tg.textContent='Unavailable'; } return; }
+  var last = s.last_seed_at ? when(s.last_seed_at) : 'never';
+  var line = (s.enabled ? 'ON' : 'OFF') + ' — up to ' + s.daily_target + ' a day, at least ' + s.min_gap_minutes
+    + ' minutes apart. ' + s.seeded_today + ' seeded today (' + s.seeded_total + ' all-time). Last seed: ' + last + '.';
+  if(st) st.textContent = line;
+  if(tg){ tg.disabled=false; tg.textContent = s.enabled ? 'Turn auto-seeding OFF' : 'Turn auto-seeding ON'; }
+}
+async function loadSchedule(){
+  try{ var r=await Kiln.api('/clay/seed-schedule'); renderSchedule(r && r.schedule); }
+  catch(e){ renderSchedule(null); }
+}
+var stog=document.getElementById('schedtoggle');
+if(stog){
+  stog.addEventListener('click',async()=>{
+    if(!schedState) return;
+    var next = !schedState.enabled;
+    stog.disabled=true;
+    var out=document.getElementById('schedresult');
+    out.textContent = next ? 'Turning auto-seeding on…' : 'Turning auto-seeding off…';
+    try{
+      var r=await Kiln.api('/clay/seed-schedule',{method:'POST',body:{enabled:next}});
+      renderSchedule(r && r.schedule);
+      var msg=(r && r.message) || 'Updated.';
+      out.textContent=msg; announce(msg,true);
+    }catch(e){ out.textContent=e.message||'Could not update the schedule.'; announce(out.textContent,true); stog.disabled=false; }
+  });
+}
+loadSchedule();
 </script>
   <footer style="border-top:1px solid #e6e0f5;color:#585272;font-size:15px;padding:22px 24px;text-align:center;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
     <nav aria-label="Legal">

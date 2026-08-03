@@ -7,6 +7,7 @@ const { MODES, CATEGORIES, PLATFORMS, SOCIAL_GOALS } = require('../services/clay
 const spine = require('../services/clay/spine');
 const clay = require('../services/clay');
 const seed = require('../services/clay/seed');
+const seedScheduler = require('../services/clay/seedScheduler');
 const economics = require('../services/clay/economics');
 const images = require('../services/clay/images');
 const imageBudget = require('../services/clay/imageBudget');
@@ -434,6 +435,29 @@ router.post('/seed', authenticate, authorize('staff', 'admin', 'master_staff'), 
     status: 'seeding',
     message: 'Clay is inventing and building a seed concept now. It will appear in the review queue and staff will be emailed when it’s ready — nothing goes live until you approve it.',
   });
+}));
+
+// GET /api/clay/seed-schedule — STAFF ONLY. The current auto-seed cadence and how much Clay has
+// seeded today / all-time.
+router.get('/seed-schedule', authenticate, authorize('staff', 'admin', 'master_staff'), asyncHandler(async (req, res) => {
+  const s = await seedScheduler.status();
+  res.json({ ok: true, schedule: s });
+}));
+
+// POST /api/clay/seed-schedule  { enabled?, daily_target?, min_gap_minutes? } — STAFF ONLY. Turn
+// auto-seeding on/off and tune the cadence. daily_target is clamped to the hard DAILY_CAP; seeds
+// still go through moderation, so this only changes how the review queue is fed.
+router.post('/seed-schedule', authenticate, authorize('staff', 'admin', 'master_staff'), asyncHandler(async (req, res) => {
+  const body = req.body || {};
+  const patch = {};
+  if (typeof body.enabled === 'boolean') patch.enabled = body.enabled;
+  if (body.daily_target != null && Number.isInteger(Number(body.daily_target))) patch.dailyTarget = Number(body.daily_target);
+  if (body.min_gap_minutes != null && Number.isInteger(Number(body.min_gap_minutes))) patch.minGapMinutes = Number(body.min_gap_minutes);
+  const s = await seedScheduler.configure(patch);
+  res.json({ ok: true, schedule: s,
+    message: s && s.enabled
+      ? 'Auto-seeding is ON — Clay will add up to ' + s.daily_target + ' concept' + (s.daily_target === 1 ? '' : 's') + ' a day to the review queue.'
+      : 'Auto-seeding is OFF — Clay only seeds when you ask.' });
 }));
 
 // POST /api/clay/concept/:id/economics — compute REAL unit economics for a concept and upgrade its
