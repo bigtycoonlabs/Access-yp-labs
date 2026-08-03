@@ -35,6 +35,12 @@
       <p id="findmodelresult" role="status" aria-live="polite" class="muted"></p>
       <div class="grid" id="stats"></div>
     </section>
+    <section aria-labelledby="seed-h">
+      <h2 id="seed-h">Seed the Dreamhold</h2>
+      <p class="muted">Ask Clay to invent, build, and post one seed concept under his pen name. It goes to the <a href="/moderation.html">review queue</a> — nothing is public until you approve it there.</p>
+      <p><button type="button" class="btn" id="seedbtn">Seed a concept</button></p>
+      <p id="seedresult" role="status" aria-live="polite" class="muted"></p>
+    </section>
     <section aria-labelledby="rec-h">
       <h2 id="rec-h">Most recent runs</h2>
       <div id="runs" class="stack"></div>
@@ -163,6 +169,23 @@ if(cb){
     }
     out.textContent=msg; announce(msg,true);
     fm.disabled=false;
+  });
+}
+
+const sb=document.getElementById('seedbtn');
+if(sb){
+  sb.addEventListener('click',async()=>{
+    sb.disabled=true;
+    const out=document.getElementById('seedresult');
+    out.textContent='Asking Clay to seed a concept…'; announce('Asking Clay to seed a concept.');
+    try{
+      const r=await Kiln.api('/clay/seed',{method:'POST'});
+      const msg=r.message||(r.status==='seeding'
+        ?'Clay is building a seed concept now. It’ll appear in the review queue in a minute or two, and staff will be emailed.'
+        :'Done.');
+      out.textContent=msg; announce(msg,true);
+    }catch(e){ out.textContent=e.message||'Could not start seeding.'; announce(out.textContent,true); }
+    finally{ sb.disabled=false; }
   });
 }
 </script>

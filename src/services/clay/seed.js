@@ -35,6 +35,45 @@ async function getClayUser() {
   return r.rows[0] || null;
 }
 
+// Clay posts under a PSEUDONYM, like any creator with a pen name — never his real name. He owns
+// the handle: he picks it, and switching it is his call, not an automatic rotation.
+const CURATED_PEN_NAMES = ['Shapeshifter', 'The Understudy', 'Emberwright', 'Nomad Forge',
+  'Ghostshaper', 'Kilnborn', 'The Prototypist', 'Draftsmith', 'The Foundling', 'Quiet Forge'];
+
+// Clay chooses his own pseudonymous creator handle. Model-picked when available; a curated
+// pseudonym otherwise. Never "Clay", never fabricated.
+async function chooseNewPenName() {
+  try {
+    const out = await provider.complete({
+      system: 'You are Clay. Choose ONE short, memorable PSEUDONYM to post under as a marketplace creator — a pen name, not your real name. Never use the word "Clay". One to three words, no punctuation. Respond with ONLY the name.',
+      user: 'Give me one pseudonymous creator handle.',
+      json: false, maxTokens: 20, effort: 'low',
+    });
+    if (out && out.ok) {
+      const name = String(out.text || '').replace(/["'`\n\r.]/g, '').trim().slice(0, 40);
+      if (name && !/clay/i.test(name)) return name;
+    }
+  } catch (_) { /* fall through */ }
+  return CURATED_PEN_NAMES[Math.floor(Math.random() * CURATED_PEN_NAMES.length)];
+}
+
+// Persist a chosen pen name (guards against ever setting it to Clay's real name).
+async function setPenName(clayId, name) {
+  const clean = String(name || '').trim().slice(0, 40);
+  if (!clean || /^clay$/i.test(clean)) return null;
+  await query('UPDATE users SET display_name=$2, updated_at=now() WHERE id=$1', [clayId, clean]);
+  return clean;
+}
+
+// Guarantee Clay never posts as his literal name. If his handle is empty or "Clay", he picks a
+// pseudonym now; otherwise he keeps the one he already chose. Switching stays HIS decision.
+async function ensurePenName(clayUser) {
+  const current = (clayUser.display_name || '').trim();
+  if (current && !/^clay$/i.test(current)) return current;
+  const saved = await setPenName(clayUser.id, await chooseNewPenName());
+  return saved || 'A Dreamhold creator';
+}
+
 // Seeds Clay has posted since local midnight — the cadence guard.
 async function seedsToday(clayId) {
   const r = await query(
@@ -185,6 +224,7 @@ async function runSeed() {
     if (!clayUser) return { ok: false, reason: 'no_clay_user' };
     if (await seedsToday(clayUser.id) >= DAILY_CAP) return { ok: false, reason: 'daily_cap' };
     if (await overMinority(clayUser.id)) return { ok: false, reason: 'minority_cap' };
+    const penName = await ensurePenName(clayUser);
 
     const avoid = (await query(
       "SELECT title FROM concepts WHERE origin='clay_seed' ORDER BY created_at DESC LIMIT 20")).rows.map((r) => r.title);
@@ -217,7 +257,7 @@ async function runSeed() {
 
     const mail = await emailStaffReview({
       title: result.title || idea.title, pitch: idea.pitch,
-      priceCents: listing.price_cents, penName: clayUser.display_name,
+      priceCents: listing.price_cents, penName,
     });
 
     return {
@@ -229,4 +269,4 @@ async function runSeed() {
   }
 }
 
-module.exports = { runSeed, getClayUser, CLAY_EMAIL, DAILY_CAP };
+module.exports = { runSeed, getClayUser, ensurePenName, setPenName, chooseNewPenName, CLAY_EMAIL, DAILY_CAP };
