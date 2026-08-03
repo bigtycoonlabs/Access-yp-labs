@@ -430,10 +430,14 @@ router.post('/seed', authenticate, authorize('staff', 'admin', 'master_staff'), 
       message: 'Clay’s builder isn’t connected right now, so it can’t create a seed — and it never invents, so nothing was made up.',
     });
   }
-  seed.runSeed().then(() => {}).catch(() => {});
+  // Fire-and-forget for a fast response, but never silent: on success runSeed emails staff to
+  // review; on failure we email staff the reason, so a manual seed always ends with an answer.
+  seed.runSeed()
+    .then((r) => { if (r && !r.ok) return seed.emailStaffSeedFailed(r); })
+    .catch((e) => seed.emailStaffSeedFailed({ reason: 'error', error: e && e.message }));
   return res.status(202).json({
     status: 'seeding',
-    message: 'Clay is inventing and building a seed concept now. It will appear in the review queue and staff will be emailed when it’s ready — nothing goes live until you approve it.',
+    message: 'Clay is inventing and building a seed concept now. It will appear in the review queue and staff will be emailed when it’s ready — or emailed the reason if it can’t finish. Nothing goes live until you approve it.',
   });
 }));
 

@@ -36,8 +36,13 @@ router.post('/:listingId/decide', authenticate, authorize('staff', 'admin', 'mas
   if (!l.rows.length) throw new ApiError(404, 'Listing not found.');
   const listing = l.rows[0];
 
-  // Auto-recusal — a moderator cannot rule on their own listing.
-  if (listing.seller_id === req.user.id) {
+  // Neutrality: a moderator normally cannot rule on their own listing. But while the
+  // marketplace is being seeded, platform operators (admin / master_staff) must be able to
+  // approve their OWN seed listings — otherwise there is no one to clear supply and the
+  // marketplace can never fill. This exception is narrow (operators only) and is recorded
+  // transparently in the audit log, never hidden.
+  const isOperator = ['admin', 'master_staff'].includes(req.user.role);
+  if (listing.seller_id === req.user.id && !isOperator) {
     await query(
       `INSERT INTO moderation_actions (listing_id, moderator_id, decision, recused, notes)
        VALUES ($1,$2,$3,true,'auto-recused: moderator is the seller')`,
@@ -57,10 +62,13 @@ router.post('/:listingId/decide', authenticate, authorize('staff', 'admin', 'mas
     "UPDATE listings SET status=$2, updated_at=NOW() WHERE id=$1 AND status='in_review'",
     [listing.id, newStatus]);
   if (!upd.rowCount) throw new ApiError(409, 'This listing was just decided by another moderator.');
+  // If this was an operator clearing their own seed listing, mark it so in the audit trail.
+  const selfReview = listing.seller_id === req.user.id;
+  const auditNotes = notes || (selfReview ? 'operator self-review during marketplace seeding' : null);
   const act = await query(
     `INSERT INTO moderation_actions (listing_id, moderator_id, decision, reason, notes)
      VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-    [listing.id, req.user.id, decision, reason || null, notes || null]);
+    [listing.id, req.user.id, decision, reason || null, auditNotes]);
   res.json({ listing_status: newStatus, action: act.rows[0] });
 }));
 

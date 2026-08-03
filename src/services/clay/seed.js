@@ -216,7 +216,43 @@ async function emailStaffReview({ title, pitch, priceCents, penName }) {
     + `It is in the review queue (in review). Approve to publish under Clay's pen name, or reject with a reason.\nReview: ${reviewUrl}`;
   try {
     const r = await sendEmail({ to: staff, subject, html, text });
-    return { sent: !!(r && r.ok !== false), detail: r };
+    return { sent: !!(r && r.sent), detail: r };
+  } catch (e) { return { sent: false, reason: 'send_failed', error: e.message }; }
+}
+
+// If a HUMAN-requested seed doesn't complete, tell staff why — so clicking "Seed a concept"
+// never ends in silence. (The scheduler stays quiet on benign skips like the daily cap; this
+// is only for manual seeds, where someone is actually waiting for an answer.)
+async function emailStaffSeedFailed({ reason, error }) {
+  let staff = [];
+  try {
+    staff = (await query("SELECT email FROM users WHERE role IN ('staff','admin','master_staff') AND status='active'"))
+      .rows.map((r) => r.email).filter(Boolean);
+  } catch (_) { staff = []; }
+  if (!staff.length) return { sent: false, reason: 'no_recipients' };
+  const REASONS = {
+    unavailable: 'Clay’s builder wasn’t connected, so nothing was invented — Clay never makes things up.',
+    no_clay_user: 'Clay’s own account is missing, so it couldn’t post a seed.',
+    daily_cap: 'Clay has already reached today’s seed limit.',
+    minority_cap: 'Clay held back to keep its share of the marketplace within the set limit.',
+    no_novel_idea: 'Clay couldn’t settle on an idea different enough from what already exists.',
+    no_baseline: 'Clay built a concept, but it wasn’t complete enough to list — so nothing was published.',
+    error: 'Something went wrong while Clay was building the concept.',
+  };
+  const human = REASONS[reason]
+    || (String(reason || '').startsWith('build_')
+      ? 'Clay couldn’t finish building the concept.'
+      : ('Clay couldn’t complete the seed (' + (reason || 'unknown') + ').'));
+  const subject = 'Clay couldn’t complete a seed';
+  const html = `<p>Clay tried to seed a concept but didn’t finish, so nothing was created and nothing is waiting for review.</p>`
+    + `<p><strong>Reason:</strong> ${escapeHtml(human)}</p>`
+    + (error ? `<p>Detail: ${escapeHtml(String(error))}</p>` : '')
+    + `<p>You can try seeding again from the staff tools whenever you like. Nothing was published.</p>`;
+  const text = `Clay tried to seed a concept but didn’t finish. Nothing was created.\n\nReason: ${human}`
+    + (error ? `\n\nDetail: ${error}` : '') + `\n\nYou can try again from the staff tools.`;
+  try {
+    const r = await sendEmail({ to: staff, subject, html, text });
+    return { sent: !!(r && r.sent), detail: r };
   } catch (e) { return { sent: false, reason: 'send_failed', error: e.message }; }
 }
 
@@ -295,4 +331,4 @@ async function runSeed() {
   }
 }
 
-module.exports = { runSeed, getClayUser, ensurePenName, setPenName, chooseNewPenName, CLAY_EMAIL, DAILY_CAP };
+module.exports = { runSeed, getClayUser, ensurePenName, setPenName, chooseNewPenName, emailStaffSeedFailed, CLAY_EMAIL, DAILY_CAP };
