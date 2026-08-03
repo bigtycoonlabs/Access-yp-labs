@@ -3,7 +3,11 @@
 <title>Review queue — Access YP Labs</title><link rel="stylesheet" href="/css/kiln.css"/>
 <style>.row{border:1px solid var(--line);border-radius:10px;background:#fff;padding:16px;margin:12px 0;}
 .row h3{margin:0 0 4px;} .decide{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-top:12px;}
-.decide>div{min-width:200px;}</style>
+.decide>div{min-width:200px;}
+.seedtag{display:inline-block;background:#efe9ff;color:#3a2ba6;border-radius:6px;padding:2px 8px;font-size:14px;margin-left:8px;}
+.review{border-top:1px solid var(--line);margin-top:12px;padding-top:12px;}
+.review h4{margin:14px 0 4px;} .prose{white-space:pre-wrap;line-height:1.5;}
+.notes{width:100%;min-height:64px;box-sizing:border-box;}</style>
   <meta name="robots" content="noindex, nofollow"/>
 </head><body>
 <a class="skip" href="#main">Skip to main content</a>
@@ -13,7 +17,7 @@
 </div></header>
 <main id="main" class="wrap">
   <h1>Review queue</h1>
-  <p class="muted">Moderate on policy grounds only. A listing may never be rejected because it competes with another — that is not a reason you can select. You cannot rule on your own listing; the system will recuse you automatically.</p>
+  <p class="muted">One queue for everyone — creators' submissions and Clay's seeded concepts land here together, and Clay's are labelled so you know. Open a concept to read everything it contains before you decide. Moderate on policy grounds only: a listing may never be rejected because it competes with another. You cannot rule on your own listing; the system recuses you automatically.</p>
   <div id="gate" role="status" aria-live="polite" class="muted">Checking your access…</div>
   <div id="queue"></div>
   <div id="result" role="alert" aria-live="assertive"></div>
@@ -25,6 +29,7 @@ const gate=document.getElementById('gate'), queueEl=document.getElementById('que
 function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
 function money(c){return '$'+((c||0)/100).toFixed(2);}
 function nice(s){return String(s||'').replace(/_/g,' ');}
+function when(s){try{return new Date(s).toLocaleString();}catch(_){return String(s||'');}}
 async function init(){
   if(!Kiln.isLoggedIn()){location.replace('/login.html');return;}
   let me; try{ me=(await Kiln.api('/auth/me')).user; }catch(_){ location.replace('/login.html'); return; }
@@ -41,24 +46,42 @@ async function load(){
     if(!queue.length){queueEl.appendChild(el('p','muted','The review queue is empty.'));announce('The review queue is empty.');return;}
     announce(queue.length+' listing'+(queue.length>1?'s':'')+' awaiting review.');
     queue.forEach(l=>{
+      const isClay = l.origin==='clay_seed';
       const r=el('div','row');
-      r.appendChild(el('h3',null,l.title));
+      const h=el('h3',null,l.title);
+      if(isClay){ const tag=el('span','seedtag','Seeded by Clay'); h.appendChild(tag); }
+      r.appendChild(h);
       r.appendChild(el('p','muted',nice(l.category)+' · '+nice(l.stage_label)+' · '+money(l.price_cents)+' · by '+l.seller_alias+' (real: '+l.seller_name+')'));
       if(l.risk_summary){r.appendChild(el('p',null,'Risk noted: '+l.risk_summary));}
+
+      // Open to review — loads the full concept so you can actually read it before deciding.
+      const details=el('div','review'); details.id='rev-'+l.id; details.hidden=true;
+      const openBtn=el('button','btn secondary','Open to review'); openBtn.type='button';
+      openBtn.setAttribute('aria-expanded','false'); openBtn.setAttribute('aria-controls',details.id);
+      openBtn.addEventListener('click',()=>toggleReview(l.id,details,openBtn));
+      const openP=el('p'); openP.appendChild(openBtn); r.appendChild(openP);
+
+      r.appendChild(details);
+
+      // Decision controls: notes on ANY decision, reason required only to reject.
       const wrap=el('div','decide');
+      const nWrap=el('div');
+      const nl=el('label',null,'Notes (optional — say why, for the record)'); nl.setAttribute('for','n-'+l.id);
+      const notes=el('textarea','notes'); notes.id='n-'+l.id;
+      nWrap.appendChild(nl); nWrap.appendChild(notes);
       const rsWrap=el('div');
       const rl=el('label',null,'Reason (required to reject)');rl.setAttribute('for','r-'+l.id);
       const sel=el('select');sel.id='r-'+l.id;sel.appendChild(el('option',null,'— select a policy reason —'));
       REASONS.forEach(([v,t])=>{const o=el('option',null,t);o.value=v;sel.appendChild(o);});
       rsWrap.appendChild(rl);rsWrap.appendChild(sel);
       const approve=el('button','btn','Approve → go live');approve.type='button';
-      approve.addEventListener('click',()=>decide(l.id,'approved',null,approve));
+      approve.addEventListener('click',()=>decide(l.id,'approved',null,notes.value,approve));
       const reject=el('button','btn secondary','Reject');reject.type='button';
       reject.addEventListener('click',()=>{
         const reason=sel.value; if(!reason){announce('Select a policy reason to reject.',true);sel.focus();return;}
-        decide(l.id,'rejected',reason,reject);
+        decide(l.id,'rejected',reason,notes.value,reject);
       });
-      wrap.appendChild(rsWrap);
+      wrap.appendChild(nWrap); wrap.appendChild(rsWrap);
       const bwrap=el('div');bwrap.appendChild(approve);bwrap.appendChild(document.createTextNode(' '));bwrap.appendChild(reject);
       wrap.appendChild(bwrap);
       r.appendChild(wrap);
@@ -66,10 +89,51 @@ async function load(){
     });
   }catch(e){queueEl.appendChild(el('p','msg err',e.message));}
 }
-async function decide(id,decision,reason,btn){
+async function toggleReview(id,host,btn){
+  const open = btn.getAttribute('aria-expanded')==='true';
+  if(open){ host.hidden=true; btn.setAttribute('aria-expanded','false'); btn.textContent='Open to review'; return; }
+  btn.disabled=true; btn.textContent='Opening…';
+  try{
+    const d=await Kiln.api('/moderation/'+id+'/review');
+    renderReview(d,host);
+    host.hidden=false; btn.setAttribute('aria-expanded','true'); btn.textContent='Close';
+    announce('Concept opened for review.');
+    host.querySelector('h4') && host.querySelector('h4').setAttribute('tabindex','-1');
+    host.querySelector('h4') && host.querySelector('h4').focus();
+  }catch(e){ announce(e.message||'Could not open the concept.',true); }
+  finally{ btn.disabled=false; }
+}
+function renderReview(d,host){
+  host.innerHTML='';
+  if(d.is_clay_seed){ host.appendChild(el('p','muted','Seeded by Clay under a pen name. Review it exactly like any other concept.')); }
+  const c=d.concept||{};
+  const g=[]; g.push(c.research_grounded?'Research-grounded':'Not research-grounded');
+  if(c.source_count){ g.push(c.source_count+' source'+(c.source_count>1?'s':'')); }
+  if(c.claims_verified===true) g.push('claims self-checked: clean');
+  else if(c.claims_verified===false) g.push('claims self-checked: FLAGGED');
+  host.appendChild(el('p','muted',g.join(' · ')));
+  if(c.clays_take){ host.appendChild(el('h4',null,"Clay's take")); host.appendChild(el('div','prose',c.clays_take)); }
+  (d.materials||[]).forEach(m=>{
+    host.appendChild(el('h4',null,(m.title||nice(m.type))));
+    if(m.scan_status && m.scan_status!=='not_required' && m.scan_status!=='clean'){
+      host.appendChild(el('p','muted','Code scan: '+nice(m.scan_status)));
+    }
+    host.appendChild(el('div','prose',m.body||'(empty)'));
+  });
+  if(d.demo_description){
+    host.appendChild(el('h4',null,'Working demo — accessible outline'));
+    if(d.demo_description.accessibility){ host.appendChild(el('p','muted',d.demo_description.accessibility)); }
+    const ul=el('ul'); (d.demo_description.items||[]).forEach(it=>ul.appendChild(el('li',null,String(it)))); host.appendChild(ul);
+  }
+  if(d.log && d.log.length){
+    host.appendChild(el('h4',null,'Prior review actions'));
+    d.log.forEach(a=>{ host.appendChild(el('p','muted', when(a.created_at)+': '+(a.recused?'recused':a.decision)+(a.reason?(' ('+nice(a.reason)+')'):'')+(a.notes?(' — '+a.notes):'')+' by '+a.moderator_name)); });
+  }
+}
+async function decide(id,decision,reason,notes,btn){
   btn.disabled=true;result.textContent='';
   try{
-    await Kiln.api('/moderation/'+id+'/decide',{method:'POST',body:{decision,reason}});
+    await Kiln.api('/moderation/'+id+'/decide',{method:'POST',body:{decision,reason,notes:(notes||'').trim()||undefined}});
     result.appendChild(el('p','msg ok','Listing '+(decision==='approved'?'approved and live.':'rejected.')));
     announce('Listing '+(decision==='approved'?'approved.':'rejected.'),true);
     load();

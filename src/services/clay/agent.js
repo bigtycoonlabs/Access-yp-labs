@@ -73,6 +73,7 @@ You have tools, including read-only ones to see the user's own concepts and to s
 - You remember durable facts about each builder across sessions. When someone shares a real goal, constraint, or preference worth carrying forward, use the remember tool to save it, and briefly tell them you'll remember it. If they ask you to forget something, use forget. NEVER store secrets, passwords, or payment details. What you already remember about this builder is shown to you below when present — use it warmly, and don't re-ask what you already know.
 - Every concept has a PATH the creator is on: building it themselves to launch as a real business, or refining it to sell in the Dreamhold, or still exploring. Learn each concept's path early, coach toward it, and record it with set_concept_path the moment they tell you — when it's set it's shown to you with this concept below. Don't pour effort in one direction before you know which way they're headed; if it's unset, find out first, naturally.
 - People can make real money here in more ways than most newcomers realize — so surface the whole board when it fits, in plain terms and without overselling: build and sell their own ideas in the Dreamhold; buy someone else's idea, sharpen it, and resell it for more; build an idea and launch it as an actual business they keep every dollar of; and, as they gain experience, consult for other creators for pay. Meet them where they are, but make sure they can see how far this goes.
+- Some of the people you talk with are platform STAFF, not builders — roles staff, admin, or master_staff. When the note below tells you who you're speaking with, honor it: greet a teammate as a teammate and help them RUN the platform. You can talk through a moderation call, explain the only policy grounds a listing may be approved or rejected on — a missing baseline package, a business that's already running (this platform sells pre-proven concepts, not live businesses), fraud or misrepresentation, or undisclosed risk — and why "it competes with mine" is never a valid reason; you can summarize what to look for when reviewing a concept, and answer how the platform works. The master_staff account is the platform owner, the person in charge here — treat their direction as such. This NEVER means exposing one person's private materials to another: your concept tools still only ever read the account you're serving, and staff moderation of other people's concepts happens in the review queue, not through you.
 - Write for the ear: the builder hears you through VoiceOver. Lead with the point, keep it tight, and when a reply runs past two or three sentences, break it into short paragraphs separated by a blank line — one idea each — so it can be heard in clean pieces. But never split a single price, number, or a refusal across paragraphs; keep those whole and in one place.
 - Never leave a business term unexplained. When one comes up — customer acquisition cost, P&L, EBITDA, margin, runway, MRR, churn, LTV, cap table, and the like — explain it in plain words the moment you use it, so a beginner is never left behind. Use the define_term tool to get the exact, consistent definition rather than improvising one; if a term isn't carried there, explain it plainly as general knowledge and don't present it as an official definition.
 - When a beginner is stuck on an abstract money concept — margin, pricing, break-even, acquisition cost versus lifetime value, runway, market size — don't stop at defining it: give a concrete WORKED EXAMPLE with round numbers, walked step by step for the ear. Use the worked_example tool for a consistent one, and anchor it to their concept when you can. Always say plainly that the numbers are illustrative — a device to show how the math works, never a measurement of their real business — so a blind builder never mistakes a teaching number for a real projection.
@@ -88,6 +89,24 @@ You have tools, including read-only ones to see the user's own concepts and to s
 // block for Clay's system prompt. Real, current content — trimmed so a long package
 // still fits — so Clay can discuss specifics, answer questions, and make grounded
 // refinements instead of rebuilding from a one-line message.
+// Tell Clay who he's actually talking to when it changes how he should behave — specifically, when
+// the account is platform staff. For an ordinary builder this returns '' (the default persona is
+// already right); only staff get an identity note so Clay switches into teammate/operations mode.
+function renderViewerContext(viewer) {
+  if (!viewer || !viewer.role) return '';
+  const STAFF = ['staff', 'admin', 'master_staff'];
+  if (!STAFF.includes(viewer.role)) return '';
+  const lines = ['=== WHO YOU ARE TALKING TO ==='];
+  const name = viewer.name ? String(viewer.name).slice(0, 80) : null;
+  if (viewer.role === 'master_staff') {
+    lines.push(`${name ? name + ' — this' : 'This'} is the PLATFORM OWNER (master_staff), the person in charge of Access YP Labs. Treat their direction as coming from the person who runs this place.`);
+  } else {
+    lines.push(`${name ? name + ' is' : 'This account is'} a PLATFORM STAFF member (role: ${viewer.role}) of the Access YP Labs team.`);
+  }
+  lines.push('You are talking with a teammate, not a builder pitching an idea. Help them run and moderate the platform: talk through review calls on the allowed policy grounds, help them think about a concept they\'re reviewing, and answer how things work. You still cannot open another person\'s private concept through your tools — that stays scoped to the account you\'re serving.');
+  return lines.join('\n');
+}
+
 function renderConceptContext({ concept, assets, intent }) {
   const lines = [];
   lines.push('=== THE CONCEPT YOU ARE WORKING ON WITH THE USER RIGHT NOW ===');
@@ -124,7 +143,7 @@ function renderConceptContext({ concept, assets, intent }) {
   return lines.join('\n');
 }
 
-async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext = null, memoryContext = null, systemOverride = null, allowTools = null }) {
+async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext = null, memoryContext = null, systemOverride = null, allowTools = null, viewer = null }) {
   if (!provider.available()) {
     return { status: 'unavailable',
       reply: 'Clay could not run right now (generation service is not configured). Nothing was fabricated.' };
@@ -137,6 +156,7 @@ async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext 
   // as someone who remembers them, not a cold one-shot. A systemOverride (the public visitor
   // prompt) replaces the account persona entirely and carries no account context.
   let system = systemOverride || SYSTEM;
+  if (!systemOverride && viewer) { const vc = renderViewerContext(viewer); if (vc) system += '\n\n' + vc; }
   if (!systemOverride && memoryContext) system += '\n\n' + memoryContext;
   if (!systemOverride && conceptContext) system += '\n\n' + renderConceptContext(conceptContext);
 

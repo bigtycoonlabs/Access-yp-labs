@@ -3,22 +3,71 @@ const { body, validationResult } = require('express-validator');
 const { query } = require('../config/db');
 const { authenticate, authorize } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
+const describe = require('../lib/describe');
 const router = express.Router();
 
 // Only policy-ground reasons exist. "Competes with mine" is deliberately not a
 // selectable reason anywhere in the system.
 const REASONS = ['missing_baseline', 'running_business', 'fraud', 'missing_risk_disclosure'];
 
-// Review queue.
+// Review queue — ONE queue for everyone. Clay's seeded concepts land here alongside every
+// creator's submission (origin tells them apart so the UI can label a Clay seed); there is no
+// separate page. Ordered oldest-first so nothing waits behind newer work.
 router.get('/queue', authenticate, authorize('staff', 'admin', 'master_staff'),
   asyncHandler(async (req, res) => {
     const r = await query(
-      `SELECT l.id, l.stage_label, l.price_cents, l.created_at,
-              c.title, c.category, c.risk_summary, l.seller_id, u.name AS seller_name,
+      `SELECT l.id, l.stage_label, l.price_cents, l.created_at, c.id AS concept_id,
+              c.title, c.category, c.risk_summary, c.origin, l.seller_id, u.name AS seller_name,
               COALESCE(u.display_name, '—') AS seller_alias
        FROM listings l JOIN concepts c ON c.id=l.concept_id JOIN users u ON u.id=l.seller_id
        WHERE l.status='in_review' ORDER BY l.created_at ASC`);
     res.json({ queue: r.rows });
+  }));
+
+// Open ONE queued listing to actually review it: the full concept and all of its current
+// materials, unredacted (a reviewer can't judge what they can't read — the buyer paywall does not
+// apply to staff review), an accessible outline of any demo, and the prior decision log. This is
+// what lets a moderator open a concept, read it, and decide with real knowledge instead of a title.
+router.get('/:listingId/review', authenticate, authorize('staff', 'admin', 'master_staff'),
+  asyncHandler(async (req, res) => {
+    const l = await query(
+      `SELECT l.id, l.status, l.stage_label, l.format, l.price_cents, l.starting_bid_cents, l.created_at,
+              c.id AS concept_id, c.title, c.category, c.stage, c.risk_summary, c.origin,
+              c.research_grounded, c.claims_verified, c.source_count, c.clays_take,
+              l.seller_id, u.name AS seller_name, COALESCE(u.display_name, '—') AS seller_alias, u.role AS seller_role
+       FROM listings l JOIN concepts c ON c.id=l.concept_id JOIN users u ON u.id=l.seller_id
+       WHERE l.id=$1`, [req.params.listingId]);
+    if (!l.rows.length) throw new ApiError(404, 'Listing not found.');
+    const row = l.rows[0];
+    const a = await query(
+      "SELECT type, title, body, scan_status FROM assets WHERE concept_id=$1 AND is_current=true ORDER BY created_at",
+      [row.concept_id]);
+    const materials = a.rows.map((m) => ({
+      type: m.type, title: m.title || null, scan_status: m.scan_status || null, body: String(m.body || ''),
+    }));
+    const demoAsset = a.rows.find((m) => m.type === 'html_demo' || m.type === 'built_site');
+    let demo = null;
+    if (demoAsset && demoAsset.body) {
+      try { const o = describe.outline(demoAsset.body); demo = { items: o.items, accessibility: o.a11y.summary }; }
+      catch (_) { demo = null; }
+    }
+    const log = await query(
+      `SELECT m.decision, m.reason, m.notes, m.recused, m.created_at, u.name AS moderator_name
+       FROM moderation_actions m JOIN users u ON u.id=m.moderator_id
+       WHERE m.listing_id=$1 ORDER BY m.created_at`, [row.id]);
+    res.json({
+      ok: true,
+      is_clay_seed: row.origin === 'clay_seed',
+      listing: { id: row.id, status: row.status, stage_label: row.stage_label, format: row.format,
+        price_cents: row.price_cents, starting_bid_cents: row.starting_bid_cents, created_at: row.created_at },
+      concept: { id: row.concept_id, title: row.title, category: row.category, stage: row.stage,
+        risk_summary: row.risk_summary, origin: row.origin, research_grounded: row.research_grounded,
+        claims_verified: row.claims_verified, source_count: row.source_count, clays_take: row.clays_take },
+      seller: { id: row.seller_id, name: row.seller_name, alias: row.seller_alias, role: row.seller_role },
+      materials,
+      demo_description: demo,
+      log: log.rows,
+    });
   }));
 
 // Decide on a listing. Neutrality is enforced: a moderator who is the seller

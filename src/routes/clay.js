@@ -890,7 +890,7 @@ router.post('/chat', authenticate, [
   const mems = await memory.getMemories(req.user.id).catch(() => []);
   const patterns = await memory.getPatterns(req.user.id).catch(() => null);
   const memoryContext = [memory.renderMemoryContext(mems), memory.renderPatterns(patterns)].filter(Boolean).join('\n\n');
-  const out = await agent.runChat({ messages: req.body.messages, executors: buildExecutors(req.user), conceptContext, memoryContext });
+  const out = await agent.runChat({ messages: req.body.messages, executors: buildExecutors(req.user), conceptContext, memoryContext, viewer: { role: req.user.role, name: req.user.name } });
   // Tell the client what happened this turn: a background rebuild it can watch, or a
   // synchronous concept change it should refresh (new asset versions have new ids).
   const outcome = chatOutcomeFromTranscript(out.messages);
