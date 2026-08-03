@@ -6,6 +6,7 @@ const { asyncHandler, ApiError } = require('../lib/http');
 const { MODES, CATEGORIES, PLATFORMS, SOCIAL_GOALS } = require('../services/clay/tools');
 const spine = require('../services/clay/spine');
 const clay = require('../services/clay');
+const seed = require('../services/clay/seed');
 const provider = require('../services/clay/provider');
 const journal = require('../services/clay/journal');
 const retrieval = require('../services/clay/retrieval');
@@ -375,6 +376,24 @@ router.post('/generate', authenticate, [
     email: req.user.email,
     eta_seconds: 180,
     message: 'I’m building your concept now. This usually takes 1 to 3 minutes — you don’t need to wait here. I’ll email it to ' + req.user.email + ' the moment it’s ready, and it’ll be waiting in your Laboratory too. You can watch me work below if you like.',
+  });
+}));
+
+// POST /api/clay/seed — STAFF ONLY. Ask Clay to invent, build, and post ONE seed concept to
+// the Dreamhold FOR REVIEW (never straight to sale). A full build takes 1-3 minutes, so this is
+// fire-and-forget: it lands in the moderation queue and emails staff when ready. runSeed owns its
+// own errors and never throws, so we never await it. Nothing goes live without a staff approval.
+router.post('/seed', authenticate, authorize('staff', 'admin', 'master_staff'), asyncHandler(async (req, res) => {
+  if (!provider.available()) {
+    return res.status(200).json({
+      status: 'unavailable',
+      message: 'Clay’s builder isn’t connected right now, so it can’t create a seed — and it never invents, so nothing was made up.',
+    });
+  }
+  seed.runSeed().then(() => {}).catch(() => {});
+  return res.status(202).json({
+    status: 'seeding',
+    message: 'Clay is inventing and building a seed concept now. It will appear in the review queue and staff will be emailed when it’s ready — nothing goes live until you approve it.',
   });
 }));
 

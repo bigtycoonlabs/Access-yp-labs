@@ -1089,7 +1089,7 @@
     ['flat', 'auction'].forEach((f) => { const o = el('option', null, f === 'flat' ? 'Flat price' : 'Auction'); o.value = f; fmt.appendChild(o); });
 
     const priceLabel = el('label'); priceLabel.textContent = 'Price in US dollars'; priceLabel.setAttribute('for', 'l-price');
-    const price = el('input'); price.id = 'l-price'; price.type = 'number'; price.min = '50'; price.step = '1'; price.value = '50';
+    const price = el('input'); price.id = 'l-price'; price.type = 'number'; price.min = '10'; price.step = '1'; price.value = '10';
 
     const riskWrap = el('label'); riskWrap.style.fontWeight = '400';
     const risk = el('input'); risk.type = 'checkbox'; risk.id = 'l-risk'; risk.style.width = 'auto'; risk.style.minHeight = 'auto'; risk.style.marginRight = '10px';

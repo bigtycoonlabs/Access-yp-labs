@@ -157,7 +157,7 @@ CREATE TABLE IF NOT EXISTS yp_labs.listings (
   concept_id         uuid NOT NULL REFERENCES yp_labs.concepts(id) ON DELETE CASCADE,
   seller_id          uuid NOT NULL REFERENCES yp_labs.users(id) ON DELETE CASCADE,
   format             yp_labs.listing_format NOT NULL DEFAULT 'flat',
-  price_cents        integer CHECK (price_cents IS NULL OR price_cents >= 5000),  -- $50 floor
+  price_cents        integer CHECK (price_cents IS NULL OR price_cents >= 1000),  -- $10 floor (matches lib/money.js)
   starting_bid_cents integer,
   auction_close_at   timestamptz,
   completion_target  text,
