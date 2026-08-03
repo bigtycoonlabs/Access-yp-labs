@@ -38,6 +38,42 @@
 
   // Download a concept's package, or surface the honest plan gate inline (with a
   // one-tap Keep for this specific concept) if it isn't kept yet.
+  async function loadTodaysDreams() {
+    const c = document.getElementById('today'); if (!c) return;
+    const dg = document.getElementById('today-digest');
+    c.innerHTML = ''; if (dg) dg.textContent = 'Finding fresh Dreams for you…';
+    try {
+      const { dreams, digest } = await Kiln.api('/listings/today');
+      if (!dreams.length) {
+        if (dg) dg.textContent = '';
+        empty(c, 'No fresh Dreams matched to you just yet — new ones arrive regularly. You can explore the full Dreamhold anytime.');
+        const go = el('a', 'btn secondary', 'Explore the Dreamhold'); go.href = '/marketplace.html'; go.setAttribute('role', 'button');
+        c.appendChild(go);
+        return;
+      }
+      // One spoken line a returning creator hears immediately.
+      let line = digest.count + (digest.count === 1 ? ' fresh Dream' : ' fresh Dreams') + ' for you';
+      if (digest.new_today) line += ', ' + digest.new_today + ' new today';
+      if (digest.categories && digest.categories.length) line += ' — in ' + digest.categories.join(', ');
+      if (digest.broadened) line += ' (a wider mix, to keep things fresh)';
+      line += '.';
+      if (dg) dg.textContent = line;
+      announce('Today’s Dreams: ' + line, false);
+
+      dreams.forEach((d) => {
+        const priced = d.format === 'auction' ? ('bids from ' + money(d.starting_bid_cents || 0)) : money(d.price_cents);
+        const bits = [nice(d.category), priced];
+        if (d.waiting) bits.push(d.waiting + (d.waiting === 1 ? ' person waiting' : ' people waiting'));
+        if (d.is_new_today) bits.push('new today');
+        if (d.research_grounded) bits.push('research-grounded');
+        const r = row(d.title, bits.join(' · '));
+        const view = el('a', 'btn', 'View this Dream'); view.href = '/listing.html?id=' + d.id; view.setAttribute('role', 'button');
+        r.actions.appendChild(view);
+        c.appendChild(r);
+      });
+    } catch (e) { if (dg) dg.textContent = ''; fail(c, e); }
+  }
+
   async function downloadConcept(id, host) {
     if (host) host.innerHTML = '';
     try {
@@ -437,7 +473,7 @@
       setTimeout(() => loadSubs(), 8000);
     }
     if (q.get('sub') === 'canceled') announce('Checkout canceled — you were not charged.', true);
-    loadPayouts(); loadSubs(); loadConcepts(); loadListings(); loadOrders(); loadEngagements(); loadWatches(); loadTuning();
+    loadTodaysDreams(); loadPayouts(); loadSubs(); loadConcepts(); loadListings(); loadOrders(); loadEngagements(); loadWatches(); loadTuning();
     document.getElementById('signout').addEventListener('click', (e) => { e.preventDefault(); Kiln.clearTokens(); location.href = '/'; });
   })();
 })();

@@ -184,6 +184,51 @@ router.get('/leaping', authenticate, asyncHandler(async (req, res) => {
   res.json({ listings: r.rows, tuned: { interests, budget: prefs.launch_budget } });
 }));
 
+// Today's Dreams — the daily reason to come back. Fresh live Dreams (listed in the last
+// week) tuned to the creator's interests and budget, newest first, never their own. Ships
+// with a short digest so a returning creator hears what's new in a single spoken line. If
+// nothing matches their interests yet, we broaden to all fresh Dreams rather than show an
+// empty feed — the marketplace should always feel alive.
+router.get('/today', authenticate, asyncHandler(async (req, res) => {
+  const pr = await query('SELECT interests, launch_budget FROM user_preferences WHERE user_id=$1', [req.user.id]);
+  const prefs = pr.rows[0] || { interests: [], launch_budget: '' };
+  const BUDGET_MAX = { under_150: 15000, under_500: 50000, under_1000: 100000, under_5000: 500000, under_10000: 1000000, under_50000: 5000000 };
+  const maxc = BUDGET_MAX[prefs.launch_budget] || null;
+  const interests = prefs.interests || [];
+  const FRESH_DAYS = 7;
+
+  async function fetchDreams(useInterests) {
+    const r = await query(
+      `SELECT l.id, l.format, l.price_cents, l.starting_bid_cents, l.auction_close_at,
+              l.stage_label, l.created_at,
+              c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dreamhold creator') AS seller_alias,
+              c.research_grounded, c.claims_verified, c.source_count,
+              (l.created_at >= now() - interval '24 hours') AS is_new_today,
+              (SELECT COUNT(*)::int FROM waitlist_signups w WHERE w.concept_id=l.concept_id) AS waiting
+       FROM listings l JOIN concepts c ON c.id=l.concept_id JOIN users u ON u.id=l.seller_id
+       WHERE l.status='live'
+         AND l.created_at >= now() - ($3::int * interval '1 day')
+         AND l.seller_id <> $4
+         AND ( $1::text[] IS NULL OR NOT $5::boolean OR c.category::text = ANY($1::text[]) )
+         AND ( $2::int IS NULL OR COALESCE(l.price_cents, l.starting_bid_cents, 0) <= $2 )
+       ORDER BY l.created_at DESC LIMIT 12`,
+      [interests.length ? interests : null, maxc, FRESH_DAYS, req.user.id, useInterests]);
+    return r.rows;
+  }
+
+  let dreams = await fetchDreams(interests.length > 0);
+  let broadened = false;
+  if (!dreams.length && interests.length) { dreams = await fetchDreams(false); broadened = true; }
+
+  const newToday = dreams.filter((d) => d.is_new_today).length;
+  const categories = [...new Set(dreams.map((d) => String(d.category || '').replace(/_/g, ' ')).filter(Boolean))].slice(0, 3);
+  res.json({
+    dreams,
+    digest: { count: dreams.length, new_today: newToday, categories, broadened, fresh_days: FRESH_DAYS },
+    tuned: { interests, budget: prefs.launch_budget },
+  });
+}));
+
 // A seller's own listings, in any status. Must precede /:id.
 router.get('/mine', authenticate, asyncHandler(async (req, res) => {
   const r = await query(
