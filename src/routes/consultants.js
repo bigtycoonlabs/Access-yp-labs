@@ -174,7 +174,8 @@ router.post('/engagements/:id/deliver', authenticate, asyncHandler(async (req, r
      WHERE id=$1 AND state='paid' RETURNING *`,
     [req.params.id, String(CONSULT_WINDOW_HOURS)]);
   if (!r.rows.length) throw new ApiError(400, 'Engagement must be paid before a session is delivered.');
-  res.json({ engagement: r.rows[0] });
+  res.json({ engagement: r.rows[0],
+    note: 'Session delivered. This completes the initial consultation the platform arranges. There\u2019s a 12-hour window to keep going free — and from here, if you both want to keep working together, you arrange it directly, including how the consultant is paid, however you like.' });
 }));
 
 // Client continues free with the same consultant within the 12-hour window.
@@ -182,7 +183,7 @@ router.post('/engagements/:id/continue', authenticate, asyncHandler(async (req, 
   const e = await loadEngagement(req.params.id, req.user.id, 'client');
   if (e.state !== 'session_delivered') throw new ApiError(400, 'No delivered session to continue.');
   if (!e.window_expires_at || new Date(e.window_expires_at) < new Date()) {
-    throw new ApiError(400, 'The free continuation window has closed. A new session requires a fresh $150.');
+    throw new ApiError(400, 'The free continuation window has closed. From here, you and the consultant arrange any ongoing work and how they\u2019re paid directly, however you like \u2014 or book a fresh initial session through the platform if you\u2019d rather.');
   }
   const r = await query(`UPDATE consultant_engagements SET state='continued' WHERE id=$1 RETURNING *`, [req.params.id]);
   res.json({ engagement: r.rows[0] });
