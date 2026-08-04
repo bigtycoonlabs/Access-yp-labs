@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>The Dreamhold — meet Clay at the door</title>
+<title>The Dream Market — meet Clay at the door</title>
 <style>
 :root{--void:#0b0817;--mist:#1a1430;--dream:#b8a6ff;--dream2:#8ce0ff;--glow:#ffd9a8;--ink:#f2eefb;--line:#332a52;}
 *{box-sizing:border-box;}
@@ -40,18 +40,18 @@ a{color:var(--dream2);}
   nav.top a:focus-visible{outline:3px solid var(--dream2);outline-offset:2px;}
   nav.top a[aria-current="page"]{text-decoration:underline;}
 </style>  <link rel="canonical" href="https://accessyplabs.com/dreamhold.html"/>
-  <meta name="description" content="Meet Clay at the door of the Dreamhold. Tell Clay the business idea you can’t stop thinking about and shape it into a complete, pre-proven concept — free to start."/>
+  <meta name="description" content="Meet Clay at the door of the Dream Market. Tell Clay the business idea you can’t stop thinking about and shape it into a complete, pre-proven concept — free to start."/>
   <meta property="og:type" content="website"/>
   <meta property="og:site_name" content="Access YP Labs"/>
-  <meta property="og:title" content="The Dreamhold — meet Clay at the door"/>
-  <meta property="og:description" content="Meet Clay at the door of the Dreamhold. Tell Clay the business idea you can’t stop thinking about and shape it into a complete, pre-proven concept — free to start."/>
+  <meta property="og:title" content="The Dream Market — meet Clay at the door"/>
+  <meta property="og:description" content="Meet Clay at the door of the Dream Market. Tell Clay the business idea you can’t stop thinking about and shape it into a complete, pre-proven concept — free to start."/>
   <meta property="og:url" content="https://accessyplabs.com/dreamhold.html"/>
   <meta property="og:image" content="https://accessyplabs.com/img/og-cover.png"/>
   <meta property="og:image:width" content="1200"/>
   <meta property="og:image:height" content="630"/>
   <meta name="twitter:card" content="summary_large_image"/>
-  <meta name="twitter:title" content="The Dreamhold — meet Clay at the door"/>
-  <meta name="twitter:description" content="Meet Clay at the door of the Dreamhold. Tell Clay the business idea you can’t stop thinking about and shape it into a complete, pre-proven concept — free to start."/>
+  <meta name="twitter:title" content="The Dream Market — meet Clay at the door"/>
+  <meta name="twitter:description" content="Meet Clay at the door of the Dream Market. Tell Clay the business idea you can’t stop thinking about and shape it into a complete, pre-proven concept — free to start."/>
   <meta name="twitter:image" content="https://accessyplabs.com/img/og-cover.png"/>
 </head>
 <body>
@@ -59,14 +59,14 @@ a{color:var(--dream2);}
   <a class="brand" href="/">Access YP Labs</a>
   <nav class="top" aria-label="Primary">
     <a href="/">Home</a>
-    <a href="/marketplace.html">The Dreamhold</a>
+    <a href="/marketplace.html">The Dream Market</a>
     <a href="/login.html">Sign in</a>
     <a href="/register.html">Sign up</a>
   </nav>
 </div></header>
 <div class="wrap">
   <p class="kicker">Access YP Labs</p>
-  <h1>The door to the Dreamhold</h1>
+  <h1>The door to the Dream Market</h1>
   <p class="sub">A place that holds the businesses the world dreamed up and never launched. Clay will tune it to you before you go down.</p>
   <div id="convo" role="log" aria-live="polite" aria-label="Clay"></div>
   <div id="controls" aria-live="polite"></div>
@@ -89,7 +89,7 @@ function focusFirst(){ var f=controls.querySelector('button,input,.chip'); if(f)
 
 // ---- flow ----
 function start(){
-  clay('Welcome. You’ve found the Dreamhold — where the business dreams the world never got around to launching are kept. Before you drop in, let me tune it to you, so the right dreams know to lean toward you.');
+  clay('Welcome. You’ve found the Dream Market — where the business dreams the world never got around to launching are kept. Before you drop in, let me tune it to you, so the right dreams know to lean toward you.');
   if(Kiln.isLoggedIn()) askInterests(); else askAccount();
 }
 
@@ -103,7 +103,7 @@ function askAccount(){
 }
 function accountForm(){
   you('Create my account'); clearControls();
-  var fs=el('fieldset'); fs.appendChild(el('legend',null,'Create your Dreamhold account'));
+  var fs=el('fieldset'); fs.appendChild(el('legend',null,'Create your Dream Market account'));
   var nn=field('Your name','db-name','text'); var ee=field('Email','db-email','email'); var pp=field('Password (at least 8 characters)','db-pass','password');
   fs.appendChild(nn.wrap); fs.appendChild(ee.wrap); fs.appendChild(pp.wrap);
   var err=el('p','msgerr'); err.setAttribute('role','alert');
@@ -202,7 +202,7 @@ async function askBudget(){
 }
 
 async function finish(){
-  clay('Tuning your Dreamhold…'); clearControls();
+  clay('Tuning your Dream Market…'); clearControls();
   try{
     await Kiln.api('/preferences',{method:'PUT',body:{
       interests:state.interests, runs_business:state.runs_business,
@@ -211,7 +211,7 @@ async function finish(){
   }catch(e){ clay('I couldn’t save your tuning just now, but you can still go in and I’ll pick it up later.'); }
   clay('It’s tuned. Somewhere down there, a few dreams already turned toward you. Go on — drop in.');
   var wrap=el('div','opts');
-  var enter=el('button','primary','Enter the Dreamhold'); enter.addEventListener('click',function(){ location.href='/enter.html'; });
+  var enter=el('button','primary','Enter the Dream Market'); enter.addEventListener('click',function(){ location.href='/enter.html'; });
   var leap=el('button',null,'Show me a few dreams leaping for me'); leap.addEventListener('click',showLeaping);
   wrap.appendChild(enter); wrap.appendChild(leap); controls.appendChild(wrap); focusFirst();
 }
@@ -223,7 +223,7 @@ async function showLeaping(){
   var listings=[];
   try{ var r=await Kiln.api('/listings/leaping'); listings=(r.listings||[]).slice(0,3); }catch(e){}
   if(!listings.length){
-    clay('None are leaping just yet — the Dreamhold is young. But it’s full of dreams to wander. Go on in.');
+    clay('None are leaping just yet — the Dream Market is young. But it’s full of dreams to wander. Go on in.');
   } else {
     clay('These turned toward you first:');
     var box=el('div'); box.setAttribute('role','list'); box.style.display='flex'; box.style.flexDirection='column'; box.style.gap='12px';
@@ -242,8 +242,8 @@ async function showLeaping(){
     announce(listings.length+' dreams are leaping for you.');
   }
   var wrap=el('div','opts'); wrap.style.marginTop='14px';
-  var enter=el('button','primary','Enter the Dreamhold'); enter.addEventListener('click',function(){ location.href='/enter.html'; });
-  var all=el('button',null,'Wander the whole Dreamhold'); all.addEventListener('click',function(){ location.href='/marketplace.html?entered=1'; });
+  var enter=el('button','primary','Enter the Dream Market'); enter.addEventListener('click',function(){ location.href='/enter.html'; });
+  var all=el('button',null,'Wander the whole Dream Market'); all.addEventListener('click',function(){ location.href='/marketplace.html?entered=1'; });
   wrap.appendChild(enter); wrap.appendChild(all); controls.appendChild(wrap); focusFirst();
 }
 

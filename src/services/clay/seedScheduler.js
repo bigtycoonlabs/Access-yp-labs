@@ -1,4 +1,4 @@
-// Clay's auto-seed scheduler. When enabled by staff, it tops up the Dreamhold review queue on a
+// Clay's auto-seed scheduler. When enabled by staff, it tops up the Dream Market review queue on a
 // gentle cadence — a couple of concepts a day, spaced out. Every seed still lands in 'in_review';
 // nothing goes live without a staff member approving it.
 //

@@ -133,7 +133,7 @@ router.post('/:id/release', authenticate, asyncHandler(async (req, res) => {
     }
     const l = await client.query('SELECT concept_id, status FROM listings WHERE id=$1 FOR UPDATE', [order.listing_id]);
     if (!l.rows.length) throw new ApiError(404, 'The listing for this order no longer exists.');
-    // A Dreamhold concept is one-of-a-kind: it can only transfer to ONE buyer. Locking the
+    // A Dream Market concept is one-of-a-kind: it can only transfer to ONE buyer. Locking the
     // listing row above serializes concurrent releases; if another order already won this
     // listing (status 'sold'), we must NOT transfer the concept again — that would silently
     // overwrite the first buyer's ownership. Refuse honestly; this order's payment is refunded

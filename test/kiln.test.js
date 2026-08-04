@@ -961,7 +961,7 @@ test('patterns render as neutral facts, and say NOT to read motivation or nag', 
   const out = mem.renderPatterns({ conceptCount: 4, categoryFocus: 'remote_service', listedCount: 1, operatingCount: 0, daysSinceLastActive: 3, accountAgeDays: 40 });
   assert.ok(/4 concepts/.test(out), 'states the real count');
   assert.ok(/remote service/.test(out), 'names the category focus in plain words');
-  assert.ok(/1 put on the Dreamhold/.test(out), 'notes what they listed');
+  assert.ok(/1 put on the Dream Market/.test(out), 'notes what they listed');
   assert.ok(/do NOT read motivation/i.test(out) && /never nag/i.test(out), 'guards against psychoanalysis and nagging');
 });
 

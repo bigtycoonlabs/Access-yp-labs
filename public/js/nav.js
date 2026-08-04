@@ -3,9 +3,9 @@
 // on each screen. Renders synchronously (so #signout exists for other page scripts),
 // then reveals a Staff link for staff accounts after checking the session.
 //
-// Logged-in menu:  Laboratory · Dashboard · The Dreamhold · Consultants · Profile
+// Logged-in menu:  Laboratory · Dashboard · The Dream Market · Consultants · Profile
 //                  · Staff (staff only) · Sign out
-// Logged-out menu: Home · The Dreamhold · Sign in · Sign up
+// Logged-out menu: Home · The Dream Market · Sign in · Sign up
 (function () {
   var nav = document.querySelector('nav.top');
   if (!nav) return;
@@ -27,7 +27,7 @@
   if (tokens().accessToken) {
     nav.appendChild(link('/app.html', 'Laboratory'));
     nav.appendChild(link('/dashboard.html', 'Dashboard'));
-    nav.appendChild(link('/marketplace.html', 'The Dreamhold'));
+    nav.appendChild(link('/marketplace.html', 'The Dream Market'));
     nav.appendChild(link('/consultants.html', 'Consultants'));
     nav.appendChild(link('/profile.html', 'Profile'));
 
@@ -53,7 +53,7 @@
     }
   } else {
     nav.appendChild(link('/', 'Home'));
-    nav.appendChild(link('/marketplace.html', 'The Dreamhold'));
+    nav.appendChild(link('/marketplace.html', 'The Dream Market'));
     nav.appendChild(link('/login.html', 'Sign in'));
     nav.appendChild(link('/register.html', 'Sign up'));
   }

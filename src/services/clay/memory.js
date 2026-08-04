@@ -148,7 +148,7 @@ function renderPatterns(p) {
   if (!p || !p.conceptCount) return '';
   const bits = [`They have ${p.conceptCount} concept${p.conceptCount === 1 ? '' : 's'} in their Laboratory`];
   if (p.categoryFocus) bits.push(`concentrated in ${String(p.categoryFocus).replace(/_/g, ' ')}`);
-  if (p.listedCount) bits.push(`${p.listedCount} put on the Dreamhold`);
+  if (p.listedCount) bits.push(`${p.listedCount} put on the Dream Market`);
   if (p.operatingCount) bits.push(`${p.operatingCount} already operating`);
   let facts = bits.join(', ') + '.';
   if (p.daysSinceLastActive != null && p.daysSinceLastActive >= 14) {

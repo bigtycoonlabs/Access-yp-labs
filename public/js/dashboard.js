@@ -1,4 +1,4 @@
-// The Dreamhold dashboard — management overview with state-aware actions.
+// The Dream Market dashboard — management overview with state-aware actions.
 (function () {
   if (!Kiln.isLoggedIn()) {
     // localStorage may be wiped though the HttpOnly refresh cookie is still alive — recover
@@ -46,8 +46,8 @@
       const { dreams, digest } = await Kiln.api('/listings/today');
       if (!dreams.length) {
         if (dg) dg.textContent = '';
-        empty(c, 'No fresh Dreams matched to you just yet — new ones arrive regularly. You can explore the full Dreamhold anytime.');
-        const go = el('a', 'btn secondary', 'Explore the Dreamhold'); go.href = '/marketplace.html'; go.setAttribute('role', 'button');
+        empty(c, 'No fresh Dreams matched to you just yet — new ones arrive regularly. You can explore the full Dream Market anytime.');
+        const go = el('a', 'btn secondary', 'Explore the Dream Market'); go.href = '/marketplace.html'; go.setAttribute('role', 'button');
         c.appendChild(go);
         return;
       }
@@ -144,7 +144,7 @@
     { key: 'needs_proof', label: 'Needs proof',
       moves: 'Get one real proof action — a booked paid call, a preorder, a deposit, a landing page that converts. A stranger acting, not a compliment.' },
     { key: 'ready_to_package', label: 'Ready to package',
-      moves: 'You have a clear customer and real evidence they’ll pay — it’s ready to package and list in the Dreamhold.' },
+      moves: 'You have a clear customer and real evidence they’ll pay — it’s ready to package and list in the Dream Market.' },
   ];
   async function loadBoard() {
     const c = document.getElementById('board'); if (!c) return; c.innerHTML = '';
@@ -191,7 +191,7 @@
       const s = await Kiln.api('/sellers/status');
       const current = (s && s.display_name) || '';
       const shown = el('p'); shown.appendChild(document.createTextNode('Buyers currently see you as: '));
-      shown.appendChild(el('strong', null, current || 'A Dreamhold creator')); c.appendChild(shown);
+      shown.appendChild(el('strong', null, current || 'A Dream Market creator')); c.appendChild(shown);
 
       const label = el('label', null, 'Edit your pen name (2 to 40 characters)'); label.setAttribute('for', 'pen-input');
       const input = el('input'); input.id = 'pen-input'; input.type = 'text'; input.maxLength = 40; input.value = current; input.setAttribute('autocomplete', 'off');
@@ -235,7 +235,7 @@
 
       // Not fully set up yet — say plainly: you can still sell, but the money waits until setup is done.
       const warn = el('p', 'msg');
-      warn.textContent = 'Your payout setup isn’t finished yet. You can still list and sell in the Dreamhold, but money from a sale is held and won’t be paid out to you until you finish setting up payments here.';
+      warn.textContent = 'Your payout setup isn’t finished yet. You can still list and sell in the Dream Market, but money from a sale is held and won’t be paid out to you until you finish setting up payments here.';
       c.appendChild(warn);
 
       const onError = (container) => (e) => { const m = e.message || 'Could not start payout setup. Please try again.'; announce(m, true); container.appendChild(el('p', 'msg err', m)); };
@@ -333,7 +333,7 @@
       if (!concepts.length) { empty(c, 'No concepts yet. Open the laboratory to shape one with Clay.'); return; }
       concepts.forEach((x) => {
         const claimed = x.origin === 'purchased';
-        const prefix = x.is_operating ? 'Your running business · ' : (claimed ? 'Claimed from the Dreamhold · ' : '');
+        const prefix = x.is_operating ? 'Your running business · ' : (claimed ? 'Claimed from the Dream Market · ' : '');
         let meta = prefix + nice(x.category) + (x.is_housing ? ' · housing' : '');
         meta += x.entitled ? ' · kept — yours to download' : ' · free to build · $2.99 to keep';
         if (x.access_expires_at) {
@@ -402,7 +402,7 @@
     try {
       const { listings } = await Kiln.api('/listings/mine');
       const mk = el('a', 'btn secondary', 'Create a listing'); mk.href = '/sell.html'; c.appendChild(mk);
-      if (!listings.length) { c.appendChild(el('p','muted','No listings yet. Use “Create a listing”, or from the laboratory choose “List this in the Dreamhold”.')); return; }
+      if (!listings.length) { c.appendChild(el('p','muted','No listings yet. Use “Create a listing”, or from the laboratory choose “List this in the Dream Market”.')); return; }
       listings.forEach((l) => {
         const price = l.format === 'auction' ? ('auction from ' + money(l.starting_bid_cents)) : money(l.price_cents);
         const r = row(l.title, nice(l.category) + ' · ' + price, l.status);
@@ -529,7 +529,7 @@
       c.appendChild(labeled('What kind? (optional)', kIn, 'tune-kind'));
       c.appendChild(actionBtn('Save tuning', async () => {
         const body = { interests: Array.from(selected), launch_budget: bSel.value, runs_business: rbSel.value === 'yes', business_kind: kIn.value, onboarded: true };
-        await run(Kiln.api('/preferences', { method: 'PUT', body }), 'Dreamhold tuning saved.', null);
+        await run(Kiln.api('/preferences', { method: 'PUT', body }), 'Dream Market tuning saved.', null);
       }));
     } catch (e) { fail(c, e); }
   }

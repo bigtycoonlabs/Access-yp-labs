@@ -379,7 +379,7 @@
         cActs.appendChild(demo);
       }
       if (!concept.is_operating) {
-        var list = el('a', 'btn secondary', 'List this in the Dreamhold');
+        var list = el('a', 'btn secondary', 'List this in the Dream Market');
         list.href = '/app.html?concept=' + encodeURIComponent(id) + '&action=list';
         cActs.appendChild(list);
       }

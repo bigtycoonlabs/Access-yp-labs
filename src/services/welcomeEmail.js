@@ -25,7 +25,7 @@ Closing that gap is the entire reason I exist.
 
 So bring me one. Any one — messy, half-formed, "this is probably dumb, but." I'll build the real thing with you: the plan, the research, the marketing, a working demo, the exact steps to make it exist. I'll hype what's genuinely good, and I'll tell you straight where the risk hides — I'm not here to flatter you, I'm here to get you built. Already running something? Even better. Let's make it bigger.
 
-The best of what we build lands in the Dreamhold — a marketplace of businesses proven before anyone dared launch them. Claim one. Sell yours. Snap one onto what you already run. (We trade in ideas, never in running businesses — this is a home for what's possible.)
+The best of what we build lands in the Dream Market — a marketplace of businesses proven before anyone dared launch them. Claim one. Sell yours. Snap one onto what you already run. (We trade in ideas, never in running businesses — this is a home for what's possible.)
 
 Building costs you nothing. You only pay when you want to keep something and carry it out the door.
 
@@ -42,7 +42,7 @@ The whole story is here: https://accessyplabs.com/values.html
 
 So — that idea that's been renting space in your head for free? Let's finally evict it into the real world. I'm ready. Are you?
 
-Enter the Dreamhold: https://accessyplabs.com/dreamhold.html
+Enter the Dream Market: https://accessyplabs.com/dreamhold.html
 
 — Clay
 Access YP Labs, a brand of Set Up Your Place LLC`;
@@ -74,7 +74,7 @@ Access YP Labs, a brand of Set Up Your Place LLC`;
               <p style="margin:0 0 16px;">That&rsquo;s not a you problem. It&rsquo;s just math. Of every idea you&rsquo;ll ever have, maybe <strong>5% get a real shot</strong> &mdash; and of those, maybe <strong>1% become anything at all</strong>. Not because the rest were bad. Because you&rsquo;re one person with more imagination than hours in the day.</p>
               <p style="margin:0 0 16px;">Closing that gap is the entire reason I exist.</p>
               <p style="margin:0 0 16px;">So bring me one. Any one &mdash; messy, half-formed, &ldquo;this is probably dumb, but.&rdquo; I&rsquo;ll build the real thing with you: the plan, the research, the marketing, a working demo, the exact steps to make it exist. I&rsquo;ll hype what&rsquo;s genuinely good, and I&rsquo;ll tell you straight where the risk hides &mdash; I&rsquo;m not here to flatter you, I&rsquo;m here to get you built. Already running something? Even better. Let&rsquo;s make it bigger.</p>
-              <p style="margin:0 0 16px;">The best of what we build lands in the <strong>Dreamhold</strong> &mdash; a marketplace of businesses proven before anyone dared launch them. Claim one. Sell yours. Snap one onto what you already run. (We trade in ideas, never in running businesses &mdash; this is a home for what&rsquo;s possible.)</p>
+              <p style="margin:0 0 16px;">The best of what we build lands in the <strong>Dream Market</strong> &mdash; a marketplace of businesses proven before anyone dared launch them. Claim one. Sell yours. Snap one onto what you already run. (We trade in ideas, never in running businesses &mdash; this is a home for what&rsquo;s possible.)</p>
               <p style="margin:0 0 16px;">Building costs you nothing. You only pay when you want to keep something and carry it out the door.</p>
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;">
                 <tr>
@@ -94,7 +94,7 @@ Access YP Labs, a brand of Set Up Your Place LLC`;
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td bgcolor="#4c3bd4" style="background-color:#4c3bd4;border-radius:12px;">
-                    <a href="https://accessyplabs.com/dreamhold.html" style="display:inline-block;padding:14px 30px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none;">Enter the Dreamhold &rarr;</a>
+                    <a href="https://accessyplabs.com/dreamhold.html" style="display:inline-block;padding:14px 30px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none;">Enter the Dream Market &rarr;</a>
                   </td>
                 </tr>
               </table>
@@ -103,7 +103,7 @@ Access YP Labs, a brand of Set Up Your Place LLC`;
           </tr>
           <tr>
             <td style="padding:20px 28px;border-top:1px solid #e6e0f5;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.5;color:#585272;">
-              <p style="margin:0;">Access YP Labs is a brand of Set Up Your Place LLC. The Dreamhold is a neutral marketplace; it is not a party to any transaction between members. Concepts are pre-proven starting points, not guarantees of income.</p>
+              <p style="margin:0;">Access YP Labs is a brand of Set Up Your Place LLC. The Dream Market is a neutral marketplace; it is not a party to any transaction between members. Concepts are pre-proven starting points, not guarantees of income.</p>
             </td>
           </tr>
         </table>

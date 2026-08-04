@@ -116,7 +116,7 @@ const TOOLS = {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id', 'path'], optional: ['note'],
     enums: { path: ['build_myself', 'refine_to_sell', 'exploring'] },
-    summary: "Record the creator's plan for THIS concept when they tell you: build_myself (launch it as a real business they run), refine_to_sell (polish it to sell in the Dreamhold), or exploring (undecided). note is an optional short line about their specific goal. Reversible — you can update it whenever their plan changes. Only set it from what the creator actually says; never guess it for them.",
+    summary: "Record the creator's plan for THIS concept when they tell you: build_myself (launch it as a real business they run), refine_to_sell (polish it to sell in the Dream Market), or exploring (undecided). note is an optional short line about their specific goal. Reversible — you can update it whenever their plan changes. Only set it from what the creator actually says; never guess it for them.",
   },
   value_breakdown: {
     irreversible: false, requires_confirmation: false,

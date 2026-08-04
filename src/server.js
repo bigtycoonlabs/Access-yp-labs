@@ -35,7 +35,7 @@ const apiLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 app.use(express.static(path.join(__dirname, '../public')));
 
-// The Dreamhold / Clay API surface
+// The Dream Market / Clay API surface
 app.use('/api/auth',          require('./routes/auth'));
 app.use('/api/profiles',      require('./routes/profiles'));
  app.use('/api/preferences',   require('./routes/preferences'));
@@ -116,7 +116,7 @@ if (require.main === module) {
     setTimeout(buildSweep, 90 * 1000);           // shortly after boot
     setInterval(buildSweep, 5 * 60 * 1000);      // then every 5 minutes
 
-    // Auto-seed scheduler: when staff enable it, Clay tops up the Dreamhold review queue on a
+    // Auto-seed scheduler: when staff enable it, Clay tops up the Dream Market review queue on a
     // cadence (a couple a day, spaced out). Every seed lands in 'in_review' — nothing goes live
     // without staff approval. Default OFF; the tick claims a slot atomically, so it's safe across
     // restarts and multiple instances, and a failure can't crash boot.

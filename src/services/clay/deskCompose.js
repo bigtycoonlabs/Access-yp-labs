@@ -11,10 +11,10 @@ const provider = require('./provider');
 
 // On-brand topic pools, so auto-drafted pieces vary instead of repeating.
 const HELP_TOPICS = [
-  'choosing your path: build it, sell it in the Dreamhold, or keep exploring',
+  'choosing your path: build it, sell it in the Dream Market, or keep exploring',
   'your first proof step: how a real stranger shows an idea has legs',
   'what "go or kill" means, and why you decide it before the test',
-  'what makes a concept worth buying in the Dreamhold',
+  'what makes a concept worth buying in the Dream Market',
   'turning an idea you never built into an asset you own',
   'why proof beats a polished pitch every time',
   'finding the one customer who actually has the problem',

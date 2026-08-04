@@ -65,13 +65,13 @@ async function load(){
   const clayNote = a.total===0 ? 'Clay has no recorded runs yet.'
     : (answeredPct+'% of '+a.total+' Clay runs answered. '+providerNote);
   const headline = c.users+' member'+(c.users===1?'':'s')+', '+c.concepts+' concept'+(c.concepts===1?'':'s')+' shaped, '
-    + c.live_listings+' live in the Dreamhold, '+c.waitlist+' on the waitlist. '+clayNote;
+    + c.live_listings+' live in the Dream Market, '+c.waitlist+' on the waitlist. '+clayNote;
   const h=document.getElementById('headline'); h.textContent=headline; announce(headline,true);
 
   const people=document.getElementById('people'); people.innerHTML='';
   stat(people,c.users,'Members');
   stat(people,c.concepts,'Concepts shaped');
-  stat(people,c.live_listings,'Live in the Dreamhold');
+  stat(people,c.live_listings,'Live in the Dream Market');
   stat(people,c.waitlist,'On the waitlist');
 
   const money=document.getElementById('money'); money.innerHTML='';

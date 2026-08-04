@@ -40,7 +40,7 @@ router.put('/me', authenticate, [
 // their real account name), and never returns email/phone/contact.
 router.get('/:userId', asyncHandler(async (req, res) => {
   const r = await query(
-    `SELECT u.id, COALESCE(u.display_name, 'A Dreamhold creator') AS name,
+    `SELECT u.id, COALESCE(u.display_name, 'A Dream Market creator') AS name,
             p.about_me, p.show_concepts, p.show_completed, p.show_listings
      FROM users u JOIN profiles p ON p.user_id=u.id WHERE u.id=$1`, [req.params.userId]);
   if (!r.rows.length) return res.status(404).json({ error: 'Profile not found.' });

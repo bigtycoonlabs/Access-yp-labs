@@ -1,4 +1,4 @@
-// The Dreamhold laboratory — chat-first, accessible. Talk to Clay, then act inline.
+// The Dream Market laboratory — chat-first, accessible. Talk to Clay, then act inline.
 (function () {
   if (!Kiln.isLoggedIn()) {
     // No access token in this browser — but the HttpOnly refresh cookie may still hold a live
@@ -237,7 +237,7 @@
       const list = words.length === 1 ? words[0] : (words.slice(0, -1).join(', ') + ' and ' + words[words.length - 1]);
       opening = 'Welcome back. You told me you’re drawn to ' + list + ' — so what’s it going to be: shape one of those, or chase something brand new? “Create” starts fresh; “Enhance” sharpens something you’ve already got.';
     } else {
-      opening = "I'm Clay. Here's how this works: you bring me an idea — any idea, half-formed is fine — and we pressure-test it, sharpen it, and build the whole thing out together: the plan, the research, the marketing, a working demo. It stays your idea; I just help bring it to life — and it stays private: everything you build lives in your Laboratory, and nothing goes on the Dreamhold marketplace unless you choose to list it. Pick “Create” to start something new, or “Enhance” to sharpen an idea you already have or a business you already run. So — what's the one that's been living in your head?";
+      opening = "I'm Clay. Here's how this works: you bring me an idea — any idea, half-formed is fine — and we pressure-test it, sharpen it, and build the whole thing out together: the plan, the research, the marketing, a working demo. It stays your idea; I just help bring it to life — and it stays private: everything you build lives in your Laboratory, and nothing goes on the Dream Market unless you choose to list it. Pick “Create” to start something new, or “Enhance” to sharpen an idea you already have or a business you already run. So — what's the one that's been living in your head?";
     }
     // If they handed Clay an idea from the homepage before signing up, it's
     // waiting for them here — greet them with it and pre-fill the box.
@@ -253,7 +253,7 @@
     // inside Clay's opening message. Render them into the dedicated area beneath the composer;
     // fall back to the message only if that container somehow isn't present.
     await renderMyConcepts(document.getElementById('my-concepts-area') || m, myConcepts);
-    // Offer to tune the Dreamhold from the lab — opt-in, never a gate. Skipped if they're
+    // Offer to tune the Dream Market from the lab — opt-in, never a gate. Skipped if they're
     // already tuned, or arrived mid-flow with an idea already sitting in the box.
     if (prefs && !prefs.onboarded && !(promptEl && promptEl.value)) maybeOfferTuning();
 
@@ -346,18 +346,18 @@
     if (promptEl) { promptEl.value = ''; promptEl.focus(); }
   }
 
-  // ---- Dreamhold tuning, in the lab now (opt-in, never a gate) ----
-  // The old Dreamhold "door" made everyone answer these before they could go in. It lives here
-  // instead: Clay offers to tune the Dreamhold, the person takes it or leaves it, and it saves to
-  // the same preferences the Dreamhold reads for "dreams leaping for you."
+  // ---- Dream Market tuning, in the lab now (opt-in, never a gate) ----
+  // The old Dream Market "door" made everyone answer these before they could go in. It lives here
+  // instead: Clay offers to tune the Dream Market, the person takes it or leaves it, and it saves to
+  // the same preferences the Dream Market reads for "dreams leaping for you."
   function maybeOfferTuning() {
     const m = message('clay', 'Clay');
-    m.appendChild(el('p', null, 'Whenever you want it, I can tune the Dreamhold to you — the kinds of ideas you lean toward, whether you already run something, and a rough launch budget — so the right dreams lean back when you drop in. Want to set that now?'));
+    m.appendChild(el('p', null, 'Whenever you want it, I can tune the Dream Market to you — the kinds of ideas you lean toward, whether you already run something, and a rough launch budget — so the right dreams lean back when you drop in. Want to set that now?'));
     const row = el('p'); row.style.display = 'flex'; row.style.gap = '10px'; row.style.flexWrap = 'wrap';
-    const yes = el('button', 'btn', 'Tune my Dreamhold'); yes.type = 'button';
+    const yes = el('button', 'btn', 'Tune my Dream Market'); yes.type = 'button';
     const no = el('button', 'btn secondary', 'Maybe later'); no.type = 'button';
     yes.addEventListener('click', function () { row.remove(); renderTuning(m); });
-    no.addEventListener('click', function () { row.remove(); m.appendChild(el('p', 'muted', 'No rush — I’ll keep the whole Dreamhold open to you, and you can ask me to tune it anytime.')); announce('Okay, maybe later.'); });
+    no.addEventListener('click', function () { row.remove(); m.appendChild(el('p', 'muted', 'No rush — I’ll keep the whole Dream Market open to you, and you can ask me to tune it anytime.')); announce('Okay, maybe later.'); });
     row.appendChild(yes); row.appendChild(no); m.appendChild(row);
     scrollToLatest(m);
   }
@@ -409,8 +409,8 @@
       try {
         await Kiln.api('/preferences', { method: 'PUT', body: { interests: state.interests, runs_business: state.runs_business, business_kind: state.business_kind, launch_budget: state.launch_budget, onboarded: true } });
         form.remove();
-        m.appendChild(el('p', 'msg ok', 'Your Dreamhold’s tuned — the right dreams will lean toward you when you drop in. You can retune anytime.'));
-        announce('Your Dreamhold is tuned.', true);
+        m.appendChild(el('p', 'msg ok', 'Your Dream Market’s tuned — the right dreams will lean toward you when you drop in. You can retune anytime.'));
+        announce('Your Dream Market is tuned.', true);
       } catch (e) { save.disabled = false; announce((e && e.message) || 'Could not save your tuning just now.', true); }
     });
     form.appendChild(save);
@@ -837,18 +837,18 @@
       // A running business is never listed for sale — still offer a complementary dream if Clay named one.
       if (data.concept && data.concept.is_operating && data.dreamhold_suggestion && data.dreamhold_suggestion.reason) {
         container.appendChild(el('p', 'muted', 'Clay suggests: ' + data.dreamhold_suggestion.reason));
-        const findBtn = el('a', 'btn secondary', 'Find a complementary dream in the Dreamhold');
+        const findBtn = el('a', 'btn secondary', 'Find a complementary dream in the Dream Market');
         const cat = data.dreamhold_suggestion.category;
         findBtn.href = '/marketplace.html?entered=1' + (cat ? ('&category=' + encodeURIComponent(cat)) : '');
         container.appendChild(findBtn);
       }
 
-      // A brand-new user asked whether finishing a build auto-posts to the Dreamhold. It does
+      // A brand-new user asked whether finishing a build auto-posts to the Dream Market. It does
       // not — say so right here, at the moment they'd wonder. Only for listable (not operating)
       // concepts, since operating ones are never listed for sale at all.
       if (data.concept && !data.concept.is_operating) {
         const priv = el('p', 'muted');
-        priv.textContent = 'Private to your Laboratory — this isn’t posted anywhere automatically. It only reaches the Dreamhold if you choose “List this in the Dreamhold,” and even then it goes to review first, never straight to sale.';
+        priv.textContent = 'Private to your Laboratory — this isn’t posted anywhere automatically. It only reaches the Dream Market if you choose “List this in the Dream Market,” and even then it goes to review first, never straight to sale.';
         container.appendChild(priv);
       }
       // Not kept yet: name the pieces that are built and waiting, with one way to unlock
@@ -1081,7 +1081,7 @@
 
   function openListingForm(container, conceptId) {
     const form = el('div', 'panel');
-    form.appendChild(el('h3', null, 'List this concept on The Dreamhold'));
+    form.appendChild(el('h3', null, 'List this concept on The Dream Market'));
     form.appendChild(el('p', 'muted', 'You set the price. $10 minimum. Selling transfers ownership to the buyer.'));
 
     const fmtLabel = el('label'); fmtLabel.textContent = 'Sale format'; fmtLabel.setAttribute('for', 'l-format');

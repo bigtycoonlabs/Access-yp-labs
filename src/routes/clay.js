@@ -426,7 +426,7 @@ router.post('/generate', authenticate, [
 }));
 
 // POST /api/clay/seed — STAFF ONLY. Ask Clay to invent, build, and post ONE seed concept to
-// the Dreamhold FOR REVIEW (never straight to sale). A full build takes 1-3 minutes, so this is
+// the Dream Market FOR REVIEW (never straight to sale). A full build takes 1-3 minutes, so this is
 // fire-and-forget: it lands in the moderation queue and emails staff when ready. runSeed owns its
 // own errors and never throws, so we never await it. Nothing goes live without a staff approval.
 router.post('/seed', authenticate, authorize('staff', 'admin', 'master_staff'), asyncHandler(async (req, res) => {
@@ -1084,7 +1084,7 @@ function buildPackageEmail(title, coverage, assets, conceptId, claysTake, nextSt
     '<h1 style="font-family:system-ui,sans-serif;color:#1c1917">'+escapeHtml(title)+'</h1>'+
     '<p style="font-family:system-ui,sans-serif;font-size:16px;line-height:1.5">Your concept is ready — Clay at Access YP Labs finished building it. It’s also waiting in your Laboratory.</p>'+
     take + cta + gap + parts.join('') +
-    '<hr/><p style="color:#57534e;font-size:13px;font-family:system-ui,sans-serif">The Dreamhold is a neutral marketplace. Concepts are pre-proven starting points, not guarantees of income.</p></div>';
+    '<hr/><p style="color:#57534e;font-size:13px;font-family:system-ui,sans-serif">The Dream Market is a neutral marketplace. Concepts are pre-proven starting points, not guarantees of income.</p></div>';
 }
 
 // Short, honest email for when a build could not finish (redirect, empty, or error).

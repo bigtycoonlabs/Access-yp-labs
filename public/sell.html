@@ -1,30 +1,30 @@
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Sell a concept — The Dreamhold</title><link rel="stylesheet" href="/css/kiln.css"/>
+<title>Sell a concept — The Dream Market</title><link rel="stylesheet" href="/css/kiln.css"/>
 <style>.check{font-weight:400;display:flex;align-items:center;gap:10px;margin:8px 0;}.check input{width:auto;min-height:auto;}
 fieldset{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:0;}legend{font-weight:700;padding:0 6px;}</style>
   <link rel="canonical" href="https://accessyplabs.com/sell.html"/>
-  <meta name="description" content="List a business concept on the Dreamhold. Set your price, keep ownership until it sells, and hand a complete idea to the founder who’ll build it."/>
+  <meta name="description" content="List a business concept on the Dream Market. Set your price, keep ownership until it sells, and hand a complete idea to the founder who’ll build it."/>
   <meta property="og:type" content="website"/>
   <meta property="og:site_name" content="Access YP Labs"/>
-  <meta property="og:title" content="Sell a concept — The Dreamhold"/>
-  <meta property="og:description" content="List a business concept on the Dreamhold. Set your price, keep ownership until it sells, and hand a complete idea to the founder who’ll build it."/>
+  <meta property="og:title" content="Sell a concept — The Dream Market"/>
+  <meta property="og:description" content="List a business concept on the Dream Market. Set your price, keep ownership until it sells, and hand a complete idea to the founder who’ll build it."/>
   <meta property="og:url" content="https://accessyplabs.com/sell.html"/>
   <meta property="og:image" content="https://accessyplabs.com/img/og-cover.png"/>
   <meta property="og:image:width" content="1200"/>
   <meta property="og:image:height" content="630"/>
   <meta name="twitter:card" content="summary_large_image"/>
-  <meta name="twitter:title" content="Sell a concept — The Dreamhold"/>
-  <meta name="twitter:description" content="List a business concept on the Dreamhold. Set your price, keep ownership until it sells, and hand a complete idea to the founder who’ll build it."/>
+  <meta name="twitter:title" content="Sell a concept — The Dream Market"/>
+  <meta name="twitter:description" content="List a business concept on the Dream Market. Set your price, keep ownership until it sells, and hand a complete idea to the founder who’ll build it."/>
   <meta name="twitter:image" content="https://accessyplabs.com/img/og-cover.png"/>
 </head><body>
 <a class="skip" href="#main">Skip to main content</a>
 <header class="site"><div class="wrap bar">
   <a class="brand" href="/">Access YP Labs</a>
-  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/app.html">Laboratory</a><a href="/marketplace.html">The Dreamhold</a></nav>
+  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/app.html">Laboratory</a><a href="/marketplace.html">The Dream Market</a></nav>
 </div></header>
 <main id="main" class="wrap">
-  <h1>Sell a concept on The Dreamhold</h1>
+  <h1>Sell a concept on The Dream Market</h1>
   <p class="muted">You can list at any stage. A fuller package — a business plan, a marketing strategy, and a build path — makes a stronger listing, and Clay can build these for you, but none of it is required to post. Buyers always see exactly how far along it is. Nothing lists until you submit it and staff review it.</p>
   <div id="feedback" role="alert" aria-live="assertive"></div>
 
@@ -120,7 +120,7 @@ async function loadProjects(){
   try{
     const {concepts}=await Kiln.api('/concepts');
     const sel=document.getElementById('project');
-    // Running businesses can't be listed in the Dreamhold — never offer them here.
+    // Running businesses can't be listed in the Dream Market — never offer them here.
     concepts.filter(c=>!c.is_operating).forEach(c=>{const o=el('option',null,c.title);o.value=c.id;sel.appendChild(o);});
   }catch(e){show(e.message);}
 }

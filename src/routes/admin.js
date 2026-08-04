@@ -91,7 +91,7 @@ router.get('/overview', authenticate, authorize('staff', 'admin', 'master_staff'
 
 // Testing mode — a staff member's own switch between two ways of experiencing the platform:
 //   OFF (billing_test=false): full staff access, no paywalls — for testing building, publishing,
-//     and browsing the Dreamhold without money getting in the way.
+//     and browsing the Dream Market without money getting in the way.
 //   ON  (billing_test=true):  go through the REAL subscribe / paywall / pay flow, to test money
 //     end to end as a normal user would.
 // It only ever changes the CALLER'S OWN account, so it can't touch anyone else — and authenticate

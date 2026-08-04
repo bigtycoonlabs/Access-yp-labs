@@ -1,4 +1,4 @@
-// Proof badge — the visible trust signal that makes a Dreamhold concept
+// Proof badge — the visible trust signal that makes a Dream Market concept
 // different from a bare idea on a flip site. Renders real, earned signals only:
 // captured waitlist demand, whether the concept was written against real
 // research, and whether its concrete claims passed a source self-check. Honest:

@@ -1,7 +1,7 @@
 // THE DESK — Access YP Labs' public window.
 //
 // A live, honest pulse of the platform: how many ideas have taken shape, how many are live in the
-// Dreamhold, and a gentle feed of ideas being shaped and arriving for sale. It exists to show the
+// Dream Market, and a gentle feed of ideas being shaped and arriving for sale. It exists to show the
 // world, truthfully, that here the ideas of the future get built, proven, and sold.
 //
 // PRIVACY-SAFE BY CONSTRUCTION (the same discipline Arbo's public desk holds — aggregate only, no

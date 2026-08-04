@@ -49,7 +49,7 @@ router.post('/', authenticate, [
   const own = await query('SELECT id, is_operating FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, req.user.id]);
   if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
   if (own.rows[0].is_operating) {
-    throw new ApiError(409, 'The Dreamhold sells unlaunched ideas, not running businesses. This is marked as a business you already operate, so it can\u2019t be listed. Clay can still help you enhance it — or find a complementary dream to add to it.');
+    throw new ApiError(409, 'The Dream Market sells unlaunched ideas, not running businesses. This is marked as a business you already operate, so it can\u2019t be listed. Clay can still help you enhance it — or find a complementary dream to add to it.');
   }
 
   if (!risk_disclosed || !ownership_ack) {
@@ -147,7 +147,7 @@ router.get('/', asyncHandler(async (req, res) => {
   const r = await query(
     `SELECT l.id, l.format, l.price_cents, l.starting_bid_cents, l.auction_close_at,
             l.stage_label, l.completion_target, l.created_at,
-            c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dreamhold creator') AS seller_alias,
+            c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dream Market creator') AS seller_alias,
             c.research_grounded, c.claims_verified, c.source_count,
             left(c.clays_take, 240) AS pitch,
             (SELECT COUNT(*)::int FROM waitlist_signups w WHERE w.concept_id=l.concept_id) AS waiting
@@ -173,7 +173,7 @@ router.get('/leaping', authenticate, asyncHandler(async (req, res) => {
   const r = await query(
     `SELECT l.id, l.format, l.price_cents, l.starting_bid_cents, l.auction_close_at,
             l.stage_label, l.completion_target, l.created_at,
-            c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dreamhold creator') AS seller_alias,
+            c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dream Market creator') AS seller_alias,
             c.research_grounded, c.claims_verified, c.source_count,
             left(c.clays_take, 240) AS pitch,
             (SELECT COUNT(*)::int FROM waitlist_signups w WHERE w.concept_id=l.concept_id) AS waiting
@@ -203,7 +203,7 @@ router.get('/today', authenticate, asyncHandler(async (req, res) => {
     const r = await query(
       `SELECT l.id, l.format, l.price_cents, l.starting_bid_cents, l.auction_close_at,
               l.stage_label, l.created_at,
-              c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dreamhold creator') AS seller_alias,
+              c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dream Market creator') AS seller_alias,
               c.research_grounded, c.claims_verified, c.source_count,
               left(c.clays_take, 240) AS pitch,
               (l.created_at >= now() - interval '24 hours') AS is_new_today,
@@ -267,7 +267,7 @@ router.get('/:id/demo-description', asyncHandler(async (req, res) => {
 // Single listing (public if live; owner may view any state).
 router.get('/:id', asyncHandler(async (req, res) => {
   const r = await query(
-    `SELECT l.*, c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dreamhold creator') AS seller_alias,
+    `SELECT l.*, c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dream Market creator') AS seller_alias,
             c.research_grounded, c.claims_verified, c.source_count, c.next_steps, c.clays_take,
             (SELECT COUNT(*)::int FROM waitlist_signups w WHERE w.concept_id=l.concept_id) AS waiting,
             CASE WHEN c.show_working_since THEN c.working_since ELSE NULL END AS working_since
