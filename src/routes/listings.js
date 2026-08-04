@@ -149,6 +149,7 @@ router.get('/', asyncHandler(async (req, res) => {
             l.stage_label, l.completion_target, l.created_at,
             c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dreamhold creator') AS seller_alias,
             c.research_grounded, c.claims_verified, c.source_count,
+            left(c.clays_take, 240) AS pitch,
             (SELECT COUNT(*)::int FROM waitlist_signups w WHERE w.concept_id=l.concept_id) AS waiting
      FROM listings l
      JOIN concepts c ON c.id=l.concept_id
@@ -174,6 +175,7 @@ router.get('/leaping', authenticate, asyncHandler(async (req, res) => {
             l.stage_label, l.completion_target, l.created_at,
             c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dreamhold creator') AS seller_alias,
             c.research_grounded, c.claims_verified, c.source_count,
+            left(c.clays_take, 240) AS pitch,
             (SELECT COUNT(*)::int FROM waitlist_signups w WHERE w.concept_id=l.concept_id) AS waiting
      FROM listings l JOIN concepts c ON c.id=l.concept_id JOIN users u ON u.id=l.seller_id
      WHERE l.status='live'
@@ -203,6 +205,7 @@ router.get('/today', authenticate, asyncHandler(async (req, res) => {
               l.stage_label, l.created_at,
               c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dreamhold creator') AS seller_alias,
               c.research_grounded, c.claims_verified, c.source_count,
+              left(c.clays_take, 240) AS pitch,
               (l.created_at >= now() - interval '24 hours') AS is_new_today,
               (SELECT COUNT(*)::int FROM waitlist_signups w WHERE w.concept_id=l.concept_id) AS waiting
        FROM listings l JOIN concepts c ON c.id=l.concept_id JOIN users u ON u.id=l.seller_id
@@ -265,7 +268,7 @@ router.get('/:id/demo-description', asyncHandler(async (req, res) => {
 router.get('/:id', asyncHandler(async (req, res) => {
   const r = await query(
     `SELECT l.*, c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dreamhold creator') AS seller_alias,
-            c.research_grounded, c.claims_verified, c.source_count, c.next_steps,
+            c.research_grounded, c.claims_verified, c.source_count, c.next_steps, c.clays_take,
             (SELECT COUNT(*)::int FROM waitlist_signups w WHERE w.concept_id=l.concept_id) AS waiting,
             CASE WHEN c.show_working_since THEN c.working_since ELSE NULL END AS working_since
      FROM listings l JOIN concepts c ON c.id=l.concept_id JOIN users u ON u.id=l.seller_id

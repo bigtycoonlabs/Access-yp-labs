@@ -58,6 +58,17 @@ function riskPanel(listing){
   return r;
 }
 
+// Clay's take — the compelling read on the opportunity itself: why it's worth doing, the real
+// pain it answers, and the honest challenge. This is the narrative that makes a listing specific
+// instead of generic. Shown for everyone, right after the proof badge.
+function takePanel(listing){
+  if(!listing.clays_take || !String(listing.clays_take).trim()) return null;
+  const p=el('div','panel'); p.setAttribute('aria-label','Clay’s take on this opportunity');
+  p.appendChild(el('h2',null,'Clay’s take on this opportunity'));
+  p.appendChild(el('p',null,String(listing.clays_take).trim()));
+  return p;
+}
+
 // The honest picture — the four things every buyer deserves to understand at a glance, on EVERY
 // live listing, with honest fallbacks so none of the four is ever silently blank: what you get,
 // the proof so far, the risk that remains, and your first step after you claim it.
@@ -189,7 +200,8 @@ async function load(){
 
     const pb=window.proofBadge(listing,{full:true}); if(pb) detail.appendChild(pb);
 
-    // The four things every buyer deserves, on every live listing, before anything else.
+    // Clay's take on the opportunity, then the four honest facts every buyer deserves.
+    const tk=takePanel(listing); if(tk) detail.appendChild(tk);
     detail.appendChild(clarityBlock(listing));
 
     if(!Kiln.isLoggedIn()){

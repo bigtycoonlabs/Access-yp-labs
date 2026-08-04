@@ -71,9 +71,12 @@ function esc(t){const d=document.createElement('div');d.textContent=t==null?'':t
 function renderCard(l,into,leaping){
   const c=document.createElement('article');c.className='card';
   const price=l.format==='auction'?('Auction from '+money(l.starting_bid_cents)):money(l.price_cents);
+  const pitch=(l.pitch||'').trim();
+  const pitchHtml=pitch?('<p>'+esc(pitch)+(pitch.length>=240?'…':'')+'</p>'):'';
   c.innerHTML=(leaping?'<p class="muted" style="margin:0 0 4px;color:#8ce0ff;">A dream leaning toward you</p>':'')+
     '<h3>'+esc(l.title)+'</h3>'+
     '<p class="muted">'+esc((l.category||'').replace(/_/g,' '))+' · '+esc((l.stage_label||'').replace(/_/g,' '))+'</p>'+
+    pitchHtml+
     '<p class="price">'+price+'</p>';
   const a=document.createElement('a');a.className='btn';a.href='/listing.html?id='+encodeURIComponent(l.id);
   a.textContent='Check it out'; c.appendChild(a); into.appendChild(c);
