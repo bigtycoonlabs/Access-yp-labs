@@ -64,7 +64,7 @@ const TOOLS = {
     irreversible: false, requires_confirmation: false,
     required: ['prompt'],
     enums: { category: CATEGORIES },
-    summary: 'Shape a new concept package with Clay. Free; nothing is published.',
+    summary: 'Shape a full concept package with Clay. Only call this once you actually understand the idea — never on a raw one-liner you have not pressure-tested with a sharpening question or two first, unless the person clearly says to just build it. Free; nothing is published.',
   },
   enhance_concept: {
     irreversible: false, requires_confirmation: false,
