@@ -51,8 +51,21 @@ cap. (The purchasable $2.99/month add-on itself is the next billing item — see
 the Laboratory) or the creator's own domain connected via Cloudflare for SaaS (one CNAME, auto-HTTPS).
 Host-based serving resolves either to the right site; the whole app layer is complete.
 
+**Staff operations (Clay, role-gated).** Clay can now help the team RUN the platform, not just
+talk about it — one Clay whose staff tools are gated by role. Staff (e.g. Kennedy): platform pulse,
+marketplace review + decisions on policy grounds, report moderation, and health checks. Admins add
+account suspend/reinstate. Owners (Vission, Rel) add `manage_staff` to onboard the team. Regular
+builders are never offered a staff tool; every platform-changing action needs explicit confirmation
+and is refused at the executor if the role disallows it. The consequential listing decision is shared
+by the review route and Clay via `services/moderationCore.js` so it can't drift. Desk stories were
+rebuilt with a bigger topic pool and rotating narrative lenses so they stop feeling stale.
+
+A step-by-step **Cloudflare activation guide for Brandon** is delivered separately
+(Cloudflare-Activation-Access-YP-Labs.docx) covering the zone, the `*.sites` wildcard + certificate,
+Cloudflare for SaaS, the API token, and the Railway env vars.
+
 Infra: `site_pages` table (migration 025, live); `site_domains` table (migration 026, live);
-`launch_page` jsonb now carries `theme`, `hero_image`, `published_at`. 177 tests passing.
+`launch_page` jsonb now carries `theme`, `hero_image`, `published_at`. 184 tests passing.
 
 ---
 
