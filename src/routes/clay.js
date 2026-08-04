@@ -9,6 +9,7 @@ const clay = require('../services/clay');
 const seed = require('../services/clay/seed');
 const seedScheduler = require('../services/clay/seedScheduler');
 const intent = require('../services/clay/intent');
+const movement = require('../services/clay/movement');
 const proofPrompt = require('../services/clay/proofPrompt');
 const economics = require('../services/clay/economics');
 const images = require('../services/clay/images');
@@ -841,6 +842,18 @@ function buildExecutors(user) {
       return { status: 'path_set', path: r.intent.path, label: r.intent.label, note: r.intent.note,
         message: `Got it — this concept's plan is now "${r.intent.label}". I'll coach toward that.` };
     },
+    set_movement_state: async ({ concept_id, state, note }) => {
+      if (!movement.isLane(state)) return { status: 'error', message: 'That isn\'t a valid movement lane.' };
+      const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
+      if (!own.rows.length) return { status: 'error', message: 'Concept not found.' };
+      const noteVal = (typeof note === 'string' && note.trim()) ? note.trim().slice(0, 500) : null;
+      await query(
+        'UPDATE concepts SET movement_state=$3, movement_note=$4, movement_updated_at=NOW(), updated_at=NOW() WHERE id=$1 AND owner_id=$2',
+        [concept_id, user.id, state, noteVal]);
+      const d = movement.describe(state);
+      return { status: 'movement_set', state, label: d.label, note: noteVal,
+        message: `Marked this concept as "${d.label}" on the movement board.${noteVal ? '' : ' (Add a short why next time so the creator sees your read.)'}` };
+    },
     define_term: async ({ term }) => {
       const e = glossary.defineTerm(term);
       return e
@@ -903,7 +916,7 @@ router.post('/chat', authenticate, [
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   let conceptContext = null;
   if (req.body.concept_id) {
-    const c = await query('SELECT id, title, category, stage, risk_summary FROM concepts WHERE id=$1 AND owner_id=$2',
+    const c = await query('SELECT id, title, category, stage, risk_summary, movement_state, movement_note FROM concepts WHERE id=$1 AND owner_id=$2',
       [req.body.concept_id, req.user.id]);
     if (c.rows.length) {
       const a = await query(

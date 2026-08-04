@@ -118,6 +118,12 @@ const TOOLS = {
     enums: { path: ['build_myself', 'refine_to_sell', 'exploring'] },
     summary: "Record the creator's plan for THIS concept when they tell you: build_myself (launch it as a real business they run), refine_to_sell (polish it to sell in the Dreamhold), or exploring (undecided). note is an optional short line about their specific goal. Reversible — you can update it whenever their plan changes. Only set it from what the creator actually says; never guess it for them.",
   },
+  set_movement_state: {
+    irreversible: false, requires_confirmation: false,
+    required: ['concept_id', 'state'], optional: ['note'],
+    enums: { state: ['needs_customer_clarity', 'needs_proof', 'ready_to_package'] },
+    summary: "Place THIS concept on its honest movement lane from your proof read: needs_customer_clarity (no clear customer yet), needs_proof (a clear customer but nothing yet proves they'll pay), or ready_to_package (a clear customer AND real evidence they'll pay). note is a short line, in your own words, on WHY — it's shown to the creator on their board. Set it only from real behavior, never to flatter: ready_to_package needs evidence a stranger actually acted (a booked paid call, a preorder, a deposit, a converting landing page), not a strong plan. Reversible; update it as the truth changes.",
+  },
 };
 
 function getTool(name) { return TOOLS[name] || null; }

@@ -160,6 +160,7 @@
         inLane.forEach((x) => {
           const item = el('div'); item.style.marginBottom = '14px';
           item.appendChild(el('p', null, x.title));
+          if (x.movement_note) item.appendChild(el('p', 'muted', 'Clay’s read: ' + x.movement_note));
           item.appendChild(el('p', 'muted', 'Next: ' + lane.moves));
           const lbl = el('label', null, 'Move this concept to another lane'); lbl.setAttribute('for', 'mv-' + x.id);
           const sel = el('select'); sel.id = 'mv-' + x.id;
