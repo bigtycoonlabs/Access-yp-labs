@@ -9,10 +9,12 @@ const router = express.Router();
 
 const BUILD_PATH_TYPES = ['html_demo', 'website_prompt', 'build_instructions', 'code_file', 'built_site'];
 
-// Baseline gate: a concept can only be listed if it carries a real package —
-// a business plan, a marketing strategy, and at least one build path — made of
-// CURRENT, UNLOCKED assets. Assets locked by a prior sale can't be resold; the
-// seller must create new materials (enhance in Clay) before listing again.
+// A creator can list a concept at ANY stage of their work with Clay — early or finished. The
+// listing's honest-picture block shows buyers exactly how far along it is (what's built, what
+// proof exists, what risk remains, the first step), so an early concept lists honestly rather
+// than being blocked. This function no longer gates on how complete the package is; it reports
+// whether the concept's materials are exclusively locked from a prior sale (which still can't be
+// re-listed) and whether it carries any fresh material, plus the package flags for information.
 async function meetsBaseline(conceptId) {
   const r = await query(
     'SELECT type, exclusive_locked, is_current FROM assets WHERE concept_id=$1', [conceptId]);
@@ -53,16 +55,14 @@ router.post('/', authenticate, [
   if (!risk_disclosed || !ownership_ack) {
     throw new ApiError(400, 'You must disclose risk and acknowledge that a sale transfers ownership.');
   }
+  // No development-stage gate: a creator can post at any point in their work with Clay. The one
+  // thing still protected is exclusivity — materials sold with a concept are locked to that buyer
+  // and can't be re-listed; the seller enhances in Clay to make new ones.
   const base = await meetsBaseline(concept_id);
-  if (!base.ok) {
-    if (base.hasLocked && !base.anyFresh) {
-      throw new ApiError(409,
-        'The materials for this concept were sold with it and are locked as exclusive, so they can\u2019t be listed again. Enhance the concept in Clay to create new materials, then list it.',
-        { need_new_assets: true });
-    }
-    throw new ApiError(422, 'Concept does not meet the baseline to be listed.', {
-      needs: { business_plan: base.hasPlan, marketing_strategy: base.hasMarketing, build_path: base.hasBuildPath },
-    });
+  if (base.hasLocked && !base.anyFresh) {
+    throw new ApiError(409,
+      'The materials for this concept were sold with it and are locked as exclusive, so they can\u2019t be listed again. Enhance the concept in Clay to create new materials, then list it.',
+      { need_new_assets: true });
   }
   if (format === 'flat' && !isAboveFloor(price_cents)) throw new ApiError(400, 'Flat price must be at least $10.');
   if (format === 'auction' && !isAboveFloor(starting_bid_cents)) throw new ApiError(400, 'Starting bid must be at least $10.');
