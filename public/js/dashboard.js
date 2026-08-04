@@ -539,6 +539,16 @@
     catch (_) { location.replace('/login.html'); return; }
     if (['staff', 'admin', 'master_staff'].includes(me.role)) {
       const g = document.getElementById('global');
+      // Clay files help articles and stories to his Desk as drafts. Surface where to review them,
+      // with a live count — staff couldn't easily find the review page before.
+      try {
+        const { drafts } = await Kiln.api('/desk/drafts');
+        const n = (drafts || []).length;
+        const desk = el('a', 'btn' + (n ? '' : ' secondary'),
+          n ? ('Clay\u2019s Desk \u2014 ' + n + ' draft' + (n === 1 ? '' : 's') + ' waiting for review')
+            : 'Clay\u2019s Desk \u2014 review drafts');
+        desk.href = '/desk-admin.html'; desk.setAttribute('role', 'button'); g.appendChild(desk);
+      } catch (_) {}
       // Staff navigation now lives in the top menu (Staff → the staff hub), so the
       // dashboard stays uncluttered. Only the consultant-enroll action remains here.
       // Staff can post as a consultant directly — no application, no wait.
