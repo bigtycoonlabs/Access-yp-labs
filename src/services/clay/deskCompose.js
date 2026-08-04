@@ -9,22 +9,34 @@ const { query } = require('../../config/db');
 const agent = require('./agent');
 const provider = require('./provider');
 
-// On-brand topic pools, so auto-drafted pieces vary instead of repeating.
+// On-brand topic pools, so auto-drafted pieces vary instead of repeating. These are coaching
+// topics: real business and marketing strategy for two kinds of creator — someone shaping a new
+// idea to prove and sell, AND someone growing a business or digital asset they already run.
 const HELP_TOPICS = [
-  'choosing your path: build it, sell it in the Dream Market, or keep exploring',
-  'your first proof step: how a real stranger shows an idea has legs',
-  'what "go or kill" means, and why you decide it before the test',
-  'what makes a concept worth buying in the Dream Market',
-  'turning an idea you never built into an asset you own',
-  'why proof beats a polished pitch every time',
-  'finding the one customer who actually has the problem',
+  'the first ten customers: how to get them with no budget and no audience',
+  'proving an idea before you build it: a coming-soon page and a real waitlist',
+  'positioning: the one sentence that says who this is for and why it wins',
+  'pricing your offer without guessing — and when to raise it',
+  'turning a service you already do by hand into a product you can sell again and again',
+  'one marketing channel done well beats five done badly — how to pick yours',
+  'writing an offer people can’t ignore: the problem, the promise, the proof',
+  'the difference between a feature and a benefit, and why your marketing lives on the benefit',
+  'reading your own numbers: margin, break-even, and what a customer is really worth',
+  'getting your first case study, testimonial, or before-and-after — and using it',
+  'growing a business you already run: where the next dollar actually comes from',
+  'referrals on purpose: making it easy and worth it for a happy customer to send the next one',
+  'when to build it yourself and launch it, and when to package it and sell it',
+  'your first hire or first bit of help: what to hand off, and how to pay for it',
+  'a simple launch: going from a quiet coming-soon page to your first paying customer',
 ];
 const STORY_TOPICS = [
   'a small idea that sat in a drawer for years, then finally took shape',
   'the whitespace nobody else was building in',
   'a dream that found the founder who would finally build it',
-  'the night an "impossible" idea turned out to be simple',
+  'the night an “impossible” idea turned out to be simple',
   'two creators, one idea, and the honest question that changed it',
+  'a founder who already ran a business, and the small change that doubled it',
+  'the coming-soon page that got twelve strangers to raise their hand',
 ];
 
 function pickTopic(kind) {
@@ -33,11 +45,11 @@ function pickTopic(kind) {
 }
 
 function buildComposePrompt(kind, topic) {
-  const shared = 'Write it in your own voice for the PUBLIC Desk at Access YP Labs, where anyone — including people who have never signed up — might read it. It will be heard aloud by people using a screen reader, so write plain prose: no markdown, no bullet characters, no symbols, short paragraphs. Never fabricate a statistic, a testimonial, a real person, or a result; if you want to teach with numbers, say plainly they are illustrative. Stay true to what you believe: proof is behavior not compliments, the idea stays theirs, and honesty is the confidence. Return ONLY a minified JSON object, no prose around it and no code fences, with exactly these keys: "title" (short, real, no clickbait), "dek" (one warm sentence under the title), "body" (the piece itself, a few short paragraphs).';
+  const shared = 'Write it in your own voice for the PUBLIC Desk at Access YP Labs, where anyone — including people who have never signed up — might read it. It will be heard aloud by people using a screen reader, so write plain prose: no markdown, no bullet characters, no symbols, short paragraphs. Never fabricate a statistic, a testimonial, a real person, or a result; if you want to teach with numbers, use round, clearly illustrative ones and say plainly they are illustrative. Stay true to what you believe: proof is behavior not compliments, the idea stays theirs, and honesty is the confidence. Return ONLY a minified JSON object, no prose around it and no code fences, with exactly these keys: "title" (short, real, no clickbait), "dek" (one warm sentence under the title), "body" (the piece itself, a few short paragraphs).';
   if (kind === 'story') {
-    return `Write a SHORT, witty, warm story for the Desk about: ${topic}. Keep it genuinely charming and human, never cheesy, and land it on something true about building ideas here. Under 250 words. ${shared}`;
+    return `Write a SHORT, witty, warm story for the Desk about: ${topic}. Keep it genuinely charming and human, never cheesy, and land it on something true about building — or growing — a business here. Under 250 words. ${shared}`;
   }
-  return `Write a genuinely useful HELP article for the Desk that teaches one thing well: ${topic}. Be concrete and practical — someone should be able to act on it today. Under 350 words. ${shared}`;
+  return `Write a genuinely useful COACHING article for the Desk on this business or marketing topic: ${topic}. Coach like a sharp operator who has done this, not a listicle — teach ONE thing with real substance and give the reader a concrete move they can make this week. Remember two kinds of reader: someone shaping a brand-new idea to prove and maybe sell, AND someone already running a business or a digital asset who wants it to grow. Speak to whichever the topic fits, or to both. When numbers would make it click, walk one small illustrative example step by step. Under 500 words, and every sentence earns its place. ${shared}`;
 }
 
 function parsePiece(text) {
