@@ -137,6 +137,52 @@
     } catch (e) { if (sec) sec.hidden = true; }   // an enhancement, not core — stay quiet on error
   }
 
+  // The per-concept movement board. Lane copy mirrors src/services/clay/movement.js.
+  const BOARD_LANES = [
+    { key: 'needs_customer_clarity', label: 'Needs customer clarity',
+      moves: 'Name one specific person or group who has this problem badly enough to pay for a fix.' },
+    { key: 'needs_proof', label: 'Needs proof',
+      moves: 'Get one real proof action — a booked paid call, a preorder, a deposit, a landing page that converts. A stranger acting, not a compliment.' },
+    { key: 'ready_to_package', label: 'Ready to package',
+      moves: 'You have a clear customer and real evidence they’ll pay — it’s ready to package and list in the Dreamhold.' },
+  ];
+  async function loadBoard() {
+    const c = document.getElementById('board'); if (!c) return; c.innerHTML = '';
+    try {
+      const { concepts } = await Kiln.api('/concepts');
+      const items = (concepts || []).filter((x) => !x.is_operating);
+      if (!items.length) { empty(c, 'No concepts on the path yet. Open the laboratory to shape one with Clay.'); return; }
+      BOARD_LANES.forEach((lane) => {
+        const inLane = items.filter((x) => (x.movement_state || 'needs_customer_clarity') === lane.key);
+        const sec = el('div', 'panel');
+        sec.appendChild(el('h3', null, lane.label + ' (' + inLane.length + ')'));
+        if (!inLane.length) { sec.appendChild(el('p', 'muted', 'None here yet.')); c.appendChild(sec); return; }
+        inLane.forEach((x) => {
+          const item = el('div'); item.style.marginBottom = '14px';
+          item.appendChild(el('p', null, x.title));
+          item.appendChild(el('p', 'muted', 'Next: ' + lane.moves));
+          const lbl = el('label', null, 'Move this concept to another lane'); lbl.setAttribute('for', 'mv-' + x.id);
+          const sel = el('select'); sel.id = 'mv-' + x.id;
+          BOARD_LANES.forEach((l) => { const o = el('option', null, l.label); o.value = l.key; if (l.key === lane.key) o.selected = true; sel.appendChild(o); });
+          const save = el('button', 'btn secondary', 'Update lane'); save.type = 'button';
+          save.addEventListener('click', async () => {
+            if (sel.value === lane.key) { announce('That concept is already in ' + lane.label + '.', true); return; }
+            save.disabled = true;
+            try {
+              await Kiln.api('/concepts/' + x.id + '/movement', { method: 'PUT', body: { movement_state: sel.value } });
+              const to = (BOARD_LANES.find((l) => l.key === sel.value) || {}).label || sel.value;
+              announce(x.title + ' moved to ' + to + '.', true);
+              loadBoard();
+            } catch (e) { announce(e.message, true); save.disabled = false; }
+          });
+          item.appendChild(lbl); item.appendChild(sel); item.appendChild(save);
+          sec.appendChild(item);
+        });
+        c.appendChild(sec);
+      });
+    } catch (e) { fail(c, e); }
+  }
+
   // The public pen name — see it and edit it. Uses the existing seller status + alias endpoints.
   async function loadPenName() {
     const c = document.getElementById('penname'); if (!c) return; c.innerHTML = '';
@@ -552,7 +598,7 @@
       setTimeout(() => loadSubs(), 8000);
     }
     if (q.get('sub') === 'canceled') announce('Checkout canceled — you were not charged.', true);
-    loadTodaysDreams(); loadProofStep(); loadPayouts(); loadPenName(); loadSubs(); loadConcepts(); loadListings(); loadOrders(); loadEngagements(); loadWatches(); loadTuning();
+    loadTodaysDreams(); loadProofStep(); loadPayouts(); loadPenName(); loadSubs(); loadConcepts(); loadBoard(); loadListings(); loadOrders(); loadEngagements(); loadWatches(); loadTuning();
     document.getElementById('signout').addEventListener('click', (e) => { e.preventDefault(); Kiln.clearTokens(); location.href = '/'; });
   })();
 })();

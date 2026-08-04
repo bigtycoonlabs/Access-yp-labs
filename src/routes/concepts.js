@@ -7,6 +7,7 @@ const { CATEGORIES, MODES } = require('../services/clay/tools');
 const { conceptEntitlement, paywall, isStaff, billingExempt, redactLockedAssets } = require('../lib/entitlement');
 const protect = require('../lib/protect');
 const retrieval = require('../services/clay/retrieval');
+const movement = require('../services/clay/movement');
 
 const ASSET_TYPES = ['business_plan', 'marketing_strategy', 'customer_research', 'competitor_research',
   'regulatory_risk', 'html_demo', 'example_image', 'website_prompt', 'build_instructions', 'code_file', 'built_site'];
@@ -179,6 +180,19 @@ router.patch('/:id', authenticate, [
      WHERE id=$1 AND owner_id=$2 RETURNING *`,
     [req.params.id, req.user.id, title, stage, category, risk_summary,
      working_since || null, typeof show_working_since === 'boolean' ? show_working_since : null]);
+  if (!r.rows.length) throw new ApiError(404, 'Concept not found.');
+  res.json({ concept: r.rows[0] });
+}));
+
+// Per-concept movement board: the creator records which honest lane a concept is really in on the
+// path from idea to a business someone will pay for. Owner-scoped; validated against the fixed set.
+router.put('/:id/movement', authenticate, asyncHandler(async (req, res) => {
+  const state = req.body && req.body.movement_state;
+  if (!movement.isLane(state)) throw new ApiError(400, 'That is not a valid lane.');
+  const r = await query(
+    `UPDATE concepts SET movement_state=$3, movement_updated_at=NOW(), updated_at=NOW()
+     WHERE id=$1 AND owner_id=$2 RETURNING id, movement_state, movement_updated_at`,
+    [req.params.id, req.user.id, state]);
   if (!r.rows.length) throw new ApiError(404, 'Concept not found.');
   res.json({ concept: r.rows[0] });
 }));
