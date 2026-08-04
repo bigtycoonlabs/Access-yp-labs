@@ -55,10 +55,12 @@ async function send(){
     if(data.status==='confirmation_required'){
       if(data.reply)addTurn('Clay',data.reply);
       renderConfirm(data.confirmation);
-    }else{
-      addTurn('Clay',data.reply||'(no reply)');
-      announce(data.reply||'Clay replied.',true);
+      sendBtn.disabled=false; return;
     }
+    var parts=(data.bubbles&&data.bubbles.length)?data.bubbles:[data.reply||'(no reply)'];
+    parts.forEach(function(p){addTurn('Clay',p);});
+    announce(parts.join(' '),true);
+    if(data.build_id){ sendBtn.disabled=false; watchBuild(data.build_id); return; }
   }catch(e){
     if(e&&(e.sessionExpired||e.status===401)){
       addTurn('Clay','Looks like your session timed out. I’m sending you to sign back in — your work is saved.');
@@ -70,6 +72,47 @@ async function send(){
     announce('Clay hit a snag. Nothing was fabricated.',true);
   }
   sendBtn.disabled=false;
+}
+async function watchBuild(buildId){
+  const d=el('div','turn clay');
+  d.appendChild(el('span','who','Clay:'));
+  const cap=el('span',null,'On it — I’ll call out each piece as I work.');
+  d.appendChild(cap);
+  log.appendChild(d); log.scrollTop=log.scrollHeight;
+  let shown=0, done=false; const started=Date.now();
+  while(!done){
+    await new Promise(function(r){setTimeout(r,2000);});
+    let data=null;
+    try{ data=await Kiln.api('/clay/build/'+buildId); }catch(_){ }
+    if(data){
+      const notes=data.notes||[];
+      for(;shown<notes.length;shown++){
+        cap.textContent=notes[shown].text;
+        announce(notes[shown].text);
+        log.scrollTop=log.scrollHeight;
+      }
+      if(data.status==='done'){
+        done=true;
+        const m=data.message||'Your concept is ready.';
+        cap.textContent=m;
+        if(data.concept_id){
+          d.appendChild(document.createElement('br'));
+          const a=el('a',null,'Open it in your Laboratory →');
+          a.href='/app.html'; d.appendChild(a);
+        }
+        announce(m,true);
+      }else if(data.status==='failed'){
+        done=true;
+        const m=data.message||'That build didn’t finish. Nothing was fabricated — try again in a moment.';
+        cap.textContent=m; announce(m,true);
+      }
+    }
+    if(!done && Date.now()-started>360000){
+      done=true;
+      cap.textContent='This one’s taking longer than usual — I’ll email it to you the moment it’s ready, and it’ll be in your Laboratory. Nothing was lost.';
+      announce('This build is taking longer than usual. Clay will email it when it is ready.',true);
+    }
+  }
 }
 function renderConfirm(c){
   const box=el('div','confirm');

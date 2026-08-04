@@ -162,7 +162,7 @@ async function generate({ mode, category, prompt, operating = false, priorWork =
     prompt || '(no prompt provided)',
   ].join('\n');
 
-  await note('Researching the market and checking for real-world signals…');
+  await note('Researching the market, the real demand, and the competitors you’d be up against…');
   const grounding = await gatherGrounding(prompt, category);
   let userMsgFull = grounding.text ? (userMsg + '\n' + grounding.text) : userMsg;
 
@@ -218,6 +218,7 @@ async function generate({ mode, category, prompt, operating = false, priorWork =
   await note('Writing it all out now — I’ll call out each piece as I go.');
   const STAGE_NOTES = [
     'Shaping the business plan — the model, the money, and the first real customer.',
+    'Pinning down exactly who this is for — the customer, in real detail.',
     'Now the marketing strategy — who hears about this first, and how they find you.',
     'Building the working demo you’ll be able to click through.',
     'Mapping the build path — the concrete steps to stand this up.',

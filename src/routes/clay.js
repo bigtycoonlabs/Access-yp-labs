@@ -414,7 +414,7 @@ router.post('/generate', authenticate, [
   // Laboratory. We also open a build record so the user can WATCH Clay work live if they
   // want (the client polls GET /clay/build/:id). Fire-and-forget: runBuild owns its own
   // errors, so we never await it.
-  const buildId = await createBuild(req.user.id, 'Got it — starting your build.');
+  const buildId = await createBuild(req.user.id, buildOpener(prompt, 'Got it — shaping your idea'));
   runBuild({ user: req.user, mode, category, prompt, operating, conceptId: concept_id || null, buildId, uploadIds })
     .catch(() => {});
 
@@ -795,7 +795,7 @@ function buildExecutors(user) {
     generate_concept: async ({ prompt, category }) => {
       // Run the 1–3 minute build in the background so the chat request returns fast; the
       // client watches progress by build id. Same pipeline as POST /clay/generate.
-      const buildId = await createBuild(user.id, 'Shaping your concept…');
+      const buildId = await createBuild(user.id, buildOpener(prompt, 'Got it — shaping your idea'));
       runBuild({ user, mode: 'create', category: category || null, prompt, operating: false, conceptId: null, buildId })
         .catch(() => {});
       return { status: 'building', build_id: buildId, message: 'Shaping the concept now — this takes a minute or two, and you can watch it happen.' };
@@ -814,7 +814,7 @@ function buildExecutors(user) {
         ? `You are refining an EXISTING concept titled "${own.rows[0].title}". Here is its current content — keep what works and change only what the user asks for:\n\n${currentContent}\n\n--- THE CHANGE THE USER WANTS ---\n${prompt}`
         : prompt;
       // Rebuild in the background so the chat stays responsive; client watches by build id.
-      const buildId = await createBuild(user.id, 'Refining your concept…');
+      const buildId = await createBuild(user.id, buildOpener(prompt, 'On it — refining'));
       runBuild({ user, mode: 'enhance', category: own.rows[0].category || null, prompt: groundedPrompt, operating: false, conceptId: concept_id, buildId })
         .catch(() => {});
       return { status: 'building', build_id: buildId, message: 'Refining the materials now — this takes a minute or two, and you can watch it happen.' };
@@ -1137,6 +1137,14 @@ async function notifyBuildOutcome(user, message){
 // Clay narrates its work so a user can watch it build in real time (or step away and let
 // the email catch them). Notes are appended to a clay_builds row the client polls. Every
 // write here is best-effort: progress reporting must never affect or slow the build.
+// A first note that reflects the person's ACTUAL idea back to them, so the very first thing
+// they see shows Clay understood — not a generic "starting your build." Echoes their own words
+// (trimmed), so it's honest and specific, never invented.
+function buildOpener(prompt, verb){
+  const p = String(prompt || '').replace(/\s+/g, ' ').trim();
+  const gist = p.length > 90 ? p.slice(0, 88).trim() + '…' : p;
+  return gist ? `${verb} — “${gist}”. Starting now.` : `${verb}. Starting now.`;
+}
 async function createBuild(actorId, firstNote){
   try {
     const notes = firstNote ? [{ at: new Date().toISOString(), text: firstNote }] : [];
