@@ -15,11 +15,16 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// A concept accepts public waitlist signups only once it is publicly discoverable
-// (it has a live listing) — that's where the public page lives, and it keeps
-// people from spraying signups at arbitrary concept ids.
+// A concept accepts public waitlist signups once it is publicly discoverable — either it has a
+// live sale listing, OR the creator has published a coming-soon launch page for it. Either way
+// there's a real public page raising its hand, so signups are grounded and can't be sprayed at
+// arbitrary concept ids.
 async function conceptIsPublic(conceptId) {
-  const r = await query("SELECT 1 FROM listings WHERE concept_id=$1 AND status='live' LIMIT 1", [conceptId]);
+  const r = await query(
+    `SELECT 1 FROM listings WHERE concept_id=$1 AND status='live'
+     UNION ALL
+     SELECT 1 FROM concepts WHERE id=$1 AND (launch_page->>'enabled')='true'
+     LIMIT 1`, [conceptId]);
   return r.rows.length > 0;
 }
 

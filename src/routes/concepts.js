@@ -10,6 +10,8 @@ const retrieval = require('../services/clay/retrieval');
 const movement = require('../services/clay/movement');
 const valuation = require('../services/clay/valuation');
 const brief = require('../services/clay/brief');
+const launchPage = require('../services/clay/launchPage');
+const crypto = require('crypto');
 
 const ASSET_TYPES = ['business_plan', 'marketing_strategy', 'customer_research', 'competitor_research',
   'regulatory_risk', 'html_demo', 'example_image', 'website_prompt', 'build_instructions', 'code_file', 'built_site'];
@@ -216,6 +218,39 @@ router.post('/:id/brief', authenticate, asyncHandler(async (req, res) => {
       message: 'Couldn’t write the brief just now — the writer isn’t available here, or there wasn’t enough to ground it. Try again in a moment.' });
   }
   res.json({ ok: true, brief: b });
+}));
+
+// Set the concept's coming-soon launch page: the copy (Clay and the creator write it together)
+// and whether it's published. Publishing makes a public page at /p/<slug> whose email capture
+// feeds the concept's waitlist as real proof of demand. Owner-scoped; reversible — publish:false
+// unpublishes without losing the copy.
+router.put('/:id/launch-page', authenticate, asyncHandler(async (req, res) => {
+  const own = await query('SELECT id, title, launch_page FROM concepts WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
+  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  const cur = own.rows[0].launch_page || {};
+  const copy = launchPage.parseConfig({ ...cur, ...(req.body || {}) });
+
+  let enabled = !!cur.enabled;
+  if (req.body && req.body.publish === true) enabled = true;
+  if (req.body && req.body.publish === false) enabled = false;
+  if (enabled && !copy.headline) throw new ApiError(400, 'Give the page a headline before publishing it.');
+
+  // A stable public slug, generated from the title the first time it's published, kept thereafter.
+  let slug = cur.slug || null;
+  if (enabled && !slug) {
+    const base = launchPage.slugify(own.rows[0].title);
+    slug = base;
+    for (let i = 0; i < 6; i++) {
+      const taken = await query("SELECT 1 FROM concepts WHERE launch_page->>'slug'=$1 AND id<>$2", [slug, req.params.id]);
+      if (!taken.rows.length) break;
+      slug = base + '-' + crypto.randomUUID().slice(0, 4);
+    }
+  }
+
+  const page = { ...copy, enabled, slug: slug || null };
+  await query('UPDATE concepts SET launch_page=$2::jsonb, updated_at=NOW() WHERE id=$1', [req.params.id, JSON.stringify(page)]);
+  const site = (process.env.CLIENT_URL || 'https://accessyplabs.com').replace(/\/$/, '');
+  res.json({ ok: true, launch_page: page, url: page.slug ? `${site}/p/${page.slug}` : null });
 }));
 // path from idea to a business someone will pay for. Owner-scoped; validated against the fixed set.
 router.put('/:id/movement', authenticate, asyncHandler(async (req, res) => {

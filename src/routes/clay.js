@@ -10,6 +10,8 @@ const seed = require('../services/clay/seed');
 const seedScheduler = require('../services/clay/seedScheduler');
 const intent = require('../services/clay/intent');
 const movement = require('../services/clay/movement');
+const launchPage = require('../services/clay/launchPage');
+const crypto = require('crypto');
 const valuation = require('../services/clay/valuation');
 const proofPrompt = require('../services/clay/proofPrompt');
 const economics = require('../services/clay/economics');
@@ -871,6 +873,34 @@ function buildExecutors(user) {
       const d = movement.describe(state);
       return { status: 'movement_set', state, label: d.label, note: noteVal,
         message: `Marked this concept as "${d.label}" on the movement board.${noteVal ? '' : ' (Add a short why next time so the creator sees your read.)'}` };
+    },
+    set_launch_page: async ({ concept_id, headline, subhead, blurb, cta_label, publish }) => {
+      const own = await query('SELECT id, title, launch_page FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
+      if (!own.rows.length) return { status: 'error', message: 'Concept not found.' };
+      const cur = own.rows[0].launch_page || {};
+      const copy = launchPage.parseConfig({ ...cur, headline, subhead, blurb, cta_label });
+      let enabled = !!cur.enabled;
+      if (publish === true || publish === 'true') enabled = true;
+      if (publish === false || publish === 'false') enabled = false;
+      if (enabled && !copy.headline) return { status: 'error', message: 'It needs a headline before it can go public.' };
+      let slug = cur.slug || null;
+      if (enabled && !slug) {
+        const base = launchPage.slugify(own.rows[0].title);
+        slug = base;
+        for (let i = 0; i < 6; i++) {
+          const taken = await query("SELECT 1 FROM concepts WHERE launch_page->>'slug'=$1 AND id<>$2", [slug, concept_id]);
+          if (!taken.rows.length) break;
+          slug = `${base}-${crypto.randomUUID().slice(0, 4)}`;
+        }
+      }
+      const page = { ...copy, enabled, slug: slug || null };
+      await query('UPDATE concepts SET launch_page=$2::jsonb, updated_at=NOW() WHERE id=$1', [concept_id, JSON.stringify(page)]);
+      const site = (process.env.CLIENT_URL || 'https://accessyplabs.com').replace(/\/$/, '');
+      const url = page.slug ? `${site}/p/${page.slug}` : null;
+      return { status: enabled ? 'launch_page_published' : 'launch_page_saved', published: enabled, url,
+        message: enabled
+          ? `The coming-soon page is live at ${url} — share that link and every email that comes in lands on this concept's waitlist as real proof.`
+          : 'Saved the launch-page copy. It is not public yet — say the word and I can publish it.' };
     },
     define_term: async ({ term }) => {
       const e = glossary.defineTerm(term);

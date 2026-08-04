@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Coming soon — Access YP Labs</title>
+<link rel="stylesheet" href="/css/kiln.css"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<style>
+  .launch{max-width:640px;margin:0 auto;padding:32px 20px;}
+  .launch h1{font-size:32px;line-height:1.15;margin:0 0 10px;}
+  .sub{font-size:19px;color:var(--muted);margin:0 0 18px;}
+  .blurb{font-size:17px;line-height:1.6;margin:0 0 24px;white-space:pre-wrap;}
+  .capture{border:1px solid var(--line);border-radius:12px;background:#fff;padding:20px;}
+  .capture label{display:block;font-weight:600;margin:0 0 6px;}
+  .capture input{width:100%;font-size:17px;padding:12px;border:1px solid var(--line);border-radius:8px;min-height:44px;box-sizing:border-box;}
+  .capture .btn{margin-top:12px;min-height:44px;}
+  .count{color:var(--muted);margin:12px 0 0;}
+  .foot{margin-top:28px;color:var(--muted);font-size:14px;}
+</style>
+</head>
+<body>
+<main class="launch" id="main">
+  <p id="status" role="status" aria-live="polite" class="muted">Loading…</p>
+  <div id="page" hidden>
+    <h1 id="headline"></h1>
+    <p class="sub" id="subhead" hidden></p>
+    <p class="blurb" id="blurb" hidden></p>
+    <div class="capture">
+      <label for="email">Enter your email to be first in line</label>
+      <input id="email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-describedby="cap-note"/>
+      <button type="button" class="btn" id="join">Get early access</button>
+      <p id="cap-note" class="count"></p>
+      <p id="result" role="status" aria-live="polite"></p>
+    </div>
+    <p class="foot">A coming-soon page on Access YP Labs, where ideas get proven before they launch.</p>
+  </div>
+</main>
+<script>
+(function(){
+  var slug=decodeURIComponent((location.pathname.match(/^\/p\/([^\/?#]+)/)||[])[1]||'');
+  var conceptId=null;
+  var statusEl=document.getElementById('status');
+  var EMAIL=/^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  function show(el,txt){el.textContent=txt||'';el.hidden=!txt;}
+  function tally(n){return n?((n===1?'1 person has':n+' people have')+' raised their hand so far.'):'';}
+  async function load(){
+    if(!slug){statusEl.textContent='This page isn’t available.';return;}
+    try{
+      var r=await fetch('/api/launch/'+encodeURIComponent(slug));
+      if(!r.ok){statusEl.textContent='This page isn’t available.';return;}
+      var d=await r.json();
+      conceptId=d.concept_id;
+      document.title=(d.headline||d.title||'Coming soon')+' — coming soon';
+      document.getElementById('headline').textContent=d.headline||d.title||'Coming soon';
+      show(document.getElementById('subhead'),d.subhead);
+      show(document.getElementById('blurb'),d.blurb);
+      document.getElementById('join').textContent=d.cta_label||'Get early access';
+      document.getElementById('cap-note').textContent=tally(d.count);
+      statusEl.hidden=true; document.getElementById('page').hidden=false;
+    }catch(e){statusEl.textContent='This page isn’t available.';}
+  }
+  document.getElementById('join').addEventListener('click',async function(){
+    var email=(document.getElementById('email').value||'').trim();
+    var out=document.getElementById('result');
+    if(!EMAIL.test(email)){out.className='msg err';out.textContent='Please enter a valid email address.';return;}
+    if(!conceptId){out.className='msg err';out.textContent='This page isn’t available.';return;}
+    var btn=document.getElementById('join'); btn.disabled=true;
+    out.className='muted'; out.textContent='Adding you…';
+    try{
+      var r=await fetch('/api/waitlist/'+encodeURIComponent(conceptId),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email})});
+      var d=await r.json();
+      if(r.ok&&d.joined){
+        out.className='msg ok';
+        out.textContent=d.already?'You’re already on the list — nice.':'You’re on the list. We’ll be in touch.';
+        document.getElementById('cap-note').textContent=tally(d.count);
+        document.getElementById('email').value='';
+      } else { out.className='msg err'; out.textContent=(d&&d.error)||'Could not add you right now.'; }
+    }catch(e){ out.className='msg err'; out.textContent='Could not add you right now.'; }
+    btn.disabled=false;
+  });
+  load();
+})();
+</script>
+</body>
+</html>

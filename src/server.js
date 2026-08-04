@@ -48,6 +48,7 @@ app.use('/api/admin',         require('./routes/admin'));
 app.use('/api/maintenance',   require('./routes/maintenance'));
 app.use('/api/listings',      require('./routes/listings'));
 app.use('/api/waitlist',      require('./routes/waitlist'));
+app.use('/api/launch',        require('./routes/launch'));
 app.use('/api/desk',          require('./routes/desk'));
 app.use('/api',               require('./routes/visitor'));
 app.use('/api/bids',          require('./routes/bids'));
@@ -82,6 +83,7 @@ app.get('/api/ready', async (req, res) => {
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'API route not found.' }));
 app.get('/desk', (req, res) => res.sendFile(path.join(__dirname, '../public/desk.html')));
+app.get('/p/:slug', (req, res) => res.sendFile(path.join(__dirname, '../public/launch.html')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
 
 app.use((err, req, res, next) => {

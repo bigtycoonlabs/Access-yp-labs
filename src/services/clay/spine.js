@@ -129,6 +129,13 @@ const TOOLS = {
     enums: { state: ['needs_customer_clarity', 'needs_proof', 'ready_to_package'] },
     summary: "Place THIS concept on its honest movement lane from your proof read: needs_customer_clarity (no clear customer yet), needs_proof (a clear customer but nothing yet proves they'll pay), or ready_to_package (a clear customer AND real evidence they'll pay). note is a short line, in your own words, on WHY — it's shown to the creator on their board. Set it only from real behavior, never to flatter: ready_to_package needs evidence a stranger actually acted (a booked paid call, a preorder, a deposit, a converting landing page), not a strong plan. Reversible; update it as the truth changes.",
   },
+  set_launch_page: {
+    irreversible: false, requires_confirmation: false,
+    required: ['concept_id'],
+    optional: ['headline', 'subhead', 'blurb', 'cta_label', 'publish'],
+    enums: {},
+    summary: "Write or update THIS concept's coming-soon launch page — headline, subhead, blurb, and button label — and optionally publish it. Publishing puts up a real public page at /p/<slug> whose email signups feed the concept's waitlist as genuine proof of demand: the creator's first customer list. This is how someone launching an idea themselves starts proving it. Draft the copy WITH the creator in your own words, tight and honest, and only set publish=true once they've seen it and said go. Reversible — publish=false takes it down without losing the copy. Tell them the exact public link after you publish.",
+  },
 };
 
 function getTool(name) { return TOOLS[name] || null; }
