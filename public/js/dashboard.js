@@ -102,6 +102,41 @@
   }
 
   // ---------- Payouts ----------
+  async function loadProofStep() {
+    const sec = document.getElementById('proofstep-sec');
+    const c = document.getElementById('proofstep'); if (!c) return;
+    try {
+      const { prompt } = await Kiln.api('/clay/weekly-prompt');
+      if (!prompt) { if (sec) sec.hidden = true; return; }
+      c.innerHTML = '';
+      if (sec) sec.hidden = false;
+
+      const lead = el('p'); lead.appendChild(el('strong', null, 'Take: ' + prompt.concept_title)); c.appendChild(lead);
+      function labeled(label, text) {
+        const p = el('p'); p.appendChild(el('strong', null, label + ' ')); p.appendChild(document.createTextNode(text)); return p;
+      }
+      c.appendChild(labeled('One customer:', prompt.focus));
+      c.appendChild(labeled('One proof action:', prompt.action));
+      c.appendChild(labeled('Go or kill:', prompt.go_kill));
+
+      if (prompt.status === 'done') {
+        c.appendChild(el('p', 'muted', 'You marked this done. Nice — come tell Clay how it went.'));
+      } else {
+        const btn = el('button', 'btn', 'Mark this done'); btn.type = 'button';
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          try {
+            await Kiln.api('/clay/weekly-prompt/done', { method: 'POST', body: { id: prompt.id } });
+            announce('Marked your proof step done. Nice work.', true);
+            loadProofStep();
+          } catch (e) { btn.disabled = false; announce('That did not go through. Please try again.', true); }
+        });
+        c.appendChild(btn);
+        announce('Your proof step this week: take ' + prompt.concept_title + '. ' + prompt.action, false);
+      }
+    } catch (e) { if (sec) sec.hidden = true; }   // an enhancement, not core — stay quiet on error
+  }
+
   async function loadPayouts() {
     const c = document.getElementById('payouts'); c.innerHTML = '';
     try {
@@ -473,7 +508,7 @@
       setTimeout(() => loadSubs(), 8000);
     }
     if (q.get('sub') === 'canceled') announce('Checkout canceled — you were not charged.', true);
-    loadTodaysDreams(); loadPayouts(); loadSubs(); loadConcepts(); loadListings(); loadOrders(); loadEngagements(); loadWatches(); loadTuning();
+    loadTodaysDreams(); loadProofStep(); loadPayouts(); loadSubs(); loadConcepts(); loadListings(); loadOrders(); loadEngagements(); loadWatches(); loadTuning();
     document.getElementById('signout').addEventListener('click', (e) => { e.preventDefault(); Kiln.clearTokens(); location.href = '/'; });
   })();
 })();

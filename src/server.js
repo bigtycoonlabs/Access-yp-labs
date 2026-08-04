@@ -146,6 +146,16 @@ if (require.main === module) {
       .catch((e) => console.error('desk compose error:', e && e.message));
     setTimeout(deskTick, 8 * 60 * 1000);          // a few minutes after boot
     setInterval(deskTick, 12 * 60 * 60 * 1000);   // then twice a day (DB claim gates it to ~3 days)
+
+    // The weekly creator proof prompt. The tick claims a weekly slot atomically, then generates and
+    // emails a prompt to each creator who doesn't have one this week. Deterministic content (no LLM
+    // needed), best-effort, capped, and it can never double-send. A failure can't crash boot.
+    const proofPrompt = require('./services/clay/proofPrompt');
+    const proofTick = () => proofPrompt.tick()
+      .then((r) => { if (r && r.ok && (r.made || r.emailed)) console.log('proof prompts:', JSON.stringify(r)); })
+      .catch((e) => console.error('proof prompt error:', e && e.message));
+    setTimeout(proofTick, 10 * 60 * 1000);        // a few minutes after boot
+    setInterval(proofTick, 12 * 60 * 60 * 1000);  // then twice a day (DB claim gates it to weekly)
   }
 }
 module.exports = app;

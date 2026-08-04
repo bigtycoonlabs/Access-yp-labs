@@ -9,6 +9,7 @@ const clay = require('../services/clay');
 const seed = require('../services/clay/seed');
 const seedScheduler = require('../services/clay/seedScheduler');
 const intent = require('../services/clay/intent');
+const proofPrompt = require('../services/clay/proofPrompt');
 const economics = require('../services/clay/economics');
 const images = require('../services/clay/images');
 const imageBudget = require('../services/clay/imageBudget');
@@ -1158,6 +1159,22 @@ router.post('/health-check', authenticate, authorize('staff', 'admin', 'master_s
 // everything" surface — and the same truth Clay speaks via the check_systems tool.
 router.get('/systems', authenticate, authorize('staff', 'admin', 'master_staff'), asyncHandler(async (req, res) => {
   res.json(await health.systemsStatus());
+}));
+
+// The weekly creator proof prompt. GET returns this week's prompt (generating it on first view of
+// the week), or null when the creator has no concept of their own to prove yet. The prompt is about
+// the creator's OWN concept only — proofPrompt reads by owner_id, so it never crosses accounts.
+router.get('/weekly-prompt', authenticate, asyncHandler(async (req, res) => {
+  const prompt = await proofPrompt.currentPrompt(req.user.id);
+  res.json({ prompt });
+}));
+
+// Mark this week's proof step done. Owner-scoped: only the creator can complete their own prompt.
+router.post('/weekly-prompt/done', authenticate, asyncHandler(async (req, res) => {
+  const id = req.body && req.body.id;
+  if (!id) throw new ApiError(400, 'Which prompt? Include its id.');
+  const ok = await proofPrompt.markDone(req.user.id, id);
+  res.json({ ok });
 }));
 
 module.exports = router;
