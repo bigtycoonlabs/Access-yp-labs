@@ -69,6 +69,7 @@ fieldset{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margi
         <input id="penname" type="text" maxlength="40" placeholder="e.g. NightMarket"/>
         <button type="button" class="btn secondary" id="savepen">Save pen name</button>
         <p class="muted">Buyers see this name, never your account name. We still know it's you behind the scenes, for payouts and trust.</p></div>
+      <div id="value-guide" role="region" aria-label="What this concept is worth right now"></div>
     <div class="stack">
       <div><label for="format">Format</label>
         <select id="format"><option value="flat">Fixed price</option><option value="auction">Auction</option></select></div>
@@ -97,7 +98,23 @@ let conceptId='';
 function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
 function show(m,k){fb.innerHTML='<div class="msg '+(k||'err')+'">'+m+'</div>';announce(m,true);}
 function pickProject(id){conceptId=id;document.getElementById('sec2').hidden=!id;document.getElementById('sec3').hidden=!id;
-  if(id){announce('Project selected. Add materials or create your listing.',true);}}
+  if(id){announce('Project selected. Add materials or create your listing.',true);}
+  loadValueGuide(id);}
+
+function listPhrase(a){if(!a||!a.length)return'';if(a.length===1)return a[0];if(a.length===2)return a[0]+' and '+a[1];return a.slice(0,-1).join(', ')+', and '+a[a.length-1];}
+async function loadValueGuide(id){
+  const box=document.getElementById('value-guide'); if(!box) return; box.innerHTML='';
+  if(!id) return;
+  try{
+    const v=await Kiln.api('/concepts/'+id+'/value');
+    box.appendChild(el('h3',null,'What this is worth right now'));
+    box.appendChild(el('p',null,'Where it sits: '+v.tier_label+'.'));
+    if(v.drivers&&v.drivers.length) box.appendChild(el('p',null,'It carries '+listPhrase(v.drivers)+'.'));
+    box.appendChild(el('p',null,'A starting range: $'+v.range_usd.low+' to $'+v.range_usd.high+'.'));
+    if(v.to_raise&&v.to_raise.length) box.appendChild(el('p',null,'To be worth more, you could '+listPhrase(v.to_raise)+'.'));
+    box.appendChild(el('p','muted','This is a starting guide based on how much is built and proven — not a market appraisal. You set the price; buyers decide. Ask Clay to break it down further.'));
+  }catch(_){ /* guidance is best-effort; it must never block listing */ }
+}
 
 async function loadProjects(){
   try{

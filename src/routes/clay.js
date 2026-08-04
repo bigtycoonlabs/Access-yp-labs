@@ -10,6 +10,7 @@ const seed = require('../services/clay/seed');
 const seedScheduler = require('../services/clay/seedScheduler');
 const intent = require('../services/clay/intent');
 const movement = require('../services/clay/movement');
+const valuation = require('../services/clay/valuation');
 const proofPrompt = require('../services/clay/proofPrompt');
 const economics = require('../services/clay/economics');
 const images = require('../services/clay/images');
@@ -841,6 +842,23 @@ function buildExecutors(user) {
       if (!r.ok) return { status: 'error', message: r.reason === 'invalid_path' ? 'That isn\'t a valid path.' : 'Could not record the path.' };
       return { status: 'path_set', path: r.intent.path, label: r.intent.label, note: r.intent.note,
         message: `Got it — this concept's plan is now "${r.intent.label}". I'll coach toward that.` };
+    },
+    value_breakdown: async ({ concept_id }) => {
+      const c = await query(
+        'SELECT id, title, research_grounded, claims_verified, movement_state FROM concepts WHERE id=$1 AND owner_id=$2',
+        [concept_id, user.id]);
+      if (!c.rows.length) return { status: 'error', message: 'Concept not found.' };
+      const a = await query('SELECT type, is_current, exclusive_locked FROM assets WHERE concept_id=$1', [concept_id]);
+      const w = await query('SELECT COUNT(*)::int AS n FROM waitlist_signups WHERE concept_id=$1', [concept_id]);
+      const val = valuation.assessValue({ concept: c.rows[0], assets: a.rows, waiting: w.rows[0].n });
+      return {
+        status: 'value_breakdown',
+        tier: val.tier, tier_label: val.tierLabel,
+        suggested_range_usd: { low: Math.round(val.range.low_cents / 100), high: Math.round(val.range.high_cents / 100) },
+        it_has: val.drivers,
+        to_raise_value: val.toRaise,
+        note: 'This is a starting guide based on how much is built and proven, not a market appraisal or a promise. The creator sets the price; buyers decide.',
+      };
     },
     set_movement_state: async ({ concept_id, state, note }) => {
       if (!movement.isLane(state)) return { status: 'error', message: 'That isn\'t a valid movement lane.' };

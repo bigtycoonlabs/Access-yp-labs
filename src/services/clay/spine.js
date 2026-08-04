@@ -118,6 +118,11 @@ const TOOLS = {
     enums: { path: ['build_myself', 'refine_to_sell', 'exploring'] },
     summary: "Record the creator's plan for THIS concept when they tell you: build_myself (launch it as a real business they run), refine_to_sell (polish it to sell in the Dreamhold), or exploring (undecided). note is an optional short line about their specific goal. Reversible — you can update it whenever their plan changes. Only set it from what the creator actually says; never guess it for them.",
   },
+  value_breakdown: {
+    irreversible: false, requires_confirmation: false,
+    required: ['concept_id'], enums: {},
+    summary: "Break down what THIS concept is honestly worth as a listing, and why — based on how launch-ready it is. Returns the value drivers it already carries (a business plan, a marketing strategy, a working build a buyer could actually launch, real proof of demand), a suggested starting price range, and the specific things that would raise its value. Use it when a creator asks what to charge, what their concept is worth, or how to make it worth more. The range is a COMPLETENESS-based starting guide, never a market appraisal or a promise — say so plainly: the creator sets the price and the marketplace decides.",
+  },
   set_movement_state: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id', 'state'], optional: ['note'],

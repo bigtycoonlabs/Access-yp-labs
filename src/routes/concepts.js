@@ -8,6 +8,7 @@ const { conceptEntitlement, paywall, isStaff, billingExempt, redactLockedAssets 
 const protect = require('../lib/protect');
 const retrieval = require('../services/clay/retrieval');
 const movement = require('../services/clay/movement');
+const valuation = require('../services/clay/valuation');
 
 const ASSET_TYPES = ['business_plan', 'marketing_strategy', 'customer_research', 'competitor_research',
   'regulatory_risk', 'html_demo', 'example_image', 'website_prompt', 'build_instructions', 'code_file', 'built_site'];
@@ -184,7 +185,22 @@ router.patch('/:id', authenticate, [
   res.json({ concept: r.rows[0] });
 }));
 
-// Per-concept movement board: the creator records which honest lane a concept is really in on the
+// A completeness-based starting guide for what a concept is worth as a listing — the value drivers
+// it carries, a suggested range, and what would raise it. Owner-scoped. Guidance, not an appraisal.
+router.get('/:id/value', authenticate, asyncHandler(async (req, res) => {
+  const c = await query(
+    'SELECT id, research_grounded, claims_verified, movement_state FROM concepts WHERE id=$1 AND owner_id=$2',
+    [req.params.id, req.user.id]);
+  if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
+  const a = await query('SELECT type, is_current, exclusive_locked FROM assets WHERE concept_id=$1', [req.params.id]);
+  const w = await query('SELECT COUNT(*)::int AS n FROM waitlist_signups WHERE concept_id=$1', [req.params.id]);
+  const val = valuation.assessValue({ concept: c.rows[0], assets: a.rows, waiting: w.rows[0].n });
+  res.json({
+    tier: val.tier, tier_label: val.tierLabel,
+    range_usd: { low: Math.round(val.range.low_cents / 100), high: Math.round(val.range.high_cents / 100) },
+    has: val.has, drivers: val.drivers, to_raise: val.toRaise,
+  });
+}));
 // path from idea to a business someone will pay for. Owner-scoped; validated against the fixed set.
 router.put('/:id/movement', authenticate, asyncHandler(async (req, res) => {
   const state = req.body && req.body.movement_state;
