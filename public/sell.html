@@ -68,6 +68,7 @@ fieldset{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margi
       <div><label for="penname">Your pen name (shown on the listing instead of your real name)</label>
         <input id="penname" type="text" maxlength="40" placeholder="e.g. NightMarket"/>
         <button type="button" class="btn secondary" id="savepen">Save pen name</button>
+        <p id="penname-status" class="muted" role="status"></p>
         <p class="muted">Buyers see this name, never your account name. We still know it's you behind the scenes, for payouts and trust.</p></div>
       <div id="value-guide" role="region" aria-label="What this concept is worth right now"></div>
       <div id="brief-gen"><button type="button" class="btn secondary" id="genbrief">Write the opportunity brief</button>
@@ -135,6 +136,8 @@ document.getElementById('project').addEventListener('change',e=>pickProject(e.ta
   try{
     const s=await Kiln.api('/sellers/status');
     if(s.display_name){ document.getElementById('penname').value=s.display_name; }
+    const pnStatus=document.getElementById('penname-status');
+    if(pnStatus){ pnStatus.textContent = s.display_name ? ('Your current pen name is “'+s.display_name+'.” Edit it above and Save to change it.') : 'You haven’t set a pen name yet — add one above so your real name never appears on a listing.'; }
     const note=document.getElementById('payout-note');
     if(note){
       if(!s.stripe_configured){
@@ -151,7 +154,7 @@ document.getElementById('project').addEventListener('change',e=>pickProject(e.ta
 document.getElementById('savepen').addEventListener('click',async()=>{
   const v=(document.getElementById('penname').value||'').trim();
   if(v.length<2||v.length>40){ show('Your pen name needs to be between 2 and 40 characters.'); return; }
-  try{ await Kiln.api('/sellers/alias',{method:'PUT',body:{display_name:v}}); show('Pen name saved. Your listings will show "'+v+'".','ok'); announce('Pen name saved.'); }
+  try{ await Kiln.api('/sellers/alias',{method:'PUT',body:{display_name:v}}); show('Pen name saved. Your listings will show "'+v+'".','ok'); announce('Pen name saved.'); const pn2=document.getElementById('penname-status'); if(pn2){ pn2.textContent='Your current pen name is “'+v+'.” Edit it above and Save to change it.'; } }
   catch(e){ show(e.message); }
 });
 document.getElementById('newproj').addEventListener('click',async()=>{

@@ -313,6 +313,39 @@
   document.getElementById('mode-create').addEventListener('click', () => setMode('create'));
   document.getElementById('mode-enhance').addEventListener('click', () => setMode('enhance'));
 
+  // Let the person see and change the concept's NAME — there was no way to rename a built
+  // concept before. Uses the existing PATCH /concepts/:id endpoint.
+  function renderConceptName(container, concept) {
+    const wrap = el('div', 'concept-name'); wrap.style.cssText = 'margin:8px 0;';
+    const row = el('p'); row.appendChild(el('strong', null, 'Concept name: '));
+    const nameSpan = el('span', null, concept.title || 'Untitled concept'); row.appendChild(nameSpan);
+    wrap.appendChild(row);
+    const editBtn = el('button', 'btn secondary', 'Rename this concept'); editBtn.type = 'button';
+    wrap.appendChild(editBtn);
+    const form = el('div'); form.hidden = true; form.style.marginTop = '8px';
+    const inp = el('input'); inp.type = 'text'; inp.maxLength = 120; inp.value = concept.title || '';
+    inp.setAttribute('aria-label', 'New concept name'); inp.style.cssText = 'width:100%;min-height:44px;margin-bottom:8px;';
+    const save = el('button', 'btn', 'Save name'); save.type = 'button';
+    const out = el('p', 'muted'); out.setAttribute('role', 'status');
+    save.addEventListener('click', async function () {
+      const v = (inp.value || '').trim();
+      if (!v) { out.textContent = 'A name is required.'; announce('A name is required.', true); inp.focus(); return; }
+      save.disabled = true; out.textContent = 'Saving…';
+      try {
+        const r = await Kiln.api('/concepts/' + concept.id, { method: 'PATCH', body: { title: v } });
+        concept.title = (r.concept && r.concept.title) || v;
+        nameSpan.textContent = concept.title;
+        out.textContent = 'Name saved.'; announce('Concept renamed to ' + concept.title + '.', true);
+        form.hidden = true; editBtn.focus();
+      } catch (e) { out.textContent = (e && e.message) ? e.message : 'Could not rename. Please try again.'; announce('Could not rename the concept.', true); }
+      save.disabled = false;
+    });
+    form.appendChild(inp); form.appendChild(save); form.appendChild(out);
+    editBtn.addEventListener('click', function () { form.hidden = !form.hidden; if (!form.hidden) inp.focus(); });
+    wrap.appendChild(form);
+    container.appendChild(wrap);
+  }
+
   // Show (and let the person edit/publish) this concept's landing page — a real clickable link
   // when it's live, and a simple form when they want to create or change it. This is the "where's
   // my landing page and how do I edit it" surface.
@@ -366,6 +399,27 @@
     form.appendChild(save); form.appendChild(out);
     editBtn.addEventListener('click', function () { form.hidden = !form.hidden; if (!form.hidden) hIn.focus(); });
     wrap.appendChild(form);
+    // See who has signed up — the real proof this page is collecting (owner-scoped waitlist).
+    const seeBtn = el('button', 'btn secondary', 'See who’s signed up'); seeBtn.type = 'button'; seeBtn.style.marginLeft = '8px';
+    const signupsOut = el('div', 'signups-out'); signupsOut.setAttribute('role', 'status'); signupsOut.style.marginTop = '10px';
+    seeBtn.addEventListener('click', async function () {
+      seeBtn.disabled = true; signupsOut.textContent = 'Loading…';
+      try {
+        const r = await Kiln.api('/waitlist/' + concept.id);
+        const list = (r && r.signups) || [];
+        const n = (r && typeof r.count === 'number') ? r.count : list.length;
+        signupsOut.textContent = '';
+        signupsOut.appendChild(el('p', 'muted', n === 0 ? 'No sign-ups yet. Share your link and they’ll show up here.' : n + ' sign-up' + (n === 1 ? '' : 's') + ' so far:'));
+        list.forEach(function (s) {
+          const when = s.created_at ? new Date(s.created_at).toLocaleDateString() : '';
+          signupsOut.appendChild(el('p', null, s.email + (s.name ? ' (' + s.name + ')' : '') + (when ? ' — ' + when : '')));
+        });
+        announce(n + ' sign-up' + (n === 1 ? '' : 's') + ' on your landing page.', true);
+      } catch (e) { signupsOut.textContent = (e && e.message) ? e.message : 'Could not load sign-ups.'; announce('Could not load sign-ups.', true); }
+      seeBtn.disabled = false;
+    });
+    wrap.appendChild(seeBtn);
+    wrap.appendChild(signupsOut);
     container.appendChild(wrap);
   }
 
@@ -378,6 +432,7 @@
       setEditingConcept(true); // refining an existing concept — hide the create/enhance toggles
       const m = message('clay', 'Clay');
       m.appendChild(el('p', null, 'Picking up where we left off on “' + (concept.title || 'your concept') + '.” Everything you built is still here — tell me what to change or add and I’ll refine this same concept. You can start a fresh one anytime.'));
+      renderConceptName(m, concept);
       renderClaysTake(m, concept);
       const current = (assets || []).filter((a) => a.is_current !== false);
       if (current.length) {
