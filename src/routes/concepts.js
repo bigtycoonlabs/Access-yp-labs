@@ -11,6 +11,9 @@ const movement = require('../services/clay/movement');
 const siteStore = require('../services/clay/siteStore');
 const siteQuota = require('../services/clay/siteQuota');
 const siteExport = require('../services/clay/siteExport');
+const domains = require('../services/clay/domains');
+const cloudflare = require('../services/clay/cloudflare');
+const domainStore = require('../services/clay/domainStore');
 const valuation = require('../services/clay/valuation');
 const brief = require('../services/clay/brief');
 const launchPage = require('../services/clay/launchPage');
@@ -303,6 +306,67 @@ router.get('/:id/site/export', authenticate, asyncHandler(async (req, res) => {
     [req.params.id]);
   const file = siteExport.buildSingleFile(own.rows[0], pages.rows);
   res.json({ ok: true, filename: file.filename, html: file.html });
+}));
+
+// ---- web addresses (domains) for a concept's site ----
+// A creator can get an instant free address on our platform (a subdomain) or connect their own
+// domain via Cloudflare. All owner-scoped.
+router.get('/:id/domains', authenticate, asyncHandler(async (req, res) => {
+  if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'Concept not found.');
+  res.json({
+    domains: await domainStore.listForConcept(req.params.id),
+    sites_root: domains.sitesRoot(),
+    custom_available: cloudflare.configured(),
+    cname_target: domains.cnameTarget(),
+  });
+}));
+
+// Claim an instant subdomain — <label>.sites.accessyplabs.com — live immediately.
+router.post('/:id/domains/subdomain', authenticate, asyncHandler(async (req, res) => {
+  if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'Concept not found.');
+  const label = domains.normalizeLabel((req.body || {}).label);
+  if (!domains.validLabel(label)) throw new ApiError(400, 'Pick a web address using letters, numbers, and hyphens — and not a reserved word.');
+  const hostname = domains.subdomainHost(label);
+  if (await domainStore.hostnameTaken(hostname)) throw new ApiError(409, 'That address is already taken — try another.');
+  const d = await domainStore.addSubdomain(req.params.id, req.user.id, hostname);
+  res.status(201).json({ ok: true, domain: d, url: 'https://' + hostname });
+}));
+
+// Connect a creator's own domain via Cloudflare for SaaS.
+router.post('/:id/domains/custom', authenticate, asyncHandler(async (req, res) => {
+  if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'Concept not found.');
+  const hostname = domains.normalizeCustomHost((req.body || {}).hostname);
+  if (!domains.validCustomHost(hostname)) throw new ApiError(400, 'Enter a domain like yourbusiness.com (no http, no path).');
+  if (await domainStore.hostnameTaken(hostname)) throw new ApiError(409, 'That domain is already connected.');
+  if (!cloudflare.configured()) {
+    return res.status(503).json({ ok: false, configured: false, message: 'Connecting your own domain isn’t switched on yet — a free address on our platform works right now.' });
+  }
+  const cf = await cloudflare.createCustomHostname(hostname);
+  if (!cf.ok) throw new ApiError(502, 'Could not start connecting that domain. Double-check it and try again.');
+  const verification = { cname: { name: hostname, target: domains.cnameTarget() }, ownership: cf.ownership || null };
+  const d = await domainStore.addCustom(req.params.id, req.user.id, hostname, cf.id, verification);
+  res.status(201).json({ ok: true, domain: d, verification, message: 'Add the DNS record below at your domain registrar. Once it propagates and Cloudflare issues the certificate, your site goes live on your domain — usually within an hour.' });
+}));
+
+// Re-check a connected custom domain's status with Cloudflare; flip to active once valid.
+router.get('/:id/domains/:domainId/recheck', authenticate, asyncHandler(async (req, res) => {
+  const d = await domainStore.getForOwner(req.params.id, req.params.domainId, req.user.id);
+  if (!d) throw new ApiError(404, 'Domain not found.');
+  if (d.kind !== 'custom' || !d.cf_hostname_id) return res.json({ ok: true, status: d.status });
+  const cf = await cloudflare.getCustomHostname(d.cf_hostname_id);
+  if (!cf.configured) return res.json({ ok: true, status: d.status });
+  const active = cf.status === 'active' && cf.ssl && cf.ssl.status === 'active';
+  if (active && d.status !== 'active') await domainStore.setStatus(d.id, 'active');
+  res.json({ ok: true, status: active ? 'active' : (cf.status || d.status), ssl: cf.ssl ? cf.ssl.status : null });
+}));
+
+router.delete('/:id/domains/:domainId', authenticate, asyncHandler(async (req, res) => {
+  const removed = await domainStore.remove(req.params.id, req.params.domainId, req.user.id);
+  if (!removed) throw new ApiError(404, 'Domain not found.');
+  if (removed.kind === 'custom' && removed.cf_hostname_id && cloudflare.configured()) {
+    try { await cloudflare.deleteCustomHostname(removed.cf_hostname_id); } catch (_) { /* best-effort */ }
+  }
+  res.json({ ok: true });
 }));
 
 router.post('/:id/pages', authenticate, asyncHandler(async (req, res) => {

@@ -13,6 +13,8 @@ const movement = require('../services/clay/movement');
 const launchPage = require('../services/clay/launchPage');
 const siteStore = require('../services/clay/siteStore');
 const siteQuota = require('../services/clay/siteQuota');
+const domains = require('../services/clay/domains');
+const domainStore = require('../services/clay/domainStore');
 const crypto = require('crypto');
 const valuation = require('../services/clay/valuation');
 const proofPrompt = require('../services/clay/proofPrompt');
@@ -947,6 +949,20 @@ function buildExecutors(user) {
       const url = (page.published && siteSlug && homeLive) ? `${site}/p/${siteSlug}/${page.slug}` : null;
       return { status: 'site_page_updated', page, url,
         message: url ? `Page updated and live at ${url}` : 'Page updated.' };
+    },
+    claim_web_address: async ({ concept_id, label }) => {
+      if (!(await siteStore.ownsConcept(concept_id, user.id))) return { error: 'not_your_concept' };
+      const clean = domains.normalizeLabel(label);
+      if (!domains.validLabel(clean)) return { error: 'bad_label', message: 'Use letters, numbers, and hyphens — and not a reserved word.' };
+      const hostname = domains.subdomainHost(clean);
+      if (await domainStore.hostnameTaken(hostname)) return { error: 'taken', message: `${hostname} is already taken — try another word.` };
+      const d = await domainStore.addSubdomain(concept_id, user.id, hostname);
+      const c = await query("SELECT (launch_page->>'enabled') AS enabled FROM concepts WHERE id=$1", [concept_id]);
+      const live = c.rows[0] && c.rows[0].enabled === 'true';
+      return { status: 'web_address_claimed', hostname: d.hostname, url: 'https://' + d.hostname,
+        message: live
+          ? `The site now lives at https://${d.hostname} — a real address they can share.`
+          : `Reserved https://${d.hostname}. It goes live the moment the site's home page is published.` };
     },
     define_term: async ({ term }) => {
       const e = glossary.defineTerm(term);

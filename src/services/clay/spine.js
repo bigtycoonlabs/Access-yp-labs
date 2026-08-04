@@ -153,6 +153,11 @@ const TOOLS = {
     enums: {},
     summary: "Edit an existing site page, found by its slug (or id). Change its title or body, or publish/unpublish it — publish=false hides it again without losing the content. Fully reversible.",
   },
+  claim_web_address: {
+    irreversible: false, requires_confirmation: false,
+    required: ['concept_id', 'label'], optional: [], enums: {},
+    summary: "Give THIS concept's site an instant, free web address on our platform: <label>.sites.accessyplabs.com, live the moment you claim it (the site's home must be published to actually show). label is a short word or two the creator chooses — letters, numbers, hyphens. This makes the address feel real and shareable without any DNS setup; offer it as soon as a site is worth sharing. For a creator's OWN domain (like theirbusiness.com) don't use this — point them to the 'Web address' section in their Laboratory, which walks them through connecting it.",
+  },
 };
 
 function getTool(name) { return TOOLS[name] || null; }

@@ -360,6 +360,11 @@
     const a=el('a',null,'Or browse the Dream Market →');a.href='/dreamhold.html';a.style.color='#8ce0ff';a.style.fontWeight='600';
     p.appendChild(a);return p;
   }
+  function deskLink(){
+    const p=el('p');p.style.marginTop='10px';
+    const a=el('a',null,'Visit The Desk →');a.href='/desk.html';a.style.color='#8ce0ff';a.style.fontWeight='600';
+    p.appendChild(a);return p;
+  }
 
   function ideaBox(promptText){
     const wrap=el('div','idea-wrap');
@@ -439,6 +444,7 @@
       inner.appendChild(el('p','tag','Your workspace missed you. Let’s keep building.'));
       const row=el('p','cta-row');const cta=el('a','cta','Back into your workspace →');cta.href='/app.html';row.appendChild(cta);inner.appendChild(row);
       inner.appendChild(dreamholdLink());
+      inner.appendChild(deskLink());
       announce(name?('Welcome back, '+name):'Welcome back',false);
       return;
     }
@@ -446,12 +452,18 @@
     try{hello=await Kiln.api('/hello',{auth:false});}catch(_){}
     inner.innerHTML='';
     if(hello.returning){
-      const nth=ordinalWord(hello.visits);
       inner.appendChild(el('h1',null,'Back again.'));
+      // Count the visits up to three — after that, naming the number gets weird, so just be warm.
+      const countable = hello.visits <= 3;
+      const nth = ordinalWord(hello.visits);
       if(hello.has_spark){
-        inner.appendChild(el('p','tag','That idea you told me? Still right here. This is the '+nth+' time you’ve stood at this door — let’s finish it.'));
+        inner.appendChild(el('p','tag', countable
+          ? ('That idea you told me? Still right here. This is the '+nth+' time you’ve stood at this door — let’s finish it.')
+          : 'That idea you told me? Still right here — let’s finish it.'));
       }else{
-        inner.appendChild(el('p','tag',cap(nth)+' time you’ve stood at this door. Still turning it over? I dare you to actually do it this time.'));
+        inner.appendChild(el('p','tag', countable
+          ? (cap(nth)+' time you’ve stood at this door. Still turning it over? I dare you to actually do it this time.')
+          : 'Still turning it over? I dare you to actually do it this time.'));
       }
       inner.appendChild(ideaBox('Say it out loud — what’s the idea?'));
     }else{

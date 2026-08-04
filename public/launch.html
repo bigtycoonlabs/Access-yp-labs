@@ -28,9 +28,15 @@
 </main>
 <script>
 (function(){
-  var m = location.pathname.match(/^\/p\/([^\/?#]+)(?:\/([^\/?#]+))?/) || [];
-  var slug = decodeURIComponent(m[1]||'');
-  var pageSlug = m[2] ? decodeURIComponent(m[2]) : '';
+  var underP = location.pathname.match(/^\/p\/([^\/?#]+)(?:\/([^\/?#]+))?/);
+  var hostMode = !underP;
+  var slug = underP ? decodeURIComponent(underP[1]||'') : '';
+  var pageSlug = underP ? (underP[2] ? decodeURIComponent(underP[2]) : '')
+                        : decodeURIComponent((location.pathname.replace(/^\/+|\/+$/g,'').split('/')[0]) || '');
+  function homeHref(){ return hostMode ? '/' : '/p/'+encodeURIComponent(slug); }
+  function pageHref(ps){ return hostMode ? '/'+encodeURIComponent(ps) : '/p/'+encodeURIComponent(slug)+'/'+encodeURIComponent(ps); }
+  function apiHome(){ return hostMode ? '/api/site' : '/api/launch/'+encodeURIComponent(slug); }
+  function apiPage(ps){ return hostMode ? '/api/site/'+encodeURIComponent(ps) : '/api/launch/'+encodeURIComponent(slug)+'/'+encodeURIComponent(ps); }
   var conceptId=null;
   var statusEl=document.getElementById('status');
   var EMAIL=/^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -78,10 +84,10 @@
     var nav=document.getElementById('nav');
     if(!pages || !pages.length){ nav.hidden=true; return; }
     nav.textContent='';
-    var home=document.createElement('a'); home.href='/p/'+encodeURIComponent(slug); home.textContent='Home';
+    var home=document.createElement('a'); home.href=homeHref(); home.textContent='Home';
     if(!current) home.setAttribute('aria-current','page'); nav.appendChild(home);
     pages.forEach(function(pg){
-      var a=document.createElement('a'); a.href='/p/'+encodeURIComponent(slug)+'/'+encodeURIComponent(pg.slug); a.textContent=pg.title;
+      var a=document.createElement('a'); a.href=pageHref(pg.slug); a.textContent=pg.title;
       if(pg.slug===current) a.setAttribute('aria-current','page'); nav.appendChild(a);
     });
     nav.hidden=false;
@@ -89,7 +95,7 @@
   function setHero(url){ var h=document.getElementById('hero'); if(url){ h.src=url; h.hidden=false; } else { h.hidden=true; } }
 
   async function loadHome(){
-    var r=await fetch('/api/launch/'+encodeURIComponent(slug));
+    var r=await fetch(apiHome());
     if(!r.ok){ statusEl.textContent='This page isn’t available.'; return; }
     var d=await r.json(); conceptId=d.concept_id; setTheme(d.theme);
     document.title=(d.headline||d.title||'Coming soon');
@@ -103,12 +109,12 @@
     statusEl.hidden=true; document.getElementById('page').hidden=false;
   }
   async function loadSubPage(){
-    var r=await fetch('/api/launch/'+encodeURIComponent(slug)+'/'+encodeURIComponent(pageSlug));
+    var r=await fetch(apiPage(pageSlug));
     if(!r.ok){ statusEl.textContent='This page isn’t available.'; return; }
     var d=await r.json(); conceptId=d.concept_id; setTheme(d.theme);
     document.title=(d.page.title||'')+' — '+(d.site_title||'');
     var head=document.getElementById('headline'); head.textContent='';
-    var homeLink=document.createElement('a'); homeLink.href='/p/'+encodeURIComponent(slug); homeLink.textContent=d.site_title||'Home'; homeLink.className='site-home';
+    var homeLink=document.createElement('a'); homeLink.href=homeHref(); homeLink.textContent=d.site_title||'Home'; homeLink.className='site-home';
     head.appendChild(homeLink);
     renderNav(d.pages, d.page.slug);
     var art=document.getElementById('article');
@@ -139,7 +145,7 @@
     btn.disabled=false;
   });
 
-  if(!slug){ statusEl.textContent='This page isn’t available.'; }
+  if(!hostMode && !slug){ statusEl.textContent='This page isn’t available.'; }
   else if(pageSlug){ loadSubPage().catch(function(){statusEl.textContent='This page isn’t available.';}); }
   else { loadHome().catch(function(){statusEl.textContent='This page isn’t available.';}); }
 })();

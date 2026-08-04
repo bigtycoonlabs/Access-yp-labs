@@ -7,6 +7,7 @@ const path = require('path');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
+app.set('trust proxy', true);
 const PORT = process.env.PORT || 3000;
 
 const requiredConfig = ['DATABASE_URL', 'JWT_SECRET', 'REFRESH_TOKEN_SECRET', 'CLIENT_URL'];
@@ -33,7 +34,7 @@ const apiLimiter = rateLimit({
   message: { error: 'Too many requests. Please try again shortly.' },
 });
 app.use('/api/', apiLimiter);
-app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.static(path.join(__dirname, '../public'), { index: false }));
 
 // The Dream Market / Clay API surface
 app.use('/api/auth',          require('./routes/auth'));
@@ -49,6 +50,7 @@ app.use('/api/maintenance',   require('./routes/maintenance'));
 app.use('/api/listings',      require('./routes/listings'));
 app.use('/api/waitlist',      require('./routes/waitlist'));
 app.use('/api/launch',        require('./routes/launch'));
+app.use('/api/site',          require('./routes/sites'));
 app.use('/api/desk',          require('./routes/desk'));
 app.use('/api',               require('./routes/visitor'));
 app.use('/api/bids',          require('./routes/bids'));
@@ -85,7 +87,13 @@ app.use('/api', (req, res) => res.status(404).json({ error: 'API route not found
 app.get('/desk', (req, res) => res.sendFile(path.join(__dirname, '../public/desk.html')));
 app.get('/p/:slug', (req, res) => res.sendFile(path.join(__dirname, '../public/launch.html')));
 app.get('/p/:slug/:page', (req, res) => res.sendFile(path.join(__dirname, '../public/launch.html')));
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
+const siteHostDomains = require('./services/clay/domains');
+app.get('*', (req, res) => {
+  if (siteHostDomains.isSiteHost(siteHostDomains.hostOf(req))) {
+    return res.sendFile(path.join(__dirname, '../public/launch.html'));
+  }
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
 
 app.use((err, req, res, next) => {
   if (!err.status || err.status >= 500) console.error(err.stack || err);

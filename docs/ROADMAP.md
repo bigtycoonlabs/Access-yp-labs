@@ -46,8 +46,13 @@ bookings.
 enforced on publish (counts a site once, by first-publish month). An active `site_addon` lifts the
 cap. (The purchasable $2.99/month add-on itself is the next billing item — see below.)
 
-Infra: `site_pages` table (migration 025, live); `launch_page` jsonb now carries `theme`,
-`hero_image`, `published_at`. 173 tests passing.
+**Web addresses.** Every site can have a real address: an instant free subdomain on our platform
+(`<label>.sites.accessyplabs.com`, live immediately, claimable by Clay via `claim_web_address` or in
+the Laboratory) or the creator's own domain connected via Cloudflare for SaaS (one CNAME, auto-HTTPS).
+Host-based serving resolves either to the right site; the whole app layer is complete.
+
+Infra: `site_pages` table (migration 025, live); `site_domains` table (migration 026, live);
+`launch_page` jsonb now carries `theme`, `hero_image`, `published_at`. 177 tests passing.
 
 ---
 
@@ -59,21 +64,22 @@ Laboratory to **Supabase Storage** (already in our stack) and get a URL back. Ne
 bucket, an upload endpoint, and a small file-picker in the site manager. This is the cheapest
 quality jump after themes.
 
-### 2. Connect your own domain — the big leap, needs one infra decision
-Today a site lives at `accessyplabs.com/p/<slug>`. To let a creator use `theirbusiness.com`, we need
-an edge layer that maps a custom domain to their site, with automatic HTTPS per domain. Options:
-- **Cloudflare for SaaS** (custom hostnames) — the clean path; per-customer domains + certs.
-- **Railway custom domains via API** — workable but per-domain config.
-- **Interim, cheap win:** a wildcard subdomain `*.sites.accessyplabs.com`, so every site instantly
-  gets `mysite.sites.accessyplabs.com` with one wildcard cert and no per-domain setup — a big step
-  up from `/p/<slug>` while true custom domains are set up.
+### 2. Custom domains — app layer SHIPPED; needs the Cloudflare switch-on (one-time, YP)
+The whole application side is built: instant subdomains, a "connect your domain" flow that calls
+Cloudflare for SaaS and shows the creator the single CNAME to add, a status re-check, and Host-based
+serving so a subdomain or a custom domain resolves to the right site.
 
-App-side work (ready to build once the edge is chosen): a `custom_domains` table (concept → domain,
-verification token, verified flag), an owner "connect a domain" flow with DNS instructions, a
-verification check, and Host-header resolution so an incoming domain serves the right site.
-**Decision needed from YP:** which edge (Cloudflare vs Railway) — then the app layer is a
-straightforward build. This is what unlocks running the Set Up Your Place business page, a personal
-music page, and an entrepreneur page from the Laboratory.
+To switch it on in production, one time:
+1. Put the app behind Cloudflare (the accessyplabs.com zone on Cloudflare).
+2. Enable **Cloudflare for SaaS** (custom hostnames) on that zone.
+3. Create the SaaS fallback origin / CNAME target and set env `CF_CNAME_TARGET` to it — this is what
+   creators point their domain's CNAME at. Add a wildcard DNS record `*.sites.accessyplabs.com` → the
+   app so instant subdomains resolve (Cloudflare issues the wildcard cert).
+4. Set env `CF_API_TOKEN` (permission to edit custom hostnames) and `CF_ZONE_ID`. Optional: `SITES_ROOT`
+   (default `sites.accessyplabs.com`) and `APP_HOSTS` (any extra main-app hostnames).
+
+Until those are set, the "connect your own domain" button honestly says custom domains aren't switched
+on yet; subdomains go live as soon as the wildcard DNS record exists.
 
 ### 3. The $2.99/month "more websites" add-on — billing
 The quota gate is built and an active `site_addon` subscription already lifts it. Remaining: a Stripe

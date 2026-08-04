@@ -428,6 +428,7 @@
     });
     wrap.appendChild(seeBtn);
     wrap.appendChild(signupsOut);
+    renderDomains(wrap, concept);
     renderSitePages(wrap, concept);
     container.appendChild(wrap);
   }
@@ -524,6 +525,85 @@
         });
       } catch (e) { list.textContent = (e && e.message) ? e.message : 'Could not load pages.'; }
     }
+    refresh();
+    container.appendChild(sec);
+  }
+
+  // Web address manager: an instant free address on our platform, or connect your own domain.
+  function renderDomains(container, concept) {
+    let rootSuffix = 'sites.accessyplabs.com', cnameTarget = '';
+    const sec = el('div', 'site-domains'); sec.style.cssText = 'margin-top:16px;border-top:1px solid var(--line);padding-top:12px;';
+    sec.appendChild(el('h4', null, 'Web address'));
+    sec.appendChild(el('p', 'muted', 'Give your site a real address. A free address on our platform is live the moment you claim it. Or connect your own domain.'));
+    const list = el('div'); list.setAttribute('role', 'status'); sec.appendChild(list);
+
+    const subL = el('label', null, 'Free address on our platform'); subL.setAttribute('for', 'dom-sub');
+    const subRow = el('div'); subRow.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0;';
+    const subIn = el('input'); subIn.id = 'dom-sub'; subIn.type = 'text'; subIn.placeholder = 'your-name'; subIn.style.cssText = 'flex:1;min-width:160px;min-height:44px;';
+    const subSuffix = el('span', 'muted', '.' + rootSuffix);
+    const subBtn = el('button', 'btn', 'Claim it'); subBtn.type = 'button';
+    subRow.appendChild(subIn); subRow.appendChild(subSuffix); subRow.appendChild(subBtn);
+    const subOut = el('p', 'muted'); subOut.setAttribute('role', 'status');
+    sec.appendChild(subL); sec.appendChild(subRow); sec.appendChild(subOut);
+
+    const cusL = el('label', null, 'Connect your own domain'); cusL.setAttribute('for', 'dom-cus'); cusL.style.marginTop = '10px';
+    const cusRow = el('div'); cusRow.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0;';
+    const cusIn = el('input'); cusIn.id = 'dom-cus'; cusIn.type = 'text'; cusIn.placeholder = 'yourbusiness.com'; cusIn.style.cssText = 'flex:1;min-width:200px;min-height:44px;';
+    const cusBtn = el('button', 'btn secondary', 'Connect'); cusBtn.type = 'button';
+    cusRow.appendChild(cusIn); cusRow.appendChild(cusBtn);
+    const cusOut = el('div'); cusOut.setAttribute('role', 'status');
+    sec.appendChild(cusL); sec.appendChild(cusRow); sec.appendChild(cusOut);
+
+    async function refresh() {
+      list.textContent = 'Loading…';
+      try {
+        const r = await Kiln.api('/concepts/' + concept.id + '/domains');
+        rootSuffix = r.sites_root || rootSuffix; cnameTarget = r.cname_target || '';
+        subSuffix.textContent = '.' + rootSuffix;
+        list.textContent = '';
+        const ds = r.domains || [];
+        if (!ds.length) list.appendChild(el('p', 'muted', 'No web address yet.'));
+        ds.forEach(function (d) {
+          const row = el('div'); row.style.cssText = 'padding:8px 0;border-bottom:1px solid var(--line);';
+          const t = el('p'); t.appendChild(el('strong', null, d.hostname));
+          t.appendChild(document.createTextNode(' — ' + (d.status === 'active' ? 'live' : 'pending')));
+          row.appendChild(t);
+          if (d.status === 'active') { const a = el('a', null, 'Open'); a.href = 'https://' + d.hostname; a.target = '_blank'; a.rel = 'noopener'; row.appendChild(a); }
+          if (d.kind === 'custom' && d.status !== 'active') {
+            const ck = el('button', 'btn secondary', 'Check status'); ck.type = 'button'; ck.style.marginLeft = '8px';
+            ck.addEventListener('click', async function () { ck.disabled = true; try { const s = await Kiln.api('/concepts/' + concept.id + '/domains/' + d.id + '/recheck'); announce('Domain status: ' + s.status, true); await refresh(); } catch (e) { announce('Could not check the domain.', true); } ck.disabled = false; });
+            row.appendChild(ck);
+            if (d.verification && d.verification.cname) row.appendChild(el('p', 'muted', 'DNS record — CNAME  ' + d.verification.cname.name + '  →  ' + d.verification.cname.target));
+          }
+          const rm = el('button', 'btn secondary', 'Remove'); rm.type = 'button'; rm.style.marginLeft = '8px';
+          rm.addEventListener('click', async function () { rm.disabled = true; try { await Kiln.api('/concepts/' + concept.id + '/domains/' + d.id, { method: 'DELETE' }); announce('Address removed.', true); await refresh(); } catch (e) { announce('Could not remove it.', true); } rm.disabled = false; });
+          row.appendChild(rm);
+          list.appendChild(row);
+        });
+      } catch (e) { list.textContent = 'Could not load web addresses.'; }
+    }
+    subBtn.addEventListener('click', async function () {
+      const label = (subIn.value || '').trim();
+      if (!label) { subOut.textContent = 'Type an address first.'; return; }
+      subBtn.disabled = true; subOut.textContent = 'Claiming…';
+      try { const r = await Kiln.api('/concepts/' + concept.id + '/domains/subdomain', { method: 'POST', body: { label: label } }); subOut.textContent = 'Live at ' + r.url; announce('Your site now lives at ' + r.domain.hostname, true); subIn.value = ''; await refresh(); }
+      catch (e) { subOut.textContent = (e && e.message) || 'Could not claim that address.'; announce(subOut.textContent, true); }
+      subBtn.disabled = false;
+    });
+    cusBtn.addEventListener('click', async function () {
+      const h = (cusIn.value || '').trim();
+      if (!h) { cusOut.textContent = 'Type your domain first.'; return; }
+      cusBtn.disabled = true; cusOut.textContent = 'Connecting…';
+      try {
+        const r = await Kiln.api('/concepts/' + concept.id + '/domains/custom', { method: 'POST', body: { hostname: h } });
+        cusOut.textContent = '';
+        cusOut.appendChild(el('p', 'muted', r.message || 'Add the DNS record below.'));
+        if (r.verification && r.verification.cname) cusOut.appendChild(el('p', null, 'CNAME  ' + r.verification.cname.name + '  →  ' + r.verification.cname.target));
+        announce('Domain connection started. Add the DNS record shown.', true);
+        cusIn.value = ''; await refresh();
+      } catch (e) { cusOut.textContent = (e && e.message) || 'Could not connect that domain right now.'; announce(cusOut.textContent, true); }
+      cusBtn.disabled = false;
+    });
     refresh();
     container.appendChild(sec);
   }
