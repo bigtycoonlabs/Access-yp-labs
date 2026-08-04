@@ -158,6 +158,47 @@ const TOOLS = {
     required: ['concept_id', 'label'], optional: [], enums: {},
     summary: "Give THIS concept's site an instant, free web address on our platform: <label>.sites.accessyplabs.com, live the moment you claim it (the site's home must be published to actually show). label is a short word or two the creator chooses — letters, numbers, hyphens. This makes the address feel real and shareable without any DNS setup; offer it as soon as a site is worth sharing. For a creator's OWN domain (like theirbusiness.com) don't use this — point them to the 'Web address' section in their Laboratory, which walks them through connecting it.",
   },
+
+  // ---- staff-only tools (gated by role: never offered to a regular builder) ----
+  platform_pulse: {
+    irreversible: false, requires_confirmation: false, required: [], enums: {},
+    summary: "Staff only. Read-only snapshot of the platform right now: how many creators, concepts, and live listings there are, how many listings are waiting for review, how many reports are open, and whether Clay's brain, research, email, and payments are connected. Use it when a teammate asks how the platform is doing or what needs attention.",
+  },
+  review_queue: {
+    irreversible: false, requires_confirmation: false, required: [], enums: {},
+    summary: "Staff only. List the marketplace listings currently waiting for review (status in_review), oldest first — the marketplace review queue. Read-only. Use it to help a teammate see what needs a decision, then talk the decision through before acting.",
+  },
+  decide_listing: {
+    irreversible: false, requires_confirmation: true,
+    required: ['listing_id', 'decision'], optional: ['reason', 'notes'],
+    enums: { decision: ['approved', 'rejected'], reason: ['missing_baseline', 'running_business', 'fraud', 'missing_risk_disclosure'] },
+    summary: "Staff only, consequential — always confirm first. Approve or reject a listing in the review queue. Approving makes it live in the Dream Market; rejecting takes it out of review. A rejection MUST carry a policy reason: missing_baseline (no complete baseline package), running_business (it's an already-operating business, and this marketplace sells pre-proven concepts, not live businesses), fraud, or missing_risk_disclosure. 'It competes with mine' is never a valid reason. A moderator can't decide their own listing (owners may clear their own seed listings, recorded in the audit trail). Every decision is logged.",
+  },
+  report_queue: {
+    irreversible: false, requires_confirmation: false, required: [], enums: {},
+    summary: "Staff only. List the open reports (flagged listings or content) waiting to be looked at, oldest first — basic moderation. Read-only.",
+  },
+  resolve_report: {
+    irreversible: false, requires_confirmation: true,
+    required: ['report_id', 'action'], optional: ['notes'], enums: { action: ['dismiss'] },
+    summary: "Staff only, consequential — confirm first. Resolve an open report. Right now the action is dismiss (mark a report handled/closed). Use it once a teammate has actually looked at the report and decided.",
+  },
+  suspend_user: {
+    irreversible: false, requires_confirmation: true,
+    required: ['user_id'], optional: ['reason', 'notes'], enums: {},
+    summary: "Admins and owners only, consequential — confirm first. Suspend an account (they can't act until reinstated). Reversible with reinstate_user. Only for real policy or safety grounds; record the reason.",
+  },
+  reinstate_user: {
+    irreversible: false, requires_confirmation: true,
+    required: ['user_id'], optional: ['notes'], enums: {},
+    summary: "Admins and owners only, consequential — confirm first. Lift a suspension and restore an account.",
+  },
+  manage_staff: {
+    irreversible: false, requires_confirmation: true,
+    required: ['action'], optional: ['email', 'new_role'],
+    enums: { action: ['list', 'promote', 'set_role'], new_role: ['staff', 'admin', 'master_staff'] },
+    summary: "Owners only (master_staff — Vission and Rel), consequential for changes — confirm first. Onboard and manage the team. action='list' shows current staff and their roles (read-only). action='promote' makes an existing account (by email) a staff member — default role staff, or pass new_role. action='set_role' changes an existing member's role. The person must already have an account (they sign up first, then you bring them onto the team). Setting someone to master_staff makes them a platform owner — do that only on explicit owner instruction. Every change is logged.",
+  },
 };
 
 function getTool(name) { return TOOLS[name] || null; }

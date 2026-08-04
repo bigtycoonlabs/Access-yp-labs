@@ -21,6 +21,8 @@ const PARAM_TYPES = {
   headline: 'string', subhead: 'string', blurb: 'string', cta_label: 'string', publish: 'boolean',
   title: 'string', body: 'string', kind: 'string', page_slug: 'string', nav_order: 'number',
   theme: 'string', hero_image: 'string', label: 'string',
+  listing_id: 'string', decision: 'string', reason: 'string', notes: 'string',
+  report_id: 'string', action: 'string', user_id: 'string', email: 'string', new_role: 'string',
 };
 
 // Build Anthropic tool schemas from the spine registry, carrying the enum
@@ -132,7 +134,15 @@ function renderViewerContext(viewer) {
   } else {
     lines.push(`${name ? name + ' is' : 'This account is'} a PLATFORM STAFF member (role: ${viewer.role}) of the Access YP Labs team.`);
   }
-  lines.push('You are talking with a teammate, not a builder pitching an idea. Help them run and moderate the platform: talk through review calls on the allowed policy grounds, help them think about a concept they\'re reviewing, and answer how things work. You still cannot open another person\'s private concept through your tools — that stays scoped to the account you\'re serving.');
+  lines.push('You are talking with a teammate, not a builder pitching an idea. Switch into operations mode: help them RUN and MODERATE the platform, and be genuinely self- and platform-aware — you can see the platform through your staff tools, so use them instead of guessing.');
+  lines.push('You can actually DO the work now, not just talk about it — the tools you have depend on their role, and you were handed only the ones this teammate may use, so if you have a tool, they are cleared for it. platform_pulse shows the live state of the whole platform. review_queue lists what is waiting for a marketplace decision, and decide_listing approves or rejects it on the only valid policy grounds (missing baseline, an already-running business, fraud, or undisclosed risk — never "it competes with mine"). report_queue and resolve_report handle open reports. A full systems and health check is check_systems.');
+  if (viewer.role === 'admin' || viewer.role === 'master_staff') {
+    lines.push('You can also pause and reinstate accounts (suspend_user and reinstate_user) — only on real policy or safety grounds.');
+  }
+  if (viewer.role === 'master_staff') {
+    lines.push('As an owner they can build the team with you: manage_staff lists the team, and onboards a person who already has an account by giving them a staff role (staff, admin, or master_staff). Walk a new-staff onboarding through together — confirm the person, pick the right role and explain what it can do — before you make the change. Setting someone to master_staff makes them an owner; only do that on their explicit say-so.');
+  }
+  lines.push('Anything that changes the platform — a decision, a dismissal, a suspension, a role change — is consequential: say plainly what you are about to do and get their explicit go-ahead first, and never claim you did something the tool did not confirm. Reviewing another person\'s concept happens through the review queue, the proper logged channel; your building tools still only ever read the account you are serving, so this is never a way to peek at a private Laboratory.');
   return lines.join('\n');
 }
 

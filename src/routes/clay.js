@@ -15,6 +15,8 @@ const siteStore = require('../services/clay/siteStore');
 const siteQuota = require('../services/clay/siteQuota');
 const domains = require('../services/clay/domains');
 const domainStore = require('../services/clay/domainStore');
+const staffCapability = require('../services/clay/staffCapability');
+const moderationCore = require('../services/moderationCore');
 const crypto = require('crypto');
 const valuation = require('../services/clay/valuation');
 const proofPrompt = require('../services/clay/proofPrompt');
@@ -783,6 +785,78 @@ function buildExecutors(user) {
       // a failure into a success — report exactly what the record says.
       return { available: true, note: s.summary, status: s };
     },
+    platform_pulse: async () => {
+      if (!staffCapability.allows(user && user.role, 'platform_pulse')) return { refused: true, note: 'That’s a staff-only view.' };
+      const [u, c, live, rev, rep] = await Promise.all([
+        query('SELECT COUNT(*)::int n FROM users'),
+        query('SELECT COUNT(*)::int n FROM concepts'),
+        query("SELECT COUNT(*)::int n FROM listings WHERE status='live'"),
+        query("SELECT COUNT(*)::int n FROM listings WHERE status='in_review'"),
+        query("SELECT COUNT(*)::int n FROM reports WHERE status='open'"),
+      ]);
+      const s = await health.systemsStatus().catch(() => ({ summary: 'systems status unavailable' }));
+      const n = (x) => x.rows[0].n;
+      return {
+        available: true,
+        counts: { creators: n(u), concepts: n(c), live_listings: n(live), in_review: n(rev), open_reports: n(rep) },
+        systems: s.summary,
+        note: `Right now: ${n(u)} creators, ${n(c)} concepts, ${n(live)} live listings, ${n(rev)} waiting for review, ${n(rep)} open reports. Systems: ${s.summary}`,
+      };
+    },
+    review_queue: async () => {
+      if (!staffCapability.allows(user && user.role, 'review_queue')) return { refused: true, note: 'That’s a staff-only view.' };
+      const r = await query("SELECT l.id, l.price_cents, l.created_at, c.title FROM listings l JOIN concepts c ON c.id=l.concept_id WHERE l.status='in_review' ORDER BY l.created_at ASC LIMIT 25");
+      return { count: r.rows.length, listings: r.rows.map((x) => ({ listing_id: x.id, title: x.title, price: '$' + ((x.price_cents || 0) / 100).toFixed(2), waiting_since: x.created_at })) };
+    },
+    decide_listing: async ({ listing_id, decision, reason, notes }) => {
+      if (!staffCapability.allows(user && user.role, 'decide_listing')) return { refused: true, note: 'Deciding listings is staff-only.' };
+      const r = await moderationCore.decideListing(user, listing_id, { decision, reason, notes });
+      if (!r.ok) return { status: 'error', message: r.error };
+      return { status: 'listing_' + r.status, listing_status: r.status, message: decision === 'approved' ? 'Approved — it’s live in the Dream Market now. Logged.' : 'Rejected and out of review. Logged.' };
+    },
+    report_queue: async () => {
+      if (!staffCapability.allows(user && user.role, 'report_queue')) return { refused: true, note: 'That’s a staff-only view.' };
+      const r = await query("SELECT * FROM reports WHERE status='open' ORDER BY created_at ASC LIMIT 25");
+      return { count: r.rows.length, reports: r.rows };
+    },
+    resolve_report: async ({ report_id, action }) => {
+      if (!staffCapability.allows(user && user.role, 'resolve_report')) return { refused: true, note: 'Resolving reports is staff-only.' };
+      if (action !== 'dismiss') return { status: 'error', message: 'The only action right now is dismiss.' };
+      const r = await query("UPDATE reports SET status='dismissed' WHERE id=$1 AND status='open' RETURNING id", [report_id]);
+      if (!r.rows.length) return { status: 'error', message: 'That report isn’t open (already handled, or not found).' };
+      return { status: 'report_dismissed', message: 'Report dismissed and closed.' };
+    },
+    suspend_user: async ({ user_id, reason, notes }) => {
+      if (!staffCapability.allows(user && user.role, 'suspend_user')) return { refused: true, note: 'Suspending accounts is for admins and owners.' };
+      if (user_id === user.id) return { status: 'error', message: 'You can’t suspend your own account.' };
+      const r = await query("UPDATE users SET status='suspended', updated_at=now() WHERE id=$1 AND status<>'suspended' RETURNING id", [user_id]);
+      if (!r.rows.length) return { status: 'error', message: 'No such active account (or it’s already suspended).' };
+      await query('INSERT INTO moderation_events (moderator_id, target_type, target_id, action, reason, notes) VALUES ($1,$2,$3,$4,$5,$6)', [user.id, 'user', user_id, 'suspend_user', reason || null, notes || null]).catch(() => {});
+      return { status: 'user_suspended', message: 'Account suspended. Reversible with reinstate.' };
+    },
+    reinstate_user: async ({ user_id, notes }) => {
+      if (!staffCapability.allows(user && user.role, 'reinstate_user')) return { refused: true, note: 'Reinstating accounts is for admins and owners.' };
+      const r = await query("UPDATE users SET status='active', updated_at=now() WHERE id=$1 AND status='suspended' RETURNING id", [user_id]);
+      if (!r.rows.length) return { status: 'error', message: 'That account isn’t suspended.' };
+      await query('INSERT INTO moderation_events (moderator_id, target_type, target_id, action, reason, notes) VALUES ($1,$2,$3,$4,$5,$6)', [user.id, 'user', user_id, 'reinstate_user', null, notes || null]).catch(() => {});
+      return { status: 'user_reinstated', message: 'Account reinstated.' };
+    },
+    manage_staff: async ({ action, email, new_role }) => {
+      if (!staffCapability.allows(user && user.role, 'manage_staff')) return { refused: true, note: 'Managing the team is owner-only.' };
+      if (action === 'list') {
+        const r = await query("SELECT name, email, role FROM users WHERE role IN ('staff','admin','master_staff') ORDER BY role, name");
+        return { staff: r.rows, note: `${r.rows.length} team members.` };
+      }
+      const em = (email || '').trim().toLowerCase();
+      if (!em) return { status: 'error', message: 'Give the email of the person to bring on — they must already have an account.' };
+      const role = action === 'promote' ? (new_role || 'staff') : new_role;
+      if (!['staff', 'admin', 'master_staff'].includes(role)) return { status: 'error', message: 'Role must be staff, admin, or master_staff.' };
+      const u = await query('SELECT id, name, role FROM users WHERE lower(email)=$1', [em]);
+      if (!u.rows.length) return { status: 'error', message: `No account for ${em} yet — have them sign up first, then bring them on.` };
+      await query('UPDATE users SET role=$2, updated_at=now() WHERE id=$1', [u.rows[0].id, role]);
+      await query('INSERT INTO moderation_events (moderator_id, target_type, target_id, action, reason, notes) VALUES ($1,$2,$3,$4,$5,$6)', [user.id, 'user', u.rows[0].id, 'set_staff_role', role, null]).catch(() => {});
+      return { status: 'staff_updated', message: `${u.rows[0].name || em} is now ${role}.` };
+    },
     notify_staff: async ({ subject, body }) => {
       // Clay flagging something to the team. Available from any session (he may notice a real
       // platform issue while helping anyone), but capped and logged so it can't be turned into
@@ -1042,7 +1116,12 @@ router.post('/chat', authenticate, [
   const mems = await memory.getMemories(req.user.id).catch(() => []);
   const patterns = await memory.getPatterns(req.user.id).catch(() => null);
   const memoryContext = [memory.renderMemoryContext(mems), memory.renderPatterns(patterns)].filter(Boolean).join('\n\n');
-  const out = await agent.runChat({ messages: req.body.messages, executors: buildExecutors(req.user), conceptContext, memoryContext, viewer: { role: req.user.role, name: req.user.name } });
+  // One Clay, gated: every builder gets the full building toolset; staff tools are added ONLY for
+  // the roles that may use them, so a regular creator is never even offered a moderation tool.
+  const allToolNames = agent.toolSchemas().map((t) => t.name);
+  const baseTools = allToolNames.filter((n) => !staffCapability.ALL_STAFF_TOOLS.includes(n));
+  const allowTools = baseTools.concat(staffCapability.staffToolsFor(req.user.role));
+  const out = await agent.runChat({ messages: req.body.messages, executors: buildExecutors(req.user), conceptContext, memoryContext, allowTools, viewer: { role: req.user.role, name: req.user.name } });
   // Tell the client what happened this turn: a background rebuild it can watch, or a
   // synchronous concept change it should refresh (new asset versions have new ids).
   const outcome = chatOutcomeFromTranscript(out.messages);

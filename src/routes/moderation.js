@@ -2,13 +2,14 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { query } = require('../config/db');
 const { authenticate, authorize } = require('../middleware/auth');
+const moderationCore = require('../services/moderationCore');
 const { asyncHandler, ApiError } = require('../lib/http');
 const describe = require('../lib/describe');
 const router = express.Router();
 
 // Only policy-ground reasons exist. "Competes with mine" is deliberately not a
 // selectable reason anywhere in the system.
-const REASONS = ['missing_baseline', 'running_business', 'fraud', 'missing_risk_disclosure'];
+const REASONS = moderationCore.REASONS;
 
 // Review queue — ONE queue for everyone. Clay's seeded concepts land here alongside every
 // creator's submission (origin tells them apart so the UI can label a Clay seed); there is no
@@ -79,46 +80,9 @@ router.post('/:listingId/decide', authenticate, authorize('staff', 'admin', 'mas
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-  const { decision, reason, notes } = req.body;
-
-  const l = await query('SELECT * FROM listings WHERE id=$1', [req.params.listingId]);
-  if (!l.rows.length) throw new ApiError(404, 'Listing not found.');
-  const listing = l.rows[0];
-
-  // Neutrality: a moderator normally cannot rule on their own listing. But while the
-  // marketplace is being seeded, platform operators (admin / master_staff) must be able to
-  // approve their OWN seed listings — otherwise there is no one to clear supply and the
-  // marketplace can never fill. This exception is narrow (operators only) and is recorded
-  // transparently in the audit log, never hidden.
-  const isOperator = ['admin', 'master_staff'].includes(req.user.role);
-  if (listing.seller_id === req.user.id && !isOperator) {
-    await query(
-      `INSERT INTO moderation_actions (listing_id, moderator_id, decision, recused, notes)
-       VALUES ($1,$2,$3,true,'auto-recused: moderator is the seller')`,
-      [listing.id, req.user.id, decision]);
-    throw new ApiError(403, 'You must recuse yourself — you are the seller of this listing.');
-  }
-  if (decision === 'rejected' && !reason) {
-    throw new ApiError(400, 'A policy reason code is required to reject a listing.');
-  }
-  if (listing.status !== 'in_review') throw new ApiError(400, 'Listing is not in review.');
-
-  // Decide atomically: the status guard above can race two moderators, so the write itself is
-  // conditional on the listing still being in review. If someone decided a moment earlier, we
-  // report that cleanly instead of recording a second, conflicting decision.
-  const newStatus = decision === 'approved' ? 'live' : 'rejected';
-  const upd = await query(
-    "UPDATE listings SET status=$2, updated_at=NOW() WHERE id=$1 AND status='in_review'",
-    [listing.id, newStatus]);
-  if (!upd.rowCount) throw new ApiError(409, 'This listing was just decided by another moderator.');
-  // If this was an operator clearing their own seed listing, mark it so in the audit trail.
-  const selfReview = listing.seller_id === req.user.id;
-  const auditNotes = notes || (selfReview ? 'operator self-review during marketplace seeding' : null);
-  const act = await query(
-    `INSERT INTO moderation_actions (listing_id, moderator_id, decision, reason, notes)
-     VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-    [listing.id, req.user.id, decision, reason || null, auditNotes]);
-  res.json({ listing_status: newStatus, action: act.rows[0] });
+  const r = await moderationCore.decideListing(req.user, req.params.listingId, req.body);
+  if (!r.ok) throw new ApiError(r.http || 400, r.error);
+  res.json({ listing_status: r.status, action: r.action });
 }));
 
 // Full audit trail for a listing.

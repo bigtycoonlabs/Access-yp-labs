@@ -30,13 +30,37 @@ const HELP_TOPICS = [
   'a simple launch: going from a quiet coming-soon page to your first paying customer',
 ];
 const STORY_TOPICS = [
-  'a small idea that sat in a drawer for years, then finally took shape',
-  'the whitespace nobody else was building in',
-  'a dream that found the founder who would finally build it',
-  'the night an “impossible” idea turned out to be simple',
-  'two creators, one idea, and the honest question that changed it',
-  'a founder who already ran a business, and the small change that doubled it',
-  'the coming-soon page that got twelve strangers to raise their hand',
+  'an idea that sat in a drawer for years until the right moment finally came',
+  'the gap in a market everyone walked past — until someone didn\'t',
+  'a dream that waited years for the founder who would actually build it',
+  'the night an idea that felt impossible turned out to be simple',
+  'two people, one idea, and the honest question that reshaped it',
+  'a founder already running a business who changed one small thing and watched it compound',
+  'a quiet coming-soon page that turned a dozen strangers into the first believers',
+  'the customer who described their problem so clearly it became someone\'s business',
+  'a side project almost given up on the week before it finally worked',
+  'someone who bought a half-finished idea, sharpened it, and sold it for more',
+  'the unglamorous first sale that proved the whole thing was real',
+  'a maker who stopped building in secret and let the world weigh in',
+  'the pivot that looked like failure until it looked like the plan',
+  'a person who never thought of themselves as a founder, until they were',
+  'the tiny detail a competitor ignored that became the whole advantage',
+  'a promise on a landing page the founder then had to go make true',
+  'what one honest piece of feedback changed before a single dollar was spent',
+  'a hobby that quietly turned into something people wanted to pay for',
+  'the founder who almost priced themselves out of existence, and the fix',
+  'a dream someone listed on the market so a stranger could carry it further',
+];
+// Narrative lenses — the same seed told a different way each time, so stories never feel same-y.
+const STORY_LENSES = [
+  'Tell it as one vivid scene — a single moment, place, and decision — not a summary of events.',
+  'Open in the middle of the tension and let the resolution arrive late.',
+  'Tell it from the customer\'s side of the counter, not the founder\'s.',
+  'Build it around one concrete object or detail that carries the whole meaning.',
+  'Let it turn on a reversal: what looked like the problem was the answer.',
+  'Keep it quiet and understated; trust one small true moment to land without a flourish.',
+  'Tell it almost entirely through what one person says out loud to another.',
+  'Start at the end, then show the single choice that made it inevitable.',
 ];
 
 function pickTopic(kind) {
@@ -47,7 +71,8 @@ function pickTopic(kind) {
 function buildComposePrompt(kind, topic) {
   const shared = 'Write it in your own voice for the PUBLIC Desk at Access YP Labs, where anyone — including people who have never signed up — might read it. It will be heard aloud by people using a screen reader, so write plain prose: no markdown, no bullet characters, no symbols, short paragraphs. Never fabricate a statistic, a testimonial, a real person, or a result; if you want to teach with numbers, use round, clearly illustrative ones and say plainly they are illustrative. Stay true to what you believe: proof is behavior not compliments, the idea stays theirs, and honesty is the confidence. Return ONLY a minified JSON object, no prose around it and no code fences, with exactly these keys: "title" (short, real, no clickbait), "dek" (one warm sentence under the title), "body" (the piece itself, a few short paragraphs).';
   if (kind === 'story') {
-    return `Write a SHORT, witty, warm story for the Desk about: ${topic}. Keep it genuinely charming and human, never cheesy, and land it on something true about building — or growing — a business here. Under 250 words. ${shared}`;
+    const lens = STORY_LENSES[Math.floor(Math.random() * STORY_LENSES.length)];
+    return `Write a SHORT story for the Desk — a small, human piece about building or growing a business — sparked by this seed: ${topic}. ${lens} Give it one specific, concrete detail that makes it feel real (a name, a place, a number, an object), a genuine turn where something actually shifts, and an ending that lands on something TRUE about building or growing a business here — earned by the story, not tacked on as a moral. Warm and a little witty; never cheesy, never a motivational-poster ending, never a template you could swap the nouns in. Vary your rhythm and write like a person who noticed something, not a brand. Invent the people and specifics freely — this is fiction — but never present it as a real customer, a real result, or a real statistic. Under 250 words. ${shared}`;
   }
   return `Write a genuinely useful COACHING article for the Desk on this business or marketing topic: ${topic}. Coach like a sharp operator who has done this, not a listicle — teach ONE thing with real substance and give the reader a concrete move they can make this week. Remember two kinds of reader: someone shaping a brand-new idea to prove and maybe sell, AND someone already running a business or a digital asset who wants it to grow. Speak to whichever the topic fits, or to both. When numbers would make it click, walk one small illustrative example step by step. Under 500 words, and every sentence earns its place. ${shared}`;
 }
