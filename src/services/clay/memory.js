@@ -130,12 +130,25 @@ async function getPatterns(userId) {
   const cats = await query(
     `SELECT category, count(*)::int AS n FROM concepts WHERE owner_id=$1 AND category IS NOT NULL GROUP BY category ORDER BY n DESC`,
     [userId]);
+  // How this creator actually likes to operate, read from the paths they've chosen across concepts:
+  // refining ideas to sell, building to launch and keep, or both. Behavioral, not self-reported.
+  const paths = await query(
+    `SELECT path, count(*)::int AS n FROM concept_intents
+      WHERE user_id=$1 AND path IN ('build_myself','refine_to_sell') GROUP BY path`,
+    [userId]);
+  let sells = 0; let launches = 0;
+  for (const r of paths.rows) { if (r.path === 'refine_to_sell') sells = r.n; else if (r.path === 'build_myself') launches = r.n; }
+  let disposition = null;
+  if (sells && launches) disposition = 'both';
+  else if (sells) disposition = 'sells';
+  else if (launches) disposition = 'launches';
   const row = agg.rows[0] || {};
   const categoryCounts = cats.rows.map((r) => ({ category: r.category, n: r.n }));
   return {
     conceptCount: row.concept_count || 0,
     operatingCount: row.operating_count || 0,
     listedCount: row.listed_count || 0,
+    disposition,
     categoryFocus: focusCategory(categoryCounts),
     categoryCounts,
     daysSinceLastActive: daysSince(row.last_active),
@@ -151,6 +164,10 @@ function renderPatterns(p) {
   if (p.listedCount) bits.push(`${p.listedCount} put on the Dream Market`);
   if (p.operatingCount) bits.push(`${p.operatingCount} already operating`);
   let facts = bits.join(', ') + '.';
+  if (p.disposition === 'both') facts += ' Across their concepts they both refine ideas to sell AND build ideas to launch themselves — a do-it-all creator; coach both sides.';
+  else if (p.disposition === 'sells') facts += ' So far they lean toward refining ideas to sell in the Dream Market — coach toward a sellable, packaged concept, while staying open if they signal a different aim.';
+  else if (p.disposition === 'launches') facts += ' So far they lean toward building ideas to launch and run themselves — coach toward proof, first customers, and going live, not toward a sale.';
+  if (p.operatingCount) facts += ' Some of their concepts are businesses they already run, so part of the work here is growing what already exists, not only shaping something new.';
   if (p.daysSinceLastActive != null && p.daysSinceLastActive >= 14) {
     facts += ` It's been about ${p.daysSinceLastActive} days since they last opened one.`;
   }

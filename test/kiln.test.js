@@ -965,6 +965,17 @@ test('patterns render as neutral facts, and say NOT to read motivation or nag', 
   assert.ok(/do NOT read motivation/i.test(out) && /never nag/i.test(out), 'guards against psychoanalysis and nagging');
 });
 
+test('patterns read how a creator likes to operate, from their chosen paths', () => {
+  const sells = mem.renderPatterns({ conceptCount: 3, disposition: 'sells' });
+  assert.ok(/lean toward refining ideas to sell/i.test(sells), 'reads a seller and coaches toward a sellable concept');
+  const launches = mem.renderPatterns({ conceptCount: 3, disposition: 'launches' });
+  assert.ok(/launch and run themselves|launch and run/i.test(launches), 'reads a launcher and coaches toward going live');
+  const both = mem.renderPatterns({ conceptCount: 3, disposition: 'both' });
+  assert.ok(/do-it-all/i.test(both), 'reads a do-it-all creator');
+  const owner = mem.renderPatterns({ conceptCount: 2, operatingCount: 1 });
+  assert.ok(/growing what already exists/i.test(owner), 'flags an owner here to grow a business they already run');
+});
+
 test('staleness is only surfaced after a real gap, not for an active builder', () => {
   const active = mem.renderPatterns({ conceptCount: 2, categoryFocus: null, listedCount: 0, operatingCount: 0, daysSinceLastActive: 3 });
   assert.ok(!/days since/.test(active), 'no staleness note for a recently-active builder');
