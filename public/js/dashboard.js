@@ -137,26 +137,70 @@
     } catch (e) { if (sec) sec.hidden = true; }   // an enhancement, not core — stay quiet on error
   }
 
+  // The public pen name — see it and edit it. Uses the existing seller status + alias endpoints.
+  async function loadPenName() {
+    const c = document.getElementById('penname'); if (!c) return; c.innerHTML = '';
+    try {
+      const s = await Kiln.api('/sellers/status');
+      const current = (s && s.display_name) || '';
+      const shown = el('p'); shown.appendChild(document.createTextNode('Buyers currently see you as: '));
+      shown.appendChild(el('strong', null, current || 'A Dreamhold creator')); c.appendChild(shown);
+
+      const label = el('label', null, 'Edit your pen name (2 to 40 characters)'); label.setAttribute('for', 'pen-input');
+      const input = el('input'); input.id = 'pen-input'; input.type = 'text'; input.maxLength = 40; input.value = current; input.setAttribute('autocomplete', 'off');
+      const out = el('p', 'muted'); out.setAttribute('role', 'status'); out.setAttribute('aria-live', 'polite');
+      const save = el('button', 'btn', 'Save pen name'); save.type = 'button';
+      save.addEventListener('click', async () => {
+        const name = input.value.trim();
+        if (name.length < 2 || name.length > 40) { out.className = 'msg err'; out.textContent = 'Your pen name needs to be between 2 and 40 characters.'; announce(out.textContent, true); return; }
+        save.disabled = true;
+        try {
+          const r = await Kiln.api('/sellers/alias', { method: 'PUT', body: { display_name: name } });
+          announce('Saved. Buyers will now see you as ' + ((r && r.display_name) || name) + '.', true);
+          loadPenName();
+        } catch (e) { out.className = 'msg err'; out.textContent = e.message || 'Could not save your pen name.'; announce(out.textContent, true); save.disabled = false; }
+      });
+      c.appendChild(label); c.appendChild(input); c.appendChild(save); c.appendChild(out);
+    } catch (e) { fail(c, e); }
+  }
+
+  // Kick off (or resume) Stripe payout onboarding. On failure, both announce AND leave the reason
+  // on the page, since a blind creator can miss a transient announcement.
+  async function startOnboard(container) {
+    announce('Opening Stripe to set up your payouts…');
+    const r = await Kiln.api('/sellers/onboard', { method: 'POST' });
+    if (r && r.url) { location.href = r.url; return; }
+    const msg = (r && r.message) || 'Payouts are not configured on the platform yet.';
+    announce(msg, true);
+    container.appendChild(el('p', 'msg err', msg));
+  }
+
   async function loadPayouts() {
     const c = document.getElementById('payouts'); c.innerHTML = '';
     try {
       const s = await Kiln.api('/sellers/status');
       if (!s.stripe_configured) { empty(c, 'Payouts are not configured on the platform yet. You can still create and list concepts; buyers can transact once payouts are enabled.'); return; }
-      if (s.onboarded && s.kyc_status === 'verified') { c.appendChild(el('p', 'msg ok', 'Payouts are ready. You can receive funds from concept sales and from consultant sessions.')); return; }
-      if (s.onboarded) {
-        c.appendChild(el('p', null, 'Payout setup is in progress.'));
-        c.appendChild(actionBtn('Refresh payout status', () => run(Kiln.api('/sellers/refresh', { method: 'POST' }), 'Refreshed.', loadPayouts), true));
-        c.appendChild(actionBtn('Continue payout setup', async () => {
-          const r = await Kiln.api('/sellers/onboard', { method: 'POST' });
-          if (r.url) location.href = r.url; else announce(r.message || 'Could not continue setup.', true);
-        }));
+
+      if (s.onboarded && s.kyc_status === 'verified') {
+        c.appendChild(el('p', 'msg ok', 'Payouts are ready. You can receive the money from concept sales and from consultant sessions.'));
         return;
       }
-      c.appendChild(el('p', null, 'Set up payouts so you can receive funds — from selling concepts and from consultant sessions you deliver.'));
-      c.appendChild(actionBtn('Set up payouts', async () => {
-        const r = await Kiln.api('/sellers/onboard', { method: 'POST' });
-        if (r.url) location.href = r.url; else announce(r.message || 'Payouts are not configured yet.', true);
-      }));
+
+      // Not fully set up yet — say plainly: you can still sell, but the money waits until setup is done.
+      const warn = el('p', 'msg');
+      warn.textContent = 'Your payout setup isn’t finished yet. You can still list and sell in the Dreamhold, but money from a sale is held and won’t be paid out to you until you finish setting up payments here.';
+      c.appendChild(warn);
+
+      const onError = (container) => (e) => { const m = e.message || 'Could not start payout setup. Please try again.'; announce(m, true); container.appendChild(el('p', 'msg err', m)); };
+
+      if (s.onboarded) {
+        c.appendChild(el('p', null, 'Payout setup is in progress — a few details still need to be finished with Stripe.'));
+        c.appendChild(actionBtn('Refresh payout status', () => run(Kiln.api('/sellers/refresh', { method: 'POST' }), 'Refreshed.', loadPayouts), true));
+        c.appendChild(actionBtn('Continue payout setup', () => startOnboard(c).catch(onError(c))));
+      } else {
+        c.appendChild(el('p', null, 'Set up payouts so you can receive the money from concept sales and consultant sessions. It takes a few minutes with Stripe, our payments provider.'));
+        c.appendChild(actionBtn('Set up payouts', () => startOnboard(c).catch(onError(c))));
+      }
     } catch (e) { fail(c, e); }
   }
 
@@ -508,7 +552,7 @@
       setTimeout(() => loadSubs(), 8000);
     }
     if (q.get('sub') === 'canceled') announce('Checkout canceled — you were not charged.', true);
-    loadTodaysDreams(); loadProofStep(); loadPayouts(); loadSubs(); loadConcepts(); loadListings(); loadOrders(); loadEngagements(); loadWatches(); loadTuning();
+    loadTodaysDreams(); loadProofStep(); loadPayouts(); loadPenName(); loadSubs(); loadConcepts(); loadListings(); loadOrders(); loadEngagements(); loadWatches(); loadTuning();
     document.getElementById('signout').addEventListener('click', (e) => { e.preventDefault(); Kiln.clearTokens(); location.href = '/'; });
   })();
 })();

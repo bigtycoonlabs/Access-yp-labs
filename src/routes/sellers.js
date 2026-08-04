@@ -41,7 +41,11 @@ router.post('/onboard', authenticate, asyncHandler(async (req, res) => {
   if (!accountId) {
     const me = (await query('SELECT email FROM users WHERE id=$1', [req.user.id])).rows[0];
     const created = await stripe.createConnectedAccount(me.email);
-    if (!created.ok) return res.status(502).json({ ok: false, message: 'Could not create a payout account.' });
+    if (!created.ok) {
+      return res.status(502).json({ ok: false,
+        error: 'Stripe could not create your payout account.' + (created.message ? ' It said: ' + created.message : ''),
+        detail: created.detail || null });
+    }
     accountId = created.accountId;
     await query(
       `INSERT INTO seller_accounts (user_id, stripe_account_id, kyc_status)
@@ -55,7 +59,11 @@ router.post('/onboard', authenticate, asyncHandler(async (req, res) => {
     refreshUrl: `${base}/dashboard.html?onboard=refresh`,
     returnUrl: `${base}/dashboard.html?onboard=done`,
   });
-  if (!link.ok) return res.status(502).json({ ok: false, message: 'Could not start onboarding.' });
+  if (!link.ok) {
+    return res.status(502).json({ ok: false,
+      error: 'Stripe could not start your onboarding.' + (link.message ? ' It said: ' + link.message : ''),
+      detail: link.detail || null });
+  }
   res.json({ ok: true, url: link.url });
 }));
 

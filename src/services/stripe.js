@@ -10,16 +10,26 @@ function stripe() {
 }
 const configured = () => !!stripe();
 
-// Create a connected account for a seller (KYC handled by Stripe).
+// Create a connected account for a seller (KYC handled by Stripe). We request the `transfers`
+// capability up front: this is a destination-charge marketplace (the buyer pays the platform, and
+// the sale proceeds are routed to the seller's connected account via transfer_data.destination), so
+// the seller's account needs `transfers` to receive money. Without a requested capability Stripe has
+// nothing to collect and refuses to build an onboarding link — which is exactly why setup was
+// erroring. card_payments is intentionally NOT requested: the platform is the merchant of record.
 async function createConnectedAccount(email) {
   const s = stripe();
   if (!s) return { ok: false, reason: 'stripe_not_configured' };
   try {
-    const acct = await s.accounts.create({ type: 'express', email });
+    const acct = await s.accounts.create({
+      type: 'express',
+      email,
+      capabilities: { transfers: { requested: true } },
+    });
     return { ok: true, accountId: acct.id };
   } catch (err) {
     console.error('createConnectedAccount FAILED —', err && err.type, err && err.code, '-', err && err.message);
-    return { ok: false, reason: 'stripe_error', detail: (err && (err.code || err.type)) || 'unknown' };
+    return { ok: false, reason: 'stripe_error', detail: (err && (err.code || err.type)) || 'unknown',
+      message: (err && err.message) || null };
   }
 }
 
@@ -35,7 +45,8 @@ async function createAccountLink({ accountId, refreshUrl, returnUrl }) {
     return { ok: true, url: link.url };
   } catch (err) {
     console.error('createAccountLink FAILED —', err && err.type, err && err.code, '-', err && err.message);
-    return { ok: false, reason: 'stripe_error', detail: (err && (err.code || err.type)) || 'unknown' };
+    return { ok: false, reason: 'stripe_error', detail: (err && (err.code || err.type)) || 'unknown',
+      message: (err && err.message) || null };
   }
 }
 

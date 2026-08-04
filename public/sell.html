@@ -83,6 +83,7 @@ fieldset{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margi
         <label class="check"><input type="checkbox" id="showworking"/> Show buyers how long I've worked on it</label></div>
       <label class="check"><input type="checkbox" id="risk"/> I have disclosed the concept's risks.</label>
       <label class="check"><input type="checkbox" id="ownership"/> I understand a sale transfers ownership to the buyer.</label>
+      <div id="payout-note" role="status" aria-live="polite"></div>
       <button type="button" class="btn" id="createlisting">Create listing</button>
       <div id="postcreate"></div>
     </div>
@@ -108,9 +109,24 @@ async function loadProjects(){
 }
 document.getElementById('project').addEventListener('change',e=>pickProject(e.target.value));
 
-// Pen name: load current value, let the creator set the public alias.
+// Pen name: load current value, let the creator set the public alias. Also inform them, at the
+// listing moment, that they can sell now but payouts wait until Stripe setup is finished.
 (async function(){
-  try{ const s=await Kiln.api('/sellers/status'); if(s.display_name){ document.getElementById('penname').value=s.display_name; } }catch(_){}
+  try{
+    const s=await Kiln.api('/sellers/status');
+    if(s.display_name){ document.getElementById('penname').value=s.display_name; }
+    const note=document.getElementById('payout-note');
+    if(note){
+      if(!s.stripe_configured){
+        note.className='msg';
+        note.textContent='You can list and sell now. Payouts aren’t enabled on the platform yet, so money from a sale is held until they are.';
+      }else if(!(s.onboarded && s.kyc_status==='verified')){
+        note.className='msg';
+        note.textContent='You can list and sell now, but money from a sale won’t be paid out to you until you finish setting up payments. ';
+        const a=document.createElement('a'); a.href='/dashboard.html#pay-h'; a.textContent='Finish payout setup on your dashboard.'; note.appendChild(a);
+      }
+    }
+  }catch(_){}
 })();
 document.getElementById('savepen').addEventListener('click',async()=>{
   const v=(document.getElementById('penname').value||'').trim();
