@@ -71,8 +71,9 @@ function esc(t){const d=document.createElement('div');d.textContent=t==null?'':t
 function renderCard(l,into,leaping){
   const c=document.createElement('article');c.className='card';
   const price=l.format==='auction'?('Auction from '+money(l.starting_bid_cents)):money(l.price_cents);
-  const pitch=(l.pitch||'').trim();
-  const pitchHtml=pitch?('<p>'+esc(pitch)+(pitch.length>=240?'…':'')+'</p>'):'';
+  const pitch=((l.brief&&l.brief.problem)||l.pitch||'').trim();
+  const usingPitch=!(l.brief&&l.brief.problem);
+  const pitchHtml=pitch?('<p>'+esc(pitch)+((usingPitch&&pitch.length>=240)?'…':'')+'</p>'):'';
   c.innerHTML=(leaping?'<p class="muted" style="margin:0 0 4px;color:#8ce0ff;">A dream leaning toward you</p>':'')+
     '<h3>'+esc(l.title)+'</h3>'+
     '<p class="muted">'+esc((l.category||'').replace(/_/g,' '))+' · '+esc((l.stage_label||'').replace(/_/g,' '))+'</p>'+

@@ -9,6 +9,7 @@ const protect = require('../lib/protect');
 const retrieval = require('../services/clay/retrieval');
 const movement = require('../services/clay/movement');
 const valuation = require('../services/clay/valuation');
+const brief = require('../services/clay/brief');
 
 const ASSET_TYPES = ['business_plan', 'marketing_strategy', 'customer_research', 'competitor_research',
   'regulatory_risk', 'html_demo', 'example_image', 'website_prompt', 'build_instructions', 'code_file', 'built_site'];
@@ -200,6 +201,21 @@ router.get('/:id/value', authenticate, asyncHandler(async (req, res) => {
     range_usd: { low: Math.round(val.range.low_cents / 100), high: Math.round(val.range.high_cents / 100) },
     has: val.has, drivers: val.drivers, to_raise: val.toRaise,
   });
+}));
+
+// Generate (or refresh) the concept's opportunity brief — four scannable lines (the problem, who
+// you'd serve, what you could make, why you), grounded in the concept's own material. Owner-scoped.
+// Best-effort: runs the writer where it's available (production). Lets a creator populate an
+// existing concept, not just new ones.
+router.post('/:id/brief', authenticate, asyncHandler(async (req, res) => {
+  const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
+  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  const b = await brief.ensureBriefFor(req.params.id);
+  if (!b) {
+    return res.json({ ok: false,
+      message: 'Couldn’t write the brief just now — the writer isn’t available here, or there wasn’t enough to ground it. Try again in a moment.' });
+  }
+  res.json({ ok: true, brief: b });
 }));
 // path from idea to a business someone will pay for. Owner-scoped; validated against the fixed set.
 router.put('/:id/movement', authenticate, asyncHandler(async (req, res) => {

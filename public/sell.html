@@ -70,6 +70,9 @@ fieldset{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margi
         <button type="button" class="btn secondary" id="savepen">Save pen name</button>
         <p class="muted">Buyers see this name, never your account name. We still know it's you behind the scenes, for payouts and trust.</p></div>
       <div id="value-guide" role="region" aria-label="What this concept is worth right now"></div>
+      <div id="brief-gen"><button type="button" class="btn secondary" id="genbrief">Write the opportunity brief</button>
+        <p class="muted">A short brief — the problem, who you’d serve, what you could make, and why you — shown to buyers on your listing. Clay writes it from your concept’s own materials.</p>
+        <p id="brief-out" role="status" aria-live="polite"></p></div>
     <div class="stack">
       <div><label for="format">Format</label>
         <select id="format"><option value="flat">Fixed price</option><option value="auction">Auction</option></select></div>
@@ -176,6 +179,25 @@ document.getElementById('savebuild').addEventListener('click',()=>{
 document.getElementById('format').addEventListener('change',e=>{
   const auc=e.target.value==='auction';
   document.getElementById('flatwrap').hidden=auc;document.getElementById('aucwrap').hidden=!auc;
+});
+
+document.getElementById('genbrief').addEventListener('click',async()=>{
+  if(!conceptId){show('Choose a project first.');return;}
+  const btn=document.getElementById('genbrief'), out=document.getElementById('brief-out');
+  btn.disabled=true; out.className='muted'; out.textContent='Writing the opportunity brief…'; announce('Writing the opportunity brief…');
+  try{
+    const r=await Kiln.api('/concepts/'+conceptId+'/brief',{method:'POST'});
+    if(r.ok&&r.brief){
+      const b=r.brief, parts=[];
+      if(b.problem)parts.push('Problem — '+b.problem);
+      if(b.customer)parts.push('Who you’d serve — '+b.customer);
+      if(b.earning)parts.push('What you could make — '+b.earning);
+      if(b.why_you)parts.push('Why you — '+b.why_you);
+      out.className='msg ok'; out.textContent='Brief written; it will show on your listing. '+parts.join('  •  ');
+      announce('Opportunity brief written. It will show on your listing.');
+    } else { out.className='msg'; out.textContent=r.message||'Could not write the brief right now.'; announce(out.textContent); }
+  }catch(e){ out.className='msg err'; out.textContent=e.message||'Could not write the brief.'; announce(out.textContent); }
+  btn.disabled=false;
 });
 
 document.getElementById('createlisting').addEventListener('click',async()=>{

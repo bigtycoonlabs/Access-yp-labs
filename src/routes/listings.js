@@ -5,6 +5,7 @@ const { authenticate } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
 const describe = require('../lib/describe');
 const { isAboveFloor, PRICE_FLOOR_CENTS } = require('../lib/money');
+const brief = require('../services/clay/brief');
 const router = express.Router();
 
 const BUILD_PATH_TYPES = ['html_demo', 'website_prompt', 'build_instructions', 'code_file', 'built_site'];
@@ -46,7 +47,7 @@ router.post('/', authenticate, [
   const { concept_id, format, price_cents, starting_bid_cents, stage_label,
           completion_target, risk_disclosed, ownership_ack, auction_close_at } = req.body;
 
-  const own = await query('SELECT id, is_operating FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, req.user.id]);
+  const own = await query('SELECT id, is_operating, brief FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, req.user.id]);
   if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
   if (own.rows[0].is_operating) {
     throw new ApiError(409, 'The Dream Market sells unlaunched ideas, not running businesses. This is marked as a business you already operate, so it can\u2019t be listed. Clay can still help you enhance it — or find a complementary dream to add to it.');
@@ -76,6 +77,11 @@ router.post('/', authenticate, [
     [concept_id, req.user.id, format, price_cents || null, starting_bid_cents || null,
      auction_close_at || null, completion_target || null, stage_label]);
   res.status(201).json({ listing: r.rows[0] });
+
+  // Best-effort: give a fresh listing an opportunity brief if the concept doesn't have one yet,
+  // without making the creator wait. Runs after the response; failures are silent, and the sell
+  // page also offers a button to generate it on demand.
+  if (!own.rows[0].brief) { brief.ensureBriefFor(concept_id).catch(() => {}); }
 }));
 
 // Submit a draft for moderation.
@@ -149,7 +155,7 @@ router.get('/', asyncHandler(async (req, res) => {
             l.stage_label, l.completion_target, l.created_at,
             c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dream Market creator') AS seller_alias,
             c.research_grounded, c.claims_verified, c.source_count,
-            left(c.clays_take, 240) AS pitch,
+            left(c.clays_take, 240) AS pitch, c.brief,
             (SELECT COUNT(*)::int FROM waitlist_signups w WHERE w.concept_id=l.concept_id) AS waiting
      FROM listings l
      JOIN concepts c ON c.id=l.concept_id
@@ -175,7 +181,7 @@ router.get('/leaping', authenticate, asyncHandler(async (req, res) => {
             l.stage_label, l.completion_target, l.created_at,
             c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dream Market creator') AS seller_alias,
             c.research_grounded, c.claims_verified, c.source_count,
-            left(c.clays_take, 240) AS pitch,
+            left(c.clays_take, 240) AS pitch, c.brief,
             (SELECT COUNT(*)::int FROM waitlist_signups w WHERE w.concept_id=l.concept_id) AS waiting
      FROM listings l JOIN concepts c ON c.id=l.concept_id JOIN users u ON u.id=l.seller_id
      WHERE l.status='live'
@@ -205,7 +211,7 @@ router.get('/today', authenticate, asyncHandler(async (req, res) => {
               l.stage_label, l.created_at,
               c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dream Market creator') AS seller_alias,
               c.research_grounded, c.claims_verified, c.source_count,
-              left(c.clays_take, 240) AS pitch,
+              left(c.clays_take, 240) AS pitch, c.brief,
               (l.created_at >= now() - interval '24 hours') AS is_new_today,
               (SELECT COUNT(*)::int FROM waitlist_signups w WHERE w.concept_id=l.concept_id) AS waiting
        FROM listings l JOIN concepts c ON c.id=l.concept_id JOIN users u ON u.id=l.seller_id
@@ -268,7 +274,7 @@ router.get('/:id/demo-description', asyncHandler(async (req, res) => {
 router.get('/:id', asyncHandler(async (req, res) => {
   const r = await query(
     `SELECT l.*, c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dream Market creator') AS seller_alias,
-            c.research_grounded, c.claims_verified, c.source_count, c.next_steps, c.clays_take,
+            c.research_grounded, c.claims_verified, c.source_count, c.next_steps, c.clays_take, c.brief,
             (SELECT COUNT(*)::int FROM waitlist_signups w WHERE w.concept_id=l.concept_id) AS waiting,
             CASE WHEN c.show_working_since THEN c.working_since ELSE NULL END AS working_since
      FROM listings l JOIN concepts c ON c.id=l.concept_id JOIN users u ON u.id=l.seller_id

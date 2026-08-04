@@ -58,6 +58,18 @@ function riskPanel(listing){
   return r;
 }
 
+// The opportunity at a glance — the four scannable specifics a buyer wants: the problem, who
+// they'd serve, what they could make, and why them. Shown when Clay has written the brief.
+function briefPanel(listing){
+  const b=listing.brief; if(!b || typeof b!=='object') return null;
+  const rows=[['The problem it solves',b.problem],['Who you’d serve',b.customer],['What you could make',b.earning],['Why you',b.why_you]].filter(function(r){return r[1];});
+  if(!rows.length) return null;
+  const p=el('div','panel'); p.setAttribute('aria-label','The opportunity at a glance');
+  p.appendChild(el('h2',null,'The opportunity at a glance'));
+  rows.forEach(function(r){ const line=el('p'); line.appendChild(el('strong',null,r[0]+': ')); line.appendChild(document.createTextNode(r[1])); p.appendChild(line); });
+  return p;
+}
+
 // Clay's take — the compelling read on the opportunity itself: why it's worth doing, the real
 // pain it answers, and the honest challenge. This is the narrative that makes a listing specific
 // instead of generic. Shown for everyone, right after the proof badge.
@@ -200,8 +212,9 @@ async function load(){
 
     const pb=window.proofBadge(listing,{full:true}); if(pb) detail.appendChild(pb);
 
-    // Clay's take on the opportunity, then the four honest facts every buyer deserves.
+    // Clay's take on the opportunity, then the specifics at a glance, then the honest facts.
     const tk=takePanel(listing); if(tk) detail.appendChild(tk);
+    const bp=briefPanel(listing); if(bp) detail.appendChild(bp);
     detail.appendChild(clarityBlock(listing));
 
     if(!Kiln.isLoggedIn()){
