@@ -8,6 +8,7 @@ const { conceptEntitlement, paywall, isStaff, billingExempt, redactLockedAssets 
 const protect = require('../lib/protect');
 const retrieval = require('../services/clay/retrieval');
 const movement = require('../services/clay/movement');
+const siteStore = require('../services/clay/siteStore');
 const valuation = require('../services/clay/valuation');
 const brief = require('../services/clay/brief');
 const launchPage = require('../services/clay/launchPage');
@@ -251,6 +252,52 @@ router.put('/:id/launch-page', authenticate, asyncHandler(async (req, res) => {
   await query('UPDATE concepts SET launch_page=$2::jsonb, updated_at=NOW() WHERE id=$1', [req.params.id, JSON.stringify(page)]);
   const site = (process.env.CLIENT_URL || 'https://accessyplabs.com').replace(/\/$/, '');
   res.json({ ok: true, launch_page: page, url: page.slug ? `${site}/p/${page.slug}` : null });
+}));
+
+// ---- a concept's SITE pages: the owner's direct control, mirroring Clay's tools ----
+// A concept's site is its launch page (the home) plus these pages. Live at /p/<site-slug>/<page-slug>
+// once both the home and the page are published. All owner-scoped.
+function siteBase() { return (process.env.CLIENT_URL || 'https://accessyplabs.com').replace(/\/$/, ''); }
+async function pageUrl(conceptId, page) {
+  if (!page || !page.published) return null;
+  const c = await query("SELECT launch_page->>'slug' AS slug, (launch_page->>'enabled') AS enabled FROM concepts WHERE id=$1", [conceptId]);
+  const slug = c.rows[0] && c.rows[0].slug;
+  const homeLive = c.rows[0] && c.rows[0].enabled === 'true';
+  return (slug && homeLive) ? `${siteBase()}/p/${slug}/${page.slug}` : null;
+}
+
+router.get('/:id/pages', authenticate, asyncHandler(async (req, res) => {
+  if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'Concept not found.');
+  res.json({ pages: await siteStore.listPages(req.params.id) });
+}));
+
+router.get('/:id/pages/:pageId', authenticate, asyncHandler(async (req, res) => {
+  if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'Concept not found.');
+  const r = await query(
+    'SELECT id, slug, title, body, kind, nav_order, published, updated_at FROM site_pages WHERE concept_id=$1 AND id=$2 LIMIT 1',
+    [req.params.id, req.params.pageId]);
+  if (!r.rows.length) throw new ApiError(404, 'Page not found.');
+  res.json({ page: r.rows[0], url: await pageUrl(req.params.id, r.rows[0]) });
+}));
+
+router.post('/:id/pages', authenticate, asyncHandler(async (req, res) => {
+  if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'Concept not found.');
+  const b = req.body || {};
+  if (!b.title || !String(b.title).trim()) throw new ApiError(400, 'A page title is required.');
+  const page = await siteStore.addPage(req.params.id, req.user.id, { title: b.title, body: b.body, kind: b.kind, publish: b.publish === true });
+  res.status(201).json({ ok: true, page, url: await pageUrl(req.params.id, page) });
+}));
+
+router.put('/:id/pages/:pageId', authenticate, asyncHandler(async (req, res) => {
+  if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'Concept not found.');
+  const b = req.body || {};
+  const page = await siteStore.editPage(req.params.id, req.params.pageId, {
+    title: b.title, body: b.body,
+    publish: typeof b.publish === 'boolean' ? b.publish : undefined,
+    nav_order: Number.isInteger(b.nav_order) ? b.nav_order : undefined,
+  });
+  if (!page) throw new ApiError(404, 'Page not found.');
+  res.json({ ok: true, page, url: await pageUrl(req.params.id, page) });
 }));
 // path from idea to a business someone will pay for. Owner-scoped; validated against the fixed set.
 router.put('/:id/movement', authenticate, asyncHandler(async (req, res) => {

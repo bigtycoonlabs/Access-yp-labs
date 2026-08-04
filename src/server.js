@@ -84,6 +84,7 @@ app.get('/api/ready', async (req, res) => {
 app.use('/api', (req, res) => res.status(404).json({ error: 'API route not found.' }));
 app.get('/desk', (req, res) => res.sendFile(path.join(__dirname, '../public/desk.html')));
 app.get('/p/:slug', (req, res) => res.sendFile(path.join(__dirname, '../public/launch.html')));
+app.get('/p/:slug/:page', (req, res) => res.sendFile(path.join(__dirname, '../public/launch.html')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
 
 app.use((err, req, res, next) => {

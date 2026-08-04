@@ -134,7 +134,24 @@ const TOOLS = {
     required: ['concept_id'],
     optional: ['headline', 'subhead', 'blurb', 'cta_label', 'publish'],
     enums: {},
-    summary: "Write or update THIS concept's coming-soon launch page — headline, subhead, blurb, and button label — and optionally publish it. Publishing puts up a real public page at /p/<slug> whose email signups feed the concept's waitlist as genuine proof of demand: the creator's first customer list. This is how someone launching an idea themselves starts proving it. Draft the copy WITH the creator in your own words, tight and honest, and only set publish=true once they've seen it and said go. Reversible — publish=false takes it down without losing the copy. Tell them the exact public link after you publish.",
+    summary: "Write or update THIS concept's coming-soon launch page — headline, subhead, blurb, and button label — and optionally publish it. Publishing puts up a real public page at /p/<slug> whose email signups feed the concept's waitlist as genuine proof of demand: the creator's first customer list. This is how someone launching an idea themselves starts proving it. Draft the copy WITH the creator in your own words, tight and honest, and only set publish=true once they've seen it and said go. Reversible — publish=false takes it down without losing the copy. Tell them the exact public link after you publish. This same page is also the HOME of the concept's site — add more pages with add_site_page to turn it into a real starting MVP.",
+  },
+  list_site_pages: {
+    irreversible: false, requires_confirmation: false,
+    required: ['concept_id'], optional: [], enums: {},
+    summary: "List the pages of THIS concept's site — every page built so far, with its title, whether it's published, and its order. Check this before adding or editing pages so you know what already exists.",
+  },
+  add_site_page: {
+    irreversible: false, requires_confirmation: false,
+    required: ['concept_id', 'title'], optional: ['body', 'kind', 'publish'],
+    enums: { kind: ['page', 'post'] },
+    summary: "Add a real page to THIS concept's site. This is how you build an actual starting MVP — a resource site or a blog with genuine pages — not just a coming-soon page. title is the page's name. body is the FULL content you write for it: real, useful, article-quality writing, never a placeholder. Simple Markdown is supported and rendered — # and ## headings, - bullet lists, and [text](url) links — so structure it well. kind is 'page' for a standing page (About, Resources) or 'post' for a dated article/blog post. The page becomes public at /p/<site-slug>/<page-slug> once BOTH the site's home (its landing page) is published and this page's publish=true. Set publish only when the creator has seen it and said go. Build the site out page by page, with the creator.",
+  },
+  edit_site_page: {
+    irreversible: false, requires_confirmation: false,
+    required: ['concept_id', 'page_slug'], optional: ['title', 'body', 'publish'],
+    enums: {},
+    summary: "Edit an existing site page, found by its slug (or id). Change its title or body, or publish/unpublish it — publish=false hides it again without losing the content. Fully reversible.",
   },
 };
 

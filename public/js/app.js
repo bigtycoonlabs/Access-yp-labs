@@ -420,7 +420,92 @@
     });
     wrap.appendChild(seeBtn);
     wrap.appendChild(signupsOut);
+    renderSitePages(wrap, concept);
     container.appendChild(wrap);
+  }
+
+  // The site manager: see, add, and edit the pages that make this concept a real site — not
+  // just a landing page. Mirrors what Clay can do, so the person has direct control too.
+  function renderSitePages(container, concept) {
+    const siteSlug = (concept.launch_page && concept.launch_page.slug) || null;
+    const homeLive = !!(concept.launch_page && concept.launch_page.enabled);
+    const sec = el('div', 'site-pages'); sec.style.cssText = 'margin-top:16px;border-top:1px solid var(--line);padding-top:12px;';
+    sec.appendChild(el('h4', null, 'Site pages'));
+    sec.appendChild(el('p', 'muted', 'Turn this into a real resource site or blog: add pages with genuine content. Each goes live under your landing page once it and the home page are published. Ask Clay to write and add pages, or add one yourself.'));
+    const list = el('div', 'pages-list'); list.setAttribute('role', 'status'); sec.appendChild(list);
+    const addBtn = el('button', 'btn secondary', 'Add a page'); addBtn.type = 'button'; sec.appendChild(addBtn);
+
+    // Shared editor
+    const ed = el('div'); ed.hidden = true; ed.style.marginTop = '12px';
+    const tL = el('label', null, 'Page title'); tL.setAttribute('for', 'sp-title');
+    const tIn = el('input'); tIn.id = 'sp-title'; tIn.type = 'text'; tIn.maxLength = 120; tIn.style.cssText = 'width:100%;min-height:44px;margin:4px 0 10px;';
+    const bL = el('label', null, 'Page content — plain text; # heading, ## subheading, - bullet, [text](https://link) all work'); bL.setAttribute('for', 'sp-body');
+    const bIn = el('textarea'); bIn.id = 'sp-body'; bIn.style.cssText = 'width:100%;min-height:200px;margin:4px 0 10px;';
+    const pL = el('label'); pL.style.cssText = 'display:flex;gap:10px;align-items:center;margin:6px 0 12px;';
+    const pIn = el('input'); pIn.type = 'checkbox'; pIn.style.cssText = 'min-width:22px;min-height:22px;';
+    pL.appendChild(pIn); pL.appendChild(document.createTextNode('Published (visible on your site)'));
+    const saveB = el('button', 'btn', 'Save page'); saveB.type = 'button';
+    const cancelB = el('button', 'btn secondary', 'Cancel'); cancelB.type = 'button'; cancelB.style.marginLeft = '8px';
+    const eOut = el('p', 'muted'); eOut.setAttribute('role', 'status');
+    ed.appendChild(tL); ed.appendChild(tIn); ed.appendChild(bL); ed.appendChild(bIn); ed.appendChild(pL);
+    ed.appendChild(saveB); ed.appendChild(cancelB); ed.appendChild(eOut);
+    sec.appendChild(ed);
+    let editingId = null;
+
+    function openEditor(page) {
+      editingId = page ? page.id : null;
+      tIn.value = page ? (page.title || '') : '';
+      pIn.checked = page ? !!page.published : false;
+      bIn.value = ''; eOut.textContent = '';
+      ed.hidden = false; tIn.focus();
+      if (page) {
+        bIn.placeholder = 'Loading…';
+        Kiln.api('/concepts/' + concept.id + '/pages/' + page.id).then(function (r) {
+          if (r && r.page) bIn.value = r.page.body || '';
+        }).catch(function () { eOut.textContent = 'Could not load the page content.'; });
+      }
+    }
+    cancelB.addEventListener('click', function () { ed.hidden = true; addBtn.focus(); });
+    saveB.addEventListener('click', async function () {
+      const title = (tIn.value || '').trim();
+      if (!title) { eOut.textContent = 'A page title is required.'; announce('A page title is required.', true); tIn.focus(); return; }
+      saveB.disabled = true; eOut.textContent = 'Saving…';
+      const bodyPayload = { title: title, body: bIn.value, publish: pIn.checked };
+      try {
+        let r;
+        if (editingId) r = await Kiln.api('/concepts/' + concept.id + '/pages/' + editingId, { method: 'PUT', body: bodyPayload });
+        else r = await Kiln.api('/concepts/' + concept.id + '/pages', { method: 'POST', body: bodyPayload });
+        eOut.textContent = 'Page saved.'; announce('Page saved.', true);
+        ed.hidden = true; await refresh(); addBtn.focus();
+      } catch (e) { eOut.textContent = (e && e.message) ? e.message : 'Could not save the page. Please try again.'; announce('Could not save the page.', true); }
+      saveB.disabled = false;
+    });
+    addBtn.addEventListener('click', function () { openEditor(null); });
+
+    async function refresh() {
+      list.textContent = 'Loading pages…';
+      try {
+        const r = await Kiln.api('/concepts/' + concept.id + '/pages');
+        const pages = (r && r.pages) || [];
+        list.textContent = '';
+        if (!pages.length) { list.appendChild(el('p', 'muted', 'No pages yet.')); return; }
+        pages.forEach(function (pg) {
+          const row = el('div', 'page-row'); row.style.cssText = 'padding:8px 0;border-bottom:1px solid var(--line);';
+          const t = el('p'); t.appendChild(el('strong', null, pg.title));
+          t.appendChild(document.createTextNode(' — ' + (pg.published ? 'published' : 'draft')));
+          row.appendChild(t);
+          if (pg.published && siteSlug && homeLive) {
+            const a = el('a', null, 'View'); a.href = location.origin + '/p/' + siteSlug + '/' + pg.slug; a.target = '_blank'; a.rel = 'noopener'; row.appendChild(a);
+          }
+          const edB = el('button', 'btn secondary', 'Edit'); edB.type = 'button'; edB.style.marginLeft = '8px';
+          edB.addEventListener('click', function () { openEditor(pg); });
+          row.appendChild(edB);
+          list.appendChild(row);
+        });
+      } catch (e) { list.textContent = (e && e.message) ? e.message : 'Could not load pages.'; }
+    }
+    refresh();
+    container.appendChild(sec);
   }
 
   // ---- open an existing concept to keep refining it ----

@@ -6,10 +6,21 @@
 <link rel="stylesheet" href="/css/kiln.css"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <style>
-  .launch{max-width:640px;margin:0 auto;padding:32px 20px;}
+  .launch{max-width:680px;margin:0 auto;padding:32px 20px;}
   .launch h1{font-size:32px;line-height:1.15;margin:0 0 10px;}
+  .site-home{font-size:18px;font-weight:600;text-decoration:none;}
   .sub{font-size:19px;color:var(--muted);margin:0 0 18px;}
   .blurb{font-size:17px;line-height:1.6;margin:0 0 24px;white-space:pre-wrap;}
+  .sitenav{display:flex;flex-wrap:wrap;gap:6px 16px;margin:14px 0 24px;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+  .sitenav a{min-height:44px;line-height:44px;text-decoration:none;font-weight:600;}
+  .sitenav a[aria-current="page"]{text-decoration:underline;}
+  .article{margin:8px 0 28px;}
+  .article h1{font-size:28px;margin:0 0 16px;}
+  .article h2{font-size:22px;margin:24px 0 8px;}
+  .article h3{font-size:18px;margin:18px 0 6px;}
+  .article p{font-size:17px;line-height:1.7;margin:0 0 14px;}
+  .article ul{font-size:17px;line-height:1.7;margin:0 0 14px;padding-left:22px;}
+  .article li{margin:4px 0;}
   .capture{border:1px solid var(--line);border-radius:12px;background:#fff;padding:20px;}
   .capture label{display:block;font-weight:600;margin:0 0 6px;}
   .capture input{width:100%;font-size:17px;padding:12px;border:1px solid var(--line);border-radius:8px;min-height:44px;box-sizing:border-box;}
@@ -25,6 +36,8 @@
     <h1 id="headline"></h1>
     <p class="sub" id="subhead" hidden></p>
     <p class="blurb" id="blurb" hidden></p>
+    <nav id="nav" class="sitenav" aria-label="Site pages" hidden></nav>
+    <article id="article" class="article" hidden></article>
     <div class="capture">
       <label for="email">Enter your email to be first in line</label>
       <input id="email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-describedby="cap-note"/>
@@ -32,33 +45,99 @@
       <p id="cap-note" class="count"></p>
       <p id="result" role="status" aria-live="polite"></p>
     </div>
-    <p class="foot">A coming-soon page on Access YP Labs, where ideas get proven before they launch.</p>
+    <p class="foot">Built on Access YP Labs, where ideas get proven before they launch.</p>
   </div>
 </main>
 <script>
 (function(){
-  var slug=decodeURIComponent((location.pathname.match(/^\/p\/([^\/?#]+)/)||[])[1]||'');
+  var m = location.pathname.match(/^\/p\/([^\/?#]+)(?:\/([^\/?#]+))?/) || [];
+  var slug = decodeURIComponent(m[1]||'');
+  var pageSlug = m[2] ? decodeURIComponent(m[2]) : '';
   var conceptId=null;
   var statusEl=document.getElementById('status');
   var EMAIL=/^[^@\s]+@[^@\s]+\.[^@\s]+$/;
   function show(el,txt){el.textContent=txt||'';el.hidden=!txt;}
   function tally(n){return n?((n===1?'1 person has':n+' people have')+' raised their hand so far.'):'';}
-  async function load(){
-    if(!slug){statusEl.textContent='This page isn’t available.';return;}
-    try{
-      var r=await fetch('/api/launch/'+encodeURIComponent(slug));
-      if(!r.ok){statusEl.textContent='This page isn’t available.';return;}
-      var d=await r.json();
-      conceptId=d.concept_id;
-      document.title=(d.headline||d.title||'Coming soon')+' — coming soon';
-      document.getElementById('headline').textContent=d.headline||d.title||'Coming soon';
-      show(document.getElementById('subhead'),d.subhead);
-      show(document.getElementById('blurb'),d.blurb);
-      document.getElementById('join').textContent=d.cta_label||'Get early access';
-      document.getElementById('cap-note').textContent=tally(d.count);
-      statusEl.hidden=true; document.getElementById('page').hidden=false;
-    }catch(e){statusEl.textContent='This page isn’t available.';}
+
+  // Safe inline: only [text](url) becomes a link; everything else is a text node. No innerHTML.
+  function inline(text){
+    var out=[]; var re=/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g; var last=0, mm;
+    while((mm=re.exec(text))){
+      if(mm.index>last) out.push(document.createTextNode(text.slice(last,mm.index)));
+      var a=document.createElement('a'); a.href=mm[2]; a.target='_blank'; a.rel='noopener'; a.textContent=mm[1]; out.push(a);
+      last=re.lastIndex;
+    }
+    if(last<text.length) out.push(document.createTextNode(text.slice(last)));
+    return out;
   }
+  // Safe block Markdown: # / ## headings, - or * bullet lists, blank-line paragraphs. DOM only.
+  function renderBody(container, body){
+    var lines=String(body||'').replace(/\r\n/g,'\n').split('\n'); var i=0;
+    function put(tag,text){var e=document.createElement(tag);inline(text).forEach(function(n){e.appendChild(n);});container.appendChild(e);}
+    while(i<lines.length){
+      var line=lines[i];
+      if(/^\s*$/.test(line)){ i++; continue; }
+      if(/^##\s+/.test(line)){ put('h3', line.replace(/^##\s+/,'')); i++; continue; }
+      if(/^#\s+/.test(line)){ put('h2', line.replace(/^#\s+/,'')); i++; continue; }
+      if(/^\s*[-*]\s+/.test(line)){
+        var ul=document.createElement('ul');
+        while(i<lines.length && /^\s*[-*]\s+/.test(lines[i])){ var li=document.createElement('li'); inline(lines[i].replace(/^\s*[-*]\s+/,'')).forEach(function(n){li.appendChild(n);}); ul.appendChild(li); i++; }
+        container.appendChild(ul); continue;
+      }
+      var para=[];
+      while(i<lines.length && !/^\s*$/.test(lines[i]) && !/^#{1,2}\s+/.test(lines[i]) && !/^\s*[-*]\s+/.test(lines[i])){ para.push(lines[i]); i++; }
+      put('p', para.join(' '));
+    }
+  }
+  function renderNav(pages, current){
+    var nav=document.getElementById('nav');
+    if(!pages || !pages.length){ nav.hidden=true; return; }
+    nav.textContent='';
+    var home=document.createElement('a'); home.href='/p/'+encodeURIComponent(slug); home.textContent='Home';
+    if(!current) home.setAttribute('aria-current','page');
+    nav.appendChild(home);
+    pages.forEach(function(pg){
+      var a=document.createElement('a');
+      a.href='/p/'+encodeURIComponent(slug)+'/'+encodeURIComponent(pg.slug);
+      a.textContent=pg.title;
+      if(pg.slug===current) a.setAttribute('aria-current','page');
+      nav.appendChild(a);
+    });
+    nav.hidden=false;
+  }
+
+  async function loadHome(){
+    var r=await fetch('/api/launch/'+encodeURIComponent(slug));
+    if(!r.ok){ statusEl.textContent='This page isn’t available.'; return; }
+    var d=await r.json(); conceptId=d.concept_id;
+    document.title=(d.headline||d.title||'Coming soon');
+    document.getElementById('headline').textContent=d.headline||d.title||'Coming soon';
+    show(document.getElementById('subhead'),d.subhead);
+    show(document.getElementById('blurb'),d.blurb);
+    document.getElementById('join').textContent=d.cta_label||'Get early access';
+    document.getElementById('cap-note').textContent=tally(d.count);
+    renderNav(d.pages, '');
+    statusEl.hidden=true; document.getElementById('page').hidden=false;
+  }
+  async function loadSubPage(){
+    var r=await fetch('/api/launch/'+encodeURIComponent(slug)+'/'+encodeURIComponent(pageSlug));
+    if(!r.ok){ statusEl.textContent='This page isn’t available.'; return; }
+    var d=await r.json(); conceptId=d.concept_id;
+    document.title=(d.page.title||'')+' — '+(d.site_title||'');
+    var head=document.getElementById('headline'); head.textContent='';
+    var homeLink=document.createElement('a'); homeLink.href='/p/'+encodeURIComponent(slug); homeLink.textContent=d.site_title||'Home'; homeLink.className='site-home';
+    head.appendChild(homeLink);
+    renderNav(d.pages, d.page.slug);
+    var art=document.getElementById('article');
+    var h=document.createElement('h1'); h.textContent=d.page.title; art.appendChild(h);
+    renderBody(art, d.page.body);
+    art.hidden=false;
+    document.getElementById('subhead').hidden=true;
+    document.getElementById('blurb').hidden=true;
+    document.getElementById('join').textContent=d.cta_label||'Get early access';
+    statusEl.hidden=true; document.getElementById('page').hidden=false;
+  }
+
   document.getElementById('join').addEventListener('click',async function(){
     var email=(document.getElementById('email').value||'').trim();
     var out=document.getElementById('result');
@@ -78,7 +157,10 @@
     }catch(e){ out.className='msg err'; out.textContent='Could not add you right now.'; }
     btn.disabled=false;
   });
-  load();
+
+  if(!slug){ statusEl.textContent='This page isn’t available.'; }
+  else if(pageSlug){ loadSubPage().catch(function(){statusEl.textContent='This page isn’t available.';}); }
+  else { loadHome().catch(function(){statusEl.textContent='This page isn’t available.';}); }
 })();
 </script>
 </body>

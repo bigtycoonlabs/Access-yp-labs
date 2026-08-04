@@ -11,6 +11,7 @@ const seedScheduler = require('../services/clay/seedScheduler');
 const intent = require('../services/clay/intent');
 const movement = require('../services/clay/movement');
 const launchPage = require('../services/clay/launchPage');
+const siteStore = require('../services/clay/siteStore');
 const crypto = require('crypto');
 const valuation = require('../services/clay/valuation');
 const proofPrompt = require('../services/clay/proofPrompt');
@@ -901,6 +902,40 @@ function buildExecutors(user) {
         message: enabled
           ? `The coming-soon page is live at ${url} — share that link and every email that comes in lands on this concept's waitlist as real proof.`
           : 'Saved the launch-page copy. It is not public yet — say the word and I can publish it.' };
+    },
+    // ---- multi-page site: build a real starting MVP, page by page ----
+    list_site_pages: async ({ concept_id }) => {
+      if (!(await siteStore.ownsConcept(concept_id, user.id))) return { error: 'not_your_concept' };
+      const pages = await siteStore.listPages(concept_id);
+      return { count: pages.length, pages };
+    },
+    add_site_page: async ({ concept_id, title, body, kind, publish }) => {
+      if (!(await siteStore.ownsConcept(concept_id, user.id))) return { error: 'not_your_concept' };
+      let page;
+      try { page = await siteStore.addPage(concept_id, user.id, { title, body, kind, publish }); }
+      catch (e) { return { error: 'could_not_add', message: e.message }; }
+      const c = await query("SELECT launch_page->>'slug' AS slug, (launch_page->>'enabled') AS enabled FROM concepts WHERE id=$1", [concept_id]);
+      const site = (process.env.CLIENT_URL || 'https://accessyplabs.com').replace(/\/$/, '');
+      const siteSlug = c.rows[0] && c.rows[0].slug;
+      const homeLive = c.rows[0] && c.rows[0].enabled === 'true';
+      const url = (page.published && siteSlug && homeLive) ? `${site}/p/${siteSlug}/${page.slug}` : null;
+      let message;
+      if (url) message = `Page added and live at ${url}`;
+      else if (page.published && !homeLive) message = 'Page is published, but the site has no public home yet — publish the landing page (the site\u2019s home) and it goes live.';
+      else message = 'Page added as a draft. Publish it when the creator says go.';
+      return { status: 'site_page_added', page, url, message };
+    },
+    edit_site_page: async ({ concept_id, page_slug, title, body, publish }) => {
+      if (!(await siteStore.ownsConcept(concept_id, user.id))) return { error: 'not_your_concept' };
+      const page = await siteStore.editPage(concept_id, page_slug, { title, body, publish });
+      if (!page) return { error: 'page_not_found', message: 'No page with that slug on this concept.' };
+      const c = await query("SELECT launch_page->>'slug' AS slug, (launch_page->>'enabled') AS enabled FROM concepts WHERE id=$1", [concept_id]);
+      const site = (process.env.CLIENT_URL || 'https://accessyplabs.com').replace(/\/$/, '');
+      const siteSlug = c.rows[0] && c.rows[0].slug;
+      const homeLive = c.rows[0] && c.rows[0].enabled === 'true';
+      const url = (page.published && siteSlug && homeLive) ? `${site}/p/${siteSlug}/${page.slug}` : null;
+      return { status: 'site_page_updated', page, url,
+        message: url ? `Page updated and live at ${url}` : 'Page updated.' };
     },
     define_term: async ({ term }) => {
       const e = glossary.defineTerm(term);
