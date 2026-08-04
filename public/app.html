@@ -21,6 +21,15 @@
   @media (max-width:640px){ .log{min-height:0;} }
 </style>
   <meta name="robots" content="noindex, nofollow"/>
+<style>
+.composer-options{margin-top:12px;border-top:1px solid var(--line);padding-top:6px;}
+.composer-options>summary{min-height:44px;line-height:44px;cursor:pointer;font-weight:600;list-style:none;}
+.composer-options>summary::-webkit-details-marker{display:none;}
+.composer-options>summary::before{content:"\25B8 ";}
+.composer-options[open]>summary::before{content:"\25BE ";}
+.bf-step{margin:4px 0;}
+@media (min-width:900px){.composer #prompt{min-height:120px;}}
+</style>
 </head><body>
 <a class="skip" href="#composer">Skip to the message box</a>
 <header class="site"><div class="wrap bar">
@@ -29,6 +38,7 @@
     <a href="/dashboard.html">Dashboard</a>
     <a href="/marketplace.html">The Dream Market</a>
     <a href="/consultants.html">Consultants</a>
+    <a href="/desk.html">The Desk</a>
     <a href="#" id="signout">Sign out</a>
   </nav>
 </div></header>
@@ -42,38 +52,41 @@
   </section>
 
   <div class="composer" id="composer">
-    <div class="modes" id="modes" role="group" aria-label="What would you like to do?">
-      <button type="button" class="btn mode-btn" id="mode-create" aria-pressed="true">Create a new concept</button>
-      <button type="button" class="btn mode-btn" id="mode-enhance" aria-pressed="false">Enhance an idea or business</button>
-    </div>
-    <div id="operating-wrap" hidden style="margin:8px 0;">
-      <label style="display:flex;gap:10px;align-items:flex-start;">
-        <input type="checkbox" id="operating" style="min-width:22px;min-height:22px;margin-top:2px;">
-        <span>This business already exists — I run it. Enhance my operation (it won’t be listed for sale in the Dream Market).</span>
-      </label>
-    </div>
-    <label for="category">Category <span class="muted">(optional — Clay can decide)</span></label>
-    <select id="category">
-      <option value="">Let Clay decide</option>
-      <option value="digital_product_saas">Digital product / SaaS</option>
-      <option value="online_service_agency">Online service / agency</option>
-      <option value="content_creator">Content / creator</option>
-      <option value="ecommerce_pod">E-commerce / print-on-demand</option>
-      <option value="ai_product_service">AI product / service</option>
-      <option value="remote_hybrid_physical">Remote-operated hybrid</option>
-      <option value="micro_solo">Micro / solo</option>
-    </select>
     <label for="prompt">Describe your idea or what you want</label>
     <textarea id="prompt" placeholder="For example: a subscription box for left-handed tools, run entirely online."></textarea>
-    <div class="attach-row" style="margin:8px 0;">
-      <label for="attach">Attach files <span class="muted">(optional — code, images, graphics, or documents for Clay to use)</span></label>
-      <input type="file" id="attach" multiple aria-describedby="attach-hint" style="min-height:44px;">
-      <p id="attach-hint" class="muted" style="margin:4px 0 0;">Clay reads code and text directly, reads PDFs and Word documents, and looks at images with its vision — then folds whatever you attach into the plan, design, and notes. If it can’t read a file (like a scanned PDF), it says so instead of guessing.</p>
-      <div id="attached" role="status" aria-live="polite" style="margin-top:6px;"></div>
-    </div>
     <div class="actions">
       <button type="button" class="btn" id="send">Send to Clay</button>
     </div>
+    <details class="composer-options">
+      <summary>More options — type of work, category, and files</summary>
+      <div class="modes" id="modes" role="group" aria-label="What would you like to do?">
+        <button type="button" class="btn mode-btn" id="mode-create" aria-pressed="true">Create a new concept</button>
+        <button type="button" class="btn mode-btn" id="mode-enhance" aria-pressed="false">Enhance an idea or business</button>
+      </div>
+      <div id="operating-wrap" hidden style="margin:8px 0;">
+        <label style="display:flex;gap:10px;align-items:flex-start;">
+          <input type="checkbox" id="operating" style="min-width:22px;min-height:22px;margin-top:2px;">
+          <span>This business already exists — I run it. Enhance my operation (it won’t be listed for sale in the Dream Market).</span>
+        </label>
+      </div>
+      <label for="category">Category <span class="muted">(optional — Clay can decide)</span></label>
+      <select id="category">
+        <option value="">Let Clay decide</option>
+        <option value="digital_product_saas">Digital product / SaaS</option>
+        <option value="online_service_agency">Online service / agency</option>
+        <option value="content_creator">Content / creator</option>
+        <option value="ecommerce_pod">E-commerce / print-on-demand</option>
+        <option value="ai_product_service">AI product / service</option>
+        <option value="remote_hybrid_physical">Remote-operated hybrid</option>
+        <option value="micro_solo">Micro / solo</option>
+      </select>
+      <div class="attach-row" style="margin:8px 0;">
+        <label for="attach">Attach files <span class="muted">(optional — code, images, graphics, or documents for Clay to use)</span></label>
+        <input type="file" id="attach" multiple aria-describedby="attach-hint" style="min-height:44px;">
+        <p id="attach-hint" class="muted" style="margin:4px 0 0;">Clay reads code and text directly, reads PDFs and Word documents, and looks at images with its vision — then folds whatever you attach into the plan, design, and notes. If it can’t read a file (like a scanned PDF), it says so instead of guessing.</p>
+        <div id="attached" role="status" aria-live="polite" style="margin-top:6px;"></div>
+      </div>
+    </details>
   </div>
   <div id="my-concepts-area"></div>
 </main>

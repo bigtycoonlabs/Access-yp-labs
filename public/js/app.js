@@ -116,6 +116,18 @@
     if (text != null) n.textContent = text;
     return n;
   }
+  // Render a line of Clay's text with any http(s) links clickable — so a landing-page link he
+  // hands you is a real link you can open, not dead text. Safe: only text nodes and anchors.
+  function sayLine(text, cls) {
+    const p = el('p', cls || null);
+    String(text == null ? '' : text).split(/(https?:\/\/[^\s]+)/g).forEach(function (seg) {
+      if (/^https?:\/\//.test(seg)) {
+        const a = el('a', null, seg); a.href = seg; a.target = '_blank'; a.rel = 'noopener';
+        p.appendChild(a);
+      } else if (seg) { p.appendChild(document.createTextNode(seg)); }
+    });
+    return p;
+  }
   // Clay's living mark — a bowl cradling the light. Each instance gets a unique gradient id
   // so several marks on one page don't collide. It's purely decorative (the speaker row and
   // build events carry the real text/announcements), so it's aria-hidden.
@@ -301,6 +313,62 @@
   document.getElementById('mode-create').addEventListener('click', () => setMode('create'));
   document.getElementById('mode-enhance').addEventListener('click', () => setMode('enhance'));
 
+  // Show (and let the person edit/publish) this concept's landing page — a real clickable link
+  // when it's live, and a simple form when they want to create or change it. This is the "where's
+  // my landing page and how do I edit it" surface.
+  function renderLaunchPage(container, concept) {
+    const lp = concept.launch_page || {};
+    const liveUrl = lp.slug ? (location.origin + '/p/' + lp.slug) : '';
+    const wrap = el('div', 'launch-panel');
+    wrap.style.cssText = 'border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:12px 0;background:#fff;';
+    wrap.appendChild(el('h3', null, 'Your landing page'));
+    if (lp.enabled && liveUrl) {
+      wrap.appendChild(el('p', 'muted', 'Live and collecting sign-ups. Share this link:'));
+      wrap.appendChild(sayLine(liveUrl));
+    } else if (liveUrl) {
+      wrap.appendChild(el('p', 'muted', 'Saved as a draft — not public yet. It will publish at ' + liveUrl));
+    } else {
+      wrap.appendChild(el('p', 'muted', 'No landing page yet. A coming-soon page lets you collect interested people before you build — real proof of demand. Set one up here, or just ask Clay to make you one.'));
+    }
+    const editBtn = el('button', 'btn secondary', liveUrl ? 'Edit landing page' : 'Set up a landing page'); editBtn.type = 'button';
+    wrap.appendChild(editBtn);
+    const form = el('div', 'launch-form'); form.hidden = true; form.style.marginTop = '12px';
+    function field(labelText, id, val, isArea) {
+      const l = el('label', null, labelText); l.setAttribute('for', id);
+      const inp = isArea ? el('textarea') : el('input'); inp.id = id; if (!isArea) inp.type = 'text';
+      if (val) inp.value = val;
+      inp.style.cssText = 'width:100%;min-height:' + (isArea ? '80px' : '44px') + ';margin:4px 0 10px;';
+      form.appendChild(l); form.appendChild(inp); return inp;
+    }
+    const hIn = field('Headline (required)', 'lp-headline', lp.headline || concept.title || '');
+    const sIn = field('Subheadline', 'lp-subhead', lp.subhead || '');
+    const bIn = field('Short blurb', 'lp-blurb', lp.blurb || '', true);
+    const cIn = field('Button label', 'lp-cta', lp.cta_label || 'Get early access');
+    const pubL = el('label'); pubL.style.cssText = 'display:flex;gap:10px;align-items:center;margin:6px 0 12px;';
+    const pub = el('input'); pub.type = 'checkbox'; pub.id = 'lp-publish'; pub.checked = !!lp.enabled; pub.style.cssText = 'min-width:22px;min-height:22px;';
+    pubL.appendChild(pub); pubL.appendChild(document.createTextNode('Make it live (publish so people can visit and sign up)'));
+    form.appendChild(pubL);
+    const save = el('button', 'btn', 'Save landing page'); save.type = 'button';
+    const out = el('p', 'muted'); out.setAttribute('role', 'status');
+    save.addEventListener('click', async function () {
+      if (!hIn.value.trim()) { out.textContent = 'A headline is required.'; announce('A headline is required.', true); hIn.focus(); return; }
+      save.disabled = true; out.textContent = 'Saving…';
+      try {
+        const r = await Kiln.api('/concepts/' + concept.id + '/launch-page', { method: 'PUT', body: { headline: hIn.value, subhead: sIn.value, blurb: bIn.value, cta_label: cIn.value, publish: pub.checked } });
+        concept.launch_page = r.launch_page || concept.launch_page;
+        out.textContent = '';
+        out.appendChild(document.createTextNode(pub.checked ? 'Your landing page is live: ' : 'Saved as a draft. '));
+        if (r.url) { const a = el('a', null, r.url); a.href = r.url; a.target = '_blank'; a.rel = 'noopener'; out.appendChild(a); }
+        announce(pub.checked ? 'Your landing page is live.' : 'Landing page saved as a draft.', true);
+      } catch (e) { out.textContent = (e && e.message) ? e.message : 'Could not save the landing page. Please try again.'; announce('Could not save the landing page.', true); }
+      save.disabled = false;
+    });
+    form.appendChild(save); form.appendChild(out);
+    editBtn.addEventListener('click', function () { form.hidden = !form.hidden; if (!form.hidden) hIn.focus(); });
+    wrap.appendChild(form);
+    container.appendChild(wrap);
+  }
+
   // ---- open an existing concept to keep refining it ----
   async function loadConceptIntoWorkspace(id) {
     try {
@@ -323,6 +391,7 @@
         const lockedNames = current.filter((a) => !(isEntitled || PREVIEW_TYPES.includes(a.type))).map((a) => a.title || a.label || a.type);
         lockedNotice(m, concept.id, lockedNames);
       }
+      renderLaunchPage(m, concept);
       announce('Continuing your concept: ' + (concept.title || 'your concept') + '. Add a message to refine it.', true);
       if (promptEl) promptEl.focus();
     } catch (e) {
@@ -489,7 +558,7 @@
     // pause between ideas, instead of dumping one wall of speech. Falls back to a single
     // reply for older responses.
     var bubbles = (Array.isArray(data.bubbles) && data.bubbles.length) ? data.bubbles : [data.reply || '(no reply)'];
-    bubbles.forEach(function (b) { container.appendChild(el('p', null, b)); });
+    bubbles.forEach(function (b) { container.appendChild(sayLine(b)); });
     if (data.status === 'confirmation_required' && data.confirmation) {
       renderChatConfirm(container, data.confirmation);
       announce(bubbles[0] || 'Clay needs your confirmation to do that.', true);
@@ -622,6 +691,9 @@
   function watchBuild(container, buildId) {
     const log = el('div', 'build-log');
     log.setAttribute('aria-label', 'Clay’s build progress');
+    log.setAttribute('role', 'log');
+    log.setAttribute('aria-live', 'polite');
+    log.setAttribute('aria-relevant', 'additions');
     log.style.borderLeft = '3px solid #d6c3b6';
     log.style.paddingLeft = '10px';
     log.style.margin = '8px 0';
@@ -647,7 +719,10 @@
       if (notes.length > shown) {
         for (; shown < notes.length; shown++) {
           setCap(notes[shown].text);
-          announce(notes[shown].text); // polite: reads without cutting off
+          // Append each step as its OWN node in this live region so VoiceOver reads every
+          // step in order. Overwriting one caption (the old way) gets coalesced by screen
+          // readers, so only the last line — or none — was ever heard.
+          log.appendChild(el('p', 'bf-step', notes[shown].text));
         }
         lastNoteAt = Date.now();
       }
@@ -682,7 +757,8 @@
         if (notes.length === shown && Date.now() - lastNoteAt > 20000) {
           setCap('Still working… ' + secs + 's in.');
         }
-        if (secs - lastBeat >= 25) { lastBeat = secs; announce('Still working, ' + secs + ' seconds in. This is normal.'); }
+        // No periodic "still working" announcement — the real steps above are what the person
+        // wants read to them, not a clock ticking.
       }
       scrollToLatest(log);
     }, 2500);
