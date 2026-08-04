@@ -57,6 +57,50 @@ function riskPanel(listing){
   r.appendChild(el('p',null,listing.risk_summary));
   return r;
 }
+
+// The honest picture — the four things every buyer deserves to understand at a glance, on EVERY
+// live listing, with honest fallbacks so none of the four is ever silently blank: what you get,
+// the proof so far, the risk that remains, and your first step after you claim it.
+function firstStep(ns){
+  try{
+    if(Array.isArray(ns) && ns.length){ const s=ns[0]; return typeof s==='string'?s:(s&&s.text?s.text:null); }
+  }catch(_){}
+  return null;
+}
+function clarityBlock(listing){
+  const box=el('div','panel');box.setAttribute('aria-label','The honest picture, in plain terms');
+  box.appendChild(el('h2',null,'The honest picture'));
+  function part(label,text){
+    const p=el('p');p.appendChild(el('strong',null,label+' '));p.appendChild(document.createTextNode(text));return p;
+  }
+
+  const stageWord={concept:'a shaped concept, not yet built',in_build:'a concept already part-built',prepared_to_start:'a concept prepared and ready to start'}[listing.stage_label]||'a shaped concept';
+  let getting='You are claiming the full concept package — '+stageWord+', yours exclusively once you claim it.';
+  if(listing.completion_target) getting+=' The seller expects it can be launch-ready by '+listing.completion_target+'.';
+  box.appendChild(part('What you get:',getting));
+
+  const bits=[];
+  if(listing.waiting>0) bits.push(listing.waiting+(listing.waiting===1?' person has':' people have')+' already raised a hand for it');
+  if(listing.research_grounded) bits.push('it was written against real research');
+  if(listing.claims_verified===true) bits.push('its specific claims passed a source check');
+  let proofText;
+  if(bits.length){ const j=bits.join('; '); proofText=j.charAt(0).toUpperCase()+j.slice(1)+'.'; }
+  else proofText='It has not been independently proven yet — the proof is still ahead of it. Treat it as a strong starting point, not a validated business.';
+  box.appendChild(part('The proof so far:',proofText));
+
+  const riskText=(listing.risk_summary&&String(listing.risk_summary).trim())
+    ? String(listing.risk_summary).trim()
+    : 'No major regulatory or licensing risk was flagged — but no idea is risk-free. Review it yourself, and expect the real test to be whether customers show up.';
+  box.appendChild(part('The risk that remains:',riskText));
+
+  const step=firstStep(listing.next_steps);
+  const stepText=step
+    ? step
+    : 'The seller hasn’t set a first step yet. Before you commit, open it and have Clay name the first proof step — one real action a stranger can take.';
+  box.appendChild(part('Your first step after you claim it:',stepText));
+
+  return box;
+}
 async function loadPreview(container){
   const box=el('div','panel'); box.appendChild(el('h2',null,'What’s inside this dream'));
   const body=el('div'); box.appendChild(body); container.appendChild(box);
@@ -144,6 +188,9 @@ async function load(){
     }
 
     const pb=window.proofBadge(listing,{full:true}); if(pb) detail.appendChild(pb);
+
+    // The four things every buyer deserves, on every live listing, before anything else.
+    detail.appendChild(clarityBlock(listing));
 
     if(!Kiln.isLoggedIn()){
       const back=encodeURIComponent(location.pathname+location.search);

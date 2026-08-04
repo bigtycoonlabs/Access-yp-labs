@@ -265,7 +265,7 @@ router.get('/:id/demo-description', asyncHandler(async (req, res) => {
 router.get('/:id', asyncHandler(async (req, res) => {
   const r = await query(
     `SELECT l.*, c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dreamhold creator') AS seller_alias,
-            c.research_grounded, c.claims_verified, c.source_count,
+            c.research_grounded, c.claims_verified, c.source_count, c.next_steps,
             (SELECT COUNT(*)::int FROM waitlist_signups w WHERE w.concept_id=l.concept_id) AS waiting,
             CASE WHEN c.show_working_since THEN c.working_since ELSE NULL END AS working_since
      FROM listings l JOIN concepts c ON c.id=l.concept_id JOIN users u ON u.id=l.seller_id
