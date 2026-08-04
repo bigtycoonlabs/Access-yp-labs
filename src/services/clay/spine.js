@@ -132,9 +132,9 @@ const TOOLS = {
   set_launch_page: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id'],
-    optional: ['headline', 'subhead', 'blurb', 'cta_label', 'publish'],
-    enums: {},
-    summary: "Write or update THIS concept's coming-soon launch page — headline, subhead, blurb, and button label — and optionally publish it. Publishing puts up a real public page at /p/<slug> whose email signups feed the concept's waitlist as genuine proof of demand: the creator's first customer list. This is how someone launching an idea themselves starts proving it. Draft the copy WITH the creator in your own words, tight and honest, and only set publish=true once they've seen it and said go. Reversible — publish=false takes it down without losing the copy. Tell them the exact public link after you publish. This same page is also the HOME of the concept's site — add more pages with add_site_page to turn it into a real starting MVP.",
+    optional: ['headline', 'subhead', 'blurb', 'cta_label', 'theme', 'hero_image', 'publish'],
+    enums: { theme: ['warm', 'ink', 'clean', 'bold', 'forest', 'dusk'] },
+    summary: "Write or update THIS concept's site home page — headline, subhead, blurb, button label — and its LOOK: theme (warm, ink, clean, bold, forest, or dusk) and hero_image (a full https image URL shown large at the top). Optionally publish. Publishing puts up a real public page at /p/<slug> whose email signups feed the concept's waitlist as genuine proof of demand: the creator's first customer list. Draft the copy WITH the creator in your own words, pick a theme that fits the idea's feeling, and only publish once they've seen it and said go. Reversible — publish=false takes it down without losing anything. Tell them the exact public link after you publish. This same page is the HOME of the concept's site — add more pages with add_site_page to turn it into a real, stunning starting MVP.",
   },
   list_site_pages: {
     irreversible: false, requires_confirmation: false,

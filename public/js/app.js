@@ -377,6 +377,14 @@
     const sIn = field('Subheadline', 'lp-subhead', lp.subhead || '');
     const bIn = field('Short blurb', 'lp-blurb', lp.blurb || '', true);
     const cIn = field('Button label', 'lp-cta', lp.cta_label || 'Get early access');
+    const themeL = el('label', null, 'Theme (the look and colors)'); themeL.setAttribute('for', 'lp-theme');
+    const themeSel = el('select'); themeSel.id = 'lp-theme'; themeSel.style.cssText = 'width:100%;min-height:44px;margin:4px 0 10px;';
+    ['warm', 'ink', 'clean', 'bold', 'forest', 'dusk'].forEach(function (t) {
+      const o = el('option', null, t.charAt(0).toUpperCase() + t.slice(1)); o.value = t;
+      if ((lp.theme || 'warm') === t) o.selected = true; themeSel.appendChild(o);
+    });
+    form.appendChild(themeL); form.appendChild(themeSel);
+    const heroIn = field('Hero image URL (optional — a large image across the top)', 'lp-hero', lp.hero_image || '');
     const pubL = el('label'); pubL.style.cssText = 'display:flex;gap:10px;align-items:center;margin:6px 0 12px;';
     const pub = el('input'); pub.type = 'checkbox'; pub.id = 'lp-publish'; pub.checked = !!lp.enabled; pub.style.cssText = 'min-width:22px;min-height:22px;';
     pubL.appendChild(pub); pubL.appendChild(document.createTextNode('Make it live (publish so people can visit and sign up)'));
@@ -387,7 +395,7 @@
       if (!hIn.value.trim()) { out.textContent = 'A headline is required.'; announce('A headline is required.', true); hIn.focus(); return; }
       save.disabled = true; out.textContent = 'Saving…';
       try {
-        const r = await Kiln.api('/concepts/' + concept.id + '/launch-page', { method: 'PUT', body: { headline: hIn.value, subhead: sIn.value, blurb: bIn.value, cta_label: cIn.value, publish: pub.checked } });
+        const r = await Kiln.api('/concepts/' + concept.id + '/launch-page', { method: 'PUT', body: { headline: hIn.value, subhead: sIn.value, blurb: bIn.value, cta_label: cIn.value, theme: themeSel.value, hero_image: heroIn.value, publish: pub.checked } });
         concept.launch_page = r.launch_page || concept.launch_page;
         out.textContent = '';
         out.appendChild(document.createTextNode(pub.checked ? 'Your landing page is live: ' : 'Saved as a draft. '));
@@ -434,6 +442,18 @@
     sec.appendChild(el('p', 'muted', 'Turn this into a real resource site or blog: add pages with genuine content. Each goes live under your landing page once it and the home page are published. Ask Clay to write and add pages, or add one yourself.'));
     const list = el('div', 'pages-list'); list.setAttribute('role', 'status'); sec.appendChild(list);
     const addBtn = el('button', 'btn secondary', 'Add a page'); addBtn.type = 'button'; sec.appendChild(addBtn);
+    const dlBtn = el('button', 'btn secondary', 'Download your site'); dlBtn.type = 'button'; dlBtn.style.marginLeft = '8px'; sec.appendChild(dlBtn);
+    dlBtn.addEventListener('click', async function () {
+      dlBtn.disabled = true;
+      try {
+        const r = await Kiln.api('/concepts/' + concept.id + '/site/export');
+        const blob = new Blob([r.html], { type: 'text/html' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = r.filename || 'my-site.html';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+        announce('Your site downloaded as one HTML file you can host anywhere. It’s yours.', true);
+      } catch (e) { announce('Could not export the site right now.', true); }
+      dlBtn.disabled = false;
+    });
 
     // Shared editor
     const ed = el('div'); ed.hidden = true; ed.style.marginTop = '12px';

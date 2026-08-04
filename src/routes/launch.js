@@ -24,6 +24,8 @@ router.get('/:slug', asyncHandler(async (req, res) => {
     subhead: p.subhead || '',
     blurb: p.blurb || '',
     cta_label: p.cta_label || 'Get early access',
+    theme: p.theme || 'warm',
+    hero_image: p.hero_image || '',
     count: cnt.rows[0].n,
     pages: pages.rows,
   });
@@ -49,6 +51,7 @@ router.get('/:slug/:page', asyncHandler(async (req, res) => {
     concept_id: c.id,
     site_slug: p.slug || null,
     site_title: p.headline || c.title,
+    theme: p.theme || 'warm',
     cta_label: p.cta_label || 'Get early access',
     page: pg.rows[0],
     pages: nav.rows,

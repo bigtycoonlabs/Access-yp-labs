@@ -1,0 +1,35 @@
+/* Site themes — the shared look for live sites (launch.html) and exported sites. Six palettes,
+   selected by data-theme on <body>. Keep the theme names in sync with launchPage.THEMES. */
+:root, [data-theme="warm"]{ --bg:#faf6f0; --ink:#2b2320; --smut:#6b5d52; --acc:#c2410c; --acc-ink:#fff; --ln:#e7ddd2; --font:-apple-system,"Segoe UI",Roboto,Helvetica,sans-serif; --head:Georgia,"Times New Roman",serif; }
+[data-theme="ink"]{ --bg:#111318; --ink:#e9e7e2; --smut:#a3a3ad; --acc:#8ab4f8; --acc-ink:#0b0d12; --ln:#2a2e37; --font:-apple-system,"Segoe UI",Roboto,sans-serif; --head:-apple-system,"Segoe UI",sans-serif; }
+[data-theme="clean"]{ --bg:#ffffff; --ink:#1a1a1a; --smut:#666; --acc:#2563eb; --acc-ink:#fff; --ln:#e6e6e6; --font:-apple-system,"Segoe UI",Roboto,Helvetica,sans-serif; --head:-apple-system,"Segoe UI",sans-serif; }
+[data-theme="bold"]{ --bg:#0f0f10; --ink:#fafafa; --smut:#b5b5b8; --acc:#f59e0b; --acc-ink:#111; --ln:#2b2b2e; --font:-apple-system,"Segoe UI",Roboto,sans-serif; --head:-apple-system,"Segoe UI",sans-serif; }
+[data-theme="forest"]{ --bg:#f2f6f2; --ink:#1b2a1f; --smut:#4d6152; --acc:#15803d; --acc-ink:#fff; --ln:#d7e4d9; --font:-apple-system,"Segoe UI",Roboto,sans-serif; --head:Georgia,serif; }
+[data-theme="dusk"]{ --bg:#1a1626; --ink:#ece9f5; --smut:#b0a8c9; --acc:#c084fc; --acc-ink:#1a1626; --ln:#33294a; --font:-apple-system,"Segoe UI",Roboto,sans-serif; --head:-apple-system,"Segoe UI",sans-serif; }
+
+body.sitebody{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+.site-wrap{ max-width:720px; margin:0 auto; padding:0 20px 48px; }
+.site-hero{ width:100%; max-height:340px; object-fit:cover; display:block; border-radius:0 0 16px 16px; }
+.site-wrap h1{ font-family:var(--head); font-size:34px; line-height:1.12; margin:28px 0 10px; }
+.site-home{ font-family:var(--head); font-size:20px; font-weight:700; color:var(--ink); text-decoration:none; }
+.site-sub{ font-size:20px; color:var(--smut); margin:0 0 18px; }
+.site-blurb{ font-size:17px; line-height:1.65; margin:0 0 24px; white-space:pre-wrap; }
+.sitenav{ display:flex; flex-wrap:wrap; gap:6px 18px; margin:16px 0 28px; padding:12px 0; border-top:1px solid var(--ln); border-bottom:1px solid var(--ln); }
+.sitenav a{ min-height:44px; line-height:44px; text-decoration:none; font-weight:600; color:var(--acc); }
+.sitenav a[aria-current="page"]{ text-decoration:underline; }
+.article h1{ font-size:30px; margin:8px 0 16px; }
+.article h2{ font-family:var(--head); font-size:24px; margin:28px 0 10px; }
+.article h3{ font-size:19px; margin:20px 0 8px; }
+.article p{ font-size:17px; line-height:1.75; margin:0 0 16px; }
+.article ul{ font-size:17px; line-height:1.75; margin:0 0 16px; padding-left:22px; }
+.article li{ margin:5px 0; }
+.article img{ max-width:100%; height:auto; border-radius:12px; margin:14px 0; display:block; }
+.article blockquote{ border-left:4px solid var(--acc); margin:18px 0; padding:6px 0 6px 18px; color:var(--smut); font-size:19px; font-style:italic; }
+.article hr{ border:none; border-top:1px solid var(--ln); margin:28px 0; }
+.article a{ color:var(--acc); }
+.btn-cta{ display:inline-block; background:var(--acc); color:var(--acc-ink) !important; padding:13px 24px; border-radius:10px; text-decoration:none; font-weight:700; min-height:44px; line-height:20px; margin:10px 0; border:none; cursor:pointer; font-size:16px; }
+.capture{ border:1px solid var(--ln); border-radius:14px; background:rgba(128,128,128,0.06); padding:22px; margin-top:14px; }
+.capture label{ display:block; font-weight:700; margin:0 0 8px; }
+.capture input{ width:100%; font-size:17px; padding:13px; border:1px solid var(--ln); border-radius:10px; min-height:44px; box-sizing:border-box; background:var(--bg); color:var(--ink); }
+.count{ color:var(--smut); margin:12px 0 0; }
+.site-foot{ margin-top:36px; color:var(--smut); font-size:14px; }

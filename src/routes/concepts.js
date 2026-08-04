@@ -9,6 +9,8 @@ const protect = require('../lib/protect');
 const retrieval = require('../services/clay/retrieval');
 const movement = require('../services/clay/movement');
 const siteStore = require('../services/clay/siteStore');
+const siteQuota = require('../services/clay/siteQuota');
+const siteExport = require('../services/clay/siteExport');
 const valuation = require('../services/clay/valuation');
 const brief = require('../services/clay/brief');
 const launchPage = require('../services/clay/launchPage');
@@ -236,6 +238,18 @@ router.put('/:id/launch-page', authenticate, asyncHandler(async (req, res) => {
   if (req.body && req.body.publish === false) enabled = false;
   if (enabled && !copy.headline) throw new ApiError(400, 'Give the page a headline before publishing it.');
 
+  // Sculptor website allowance: first-publishing a site that isn't already counted this month
+  // counts against the monthly cap. Re-publishing an already-counted site is free.
+  const alreadyCounted = siteQuota.countedThisMonth(cur);
+  let publishedAt = cur.published_at || null;
+  if (enabled && !alreadyCounted) {
+    const q = await siteQuota.canPublishNewSite(req.user.id);
+    if (!q.allowed) {
+      throw new ApiError(402, `You've published ${q.limit} websites this month on your Sculptor plan. More websites are $2.99/month on top of Sculptor — add that to keep publishing, or publish the rest next month.`);
+    }
+    publishedAt = new Date().toISOString();
+  }
+
   // A stable public slug, generated from the title the first time it's published, kept thereafter.
   let slug = cur.slug || null;
   if (enabled && !slug) {
@@ -248,7 +262,7 @@ router.put('/:id/launch-page', authenticate, asyncHandler(async (req, res) => {
     }
   }
 
-  const page = { ...copy, enabled, slug: slug || null };
+  const page = { ...copy, enabled, slug: slug || null, published_at: publishedAt };
   await query('UPDATE concepts SET launch_page=$2::jsonb, updated_at=NOW() WHERE id=$1', [req.params.id, JSON.stringify(page)]);
   const site = (process.env.CLIENT_URL || 'https://accessyplabs.com').replace(/\/$/, '');
   res.json({ ok: true, launch_page: page, url: page.slug ? `${site}/p/${page.slug}` : null });
@@ -278,6 +292,17 @@ router.get('/:id/pages/:pageId', authenticate, asyncHandler(async (req, res) => 
     [req.params.id, req.params.pageId]);
   if (!r.rows.length) throw new ApiError(404, 'Page not found.');
   res.json({ page: r.rows[0], url: await pageUrl(req.params.id, r.rows[0]) });
+}));
+
+// Export the whole site as one self-contained HTML file the owner can host anywhere — they own it.
+router.get('/:id/site/export', authenticate, asyncHandler(async (req, res) => {
+  const own = await query('SELECT id, title, launch_page FROM concepts WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
+  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  const pages = await query(
+    'SELECT slug, title, body, kind, nav_order FROM site_pages WHERE concept_id=$1 ORDER BY nav_order, created_at',
+    [req.params.id]);
+  const file = siteExport.buildSingleFile(own.rows[0], pages.rows);
+  res.json({ ok: true, filename: file.filename, html: file.html });
 }));
 
 router.post('/:id/pages', authenticate, asyncHandler(async (req, res) => {

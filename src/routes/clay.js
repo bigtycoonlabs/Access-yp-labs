@@ -12,6 +12,7 @@ const intent = require('../services/clay/intent');
 const movement = require('../services/clay/movement');
 const launchPage = require('../services/clay/launchPage');
 const siteStore = require('../services/clay/siteStore');
+const siteQuota = require('../services/clay/siteQuota');
 const crypto = require('crypto');
 const valuation = require('../services/clay/valuation');
 const proofPrompt = require('../services/clay/proofPrompt');
@@ -875,15 +876,25 @@ function buildExecutors(user) {
       return { status: 'movement_set', state, label: d.label, note: noteVal,
         message: `Marked this concept as "${d.label}" on the movement board.${noteVal ? '' : ' (Add a short why next time so the creator sees your read.)'}` };
     },
-    set_launch_page: async ({ concept_id, headline, subhead, blurb, cta_label, publish }) => {
+    set_launch_page: async ({ concept_id, headline, subhead, blurb, cta_label, theme, hero_image, publish }) => {
       const own = await query('SELECT id, title, launch_page FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
       if (!own.rows.length) return { status: 'error', message: 'Concept not found.' };
       const cur = own.rows[0].launch_page || {};
-      const copy = launchPage.parseConfig({ ...cur, headline, subhead, blurb, cta_label });
+      const copy = launchPage.parseConfig({ ...cur, headline, subhead, blurb, cta_label, theme, hero_image });
       let enabled = !!cur.enabled;
       if (publish === true || publish === 'true') enabled = true;
       if (publish === false || publish === 'false') enabled = false;
       if (enabled && !copy.headline) return { status: 'error', message: 'It needs a headline before it can go public.' };
+      const alreadyCounted = siteQuota.countedThisMonth(cur);
+      let publishedAt = cur.published_at || null;
+      if (enabled && !alreadyCounted) {
+        const q = await siteQuota.canPublishNewSite(user.id);
+        if (!q.allowed) {
+          return { status: 'error', code: 'site_limit',
+            message: `This creator has published ${q.limit} websites this month on their Sculptor plan. More websites are $2.99/month on top of Sculptor. Tell them plainly, and offer to keep it as a draft until they add it or next month begins.` };
+        }
+        publishedAt = new Date().toISOString();
+      }
       let slug = cur.slug || null;
       if (enabled && !slug) {
         const base = launchPage.slugify(own.rows[0].title);
@@ -894,14 +905,14 @@ function buildExecutors(user) {
           slug = `${base}-${crypto.randomUUID().slice(0, 4)}`;
         }
       }
-      const page = { ...copy, enabled, slug: slug || null };
+      const page = { ...copy, enabled, slug: slug || null, published_at: publishedAt };
       await query('UPDATE concepts SET launch_page=$2::jsonb, updated_at=NOW() WHERE id=$1', [concept_id, JSON.stringify(page)]);
       const site = (process.env.CLIENT_URL || 'https://accessyplabs.com').replace(/\/$/, '');
       const url = page.slug ? `${site}/p/${page.slug}` : null;
-      return { status: enabled ? 'launch_page_published' : 'launch_page_saved', published: enabled, url,
+      return { status: enabled ? 'launch_page_published' : 'launch_page_saved', published: enabled, url, theme: page.theme,
         message: enabled
-          ? `The coming-soon page is live at ${url} — share that link and every email that comes in lands on this concept's waitlist as real proof.`
-          : 'Saved the launch-page copy. It is not public yet — say the word and I can publish it.' };
+          ? `The site's home page is live at ${url} in the ${page.theme} theme — share that link and every email that comes in lands on this concept's waitlist as real proof. Add more pages to build it out.`
+          : 'Saved the home-page copy and look. It is not public yet — say the word and I can publish it.' };
     },
     // ---- multi-page site: build a real starting MVP, page by page ----
     list_site_pages: async ({ concept_id }) => {

@@ -1,10 +1,14 @@
-// The coming-soon launch page: pure helpers for its editable copy and its public slug. DB work
-// (slug uniqueness, storage) lives in the route; this stays pure and testable.
+// A concept's site: its home (launch) page copy, look (theme + hero image), and public slug.
+// Pure helpers only; DB work lives in the routes. Kept small and testable.
 
 const CAPS = { headline: 120, subhead: 160, blurb: 600, cta_label: 40 };
 const DEFAULT_CTA = 'Get early access';
 
-// A URL-safe slug base from a title. Never empty.
+// Site themes. The names are the contract shared with the public renderer (launch.html); the
+// palettes live there. Keep this list and that CSS in sync.
+const THEMES = ['warm', 'ink', 'clean', 'bold', 'forest', 'dusk'];
+const DEFAULT_THEME = 'warm';
+
 function slugify(s) {
   const base = String(s || '')
     .toLowerCase()
@@ -22,8 +26,18 @@ function clean(s, cap) {
   return t.length > cap ? t.slice(0, cap).trim() : t;
 }
 
-// Normalize the editable copy fields. Always returns the four keys; cta_label falls back to a
-// sensible default so the page always has a working button.
+// Only keep an http(s) image URL; anything else becomes empty.
+function cleanImageUrl(s) {
+  const t = typeof s === 'string' ? s.trim() : '';
+  return /^https?:\/\/[^\s]+$/i.test(t) ? t.slice(0, 500) : '';
+}
+
+function normTheme(t) {
+  return THEMES.includes(t) ? t : DEFAULT_THEME;
+}
+
+// Normalize the editable fields. Always returns copy keys; theme + hero_image are included so the
+// site's look persists. cta_label falls back to a working default.
 function parseConfig(input) {
   const o = input && typeof input === 'object' ? input : {};
   return {
@@ -31,7 +45,9 @@ function parseConfig(input) {
     subhead: clean(o.subhead, CAPS.subhead),
     blurb: clean(o.blurb, CAPS.blurb),
     cta_label: clean(o.cta_label, CAPS.cta_label) || DEFAULT_CTA,
+    theme: normTheme(o.theme),
+    hero_image: cleanImageUrl(o.hero_image),
   };
 }
 
-module.exports = { CAPS, DEFAULT_CTA, slugify, parseConfig };
+module.exports = { CAPS, DEFAULT_CTA, THEMES, DEFAULT_THEME, slugify, parseConfig, cleanImageUrl, normTheme };

@@ -16,9 +16,16 @@ test('slugify caps length and trims trailing dashes', () => {
   assert.ok(!s.endsWith('-'));
 });
 
-test('parseConfig trims, caps, and always returns the four fields', () => {
+test('parseConfig trims, caps, and always returns the copy fields plus look', () => {
   const c = lp.parseConfig({ headline: '  Prove it  ', subhead: 'x', blurb: 'y', cta_label: 'Join' });
-  assert.deepStrictEqual(c, { headline: 'Prove it', subhead: 'x', blurb: 'y', cta_label: 'Join' });
+  assert.deepStrictEqual(c, { headline: 'Prove it', subhead: 'x', blurb: 'y', cta_label: 'Join', theme: lp.DEFAULT_THEME, hero_image: '' });
+});
+
+test('parseConfig validates theme and hero image', () => {
+  assert.strictEqual(lp.parseConfig({ theme: 'forest' }).theme, 'forest');
+  assert.strictEqual(lp.parseConfig({ theme: 'nonsense' }).theme, lp.DEFAULT_THEME);
+  assert.strictEqual(lp.parseConfig({ hero_image: 'https://x.io/a.jpg' }).hero_image, 'https://x.io/a.jpg');
+  assert.strictEqual(lp.parseConfig({ hero_image: 'javascript:alert(1)' }).hero_image, '');
 });
 
 test('parseConfig defaults the CTA when missing', () => {
