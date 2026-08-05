@@ -60,9 +60,13 @@
       var asset = r.asset || {};
       var body;
       var raw = String(asset.body || '');
-      var isImage = asset.type === 'example_image'
-        || /^data:image\//i.test(raw)
-        || /^https?:\/\/\S+\.(png|jpe?g|webp|gif)(\?\S*)?$/i.test(raw);
+      // Render as a picture ONLY when the body really IS one (a data: image or an image URL).
+      // The 'example_image' TYPE alone is not enough: Clay also stores written image BRIEFS under
+      // that type, and pointing an <img> at prose renders nothing — which, for a screen-reader
+      // user, silently swallows the text instead of reading it. Judge the content, not the label.
+      var isImage = /^data:image\//i.test(raw)
+        || /^https?:\/\/\S+\.(png|jpe?g|webp|gif)(\?\S*)?$/i.test(raw)
+        || /^https?:\/\/\S*\/storage\/v1\/object\/public\/concept-images\//i.test(raw);
       if (isImage && raw) {
         body = el('div', 'asset-body');
         var img = document.createElement('img');
