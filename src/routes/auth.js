@@ -91,6 +91,9 @@ router.post('/register', [
     );
     user = result.rows[0];
     await client.query('INSERT INTO profiles (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [user.id]);
+    // Email preferences, with the unsubscribe token that every Clay Weekly issue carries. Created
+    // here so a new account can both receive the magazine and leave it in one click from day one.
+    await client.query('INSERT INTO user_email_prefs (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [user.id]);
     await client.query('COMMIT');
   } catch (e) {
     await client.query('ROLLBACK').catch(() => {});

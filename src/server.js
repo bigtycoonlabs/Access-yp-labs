@@ -38,6 +38,7 @@ app.use('/api/', apiLimiter);
 // engines and link previews) and a generated sitemap. Mounted BEFORE the static handler so the
 // generated sitemap wins over the static file.
 app.use(require('./routes/deskPages'));
+app.use(require('./routes/weeklyPages'));
 
 // Serve the site, but never let a browser keep running STALE app code. HTML and JS are served
 // with no-cache, which does NOT mean "download every time" — the browser still revalidates with
@@ -58,6 +59,7 @@ app.use(express.static(path.join(__dirname, '../public'), {
 app.use('/api/auth',          require('./routes/auth'));
 app.use('/api/profiles',      require('./routes/profiles'));
  app.use('/api/preferences',   require('./routes/preferences'));
+app.use('/api/weekly',        require('./routes/weekly'));
 app.use('/api/subscriptions', require('./routes/subscriptions'));
 app.use('/api/concepts',      require('./routes/concepts'));
 app.use('/api/clay',          require('./routes/clay'));
