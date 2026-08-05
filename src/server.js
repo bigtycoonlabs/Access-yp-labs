@@ -34,6 +34,11 @@ const apiLimiter = rateLimit({
   message: { error: 'Too many requests. Please try again shortly.' },
 });
 app.use('/api/', apiLimiter);
+// Server-rendered pages: Clay's Desk articles (each at its own address, with real HTML for search
+// engines and link previews) and a generated sitemap. Mounted BEFORE the static handler so the
+// generated sitemap wins over the static file.
+app.use(require('./routes/deskPages'));
+
 // Serve the site, but never let a browser keep running STALE app code. HTML and JS are served
 // with no-cache, which does NOT mean "download every time" — the browser still revalidates with
 // its ETag and gets a cheap 304 when nothing changed. Without this, a browser can hold on to an

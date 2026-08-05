@@ -7,6 +7,8 @@
 
 const { query } = require('../../config/db');
 const agent = require('./agent');
+const image = require('../image');
+const storage = require('../storage');
 const provider = require('./provider');
 
 // On-brand topic pools, so auto-drafted pieces vary instead of repeating. These are coaching
@@ -108,9 +110,10 @@ async function composePiece({ kind = 'help', topic = null, source = 'manual' } =
     if (!piece) return { ok: false, reason: 'unparseable' };
 
     const r = await query(
-      `INSERT INTO desk_articles (kind, title, dek, body, topic, status, source)
-       VALUES ($1,$2,$3,$4,$5,'draft','clay') RETURNING id`,
-      [k, piece.title.slice(0, 200), piece.dek.slice(0, 300), piece.body.slice(0, 20000), String(t).slice(0, 120)]);
+      `INSERT INTO desk_articles (kind, title, dek, body, topic, status, source, slug, meta_desc)
+       VALUES ($1,$2,$3,$4,$5,'draft','clay',$6,$7) RETURNING id`,
+      [k, piece.title.slice(0, 200), piece.dek.slice(0, 300), piece.body.slice(0, 20000), String(t).slice(0, 120),
+       await uniqueSlug(piece.title), metaDescription(piece.dek, piece.body)]);
     return { ok: true, id: r.rows[0].id, kind: k, title: piece.title, source };
   } catch (e) {
     return { ok: false, reason: 'error', error: e && e.message };
@@ -147,7 +150,7 @@ async function tick() {
 
 async function listDrafts(limit = 20) {
   const r = await query(
-    `SELECT id, kind, title, dek, body, topic, created_at
+    `SELECT id, kind, title, dek, body, topic, slug, image_url, image_alt, created_at
        FROM desk_articles WHERE status='draft' ORDER BY created_at DESC LIMIT $1`,
     [Math.min(Math.max(Number(limit) || 20, 1), 50)]);
   return r.rows;
@@ -155,18 +158,124 @@ async function listDrafts(limit = 20) {
 
 async function publishedArticles(limit = 12) {
   const r = await query(
-    `SELECT id, kind, title, dek, body, published_at
+    `SELECT id, kind, title, dek, slug, image_url, image_alt, meta_desc, published_at
        FROM desk_articles WHERE status='published' ORDER BY published_at DESC LIMIT $1`,
     [Math.min(Math.max(Number(limit) || 12, 1), 30)]);
+  return r.rows;
+}
+
+
+// ---- article pages: a stable address, a picture, and something for search engines ----
+
+// A readable, URL-safe address for a piece. Kept short, with a short id suffix added by
+// uniqueSlug so two pieces sharing a title can never fight over the same address.
+function slugify(title) {
+  return String(title || 'piece').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 70) || 'piece';
+}
+
+async function uniqueSlug(title) {
+  const base = slugify(title);
+  for (let i = 0; i < 5; i += 1) {
+    const candidate = i === 0 ? base : `${base}-${Math.random().toString(36).slice(2, 7)}`;
+    const hit = await query('SELECT 1 FROM desk_articles WHERE slug=$1', [candidate]);
+    if (!hit.rows.length) return candidate;
+  }
+  return `${base}-${Date.now().toString(36)}`;
+}
+
+// A plain one-or-two-sentence summary for search results and link previews. Prefers Clay's own
+// dek; otherwise takes the opening of the piece. Never invented — always the article's own words.
+function metaDescription(dek, body) {
+  const source = (dek && dek.trim()) ? dek.trim() : String(body || '').replace(/\s+/g, ' ').trim();
+  if (!source) return null;
+  return source.length <= 155 ? source : source.slice(0, 152).replace(/\s+\S*$/, '') + '…';
+}
+
+// Give a piece a picture at publish time. Best-effort by design: if image generation isn't
+// configured, or anything fails, the article still publishes WITHOUT an image rather than blocking
+// on it. Clay writes the alt text himself, so the picture is described for anyone listening.
+async function ensureArticleImage(id) {
+  try {
+    if (!image.configured()) return { ok: false, reason: 'images_not_configured' };
+    const r = await query('SELECT title, dek, image_url FROM desk_articles WHERE id=$1', [id]);
+    const a = r.rows[0];
+    if (!a || a.image_url) return { ok: false, reason: a ? 'already_has_image' : 'not_found' };
+
+    const prompt = `Editorial illustration for an article titled "${a.title}". ${a.dek || ''} `
+      + 'Clean, modern, warm, optimistic. No text, no words, no letters, no logos in the image.';
+    const alt = `Illustration for the article ${a.title}`;
+
+    const out = await image.renderImage({ prompt });
+    if (!out || out.status !== 'answered') return { ok: false, reason: (out && out.status) || 'no_image' };
+
+    // Prefer OUR storage: a provider URL is temporary and would quietly break later.
+    let url = out.url || null;
+    if (out.image_base64 && storage.configured()) {
+      try {
+        const mediaType = out.media_type || 'image/png';
+        const up = await storage.uploadImage({
+          base64: out.image_base64,
+          mediaType,
+          key: storage.keyFor('desk-' + id, mediaType),
+        });
+        if (up && up.ok && up.url) url = up.url;
+      } catch (_) { /* fall back to the provider url below */ }
+    }
+    if (!url) return { ok: false, reason: 'no_storable_url' };
+    if (!/^https:\/\//i.test(url)) return { ok: false, reason: 'insecure_url' };
+
+    await query('UPDATE desk_articles SET image_url=$2, image_alt=$3 WHERE id=$1', [id, url, alt]);
+    return { ok: true, url };
+  } catch (e) {
+    return { ok: false, reason: 'error', error: e && e.message };
+  }
+}
+
+// One published piece by its address — what an article PAGE renders. Published only: a draft has
+// no public address, so an unapproved piece can never be reached by guessing a URL.
+async function getPublishedBySlug(slug) {
+  const r = await query(
+    `SELECT id, kind, title, dek, body, slug, image_url, image_alt, meta_desc, published_at
+       FROM desk_articles WHERE slug=$1 AND status='published'`, [String(slug || '').slice(0, 120)]);
+  return r.rows[0] || null;
+}
+
+// Every published address, for the sitemap.
+async function publishedSlugs(limit = 500) {
+  const r = await query(
+    `SELECT slug, published_at FROM desk_articles
+      WHERE status='published' AND slug IS NOT NULL ORDER BY published_at DESC LIMIT $1`,
+    [Math.min(Math.max(Number(limit) || 500, 1), 1000)]);
   return r.rows;
 }
 
 async function publish(id, approverId) {
   const r = await query(
     `UPDATE desk_articles SET status='published', published_at=now(), approved_by=$2
-      WHERE id=$1 AND status='draft' RETURNING id, kind, title`,
+      WHERE id=$1 AND status='draft' RETURNING id, kind, title, slug, dek, body`,
     [id, approverId || null]);
-  return r.rows[0] || null;
+  const row = r.rows[0] || null;
+  if (!row) return null;
+
+  // Anything written before article pages existed may lack an address or a summary — fill them in
+  // now so every published piece has its own page and reads well in search results.
+  if (!row.slug) {
+    const slug = await uniqueSlug(row.title);
+    await query('UPDATE desk_articles SET slug=$2 WHERE id=$1', [id, slug]);
+    row.slug = slug;
+  }
+  await query('UPDATE desk_articles SET meta_desc=COALESCE(meta_desc,$2) WHERE id=$1',
+    [id, metaDescription(row.dek, row.body)]);
+
+  // Give it a picture, but never make publishing wait on an image provider.
+  ensureArticleImage(id).then((out) => {
+    if (!out.ok && out.reason !== 'images_not_configured' && out.reason !== 'already_has_image') {
+      console.log('desk image:', JSON.stringify(out));
+    }
+  }).catch(() => {});
+
+  return { id: row.id, kind: row.kind, title: row.title, slug: row.slug };
 }
 
 async function archive(id) {
@@ -176,4 +285,4 @@ async function archive(id) {
   return r.rows[0] || null;
 }
 
-module.exports = { composePiece, tick, listDrafts, publishedArticles, publish, archive };
+module.exports = { composePiece, tick, listDrafts, publishedArticles, publish, archive, getPublishedBySlug, publishedSlugs, ensureArticleImage, slugify, metaDescription };

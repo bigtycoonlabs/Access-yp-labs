@@ -230,19 +230,52 @@
       var wrap = document.getElementById('desk-articles');
       var section = document.getElementById('desk-articles-section');
       if (!wrap || !section) return;
+      // The Desk is an INDEX, not one long run of text: each piece is a headline you can open,
+      // with its picture and its one-line teaser. The full article lives at its own address
+      // (/desk/<slug>), which is a real page a search engine can find and a link preview can show.
+      // For a screen reader this turns an undifferentiated block into a list of real headings and
+      // links you can jump between, instead of having to listen through every article to reach the
+      // next one.
       list.forEach(function(a){
         var art = document.createElement('article'); art.className = 'art';
         var kind = document.createElement('div'); kind.className = 'kind';
         kind.textContent = (a.kind === 'story') ? 'Story' : 'Help';
         art.appendChild(kind);
-        var h = document.createElement('h3'); h.textContent = a.title || 'Untitled'; art.appendChild(h);
+
+        var href = a.slug ? ('/desk/' + encodeURIComponent(a.slug)) : null;
+
+        if (a.image_url && href){
+          var ilink = document.createElement('a'); ilink.href = href;
+          ilink.setAttribute('tabindex','-1');          // the headline link is the real target
+          ilink.setAttribute('aria-hidden','true');      // so this isn't announced twice
+          var img = document.createElement('img');
+          img.src = a.image_url;
+          img.alt = a.image_alt || '';                   // decorative here; the headline carries meaning
+          img.loading = 'lazy';
+          img.style.maxWidth = '100%'; img.style.height = 'auto'; img.style.borderRadius = '12px';
+          ilink.appendChild(img); art.appendChild(ilink);
+        }
+
+        var h = document.createElement('h3');
+        if (href){
+          var link = document.createElement('a');
+          link.href = href;
+          link.textContent = a.title || 'Untitled';      // textContent = XSS-safe
+          h.appendChild(link);
+        } else {
+          h.textContent = a.title || 'Untitled';
+        }
+        art.appendChild(h);
+
         if (a.dek){ var d = document.createElement('p'); d.className = 'dek'; d.textContent = a.dek; art.appendChild(d); }
-        var body = document.createElement('div'); body.className = 'body';
-        String(a.body || '').split(/\n{2,}/).forEach(function(para){
-          var t = para.trim(); if (!t) return;
-          var p = document.createElement('p'); p.textContent = t; body.appendChild(p);   // textContent = XSS-safe
-        });
-        art.appendChild(body);
+
+        if (href){
+          var more = document.createElement('p');
+          var ml = document.createElement('a');
+          ml.href = href;
+          ml.textContent = 'Read ' + (a.title || 'this piece');   // a link that says where it goes
+          more.appendChild(ml); art.appendChild(more);
+        }
         wrap.appendChild(art);
       });
       section.hidden = false;
