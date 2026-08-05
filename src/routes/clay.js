@@ -641,10 +641,34 @@ router.post('/generate', authenticate, [
   // confirmed:true for an action the person plainly took, like attaching files to build from.
   // An OLD CACHED PAGE could still post here the way it used to; refuse rather than build
   // something nobody asked for, and say plainly how to fix it.
-  if (req.body.confirmed !== true) {
+  // An explicit, unmistakable go-ahead counts as approval even from an older page — otherwise a
+  // person on a stale client who says "build it" would loop forever being asked to confirm.
+  const saidBuild = /\b(build it|build this|build that|just build|yes,? build|go ahead and build)\b/i.test(String(prompt || ''));
+  if (req.body.confirmed !== true && !saidBuild) {
+    // Don't build, and don't just error either: ANSWER them. A page running older code still posts
+    // here the way it used to, and the person on the other end simply typed a message — they should
+    // get a real reply, not a dead end. So treat it as conversation: Clay responds in his own voice
+    // with no tools (nothing can be created, changed, or charged on this path), and we invite them
+    // to say the word if they do want it built. This makes an out-of-date page behave CORRECTLY
+    // rather than surprising anyone with a build, which is the whole point.
+    const memsQ = await memory.getMemories(req.user.id).catch(() => []);
+    const memoryContext = memory.renderMemoryContext(memsQ);
+    let reply = '';
+    try {
+      const out = await agent.runChat({
+        messages: [{ role: 'user', content: String(prompt).slice(0, 4000) }],
+        executors: {}, allowTools: [], memoryContext,
+        viewer: { role: req.user.role, name: req.user.name },
+      });
+      reply = (out && out.reply) ? String(out.reply).trim() : '';
+    } catch (_) { reply = ''; }
+    if (!reply) {
+      reply = 'I read that, but I didn’t build anything — and I never make things up, so nothing was created.';
+    }
     return res.status(200).json({
-      status: 'stale_client',
-      message: 'I didn’t start a build — nothing was made. Your page is running an older version of the app, which is why that happened without asking you. Please refresh this page, then tell me what you’d like and I’ll ask before I build anything.',
+      status: 'refused', // renders as a normal reply, not an error, on every version of the app
+      reply,
+      message: reply + ' \n\nI didn’t start a build — nothing was made. If you do want me to build this, say “build it” and I’ll get going. (Your page may also be running an older version of the app; refreshing it gets you the full workspace back.)',
     });
   }
 
