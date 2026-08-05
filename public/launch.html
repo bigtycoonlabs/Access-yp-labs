@@ -122,6 +122,7 @@
       if(p.image_url){ var img=document.createElement('img'); img.className='product-img'; img.src=p.image_url; img.alt=p.name||''; card.appendChild(img); }
       var h=document.createElement('h3'); h.className='product-name'; h.textContent=p.name||''; card.appendChild(h);
       var pr=document.createElement('p'); pr.className='product-price'; pr.textContent=p.price_display||''; card.appendChild(pr);
+      if(p.kind){ var kd=document.createElement('p'); kd.className='product-kind'; kd.textContent=(p.kind==='physical'?'Physical — ships to you':'Digital — delivered by link'); card.appendChild(kd); }
       if(p.description){ var d=document.createElement('p'); d.className='product-desc'; d.textContent=p.description; card.appendChild(d); }
       if(action && p.id){
         var f=document.createElement('form'); f.className='buy-form'; f.method='POST'; f.action=action;

@@ -27,8 +27,8 @@ router.get('/', asyncHandler(async (req, res) => {
   if (!c || String(p.enabled) !== 'true') throw new ApiError(404, 'This page isn’t available.');
   const cnt = await query('SELECT COUNT(*)::int AS n FROM waitlist_signups WHERE concept_id=$1', [c.id]);
   const pages = await query('SELECT slug, title, kind FROM site_pages WHERE concept_id=$1 AND published=true ORDER BY nav_order, created_at', [c.id]);
-  const prods = await query('SELECT id, name, price_cents, currency, description, image_url FROM store_products WHERE concept_id=$1 AND active=true ORDER BY sort_order, created_at', [c.id]);
-  const products = prods.rows.map((pp) => ({ id: pp.id, name: pp.name, price_display: store.formatPrice(pp.price_cents, pp.currency), description: pp.description || '', image_url: pp.image_url || '' }));
+  const prods = await query('SELECT id, name, price_cents, currency, description, image_url, kind FROM store_products WHERE concept_id=$1 AND active=true ORDER BY sort_order, created_at', [c.id]);
+  const products = prods.rows.map((pp) => ({ id: pp.id, name: pp.name, price_display: store.formatPrice(pp.price_cents, pp.currency), description: pp.description || '', image_url: pp.image_url || '', kind: pp.kind }));
   res.json({
     concept_id: c.id, title: c.title, slug: p.slug || null,
     headline: p.headline || c.title, subhead: p.subhead || '', blurb: p.blurb || '',

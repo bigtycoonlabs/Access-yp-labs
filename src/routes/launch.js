@@ -9,11 +9,11 @@ function checkoutBase() {
 }
 async function activeProducts(conceptId) {
   const r = await query(
-    'SELECT id, name, price_cents, currency, description, image_url FROM store_products WHERE concept_id=$1 AND active=true ORDER BY sort_order, created_at',
+    'SELECT id, name, price_cents, currency, description, image_url, kind FROM store_products WHERE concept_id=$1 AND active=true ORDER BY sort_order, created_at',
     [conceptId]);
   return r.rows.map((p) => ({
     id: p.id, name: p.name, price_display: store.formatPrice(p.price_cents, p.currency),
-    description: p.description || '', image_url: p.image_url || '',
+    description: p.description || '', image_url: p.image_url || '', kind: p.kind,
   }));
 }
 

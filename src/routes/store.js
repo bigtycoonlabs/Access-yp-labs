@@ -28,11 +28,25 @@ function page(title, body) {
 router.get('/return', asyncHandler(async (req, res) => {
   const orderId = req.query.order || '';
   const row = (await query(
-    'SELECT id, seller_account_id, stripe_session_id, status, product_name FROM store_orders WHERE id=$1',
-    [orderId])).rows[0];
+    `SELECT o.id, o.seller_account_id, o.stripe_session_id, o.status, o.product_name, o.shipping,
+            sp.kind, sp.fulfillment_url
+       FROM store_orders o LEFT JOIN store_products sp ON sp.id = o.product_id
+      WHERE o.id=$1`, [orderId])).rows[0];
   if (!row) return res.status(404).type('html').send(page('Order not found', '<h1>Order not found</h1><p>We couldn’t find that order.</p>'));
+
+  function confirmedBody(shipping) {
+    var b = '<h1>Thank you — your order is confirmed</h1><p>Your purchase of ' + esc(row.product_name) + ' is complete.</p>';
+    if (row.kind === 'digital' && row.fulfillment_url) {
+      b += '<p><a href="' + esc(row.fulfillment_url) + '">Access your purchase</a></p>';
+    } else if (row.kind === 'digital') {
+      b += '<p>This is a digital item. The seller will send you access shortly.</p>';
+    }
+    if (shipping) b += '<p>It will be shipped to: ' + esc(shipping) + '.</p>';
+    return b;
+  }
+
   if (row.status === 'paid') {
-    return res.type('html').send(page('Thank you', '<h1>Thank you — your order is confirmed</h1><p>Your purchase of ' + esc(row.product_name) + ' is complete.</p>'));
+    return res.type('html').send(page('Thank you', confirmedBody(row.shipping)));
   }
   if (!row.stripe_session_id) {
     return res.type('html').send(page('Pending', '<h1>We’re still confirming your order</h1><p>If you completed payment, it will confirm shortly.</p>'));
@@ -40,9 +54,9 @@ router.get('/return', asyncHandler(async (req, res) => {
   const sess = await stripe.retrieveStoreSession({ sessionId: row.stripe_session_id, sellerAccountId: row.seller_account_id });
   if (sess.ok && sess.payment_status === 'paid') {
     await query(
-      "UPDATE store_orders SET status='paid', paid_at=now(), buyer_email=COALESCE(buyer_email,$2) WHERE id=$1 AND status<>'paid'",
-      [orderId, sess.customer_email]);
-    return res.type('html').send(page('Thank you', '<h1>Thank you — your order is confirmed</h1><p>Your purchase of ' + esc(row.product_name) + ' is complete.</p>'));
+      "UPDATE store_orders SET status='paid', paid_at=now(), buyer_email=COALESCE(buyer_email,$2), shipping=COALESCE(shipping,$3) WHERE id=$1 AND status<>'paid'",
+      [orderId, sess.customer_email, sess.shipping || null]);
+    return res.type('html').send(page('Thank you', confirmedBody(sess.shipping || row.shipping)));
   }
   return res.type('html').send(page('Pending', '<h1>We’re still confirming your order</h1><p>If you completed payment, it will confirm shortly. Nothing extra was charged.</p>'));
 }));
@@ -55,7 +69,7 @@ router.post('/:conceptId/checkout', asyncHandler(async (req, res) => {
     return res.status(400).type('html').send(page('Missing product', '<h1>Something went wrong</h1><p>No product was specified. Nothing was charged.</p>'));
   }
   const pr = await query(
-    `SELECT sp.id, sp.name, sp.price_cents, sp.currency, sp.active, c.owner_id
+    `SELECT sp.id, sp.name, sp.price_cents, sp.currency, sp.active, sp.kind, c.owner_id
      FROM store_products sp JOIN concepts c ON c.id = sp.concept_id
      WHERE sp.id = $1 AND sp.concept_id = $2`, [productId, conceptId]);
   const product = pr.rows[0];
@@ -85,6 +99,7 @@ router.post('/:conceptId/checkout', asyncHandler(async (req, res) => {
     sellerAccountId, orderId,
     successUrl: `${baseUrl()}/api/store/return?order=${orderId}`,
     cancelUrl,
+    collectShipping: product.kind === 'physical',
   });
   if (!session.ok) {
     await query("UPDATE store_orders SET status='failed' WHERE id=$1", [orderId]);

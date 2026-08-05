@@ -87,9 +87,9 @@ const TOOLS = {
   add_product: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id', 'name', 'price'],
-    optional: ['description', 'image_url', 'currency'],
-    enums: {},
-    summary: "Add a real product to THIS concept's STORE, turning its site into an e-commerce storefront. name is the product name; price is a plain number like 19.99; optional description, image_url (a full https URL), and currency (usd by default). The products render as a real Shop on the concept's site. Build the catalog WITH the creator, product by product, with honest prices and good descriptions. Reversible.",
+    optional: ['description', 'image_url', 'currency', 'kind', 'fulfillment_url'],
+    enums: { kind: ['digital', 'physical'] },
+    summary: "Add a real product to THIS concept's STORE, turning its site into an e-commerce storefront. name is the product name; price is a plain number like 19.99. kind is 'digital' (delivered by a link after payment — pass fulfillment_url, a full https link) or 'physical' (a shipping address is collected at checkout); default digital. Optional description, image_url (full https URL), currency (usd default). The products render as a real Shop on the concept's site. Build the catalog WITH the creator, product by product, with honest prices. Reversible.",
   },
   list_products: {
     irreversible: false, requires_confirmation: false,
@@ -104,9 +104,9 @@ const TOOLS = {
   edit_product: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id', 'product_id'],
-    optional: ['name', 'price', 'description', 'image_url', 'active'],
-    enums: {},
-    summary: "Edit a product in THIS concept's store — change its name, price, description, or image, or set active true to show it or false to hide it. Fully reversible.",
+    optional: ['name', 'price', 'description', 'image_url', 'active', 'kind', 'fulfillment_url'],
+    enums: { kind: ['digital', 'physical'] },
+    summary: "Edit a product in THIS concept's store — change its name, price, description, image, kind (digital or physical), fulfillment_url (digital delivery link), or set active true to show it or false to hide it. Fully reversible.",
   },
   store_payments: {
     irreversible: false, requires_confirmation: false,

@@ -306,7 +306,7 @@ router.get('/:id/site/export', authenticate, asyncHandler(async (req, res) => {
     'SELECT slug, title, body, kind, nav_order FROM site_pages WHERE concept_id=$1 ORDER BY nav_order, created_at',
     [req.params.id]);
   const products = await query(
-    'SELECT id, name, price_cents, currency, description, image_url, active FROM store_products WHERE concept_id=$1 AND active=true ORDER BY sort_order, created_at',
+    'SELECT id, name, price_cents, currency, description, image_url, kind, active FROM store_products WHERE concept_id=$1 AND active=true ORDER BY sort_order, created_at',
     [req.params.id]);
   const file = siteExport.buildSingleFile(own.rows[0], pages.rows, products.rows);
   res.json({ ok: true, filename: file.filename, html: file.html });
@@ -421,6 +421,62 @@ router.put('/:id/movement', authenticate, asyncHandler(async (req, res) => {
 router.delete('/:id', authenticate, asyncHandler(async (req, res) => {
   const r = await query('DELETE FROM concepts WHERE id=$1 AND owner_id=$2 RETURNING id', [req.params.id, req.user.id]);
   if (!r.rows.length) throw new ApiError(404, 'Concept not found.');
+  res.json({ ok: true });
+}));
+
+// ---- Manual store management — a creator builds their own catalog, with or without Clay ----
+// Owner-only. Products are digital (delivered by a link after payment) or physical (a shipping
+// address is collected at checkout). Prices are validated the same way Clay's tools validate them.
+router.get('/:id/products', authenticate, asyncHandler(async (req, res) => {
+  const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
+  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  const r = await query(
+    'SELECT id, name, price_cents, currency, description, image_url, kind, fulfillment_url, active FROM store_products WHERE concept_id=$1 ORDER BY sort_order, created_at',
+    [req.params.id]);
+  res.json({ ok: true, products: r.rows.map((p) => ({
+    id: p.id, name: p.name, price_cents: p.price_cents, currency: p.currency,
+    price_display: store.formatPrice(p.price_cents, p.currency),
+    description: p.description || '', image_url: p.image_url || '',
+    kind: p.kind, fulfillment_url: p.fulfillment_url || '', active: p.active,
+  })) });
+}));
+
+router.post('/:id/products', authenticate, asyncHandler(async (req, res) => {
+  const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
+  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  const norm = store.normalizeProduct(req.body || {});
+  if (!norm.ok) throw new ApiError(400, norm.error);
+  const p = norm.product;
+  const r = await query(
+    `INSERT INTO store_products (concept_id, owner_id, name, price_cents, currency, description, image_url, kind, fulfillment_url)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+    [req.params.id, req.user.id, p.name, p.price_cents, p.currency, p.description, p.image_url, p.kind, p.fulfillment_url]);
+  res.json({ ok: true, product_id: r.rows[0].id });
+}));
+
+router.patch('/:id/products/:productId', authenticate, asyncHandler(async (req, res) => {
+  const own = await query('SELECT sp.id FROM store_products sp JOIN concepts c ON c.id=sp.concept_id WHERE sp.id=$1 AND sp.concept_id=$2 AND c.owner_id=$3', [req.params.productId, req.params.id, req.user.id]);
+  if (!own.rows.length) throw new ApiError(404, 'Product not found.');
+  const b = req.body || {};
+  const sets = []; const vals = [req.params.productId]; let n = 1;
+  if (b.name !== undefined) { const nm = String(b.name || '').trim(); if (!nm) throw new ApiError(400, 'A product needs a name.'); sets.push('name=$' + (++n)); vals.push(nm.slice(0, 200)); }
+  if (b.price !== undefined) { const cents = store.parsePriceToCents(b.price); if (cents == null) throw new ApiError(400, 'That price isn’t valid — give a number like 19.99.'); sets.push('price_cents=$' + (++n)); vals.push(cents); }
+  if (b.currency !== undefined) { sets.push('currency=$' + (++n)); vals.push(store.normalizeCurrency(b.currency)); }
+  if (b.description !== undefined) { sets.push('description=$' + (++n)); vals.push(b.description == null ? null : String(b.description).slice(0, 4000)); }
+  if (b.image_url !== undefined) { sets.push('image_url=$' + (++n)); vals.push(store.cleanImageUrl(b.image_url)); }
+  if (b.kind !== undefined) { sets.push('kind=$' + (++n)); vals.push(store.normalizeKind(b.kind)); }
+  if (b.fulfillment_url !== undefined) { sets.push('fulfillment_url=$' + (++n)); vals.push(store.cleanImageUrl(b.fulfillment_url)); }
+  if (b.active !== undefined) { sets.push('active=$' + (++n)); vals.push(!!b.active); }
+  if (!sets.length) throw new ApiError(400, 'Nothing to change.');
+  sets.push('updated_at=now()');
+  await query('UPDATE store_products SET ' + sets.join(', ') + ' WHERE id=$1', vals);
+  res.json({ ok: true });
+}));
+
+router.delete('/:id/products/:productId', authenticate, asyncHandler(async (req, res) => {
+  const own = await query('SELECT sp.id FROM store_products sp JOIN concepts c ON c.id=sp.concept_id WHERE sp.id=$1 AND sp.concept_id=$2 AND c.owner_id=$3', [req.params.productId, req.params.id, req.user.id]);
+  if (!own.rows.length) throw new ApiError(404, 'Product not found.');
+  await query('DELETE FROM store_products WHERE id=$1', [req.params.productId]); // orders keep their own product_name
   res.json({ ok: true });
 }));
 

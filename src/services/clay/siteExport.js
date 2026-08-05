@@ -54,6 +54,7 @@ function shopHtml(products, conceptId) {
     if (p.image_url) card += '<img class="product-img" src="' + esc(p.image_url) + '" alt="' + esc(p.name || '') + '">';
     card += '<h3 class="product-name">' + esc(p.name || '') + '</h3>';
     card += '<p class="product-price">' + esc(priced) + '</p>';
+    if (p.kind) card += '<p class="product-kind">' + (p.kind === 'physical' ? 'Physical — ships to you' : 'Digital — delivered by link') + '</p>';
     if (p.description) card += '<p class="product-desc">' + esc(p.description) + '</p>';
     // A real Buy button — a form POST to the platform checkout, which starts a direct charge on the
     // creator's own Stripe account. Works even in the exported static file, hosted anywhere. If the

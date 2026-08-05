@@ -1179,19 +1179,19 @@ function buildExecutors(user) {
         .catch(() => {});
       return { status: 'building', build_id: buildId, message: 'Building your interactive demo now — this takes a minute or two, and you can watch it happen.' };
     },
-    add_product: async ({ concept_id, name, price, description, image_url, currency }) => {
+    add_product: async ({ concept_id, name, price, description, image_url, currency, kind, fulfillment_url }) => {
       if (!(await query('SELECT 1 FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id])).rows.length) return { status: 'error', message: 'Concept not found.' };
-      const norm = store.normalizeProduct({ name, price, description, image_url, currency });
+      const norm = store.normalizeProduct({ name, price, description, image_url, currency, kind, fulfillment_url });
       if (!norm.ok) return { status: 'error', message: norm.error };
       const p = norm.product;
       const r = await query(
-        `INSERT INTO store_products (concept_id, owner_id, name, price_cents, currency, description, image_url)
-         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, name, price_cents, currency`,
-        [concept_id, user.id, p.name, p.price_cents, p.currency, p.description, p.image_url]);
+        `INSERT INTO store_products (concept_id, owner_id, name, price_cents, currency, description, image_url, kind, fulfillment_url)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id, name, price_cents, currency, kind`,
+        [concept_id, user.id, p.name, p.price_cents, p.currency, p.description, p.image_url, p.kind, p.fulfillment_url]);
       const row = r.rows[0];
       const priced = store.formatPrice(row.price_cents, row.currency);
-      return { status: 'added', product_id: row.id, name: row.name, price: priced,
-        note: 'Added “' + row.name + '” at ' + priced + ' to the store. It shows as a Shop on the concept’s site once the site is published.' };
+      return { status: 'added', product_id: row.id, name: row.name, price: priced, kind: row.kind,
+        note: 'Added “' + row.name + '” (' + row.kind + ') at ' + priced + ' to the store. It shows as a Shop on the concept’s site once the site is published.' };
     },
     list_products: async ({ concept_id }) => {
       if (!(await query('SELECT 1 FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id])).rows.length) return { status: 'error', message: 'Concept not found.' };
@@ -1219,7 +1219,7 @@ function buildExecutors(user) {
         })),
       };
     },
-    edit_product: async ({ concept_id, product_id, name, price, description, image_url, active }) => {
+    edit_product: async ({ concept_id, product_id, name, price, description, image_url, active, kind, fulfillment_url }) => {
       const own = await query('SELECT sp.id FROM store_products sp JOIN concepts c ON c.id=sp.concept_id WHERE sp.id=$1 AND sp.concept_id=$2 AND c.owner_id=$3', [product_id, concept_id, user.id]);
       if (!own.rows.length) return { status: 'error', message: 'Product not found.' };
       const sets = []; const vals = [product_id]; let n = 1;
@@ -1227,6 +1227,8 @@ function buildExecutors(user) {
       if (price !== undefined) { const cents = store.parsePriceToCents(price); if (cents == null) return { status: 'error', message: 'That price isn’t valid — give a number like 19.99.' }; sets.push('price_cents=$' + (++n)); vals.push(cents); }
       if (description !== undefined) { sets.push('description=$' + (++n)); vals.push(description == null ? null : String(description).slice(0, 4000)); }
       if (image_url !== undefined) { sets.push('image_url=$' + (++n)); vals.push(store.cleanImageUrl(image_url)); }
+      if (kind !== undefined) { sets.push('kind=$' + (++n)); vals.push(store.normalizeKind(kind)); }
+      if (fulfillment_url !== undefined) { sets.push('fulfillment_url=$' + (++n)); vals.push(store.cleanImageUrl(fulfillment_url)); }
       if (active !== undefined) { sets.push('active=$' + (++n)); vals.push(!!active); }
       if (!sets.length) return { status: 'error', message: 'Nothing to change — tell me what to update.' };
       sets.push('updated_at=now()');

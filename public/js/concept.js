@@ -282,6 +282,115 @@
     } catch (e) { /* skip silently */ }
   }
 
+  // Your store — manual catalog management, owner-only (the endpoint 404s otherwise, so we skip
+  // quietly). A creator adds/edits/hides/removes their own products here without needing Clay:
+  // digital items (delivered by a link after payment) or physical items (a shipping address is
+  // collected at checkout). Screen-reader-first: every field is labelled, actions announce results.
+  async function loadStore(conceptId) {
+    var first;
+    try { first = await Kiln.api('/concepts/' + conceptId + '/products'); } catch (e) { return; }
+    if (!first || !first.ok) return;
+
+    var sect = el('section', 'store-mgr'); sect.setAttribute('aria-label', 'Your store');
+    sect.appendChild(el('h2', null, 'Your store'));
+    sect.appendChild(el('p', 'muted', 'Add what you want to sell — digital items delivered by a link, or physical items you ship. You set the price, and when someone buys, the money goes to your own account.'));
+    var status = el('p', 'muted'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
+    var listWrap = el('div', 'product-list');
+
+    function mkField(labelText, input, idBase, key) {
+      var id = 'pf-' + idBase + '-' + key; input.id = id;
+      var wrap = el('div', 'field');
+      var lab = el('label', null, labelText); lab.setAttribute('for', id);
+      wrap.appendChild(lab); wrap.appendChild(input);
+      return wrap;
+    }
+    function textInput(val) { var i = document.createElement('input'); i.type = 'text'; if (val != null) i.value = val; return i; }
+    function textArea(val) { var t = document.createElement('textarea'); if (val != null) t.value = val; t.rows = 2; return t; }
+
+    async function reload() {
+      try { var rr = await Kiln.api('/concepts/' + conceptId + '/products'); if (rr && rr.ok) renderList(rr.products || []); } catch (e) { /* keep current */ }
+    }
+
+    function buildForm(existing) {
+      var idBase = existing ? existing.id : 'new';
+      var form = el('div', 'product-form');
+      var nameI = textInput(existing ? existing.name : '');
+      var priceI = textInput(existing ? (existing.price_cents / 100).toFixed(2) : ''); priceI.setAttribute('inputmode', 'decimal');
+      var descI = textArea(existing ? existing.description : '');
+      var imgI = textInput(existing ? existing.image_url : '');
+      var fulI = textInput(existing ? existing.fulfillment_url : '');
+      form.appendChild(mkField('Product name', nameI, idBase, 'name'));
+      form.appendChild(mkField('Price (like 19.99)', priceI, idBase, 'price'));
+      var fs = el('fieldset', 'kind-choices'); fs.appendChild(el('legend', null, 'Type'));
+      var curKind = (existing && existing.kind) || 'digital';
+      ['digital', 'physical'].forEach(function (k) {
+        var rowk = el('div', 'kind-choice');
+        var ri = document.createElement('input'); ri.type = 'radio'; ri.name = 'kind-' + idBase; ri.id = 'pf-' + idBase + '-kind-' + k; ri.value = k;
+        if (curKind === k) ri.checked = true;
+        var rl = el('label', null, k === 'digital' ? 'Digital (delivered by a link)' : 'Physical (you ship it)'); rl.setAttribute('for', ri.id);
+        rowk.appendChild(ri); rowk.appendChild(rl); fs.appendChild(rowk);
+      });
+      form.appendChild(fs);
+      form.appendChild(mkField('Description (optional)', descI, idBase, 'desc'));
+      form.appendChild(mkField('Image link, https (optional)', imgI, idBase, 'img'));
+      form.appendChild(mkField('Delivery link for a digital item, https (optional)', fulI, idBase, 'ful'));
+      var save = el('button', 'btn', existing ? 'Save changes' : 'Add product'); save.type = 'button';
+      save.addEventListener('click', async function () {
+        var chosen = form.querySelector('input[name="kind-' + idBase + '"]:checked');
+        var body = { name: nameI.value, price: priceI.value, kind: (chosen && chosen.value) || 'digital',
+          description: descI.value, image_url: imgI.value, fulfillment_url: fulI.value };
+        save.disabled = true;
+        try {
+          if (existing) { await Kiln.api('/concepts/' + conceptId + '/products/' + existing.id, { method: 'PATCH', body: body }); status.textContent = 'Saved “' + (nameI.value || 'product') + '”.'; announce('Product saved.'); }
+          else { await Kiln.api('/concepts/' + conceptId + '/products', { method: 'POST', body: body }); status.textContent = 'Added “' + (nameI.value || 'product') + '”.'; announce('Product added.'); nameI.value = ''; priceI.value = ''; descI.value = ''; imgI.value = ''; fulI.value = ''; }
+          await reload();
+        } catch (e) {
+          if (e.sessionExpired) return goSignIn();
+          status.textContent = e.message || 'Could not save that, so nothing changed.'; announce(status.textContent, true);
+        }
+        save.disabled = false;
+      });
+      form.appendChild(save);
+      return form;
+    }
+
+    function renderList(products) {
+      listWrap.textContent = '';
+      if (!products.length) { listWrap.appendChild(el('p', 'muted', 'No products yet. Add your first one below.')); return; }
+      products.forEach(function (p) {
+        var row = el('div', 'product-row');
+        row.appendChild(el('h3', null, p.name + ' — ' + p.price_display + ' (' + p.kind + ')' + (p.active ? '' : ' — hidden')));
+        if (p.description) row.appendChild(el('p', 'muted', p.description));
+        var acts = el('div', 'actions');
+        var vis = el('button', 'btn secondary', p.active ? 'Hide' : 'Show'); vis.type = 'button';
+        vis.addEventListener('click', async function () {
+          try { await Kiln.api('/concepts/' + conceptId + '/products/' + p.id, { method: 'PATCH', body: { active: !p.active } }); announce(p.active ? 'Hidden.' : 'Shown.'); reload(); }
+          catch (e) { if (e.sessionExpired) return goSignIn(); status.textContent = e.message || 'Could not change that.'; announce(status.textContent, true); }
+        });
+        acts.appendChild(vis);
+        var editForm = buildForm(p); editForm.hidden = true;
+        var edit = el('button', 'btn secondary', 'Edit'); edit.type = 'button'; edit.setAttribute('aria-expanded', 'false');
+        edit.addEventListener('click', function () { var open = !editForm.hidden; editForm.hidden = open; edit.setAttribute('aria-expanded', String(!open)); });
+        acts.appendChild(edit);
+        var rm = el('button', 'btn secondary', 'Remove'); rm.type = 'button';
+        rm.addEventListener('click', async function () {
+          try { await Kiln.api('/concepts/' + conceptId + '/products/' + p.id, { method: 'DELETE' }); announce('Product removed.'); reload(); }
+          catch (e) { if (e.sessionExpired) return goSignIn(); status.textContent = e.message || 'Could not remove that.'; announce(status.textContent, true); }
+        });
+        acts.appendChild(rm);
+        row.appendChild(acts); row.appendChild(editForm);
+        listWrap.appendChild(row);
+      });
+    }
+
+    renderList(first.products || []);
+    sect.appendChild(listWrap);
+    sect.appendChild(el('h3', null, 'Add a product'));
+    sect.appendChild(buildForm(null));
+    sect.appendChild(status);
+    actionsEl.appendChild(sect);
+  }
+
   // ---- Creator Path: where are you taking THIS concept? (per-concept intent) ----
   // The plan shapes how Clay coaches this concept and is settable in plain conversation too; this is
   // the visible, screen-reader-first control for it. There is no wrong answer and no ceiling.
@@ -432,6 +541,7 @@
       cActs.appendChild(econ);
       actionsEl.appendChild(cActs);
       loadExtras(id);
+      loadStore(id);
       loadSales(id);
 
       // ---- keep / unlock, only when something is actually locked ----

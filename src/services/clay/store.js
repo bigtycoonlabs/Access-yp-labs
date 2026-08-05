@@ -44,9 +44,14 @@ function cleanImageUrl(s) {
   return /^https:\/\/[^\s]+$/i.test(v) ? v.slice(0, 2000) : null;
 }
 
+// A product is digital (delivered by link) or physical (shipped). Anything unknown → digital.
+function normalizeKind(k) {
+  return String(k || '').trim().toLowerCase() === 'physical' ? 'physical' : 'digital';
+}
+
 // Validate + normalize a new product. Returns { ok, product } or { ok:false, error } — the error
 // is a plain, speakable sentence Clay can relay.
-function normalizeProduct({ name, price, description, image_url, currency } = {}) {
+function normalizeProduct({ name, price, description, image_url, currency, kind, fulfillment_url } = {}) {
   const nm = String(name == null ? '' : name).trim();
   if (nm.length < 1) return { ok: false, error: 'A product needs a name.' };
   const cents = parsePriceToCents(price);
@@ -59,6 +64,8 @@ function normalizeProduct({ name, price, description, image_url, currency } = {}
       currency: normalizeCurrency(currency),
       description: description == null ? null : String(description).slice(0, 4000),
       image_url: cleanImageUrl(image_url),
+      kind: normalizeKind(kind),
+      fulfillment_url: cleanImageUrl(fulfillment_url), // https-only delivery link, or null
     },
   };
 }
@@ -74,6 +81,6 @@ function summarizeOrders(rows) {
 }
 
 module.exports = {
-  parsePriceToCents, normalizeCurrency, formatPrice, cleanImageUrl, normalizeProduct, summarizeOrders,
+  parsePriceToCents, normalizeCurrency, formatPrice, cleanImageUrl, normalizeProduct, normalizeKind, summarizeOrders,
   CURRENCIES, DEFAULT_CURRENCY, MAX_PRICE_CENTS,
 };

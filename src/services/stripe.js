@@ -265,13 +265,24 @@ async function ensureCardPayments(accountId) {
   }
 }
 
+// Countries a physical order can ship to. Broad common set; a seller needing more is a later tweak.
+const SHIP_COUNTRIES = ['US', 'CA', 'GB', 'AU', 'NZ', 'IE', 'DE', 'FR', 'ES', 'IT', 'NL', 'SE', 'NO', 'DK', 'FI', 'BE', 'AT', 'PT', 'CH', 'PL', 'JP', 'SG', 'MX', 'BR'];
+
+function formatShipping(details) {
+  if (!details) return null;
+  const a = details.address || {};
+  const parts = [details.name, a.line1, a.line2, [a.city, a.state, a.postal_code].filter(Boolean).join(' '), a.country].filter(Boolean);
+  return parts.length ? parts.join(', ') : null;
+}
+
 // Start a storefront checkout: a DIRECT charge created ON the seller's connected account. No
-// application_fee_amount, so the platform takes nothing; the seller settles the Stripe fee.
-async function createStoreCheckout({ amountCents, currency, productName, sellerAccountId, orderId, successUrl, cancelUrl }) {
+// application_fee_amount, so the platform takes nothing; the seller settles the Stripe fee. For a
+// physical product, collect a shipping address so the seller knows where to ship.
+async function createStoreCheckout({ amountCents, currency, productName, sellerAccountId, orderId, successUrl, cancelUrl, collectShipping }) {
   const s = stripe();
   if (!s) return { ok: false, reason: 'stripe_not_configured' };
   try {
-    const session = await s.checkout.sessions.create({
+    const params = {
       mode: 'payment',
       line_items: [{
         price_data: { currency: currency || 'usd', product_data: { name: productName }, unit_amount: amountCents },
@@ -282,8 +293,10 @@ async function createStoreCheckout({ amountCents, currency, productName, sellerA
       client_reference_id: orderId,
       metadata: { kind: 'store_order', order_id: orderId },
       payment_intent_data: { metadata: { kind: 'store_order', order_id: orderId } },
-      managed_payments: { enabled: false }, // standard checkout — see note on the plan checkout
-    }, { stripeAccount: sellerAccountId });
+      managed_payments: { enabled: false }, // REQUIRED on a Connect direct-charge session (SMP can't be used with Connect)
+    };
+    if (collectShipping) params.shipping_address_collection = { allowed_countries: SHIP_COUNTRIES };
+    const session = await s.checkout.sessions.create(params, { stripeAccount: sellerAccountId });
     return { ok: true, id: session.id, url: session.url };
   } catch (err) {
     console.error('createStoreCheckout FAILED — type:', err && err.type, '| code:', err && err.code, '-', err && err.message);
@@ -305,6 +318,7 @@ async function retrieveStoreSession({ sessionId, sellerAccountId }) {
       amount_total: session.amount_total,
       currency: session.currency,
       customer_email: (session.customer_details && session.customer_details.email) || null,
+      shipping: formatShipping(session.shipping_details || (session.collected_information && session.collected_information.shipping_details)),
       metadata: session.metadata || {} };
   } catch (err) {
     console.error('retrieveStoreSession FAILED —', err && err.type, err && err.code, '-', err && err.message);

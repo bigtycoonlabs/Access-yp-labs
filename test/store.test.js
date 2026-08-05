@@ -84,3 +84,22 @@ test('summarizeOrders handles empty and junk input safely', () => {
   assert.deepStrictEqual(store.summarizeOrders([]), { paid_count: 0, paid_total_cents: 0, currency: 'usd', unfinished: 0 });
   assert.deepStrictEqual(store.summarizeOrders(null), { paid_count: 0, paid_total_cents: 0, currency: 'usd', unfinished: 0 });
 });
+
+test('normalizeKind defaults to digital and only allows physical explicitly', () => {
+  assert.strictEqual(store.normalizeKind('physical'), 'physical');
+  assert.strictEqual(store.normalizeKind('PHYSICAL'), 'physical');
+  assert.strictEqual(store.normalizeKind('digital'), 'digital');
+  assert.strictEqual(store.normalizeKind('nonsense'), 'digital');
+  assert.strictEqual(store.normalizeKind(undefined), 'digital');
+});
+
+test('normalizeProduct carries kind and an https-only fulfillment link', () => {
+  const a = store.normalizeProduct({ name: 'Guide', price: '9.99', kind: 'digital', fulfillment_url: 'https://ex.com/file.pdf' });
+  assert.ok(a.ok);
+  assert.strictEqual(a.product.kind, 'digital');
+  assert.strictEqual(a.product.fulfillment_url, 'https://ex.com/file.pdf');
+  const b = store.normalizeProduct({ name: 'Mug', price: '15', kind: 'physical', fulfillment_url: 'http://insecure.com/x' });
+  assert.ok(b.ok);
+  assert.strictEqual(b.product.kind, 'physical');
+  assert.strictEqual(b.product.fulfillment_url, null, 'non-https delivery link is rejected');
+});
