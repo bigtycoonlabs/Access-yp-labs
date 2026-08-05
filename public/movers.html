@@ -37,7 +37,12 @@ let state={enrolled:false,mover:null,earnings:null,promoted:new Set()};
 async function init(){
   if(!Kiln.isLoggedIn()){location.replace('/login.html');return;}
   try{ await load(); }
-  catch(e){ if(e.sessionExpired||e.status===401) return goSignIn(); gate.textContent=e.message||'Could not load.'; }
+  catch(e){
+    // A LOGGED-OUT visitor arriving from the homepage must not be bounced to a login screen with no
+    // idea what they were signing up for. Explain the offer first, then give them the way in.
+    if(e.sessionExpired||e.status===401) return renderSignedOut();
+    gate.textContent=e.message||'Could not load.';
+  }
 }
 
 async function load(){
@@ -45,6 +50,35 @@ async function load(){
   state.enrolled=me.enrolled; state.mover=me.mover||null; state.earnings=me.earnings||null; state.payout=me.payout||null;
   gate.hidden=true; panel.hidden=false;
   render();
+}
+
+// What a visitor sees before they have an account: the whole deal, plainly, and two doors.
+function renderSignedOut(){
+  gate.hidden=true; panel.hidden=false; panel.innerHTML='';
+  const c=el('div','card');
+  c.appendChild(el('h2',null,'How being a Dream Mover works'));
+  const ol=document.createElement('ol');
+  [
+    'Create a free account — it takes a minute, and you do not need a business idea of your own.',
+    'Get your own promo page with a link you can share anywhere.',
+    'Champion the Dreams you actually believe in from the Dream Market.',
+    'When someone buys one through your link, you earn 5% of that sale — paid out of our cut, so the creator still keeps their full share.'
+  ].forEach(function(s){ ol.appendChild(el('li',null,s)); });
+  c.appendChild(ol);
+  c.appendChild(el('p','muted','There is no cost to join and nothing to buy. You are promoting real businesses other people built, and you earn only when one actually sells.'));
+
+  const go=el('a','btn','Create a free account and start'); go.href='/register.html?next=/movers.html';
+  go.style.display='inline-block'; go.style.textDecoration='none';
+  c.appendChild(go);
+
+  const already=el('p'); const a2=el('a',null,'I already have an account — sign in'); a2.href='/login.html?next=/movers.html';
+  already.appendChild(a2); c.appendChild(already);
+
+  const browse=el('p'); const a3=el('a',null,'See what is in the Dream Market first'); a3.href='/dreamhold.html';
+  browse.appendChild(a3); c.appendChild(browse);
+
+  panel.appendChild(c);
+  announce('Become a Dream Mover. Promote businesses you believe in and earn five percent of each sale. Create a free account to start.', true);
 }
 
 function render(){

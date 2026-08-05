@@ -145,3 +145,21 @@ legend{font-weight:700;padding:0 6px;}
   img, pre, textarea, table, video, iframe{ max-width:100%; }
   body{ overflow-x:hidden; overflow-wrap:break-word; word-break:break-word; }
 }
+
+/* --- homepage "three ways to play" doors ---------------------------------
+   Plain, high-contrast, and generously sized: each door is a real list item with a real link, so a
+   screen reader announces "list, 3 items" and can jump between them, and every tap target clears
+   44px. No hover-only affordances — nothing here depends on seeing a cursor. */
+.hero-h2 { font-size: 1.05rem; margin: 22px 0 8px; opacity: .95; }
+.hero-doors { list-style: none; padding: 0; margin: 0 0 20px; display: grid; gap: 10px; }
+.hero-doors li {
+  padding: 14px 16px; border-radius: 12px;
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12);
+  line-height: 1.5;
+}
+.hero-doors .door-link {
+  display: inline-block; min-height: 44px; line-height: 44px;
+  color: var(--dream2); text-decoration: none; margin-right: 6px;
+}
+.hero-doors .door-link:hover, .hero-doors .door-link:focus { text-decoration: underline; }
+.hero-doors .door-link:focus-visible { outline: 3px solid var(--dream2); outline-offset: 3px; }
