@@ -769,7 +769,9 @@
 
       const operatingEl = document.getElementById('operating');
       const operating = mode === 'enhance' && !!(operatingEl && operatingEl.checked);
-      const body = { mode, category, prompt, operating, concept_id: currentConceptId || undefined };
+      // confirmed: attaching files and pressing send IS the person's explicit go-ahead to build
+      // from them. The server refuses any build that doesn't carry this, so nothing starts by surprise.
+      const body = { mode, category, prompt, operating, confirmed: true, concept_id: currentConceptId || undefined };
       if (pendingUploadIds.length) body.upload_ids = pendingUploadIds.slice();
       const data = await Kiln.api('/clay/generate', { method: 'POST', body });
       // Files were handed to this build; clear them so they aren't attached again. (They're
@@ -1228,6 +1230,15 @@
       container.appendChild(el('p', 'msg ok', data.message || 'I’m building your concept now and will email it to you when it’s ready.'));
       announce(data.message || 'Clay is building your concept now. This usually takes 1 to 3 minutes. You’ll get an email when it’s ready, and it will be in your Laboratory. You don’t need to wait here.', true);
       if (data.build_id) watchBuild(container, data.build_id);
+      return;
+    }
+    // The page is running old code and asked for something the current server won't do silently.
+    if (data.status === 'stale_client') {
+      container.appendChild(el('p', 'msg err', data.message));
+      announce(data.message, true);
+      const rl = el('button', 'btn', 'Refresh this page'); rl.type = 'button';
+      rl.addEventListener('click', function () { location.reload(true); });
+      container.appendChild(rl);
       return;
     }
     // Non-answers — always honest, never fabricated.

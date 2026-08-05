@@ -34,7 +34,20 @@ const apiLimiter = rateLimit({
   message: { error: 'Too many requests. Please try again shortly.' },
 });
 app.use('/api/', apiLimiter);
-app.use(express.static(path.join(__dirname, '../public'), { index: false }));
+// Serve the site, but never let a browser keep running STALE app code. HTML and JS are served
+// with no-cache, which does NOT mean "download every time" — the browser still revalidates with
+// its ETag and gets a cheap 304 when nothing changed. Without this, a browser can hold on to an
+// old script indefinitely, so a shipped fix silently never reaches the person: exactly what
+// happened when a corrected chat/build routing kept behaving the old way in a live session. This
+// matters even more for a screen-reader user, for whom "just hard-refresh" is not a simple move.
+// Fingerprinted assets (images, fonts, CSS) keep normal caching.
+app.use(express.static(path.join(__dirname, '../public'), {
+  index: false,
+  etag: true,
+  setHeaders(res, filePath) {
+    if (/\.(html|js)$/i.test(filePath)) res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  },
+}));
 
 // The Dream Market / Clay API surface
 app.use('/api/auth',          require('./routes/auth'));

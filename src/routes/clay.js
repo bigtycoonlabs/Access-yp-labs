@@ -636,6 +636,18 @@ router.post('/generate', authenticate, [
     ? req.body.upload_ids.filter((x) => typeof x === 'string' && /^[0-9a-f-]{36}$/i.test(x)).slice(0, 10)
     : [];
 
+  // A build is minutes of work and a whole set of materials, so it NEVER starts by surprise.
+  // The current client either asks Clay in chat (he proposes, the person approves) or sends
+  // confirmed:true for an action the person plainly took, like attaching files to build from.
+  // An OLD CACHED PAGE could still post here the way it used to; refuse rather than build
+  // something nobody asked for, and say plainly how to fix it.
+  if (req.body.confirmed !== true) {
+    return res.status(200).json({
+      status: 'stale_client',
+      message: 'I didn’t start a build — nothing was made. Your page is running an older version of the app, which is why that happened without asking you. Please refresh this page, then tell me what you’d like and I’ll ask before I build anything.',
+    });
+  }
+
   // Fast fail: if the builder isn't connected, say so now — no point promising an email.
   if (!provider.available()) {
     return res.status(200).json({
