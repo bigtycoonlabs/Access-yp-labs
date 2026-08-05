@@ -13,6 +13,7 @@ const movement = require('../services/clay/movement');
 const launchPage = require('../services/clay/launchPage');
 const siteStore = require('../services/clay/siteStore');
 const store = require('../services/clay/store');
+const similarity = require('../services/clay/similarity');
 const siteQuota = require('../services/clay/siteQuota');
 const domains = require('../services/clay/domains');
 const domainStore = require('../services/clay/domainStore');
@@ -1007,6 +1008,26 @@ function buildExecutors(user) {
          FROM listings l JOIN concepts c ON c.id=l.concept_id
          WHERE ${clauses.join(' AND ')} ORDER BY l.created_at DESC LIMIT 25`, args);
       return { listings: r.rows };
+    },
+    find_similar_listings: async ({ idea }) => {
+      const tokens = similarity.significantTokens(idea || '');
+      if (tokens.length < 2) return { strong: false, matches: [], note: 'Not enough detail to compare — describe the idea a little more.' };
+      const r = await query(
+        `SELECT l.id AS listing_id, c.title, l.price_cents, l.starting_bid_cents,
+                lower(coalesce(c.title,'')||' '||coalesce(c.brief,'')||' '||coalesce(c.clays_take,'')||' '||coalesce(c.risk_summary,'')) AS blob
+         FROM listings l JOIN concepts c ON c.id=l.concept_id
+         WHERE l.status='live' ORDER BY l.created_at DESC LIMIT 200`);
+      const ranked = similarity.rankBySimilarity(tokens, r.rows);
+      return {
+        strong: ranked.strong,
+        matches: ranked.matches.slice(0, 5).map((m) => ({
+          listing_id: m.listing_id,
+          title: m.title,
+          price: m.price_cents ? store.formatPrice(m.price_cents, 'usd')
+            : (m.starting_bid_cents ? ('auction, from ' + store.formatPrice(m.starting_bid_cents, 'usd')) : 'see the listing'),
+          closeness: m.score >= 0.6 ? 'very close' : (m.score >= 0.4 ? 'close' : 'somewhat related'),
+        })),
+      };
     },
     get_listing: async ({ listing_id }) => {
       const r = await query(

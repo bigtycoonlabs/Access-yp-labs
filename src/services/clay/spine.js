@@ -29,6 +29,11 @@ const TOOLS = {
     irreversible: false, requires_confirmation: false, required: [], optional: ['query'], enums: { category: CATEGORIES },
     summary: 'Search live marketplace listings by keyword and/or category (read-only).',
   },
+  find_similar_listings: {
+    irreversible: false, requires_confirmation: false,
+    required: ['idea'], enums: {},
+    summary: "BEFORE building a brand-new idea from scratch, check the Dream Market for a listing already selling something very similar. Pass the creator's idea as plain text. Read-only. If it returns strong:true, STOP building and offer to help them BUY that listing and enhance it into what they want, instead of starting from zero.",
+  },
   get_listing: {
     irreversible: false, requires_confirmation: false, required: ['listing_id'], enums: {},
     summary: 'Read a live listing\'s details, including an accessible demo description (read-only).',
