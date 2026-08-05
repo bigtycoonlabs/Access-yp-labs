@@ -44,21 +44,34 @@ async function generateOne(concept, opts = {}) {
   const rendered = await image.renderImage({ prompt: brief.prompt });
   if (rendered.status !== 'answered') return { ok: false, reason: rendered.status || 'unavailable', message: rendered.message };
 
-  // Turn the render into something we can store + display. Prefer object storage (keeps the DB
-  // lean); fall back to an inline data URL if storage isn't configured or the upload fails, so
-  // images always work either way.
-  let src = rendered.url || null;
-  let storageRef = rendered.url || null;
-  if (!src && rendered.image_base64) {
-    if (storage.configured()) {
-      const up = await storage.uploadImage({
-        base64: rendered.image_base64,
-        mediaType: rendered.media_type || 'image/png',
-        key: storage.keyFor(concept.id, rendered.media_type),
-      });
+  // Turn the render into something we can store + display. Prefer OUR object storage so the image is
+  // PERMANENT — provider URLs (OpenAI, Together, fal, and friends) are often temporary and would
+  // break a saved hero. So when storage is on, get the bytes (from the base64 the provider gave, or
+  // by fetching its URL once) and upload them; only fall back to the provider URL, then an inline
+  // data URL, if storage is off or the upload fails. An image always comes back either way.
+  let src = null;
+  let storageRef = null;
+  if (storage.configured()) {
+    let base64 = rendered.image_base64 || null;
+    let mediaType = rendered.media_type || 'image/png';
+    if (!base64 && rendered.url) {
+      try {
+        const resp = await fetch(rendered.url);
+        if (resp.ok) {
+          base64 = Buffer.from(await resp.arrayBuffer()).toString('base64');
+          mediaType = resp.headers.get('content-type') || mediaType;
+        }
+      } catch (_) { /* fall back to the provider URL below */ }
+    }
+    if (base64) {
+      const up = await storage.uploadImage({ base64, mediaType, key: storage.keyFor(concept.id, mediaType) });
       if (up.ok) { src = up.url; storageRef = up.key; }
     }
-    if (!src) src = 'data:' + (rendered.media_type || 'image/png') + ';base64,' + rendered.image_base64;
+  }
+  if (!src) {
+    src = rendered.url
+      || (rendered.image_base64 ? 'data:' + (rendered.media_type || 'image/png') + ';base64,' + rendered.image_base64 : null);
+    storageRef = rendered.url || null;
   }
   if (!src) return { ok: false, reason: 'empty' };
 
