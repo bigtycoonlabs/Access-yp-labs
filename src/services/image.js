@@ -1,16 +1,24 @@
-// Image rendering seam — DORMANT until an image provider key is set.
+// Image rendering seam.
 //
-// Provider-agnostic by design: set IMAGE_API_KEY and IMAGE_API_URL (and
-// optionally IMAGE_MODEL). With no key configured, renderImage reports
-// 'unavailable' honestly and never fabricates an image. Some providers (e.g.
-// Together AI's FLUX endpoint) want extra body fields — width, height, steps,
-// n, response_format — so those are sent ONLY when their env vars are set,
-// which keeps this generic (behavior is unchanged when they're absent) while
-// letting a real provider be configured entirely from env, no code change.
+// Two ways to be configured, tried in this order:
+//   1. A DEDICATED image provider — set IMAGE_API_KEY + IMAGE_API_URL (+ optional IMAGE_MODEL and
+//      IMAGE_WIDTH/HEIGHT/STEPS/RESPONSE_FORMAT). Use this for Together AI, fal, Replicate, etc.
+//   2. NO dedicated provider, but Clay's OpenAI brain key is present — then image generation just
+//      works with the OPENAI_API_KEY you ALREADY have. No new account, no new dashboard. It uses
+//      OpenAI's image endpoint with dall-e-3 by default, which needs NO org verification (unlike the
+//      gpt-image models). Turn this fallback off with IMAGE_OPENAI_FALLBACK=0.
+// With neither, renderImage reports 'unavailable' honestly and never fabricates an image.
+
 const API_URL = () => process.env.IMAGE_API_URL || '';
 const MODEL = () => process.env.IMAGE_MODEL || '';
+const OPENAI_IMAGE_URL = 'https://api.openai.com/v1/images/generations';
+const OPENAI_IMAGE_MODEL_DEFAULT = 'dall-e-3';
 
-function configured() { return !!process.env.IMAGE_API_KEY && !!API_URL(); }
+function dedicatedConfigured() { return !!process.env.IMAGE_API_KEY && !!API_URL(); }
+// The OpenAI fallback is on by default whenever the brain key exists — so images work with no extra
+// setup — but can be switched off explicitly without unsetting the brain key.
+function openaiFallbackOn() { return process.env.IMAGE_OPENAI_FALLBACK !== '0' && !!process.env.OPENAI_API_KEY; }
+function configured() { return dedicatedConfigured() || openaiFallbackOn(); }
 
 // Parse an optional numeric env var; undefined (not sent) when unset or non-numeric.
 function numEnv(name) {
@@ -20,10 +28,10 @@ function numEnv(name) {
   return Number.isFinite(n) ? n : undefined;
 }
 
-// Build the request body. Only the prompt (and model, if set) are always sent; width/height/steps/n
-// and response_format are added only when their env vars are present, so unconfigured providers see
-// exactly the old minimal body. For Together's FLUX models, set IMAGE_STEPS (schnell likes 4) and
-// IMAGE_RESPONSE_FORMAT=b64_json so bytes come back directly and can be stored permanently.
+// Body for a DEDICATED provider (Together/fal/etc.). Only prompt (and model, if set) are always
+// sent; width/height/steps/n/response_format are added only when their env vars are present, so an
+// unconfigured provider sees exactly the old minimal body. For Together's FLUX models, set
+// IMAGE_STEPS (schnell likes 4) and IMAGE_RESPONSE_FORMAT=b64_json so bytes come back directly.
 function requestBody(prompt) {
   const body = { prompt };
   if (MODEL()) body.model = MODEL();
@@ -35,21 +43,45 @@ function requestBody(prompt) {
   return body;
 }
 
+// Which OpenAI image model the fallback uses. Defaults to dall-e-3 (no org verification needed).
+// Deliberately does NOT read IMAGE_MODEL — that var names a dedicated-provider model (e.g. a Together
+// FLUX id) and would be wrong to send to OpenAI.
+function openaiImageModel() { return process.env.OPENAI_IMAGE_MODEL || OPENAI_IMAGE_MODEL_DEFAULT; }
+
+// Body for OpenAI's image endpoint. dall-e models accept response_format:'b64_json' (we get the bytes
+// directly, so images can be stored permanently); the gpt-image models REJECT response_format (they
+// return b64_json by default), so it's never sent for those.
+function openaiBody(prompt, model) {
+  const size = process.env.IMAGE_SIZE || '1024x1024';
+  const body = { model, prompt, n: 1, size };
+  if (!/^gpt-image/i.test(model)) body.response_format = 'b64_json';
+  return body;
+}
+
+// Resolve the active provider: dedicated first, then the OpenAI fallback, then none.
+function resolveProvider() {
+  if (dedicatedConfigured()) return { mode: 'dedicated', url: API_URL(), key: process.env.IMAGE_API_KEY, model: MODEL() || null };
+  if (openaiFallbackOn()) return { mode: 'openai', url: OPENAI_IMAGE_URL, key: process.env.OPENAI_API_KEY, model: openaiImageModel() };
+  return null;
+}
+
 async function renderImage({ prompt }) {
   if (!prompt || !String(prompt).trim()) return { status: 'empty', message: 'No prompt was provided.' };
-  if (!configured()) {
+  const prov = resolveProvider();
+  if (!prov) {
     return { status: 'unavailable',
-      message: 'Image rendering is not configured yet. Add an image provider key (IMAGE_API_KEY and IMAGE_API_URL) to turn it on. Nothing was fabricated.' };
+      message: 'Image rendering is not configured yet. Either set OPENAI_API_KEY so Clay can make images with its existing brain key, or add a dedicated image provider (IMAGE_API_KEY and IMAGE_API_URL). Nothing was fabricated.' };
   }
   try {
-    const resp = await fetch(API_URL(), {
+    const body = prov.mode === 'openai' ? openaiBody(prompt, prov.model) : requestBody(prompt);
+    const resp = await fetch(prov.url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + process.env.IMAGE_API_KEY },
-      body: JSON.stringify(requestBody(prompt)),
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + prov.key },
+      body: JSON.stringify(body),
     });
     if (!resp.ok) {
-      // Surface the provider's own error text (truncated) so a failure is diagnosable — e.g. a
-      // wrong model name or a missing param — instead of a bare status code. Never fabricated.
+      // Surface the provider's own error text (truncated) so a failure is diagnosable — a wrong
+      // model name, a missing param, an unverified org — instead of a bare status code. Never faked.
       const detail = await resp.text().catch(() => '');
       return { status: 'unavailable',
         message: `Image provider returned ${resp.status}. Nothing was fabricated.` + (detail ? ' Provider said: ' + String(detail).slice(0, 300) : ''),
@@ -69,9 +101,13 @@ async function renderImage({ prompt }) {
   }
 }
 
-// Host of the configured provider (for status readouts), e.g. 'api.together.xyz'. Null if unset.
+// Status helpers for the "check systems" readout.
 function providerHost() {
-  try { return new URL(API_URL()).host || null; } catch (_) { return null; }
+  const prov = resolveProvider();
+  if (!prov) return null;
+  try { return new URL(prov.url).host || null; } catch (_) { return null; }
 }
+function activeMode() { const p = resolveProvider(); return p ? p.mode : null; }
+function activeModel() { const p = resolveProvider(); return p ? (p.model || null) : null; }
 
-module.exports = { configured, renderImage, providerHost, _requestBody: requestBody };
+module.exports = { configured, renderImage, providerHost, activeMode, activeModel, _requestBody: requestBody, _openaiBody: openaiBody };

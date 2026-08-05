@@ -127,8 +127,9 @@ async function systemsStatus() {
     knowledge: { glossary_terms: glossarySize() },
     images: {
       configured: image.configured(),
+      mode: image.activeMode(),
       host: image.configured() ? image.providerHost() : null,
-      model: image.configured() ? (process.env.IMAGE_MODEL || null) : null,
+      model: image.configured() ? image.activeModel() : null,
       storage: storage.configured(),
     },
   };
@@ -174,11 +175,12 @@ function summarizeSystems(s) {
   }
   if (s.images) {
     if (s.images.configured) {
-      parts.push(`Image generation is connected${s.images.host ? ` — provider ${s.images.host}` : ''}${s.images.model ? `, model ${s.images.model}` : ''}. ` + (s.images.storage
+      const src = s.images.mode === 'openai' ? `using your existing OpenAI key` : (s.images.host ? `provider ${s.images.host}` : 'a dedicated provider');
+      parts.push(`Image generation is connected — ${src}${s.images.model ? `, model ${s.images.model}` : ''}. ` + (s.images.storage
         ? `Permanent image storage is ON, so generated images are saved for good.`
         : `Permanent image storage is OFF — images may come back as temporary links, so turn on storage (SUPABASE_URL and the service-role key) if heroes need to stay put.`));
     } else {
-      parts.push(`Image generation is NOT configured — set the image provider keys (IMAGE_API_KEY and IMAGE_API_URL) to let Clay make pictures.`);
+      parts.push(`Image generation is NOT configured — set OPENAI_API_KEY and Clay can make images with its own brain key, or add a dedicated image provider (IMAGE_API_KEY and IMAGE_API_URL).`);
     }
   }
   return parts.join(' ');
