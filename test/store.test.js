@@ -55,3 +55,13 @@ test('shopHtml renders active products, hides inactive, escapes', () => {
   assert.ok(html.includes('Bold &lt;Tee&gt;'), 'escapes the name');
   assert.ok(!html.includes('Hidden'), 'hides inactive products');
 });
+
+test('shopHtml renders a real Buy form only when a concept id is given', () => {
+  const products = [{ id: 'prod_123', name: 'Tee', price_cents: 2500, currency: 'usd', active: true }];
+  const noForm = shopHtml(products); // no conceptId → catalog only, no buy button
+  assert.ok(!noForm.includes('<form'), 'no buy form without a concept id');
+  const withForm = shopHtml(products, 'concept_abc');
+  assert.ok(withForm.includes('/api/store/concept_abc/checkout'), 'posts to the checkout endpoint');
+  assert.ok(withForm.includes('name="product_id" value="prod_123"'), 'carries the product id');
+  assert.ok(withForm.includes('type="submit"'), 'is a real button');
+});

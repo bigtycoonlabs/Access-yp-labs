@@ -45,6 +45,7 @@ app.use('/api/concepts',      require('./routes/concepts'));
 app.use('/api/clay',          require('./routes/clay'));
 app.use('/api/assets',        require('./routes/assets'));
 app.use('/api/sellers',       require('./routes/sellers'));
+app.use('/api/store',         require('./routes/store'));
 app.use('/api/admin',         require('./routes/admin'));
 app.use('/api/maintenance',   require('./routes/maintenance'));
 app.use('/api/listings',      require('./routes/listings'));

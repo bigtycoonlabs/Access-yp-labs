@@ -44,15 +44,26 @@ function bodyHtml(body) {
 // for a concept's active products. A real catalog on the ownable site. (The live buy/checkout
 // action is wired separately, through the platform's Stripe Connect, once the owner sets the
 // store's payment policy — so this renders the products honestly without a dead button.)
-function shopHtml(products) {
+function shopHtml(products, conceptId) {
   const list = (products || []).filter(function (p) { return p && p.active !== false; });
   if (!list.length) return '';
+  const base = (process.env.CLIENT_URL || '').startsWith('https') ? process.env.CLIENT_URL : 'https://accessyplabs.com';
   const cards = list.map(function (p) {
+    const priced = store.formatPrice(p.price_cents, p.currency);
     let card = '<div class="product-card">';
     if (p.image_url) card += '<img class="product-img" src="' + esc(p.image_url) + '" alt="' + esc(p.name || '') + '">';
     card += '<h3 class="product-name">' + esc(p.name || '') + '</h3>';
-    card += '<p class="product-price">' + esc(store.formatPrice(p.price_cents, p.currency)) + '</p>';
+    card += '<p class="product-price">' + esc(priced) + '</p>';
     if (p.description) card += '<p class="product-desc">' + esc(p.description) + '</p>';
+    // A real Buy button — a form POST to the platform checkout, which starts a direct charge on the
+    // creator's own Stripe account. Works even in the exported static file, hosted anywhere. If the
+    // creator hasn't set up payments yet, the checkout endpoint says so honestly and charges nothing.
+    if (conceptId && p.id) {
+      card += '<form class="buy-form" method="POST" action="' + esc(base) + '/api/store/' + esc(conceptId) + '/checkout">'
+        + '<input type="hidden" name="product_id" value="' + esc(p.id) + '">'
+        + '<button class="btn-cta buy-btn" type="submit" aria-label="Buy ' + esc(p.name || '') + ' for ' + esc(priced) + '">Buy — ' + esc(priced) + '</button>'
+        + '</form>';
+    }
     card += '</div>';
     return card;
   }).join('');
@@ -73,7 +84,7 @@ function buildSingleFile(concept, pages, products) {
   const lp = concept.launch_page || {};
   const theme = lp.theme || 'warm';
   const title = lp.headline || concept.title || 'My site';
-  const shop = shopHtml(products);
+  const shop = shopHtml(products, concept && concept.id);
   const nav = ['<a href="#home">Home</a>']
     .concat(shop ? ['<a href="#shop">Shop</a>'] : [])
     .concat((pages || []).map(function (p) { return '<a href="#' + esc(p.slug) + '">' + esc(p.title) + '</a>'; }))

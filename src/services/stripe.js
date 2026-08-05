@@ -242,4 +242,74 @@ async function createImagePackCheckout({ userId, conceptId, pack, email, success
   }
 }
 
-module.exports = { configured, constructEvent, createPlanCheckout, cancelSubscription, createConnectedAccount, createAccountLink, retrieveAccount, createEscrowCheckout, createConsultCheckout, createImagePackCheckout, createTransfer };
+// ---- Storefront (creator's own e-commerce) --------------------------------------------------
+// A creator's store sells THEIR products to THEIR customers. Per Stripe's guidance for
+// "an e-commerce platform for independent sellers," this is a DIRECT charge on the creator's
+// connected account: the creator is the merchant of record, the creator bears Stripe's processing
+// fee, and the platform takes NO application fee. Confirmed against Stripe docs: destination
+// charges always bill the fee to the platform, so a direct charge is the correct model here.
+
+// Storefronts need the card_payments capability (payouts-only accounts only requested `transfers`).
+// Requesting an already-active capability is a no-op, so this is safe to call every time.
+async function ensureCardPayments(accountId) {
+  const s = stripe();
+  if (!s) return { ok: false, reason: 'stripe_not_configured' };
+  try {
+    await s.accounts.update(accountId, {
+      capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
+    });
+    return { ok: true };
+  } catch (err) {
+    console.error('ensureCardPayments FAILED —', err && err.type, err && err.code, '-', err && err.message);
+    return { ok: false, error: (err && err.message) || 'unknown' };
+  }
+}
+
+// Start a storefront checkout: a DIRECT charge created ON the seller's connected account. No
+// application_fee_amount, so the platform takes nothing; the seller settles the Stripe fee.
+async function createStoreCheckout({ amountCents, currency, productName, sellerAccountId, orderId, successUrl, cancelUrl }) {
+  const s = stripe();
+  if (!s) return { ok: false, reason: 'stripe_not_configured' };
+  try {
+    const session = await s.checkout.sessions.create({
+      mode: 'payment',
+      line_items: [{
+        price_data: { currency: currency || 'usd', product_data: { name: productName }, unit_amount: amountCents },
+        quantity: 1,
+      }],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      client_reference_id: orderId,
+      metadata: { kind: 'store_order', order_id: orderId },
+      payment_intent_data: { metadata: { kind: 'store_order', order_id: orderId } },
+      managed_payments: { enabled: false }, // standard checkout — see note on the plan checkout
+    }, { stripeAccount: sellerAccountId });
+    return { ok: true, id: session.id, url: session.url };
+  } catch (err) {
+    console.error('createStoreCheckout FAILED — type:', err && err.type, '| code:', err && err.code, '-', err && err.message);
+    return { ok: false, error: (err && err.message) || 'unknown',
+      message: 'Could not start checkout with the payment processor, so nothing was charged. Please try again in a moment.' };
+  }
+}
+
+// Verify a storefront checkout by retrieving the session ON the connected account. This is the
+// source of truth for "paid" — the platform only ever marks an order paid from Stripe's own
+// payment_status, never from a redirect alone.
+async function retrieveStoreSession({ sessionId, sellerAccountId }) {
+  const s = stripe();
+  if (!s) return { ok: false, reason: 'stripe_not_configured' };
+  try {
+    const session = await s.checkout.sessions.retrieve(sessionId, { stripeAccount: sellerAccountId });
+    return { ok: true,
+      payment_status: session.payment_status,
+      amount_total: session.amount_total,
+      currency: session.currency,
+      customer_email: (session.customer_details && session.customer_details.email) || null,
+      metadata: session.metadata || {} };
+  } catch (err) {
+    console.error('retrieveStoreSession FAILED —', err && err.type, err && err.code, '-', err && err.message);
+    return { ok: false, error: (err && err.message) || 'unknown' };
+  }
+}
+
+module.exports = { configured, constructEvent, createPlanCheckout, cancelSubscription, createConnectedAccount, createAccountLink, retrieveAccount, createEscrowCheckout, createConsultCheckout, createImagePackCheckout, createTransfer, ensureCardPayments, createStoreCheckout, retrieveStoreSession };

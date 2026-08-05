@@ -1224,6 +1224,10 @@ function buildExecutors(user) {
         accountId = created.accountId;
         await query(`INSERT INTO seller_accounts (user_id, stripe_account_id, kyc_status) VALUES ($1,$2,'pending') ON CONFLICT (user_id) DO UPDATE SET stripe_account_id=EXCLUDED.stripe_account_id`, [user.id, accountId]);
       }
+      // A storefront takes DIRECT charges, which need the card_payments capability. Payout-only
+      // accounts (created for marketplace sales / Mover payouts) only requested transfers, so make
+      // sure card_payments is requested. Requesting an already-active capability is a no-op.
+      await stripe.ensureCardPayments(accountId);
       const acct = await stripe.retrieveAccount(accountId);
       if (acct.ok && acct.charges_enabled) {
         return { status: 'ready', message: 'Payments are READY — this account can accept charges, so the store can sell for real.' };

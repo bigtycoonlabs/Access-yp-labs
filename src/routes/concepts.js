@@ -305,7 +305,7 @@ router.get('/:id/site/export', authenticate, asyncHandler(async (req, res) => {
     'SELECT slug, title, body, kind, nav_order FROM site_pages WHERE concept_id=$1 ORDER BY nav_order, created_at',
     [req.params.id]);
   const products = await query(
-    'SELECT name, price_cents, currency, description, image_url, active FROM store_products WHERE concept_id=$1 AND active=true ORDER BY sort_order, created_at',
+    'SELECT id, name, price_cents, currency, description, image_url, active FROM store_products WHERE concept_id=$1 AND active=true ORDER BY sort_order, created_at',
     [req.params.id]);
   const file = siteExport.buildSingleFile(own.rows[0], pages.rows, products.rows);
   res.json({ ok: true, filename: file.filename, html: file.html });
