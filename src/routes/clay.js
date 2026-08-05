@@ -38,6 +38,7 @@ const memory = require('../services/clay/memory');
 const pacing = require('../services/clay/pacing');
 const glossary = require('../services/clay/glossary');
 const worked = require('../services/clay/workedExample');
+const enterprise = require('../services/clay/enterprise');
 const image = require('../services/image');
 const stripe = require('../services/stripe');
 const video = require('../services/video');
@@ -306,6 +307,184 @@ async function runBuild({ user, mode, category, prompt, operating, conceptId, bu
   }
 }
 
+// ---- Enterprise orchestration runner --------------------------------------------------------
+// Build a whole ENTERPRISE without one oversized call: PLAN the ventures (one small, fast call),
+// create the parent enterprise concept, BUILD each venture as its own normal-sized concept under
+// that parent, then ASSEMBLE the parent overview. It reuses the exact single-concept primitives
+// (clay.generate + persistResult), so every piece is a proven, normal-sized build that can't time
+// out the way the whole-company-in-one-pass attempt did (that run went ~3m41s and honestly gave
+// up rather than fabricate). Runs in the background off a clay_builds row the client already knows
+// how to watch. Failures are isolated: one venture failing is recorded and skipped, the rest still
+// build — an honest "built 3 of 5" beats a pretty lie.
+//
+// The 10-minute stale-build sweep (services/builds.js) is respected by design: every venture and
+// the assembly step post progress notes, which bump clay_builds.updated_at, and no single step
+// runs longer than one concept build (well under 10 minutes) — so a live enterprise build is never
+// mistaken for a dead one.
+async function runEnterpriseBuild({ user, prompt, buildId, uploadIds = [] }) {
+  const t0 = Date.now();
+  const providerAvailable = provider.available();
+  const onProgress = (text) => addBuildNote(buildId, text);
+  try {
+    await onProgress('Planning your enterprise — sketching the ventures before building any of them…');
+    const sources = await loadClaySources(user.id, uploadIds, null);
+    const planned = await enterprise.planEnterprise({ prompt, sources });
+    if (!planned.ok) {
+      const m = planned.reason === 'unavailable'
+        ? 'Clay’s builder isn’t connected right now, so it couldn’t plan the enterprise — and it never invents, so nothing was made up.'
+        : 'Clay couldn’t shape a clear plan for this enterprise from the request, so nothing was built and nothing was fabricated. Try naming the ventures you want a bit more concretely.';
+      await journal.recordRun({ actorId: user.id, kind: 'generate', mode: 'create', category: null,
+        conceptId: null, resultStatus: 'unavailable', providerAvailable,
+        reason: 'enterprise_plan_failed: ' + planned.reason, durationMs: Date.now() - t0 }).catch(() => {});
+      await notifyBuildOutcome(user, m);
+      await finishBuild(buildId, { status: 'failed', message: m, note: m });
+      return;
+    }
+    const plan = planned.plan;
+
+    // Record the plan header and the per-venture steps up front, so progress is always truthful and
+    // a crash mid-run leaves a readable trail of what was and wasn't built.
+    await query(
+      `INSERT INTO enterprise_plans (build_id, owner_id, title, thesis, status, child_count)
+       VALUES ($1,$2,$3,$4,'building',$5)
+       ON CONFLICT (build_id) DO UPDATE SET title=EXCLUDED.title, thesis=EXCLUDED.thesis,
+         status='building', child_count=EXCLUDED.child_count, updated_at=now()`,
+      [buildId, user.id, plan.title, plan.thesis || null, plan.children.length]).catch(() => {});
+    const stepIds = [];
+    for (let i = 0; i < plan.children.length; i++) {
+      const c = plan.children[i];
+      try {
+        const r = await query(
+          `INSERT INTO enterprise_build_steps (build_id, owner_id, idx, title, brief, category, status)
+           VALUES ($1,$2,$3,$4,$5,$6,'planned') RETURNING id`,
+          [buildId, user.id, i, c.title, c.brief || null, c.category || null]);
+        stepIds.push(r.rows[0].id);
+      } catch (_) { stepIds.push(null); }
+    }
+
+    // Create the parent enterprise concept up front, so every venture can point to a real parent as
+    // it's built (and so even a partial run leaves a coherent enterprise the creator owns).
+    const parentRow = await query(
+      `INSERT INTO concepts (owner_id, title, mode, category, risk_summary, is_enterprise, origin)
+       VALUES ($1,$2,'create',NULL,$3,true,'created') RETURNING *`,
+      [user.id, plan.title, plan.thesis || null]);
+    const parent = parentRow.rows[0];
+    await query('UPDATE enterprise_plans SET parent_concept_id=$2, updated_at=now() WHERE build_id=$1',
+      [buildId, parent.id]).catch(() => {});
+
+    await onProgress('Here’s the plan: ' + plan.children.length + ' venture' +
+      (plan.children.length === 1 ? '' : 's') + ' under “' + plan.title + '.” Building them one at a time now.');
+
+    // Build each venture as its own full concept, under the parent. Sequential on purpose: it keeps
+    // provider load sane and keeps posting steady progress the stale-build sweep can see. One
+    // venture failing is recorded and skipped — never fatal to the rest.
+    const built = [];
+    for (let i = 0; i < plan.children.length; i++) {
+      const c = plan.children[i];
+      const stepId = stepIds[i];
+      if (stepId) await query("UPDATE enterprise_build_steps SET status='building', updated_at=now() WHERE id=$1", [stepId]).catch(() => {});
+      await onProgress('Building venture ' + (i + 1) + ' of ' + plan.children.length + ': ' + c.title + '…');
+      try {
+        const childPrompt = enterprise.childBuildPrompt(c, plan.title, plan.thesis);
+        const result = await clay.generate({
+          mode: 'create', category: c.category || null, prompt: childPrompt,
+          operating: false, priorWork: [], sources: [], onProgress,
+        });
+        if (result.result_status !== 'answered' || !result.assets || !result.assets.length) {
+          const reason = result.message || result.redirect || 'no complete package returned';
+          if (stepId) await query("UPDATE enterprise_build_steps SET status='failed', error=$2, updated_at=now() WHERE id=$1", [stepId, String(reason).slice(0, 500)]).catch(() => {});
+          await onProgress('Couldn’t complete ' + c.title + ' this pass — skipping it (nothing was made up) and moving on.');
+          continue;
+        }
+        const childConcept = await persistResult(user.id, result, {
+          conceptId: null, mode: 'create', category: c.category || null, prompt: childPrompt,
+        });
+        // Link it under the enterprise parent.
+        await query('UPDATE concepts SET parent_id=$2, updated_at=now() WHERE id=$1 AND owner_id=$3',
+          [childConcept.id, parent.id, user.id]).catch(() => {});
+        retrieval.embedAndStore(childConcept.id, [result.title, result.risk_summary, childPrompt].filter(Boolean).join('. ')).catch(() => {});
+        economics.computeAndAttach(childConcept.id).catch(() => {});
+        if (stepId) await query("UPDATE enterprise_build_steps SET status='done', concept_id=$2, updated_at=now() WHERE id=$1", [stepId, childConcept.id]).catch(() => {});
+        built.push({ id: childConcept.id, title: result.title || c.title, brief: c.brief });
+        await query('UPDATE enterprise_plans SET built_count=$2, updated_at=now() WHERE build_id=$1', [buildId, built.length]).catch(() => {});
+      } catch (e) {
+        const msg = (e && e.message) ? e.message : 'unknown error';
+        if (stepId) await query("UPDATE enterprise_build_steps SET status='failed', error=$2, updated_at=now() WHERE id=$1", [stepId, String(msg).slice(0, 500)]).catch(() => {});
+        await onProgress('Hit a snag on ' + c.title + ' — recorded it, made nothing up, and kept going.');
+      }
+    }
+
+    // If nothing built, don't pretend there's an enterprise — fail honestly.
+    if (!built.length) {
+      await query("UPDATE enterprise_plans SET status='failed', updated_at=now() WHERE build_id=$1", [buildId]).catch(() => {});
+      const m = 'None of the ventures finished this time, so the enterprise wasn’t built and nothing was fabricated. Please try again.';
+      await journal.recordRun({ actorId: user.id, kind: 'generate', mode: 'create', category: null,
+        conceptId: parent.id, resultStatus: 'empty', providerAvailable,
+        reason: 'enterprise_no_children_built', durationMs: Date.now() - t0 }).catch(() => {});
+      await notifyBuildOutcome(user, m);
+      await finishBuild(buildId, { status: 'failed', message: m, note: m });
+      return;
+    }
+
+    // Assemble the parent overview from the ventures that actually built.
+    await query("UPDATE enterprise_plans SET status='assembling', updated_at=now() WHERE build_id=$1", [buildId]).catch(() => {});
+    await onProgress('Assembling the parent company — how the ' + built.length + ' venture' +
+      (built.length === 1 ? '' : 's') + ' fit together under “' + plan.title + '.”');
+    try {
+      const asmPrompt = enterprise.assemblePrompt(plan.title, plan.thesis, built);
+      const asm = await clay.generate({
+        mode: 'create', category: null, prompt: asmPrompt,
+        operating: false, priorWork: [], sources: [], onProgress,
+      });
+      if (asm.result_status === 'answered' && asm.assets && asm.assets.length) {
+        await persistResult(user.id, asm, { conceptId: parent.id, mode: 'enhance', category: null, prompt: asmPrompt });
+      } else {
+        await onProgress('The ventures are built and saved; the parent overview didn’t generate this pass — nothing was invented for it.');
+      }
+    } catch (_) {
+      await onProgress('The ventures are built and saved; the parent overview hit a snag — nothing was invented for it.');
+    }
+
+    await query("UPDATE enterprise_plans SET status='done', built_count=$2, updated_at=now() WHERE build_id=$1", [buildId, built.length]).catch(() => {});
+    await journal.recordRun({ actorId: user.id, kind: 'generate', mode: 'create', category: null,
+      conceptId: parent.id, resultStatus: 'answered', providerAvailable,
+      reason: 'enterprise_built:' + built.length + '/' + plan.children.length, durationMs: Date.now() - t0 }).catch(() => {});
+    retrieval.embedAndStore(parent.id, [plan.title, plan.thesis, prompt].filter(Boolean).join('. ')).catch(() => {});
+
+    const total = plan.children.length;
+    const summary = built.length === total
+      ? 'Your enterprise “' + plan.title + '” is built — ' + total + ' venture' + (total === 1 ? '' : 's') + ' plus the parent company, all in your Laboratory.'
+      : 'Your enterprise “' + plan.title + '” is built — ' + built.length + ' of ' + total + ' ventures finished, plus the parent company, all in your Laboratory. Nothing was made up for the ones that didn’t finish; you can rebuild those any time.';
+
+    let emailed = { sent: false, reason: 'unknown' };
+    try {
+      emailed = await sendEmail({
+        to: user.email,
+        subject: 'Your enterprise is ready: ' + plan.title,
+        text: summary + ' Open it here: https://accessyplabs.com/app.html?concept=' + parent.id,
+        html: '<div style="max-width:600px;margin:0 auto;font-family:system-ui,sans-serif;font-size:16px;line-height:1.55;color:#1c1917">' +
+          '<p>' + summary + '</p>' +
+          '<p><a href="https://accessyplabs.com/app.html?concept=' + parent.id + '" style="display:inline-block;background:#7c2d12;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none">Open your enterprise</a></p>' +
+          '<p>— Clay, at Access YP Labs</p></div>',
+      });
+    } catch (e) { emailed = { sent: false, reason: (e && e.message) || 'error' }; }
+    await logEmail(user.email, 'enterprise_package', emailed);
+    const doneNote = emailed.sent
+      ? 'Done — your enterprise is ready, and I’ve emailed it to you.'
+      : 'Done — your enterprise is ready. (I couldn’t send the email this time — open it from the link.)';
+    await finishBuild(buildId, { status: 'done', conceptId: parent.id, message: summary, note: doneNote });
+  } catch (e) {
+    await query("UPDATE enterprise_plans SET status='failed', updated_at=now() WHERE build_id=$1", [buildId]).catch(() => {});
+    await journal.recordRun({ actorId: user.id, kind: 'generate', mode: 'create', category: null,
+      conceptId: null, resultStatus: 'unavailable', providerAvailable,
+      reason: 'enterprise_build_error: ' + (e && e.message ? e.message : 'unknown'), durationMs: Date.now() - t0 }).catch(() => {});
+    health.checkAndAlert().catch(() => {});
+    const m = 'Clay hit a snag while building your enterprise and didn’t finish. Nothing was fabricated — please try again in a moment.';
+    await notifyBuildOutcome(user, m);
+    await finishBuild(buildId, { status: 'failed', message: m, note: m });
+  }
+}
+
 // POST /api/clay/generate  { mode, category?, prompt, concept_id? }
 // Async by design: a full concept takes 1–3 minutes to write, so we confirm immediately
 // and email the finished package rather than parking the user on a spinner.
@@ -430,6 +609,42 @@ router.post('/generate', authenticate, [
     email: req.user.email,
     eta_seconds: 180,
     message: 'I’m building your concept now. This usually takes 1 to 3 minutes — you don’t need to wait here. I’ll email it to ' + req.user.email + ' the moment it’s ready, and it’ll be waiting in your Laboratory too. You can watch me work below if you like.',
+  });
+}));
+
+// POST /api/clay/enterprise  { prompt, upload_ids? }
+// Build a whole enterprise — a parent company that owns several ventures — in the background.
+// Clay PLANS the ventures first (small, fast), then builds each as its own concept and assembles
+// the parent overview. Async by design and honest about scale: the ETA is longer because it's many
+// builds, and the client watches the same build id it uses for a single concept.
+router.post('/enterprise', authenticate, [
+  body('prompt').isString().isLength({ min: 3 }),
+  body('upload_ids').optional().isArray(),
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  const { prompt } = req.body;
+  const uploadIds = Array.isArray(req.body.upload_ids)
+    ? req.body.upload_ids.filter((x) => typeof x === 'string' && /^[0-9a-f-]{36}$/i.test(x)).slice(0, 10)
+    : [];
+
+  if (!provider.available()) {
+    return res.status(200).json({
+      status: 'unavailable',
+      message: 'Clay’s builder isn’t connected right now, so it can’t plan or build an enterprise — and it never invents, so nothing was made up. This is a setup step on our side, not something you did.',
+    });
+  }
+
+  const buildId = await createBuild(req.user.id, buildOpener(prompt, 'Got it — planning your enterprise'));
+  runEnterpriseBuild({ user: req.user, prompt, buildId, uploadIds })
+    .catch(() => {});
+
+  return res.status(202).json({
+    status: 'building',
+    build_id: buildId,
+    email: req.user.email,
+    eta_seconds: 600,
+    message: 'I’m planning your enterprise now, then building each venture one at a time. This is bigger than a single concept, so it runs a while in the background — I’ll email ' + req.user.email + ' when it’s ready, and it’ll be in your Laboratory. You can watch me work below.',
   });
 }));
 
@@ -869,6 +1084,16 @@ function buildExecutors(user) {
         sent: r.sent, recipients: r.recipients,
         note: r.sent ? 'Sent to the team.' : 'I recorded the note, but the email may not have gone out — do not tell the user it definitely reached them.',
       };
+    },
+    build_enterprise: async ({ prompt }) => {
+      // A whole enterprise — a parent company that owns several ventures. Clay plans the pieces
+      // first (fast), then builds each venture as its own concept and assembles the parent, all in
+      // the background off a build id the client watches. Same watch mechanism as a single concept,
+      // just bigger. This tool requires confirmation (spine), so the agent asks before launching it.
+      const buildId = await createBuild(user.id, buildOpener(prompt, 'Got it — planning your enterprise'));
+      runEnterpriseBuild({ user, prompt, buildId })
+        .catch(() => {});
+      return { status: 'building', build_id: buildId, message: 'Planning your enterprise now, then building each venture one at a time — this runs in the background and you can watch it happen.' };
     },
     generate_concept: async ({ prompt, category }) => {
       // Run the 1–3 minute build in the background so the chat request returns fast; the

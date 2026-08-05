@@ -66,6 +66,12 @@ const TOOLS = {
     enums: { category: CATEGORIES },
     summary: 'Shape a full concept package with Clay. Only call this once you actually understand the idea — never on a raw one-liner you have not pressure-tested with a sharpening question or two first, unless the person clearly says to just build it. Free; nothing is published.',
   },
+  build_enterprise: {
+    irreversible: false, requires_confirmation: true,
+    required: ['prompt'],
+    enums: {},
+    summary: 'Build a whole ENTERPRISE — a parent company that owns several child ventures — when the builder describes MORE THAN ONE business at once (e.g. "a holding company over a dozen stores", "a studio with several brands", "these three businesses under one umbrella"). Clay plans the ventures first (fast), tells the builder the plan, then builds each venture as its own full concept and assembles a parent overview that ties them together. Each piece is its own concept the builder can keep, list to sell on its own, or sell as the whole enterprise. Runs in the background; the builder can watch. Requires confirmation because it is a large, many-venture build. Use generate_concept for a single business — only reach for this when the request is genuinely multi-venture.',
+  },
   enhance_concept: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id', 'prompt'],
