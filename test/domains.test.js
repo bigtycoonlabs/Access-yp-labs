@@ -11,6 +11,17 @@ test('subdomain labels: normalize + validate + reserved words', () => {
   assert.strictEqual(d.subdomainHost('empower'), 'empower.' + d.sitesRoot());
 });
 
+test('free-path defaults: first-level addresses, reserved connect target', () => {
+  // Default root is first-level so instant addresses are <label>.accessyplabs.com (free Universal SSL).
+  assert.strictEqual(d.sitesRoot(), 'accessyplabs.com');
+  assert.strictEqual(d.subdomainHost('empower'), 'empower.accessyplabs.com');
+  // The custom-domain CNAME target must never be the bare apex, and its label must be un-claimable.
+  const target = d.cnameTarget();
+  assert.ok(target !== d.sitesRoot(), 'cname target is not the apex');
+  assert.strictEqual(target, 'connect.accessyplabs.com');
+  assert.ok(!d.validLabel('connect'), 'connect is reserved');
+});
+
 test('custom host: normalize strips scheme/path/port; validates fqdn', () => {
   assert.strictEqual(d.normalizeCustomHost('https://YourBiz.com/pricing'), 'yourbiz.com');
   assert.ok(d.validCustomHost('yourbusiness.com'));

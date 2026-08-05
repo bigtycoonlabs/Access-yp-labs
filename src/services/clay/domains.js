@@ -5,10 +5,14 @@ const RESERVED = new Set([
   'www', 'app', 'api', 'mail', 'admin', 'dashboard', 'static', 'cdn', 'assets', 'labs', 'desk',
   'dreamhold', 'dreammarket', 'market', 'support', 'help', 'blog', 'status', 'ftp', 'ns', 'ns1',
   'ns2', 'sites', 'site', 'clay', 'accessyplabs', 'test', 'staging', 'dev',
+  'connect', 'origin', 'go', 'link',
 ]);
 
 function sitesRoot() {
-  return (process.env.SITES_ROOT || 'sites.accessyplabs.com').toLowerCase().replace(/^\.+|\.+$/g, '');
+  // First-level by default: <label>.accessyplabs.com is covered by free Universal SSL (a wildcard
+  // cert only covers one subdomain level), so instant addresses need no paid certificate. Set
+  // SITES_ROOT to move them under a deeper subdomain (which then needs Advanced Certificate Manager).
+  return (process.env.SITES_ROOT || 'accessyplabs.com').toLowerCase().replace(/^\.+|\.+$/g, '');
 }
 
 function normalizeLabel(s) {
@@ -54,7 +58,14 @@ function hostOf(req) {
 }
 
 // What the creator points their DNS at for a custom domain (CNAME target).
-function cnameTarget() { return (process.env.CF_CNAME_TARGET || sitesRoot()).toLowerCase(); }
+// What a creator points their own domain's CNAME at. Never the apex (you can't CNAME an apex to it
+// cleanly), so default to a dedicated reserved host under our root.
+function cnameTarget() {
+  const env = (process.env.CF_CNAME_TARGET || '').trim().toLowerCase();
+  if (env) return env;
+  const root = sitesRoot();
+  return root.split('.').length <= 2 ? 'connect.' + root : root;
+}
 
 module.exports = {
   RESERVED, sitesRoot, normalizeLabel, validLabel, subdomainHost,

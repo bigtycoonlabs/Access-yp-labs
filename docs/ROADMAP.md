@@ -47,7 +47,7 @@ enforced on publish (counts a site once, by first-publish month). An active `sit
 cap. (The purchasable $2.99/month add-on itself is the next billing item — see below.)
 
 **Web addresses.** Every site can have a real address: an instant free subdomain on our platform
-(`<label>.sites.accessyplabs.com`, live immediately, claimable by Clay via `claim_web_address` or in
+(`<label>.accessyplabs.com`, live immediately, claimable by Clay via `claim_web_address` or in
 the Laboratory) or the creator's own domain connected via Cloudflare for SaaS (one CNAME, auto-HTTPS).
 Host-based serving resolves either to the right site; the whole app layer is complete.
 
@@ -86,10 +86,10 @@ To switch it on in production, one time:
 1. Put the app behind Cloudflare (the accessyplabs.com zone on Cloudflare).
 2. Enable **Cloudflare for SaaS** (custom hostnames) on that zone.
 3. Create the SaaS fallback origin / CNAME target and set env `CF_CNAME_TARGET` to it — this is what
-   creators point their domain's CNAME at. Add a wildcard DNS record `*.sites.accessyplabs.com` → the
+   creators point their domain's CNAME at. Add a wildcard DNS record `*.accessyplabs.com` → the
    app so instant subdomains resolve (Cloudflare issues the wildcard cert).
 4. Set env `CF_API_TOKEN` (permission to edit custom hostnames) and `CF_ZONE_ID`. Optional: `SITES_ROOT`
-   (default `sites.accessyplabs.com`) and `APP_HOSTS` (any extra main-app hostnames).
+   (default `accessyplabs.com`; first-level so free Universal SSL covers it) and `APP_HOSTS` (any extra main-app hostnames).
 
 Until those are set, the "connect your own domain" button honestly says custom domains aren't switched
 on yet; subdomains go live as soon as the wildcard DNS record exists.

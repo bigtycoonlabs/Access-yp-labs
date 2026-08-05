@@ -531,7 +531,7 @@
 
   // Web address manager: an instant free address on our platform, or connect your own domain.
   function renderDomains(container, concept) {
-    let rootSuffix = 'sites.accessyplabs.com', cnameTarget = '';
+    let rootSuffix = 'accessyplabs.com', cnameTarget = '';
     const sec = el('div', 'site-domains'); sec.style.cssText = 'margin-top:16px;border-top:1px solid var(--line);padding-top:12px;';
     sec.appendChild(el('h4', null, 'Web address'));
     sec.appendChild(el('p', 'muted', 'Give your site a real address. A free address on our platform is live the moment you claim it. Or connect your own domain.'));
