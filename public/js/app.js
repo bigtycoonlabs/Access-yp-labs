@@ -750,13 +750,17 @@
     thinking.appendChild(think);
 
     try {
-      // Refining an existing concept by text → a real back-and-forth with Clay, grounded
-      // in the concept's current content. Fast for questions and discussion; Clay only
-      // rebuilds materials when you actually ask him to. (File attachments still go
-      // through the builder, which knows how to fold them in.)
-      if (currentConceptId && !pendingUploadIds.length) {
+      // TALK FIRST. Every plain text message goes to Clay as a CONVERSATION — whether or not a
+      // concept is open. Clay decides what the message actually needs: answering a question,
+      // running a diagnostic, asking a clarifying question, or building. When he does decide to
+      // build, he calls the build tool himself and the reply carries a build id we watch below,
+      // so nothing is lost. Previously a message with no concept open was sent straight to the
+      // builder, which meant ANY first message — even "check systems" — started a full concept
+      // build with no chance to ask what the person actually wanted.
+      // (File attachments still go through the builder, which knows how to fold them in.)
+      if (!pendingUploadIds.length) {
         chatHistory.push({ role: 'user', content: prompt });
-        const data = await Kiln.api('/clay/chat', { method: 'POST', body: { messages: chatHistory, concept_id: currentConceptId } });
+        const data = await Kiln.api('/clay/chat', { method: 'POST', body: { messages: chatHistory, concept_id: currentConceptId || undefined } });
         if (Array.isArray(data.messages)) chatHistory = data.messages;
         thinking.removeChild(think);
         renderChatReply(thinking, data);
