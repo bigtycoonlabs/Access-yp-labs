@@ -1,0 +1,252 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Clay Weekly — the newsroom — Access YP Labs</title><link rel="stylesheet" href="/css/kiln.css"/>
+<style>
+  .issue{border:1px solid var(--line);border-left-width:5px;border-left-color:#8e63ce;border-radius:10px;background:#fff;padding:16px 18px;margin:12px 0;}
+  .issue h3{margin:0 0 4px;font-size:20px;}
+  .state{display:inline-block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-radius:999px;padding:2px 10px;background:#efe9ff;color:#3a2ba6;margin:0 0 8px;}
+  .cand{border:1px solid var(--line);border-radius:10px;background:#fff;padding:14px 16px;margin:10px 0;}
+  .acts{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;}
+  .acts .btn{min-height:44px;}
+  .step{color:#555;margin:0 0 6px;}
+  .danger{border-left-color:#b3261e;}
+</style>
+<meta name="robots" content="noindex, nofollow"/>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs</a>
+  <nav class="top" aria-label="Primary"><a href="/desk-admin.html">Desk review</a><a href="/admin-clay.html">Clay health</a><a href="/weekly">Clay Weekly</a></nav>
+</div></header>
+<main id="main" class="wrap">
+  <h1>Clay Weekly — the newsroom</h1>
+  <p class="muted">Where an issue gets made. Clay assembles it; you decide what happens next. The four steps run in order, and each one is separate on purpose — publishing does not email anybody, and sending is its own deliberate act.</p>
+
+  <div id="gate" role="status" aria-live="polite" class="muted">Checking access…</div>
+
+  <div id="console" hidden>
+
+    <section aria-labelledby="step1-h">
+      <h2 id="step1-h">Step one — assemble this week's draft</h2>
+      <p class="step">Clay gathers what actually happened this week — the pieces he wrote, who listed a project, who earned as a Dream Mover — and writes the opening and his Note. Safe to run more than once: it rebuilds the same week's draft rather than making a second one, and it will not touch an issue you already approved.</p>
+      <p class="acts"><button type="button" class="btn" id="compose">Assemble this week's draft</button></p>
+      <p id="composeresult" role="status" aria-live="polite" class="muted"></p>
+    </section>
+
+    <section aria-labelledby="step2-h">
+      <h2 id="step2-h">Step two — choose a Project of the Week</h2>
+      <p class="step">Projects where somebody is clearly taking it somewhere: listed in the Dream Market, has a working site, or the creator told us they are building or launching. Asking sends that creator an email from Clay with accept and decline links. Nobody is featured without saying yes, and if they decline, Clay never asks about that project again.</p>
+      <p id="candstatus" role="status" aria-live="polite" class="muted">Loading candidates…</p>
+      <div id="cands"></div>
+    </section>
+
+    <section aria-labelledby="step3-h">
+      <h2 id="step3-h">Step three and four — approve, publish, send</h2>
+      <p class="step">Approve the content, publish it to make the public page live, and only then send it by email. Sending happens once — an issue can never go out twice — and the count you get back is how many the mail provider actually accepted, not how many we hoped for.</p>
+      <p id="issuestatus" role="status" aria-live="polite" class="muted">Loading issues…</p>
+      <div id="issues"></div>
+    </section>
+
+  </div>
+  <div id="result" role="alert" aria-live="assertive"></div>
+</main>
+<script src="/js/a11y.js?v=20260805b"></script><script src="/js/api.js?v=20260805b"></script><script src="/js/nav.js?v=20260805b"></script>
+<script>
+var gate=document.getElementById('gate'), box=document.getElementById('console'), result=document.getElementById('result');
+function el(t,c,x){var n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+function say(m,alert){result.textContent=m;announce(m,!!alert);}
+function goSignIn(){announce('Please sign in.',true);setTimeout(function(){location.href='/login.html?next=/weekly-admin.html';},1200);}
+
+function money(c){return '$'+((c||0)/100).toFixed(2);}
+
+// ---- step one -------------------------------------------------------------
+document.getElementById('compose').addEventListener('click', async function(){
+  var b=this; b.disabled=true;
+  var out=document.getElementById('composeresult');
+  out.textContent='Clay is assembling the issue…'; announce('Clay is assembling the issue.');
+  try{
+    var r=await Kiln.api('/weekly/compose',{method:'POST',body:{}});
+    if(r && r.ok){
+      var c=r.counts||{};
+      var msg='Draft ready for the week of '+(r.issue&&r.issue.week_start||'this week')+'. It gathered '
+        +(c.articles||0)+' Desk piece'+((c.articles===1)?'':'s')+', '
+        +(c.creators||0)+' creator'+((c.creators===1)?'':'s')+' who listed, and '
+        +(c.movers||0)+' Dream Mover'+((c.movers===1)?'':'s')+' who earned.';
+      out.textContent=msg; say(msg,true);
+    } else if(r && r.reason==='already_approved_or_published'){
+      out.textContent='This week\u2019s issue is already approved or published, so it was left alone. Nothing changed.';
+      say(out.textContent,true);
+    } else {
+      out.textContent='It did not assemble. Nothing was changed.'; say(out.textContent,true);
+    }
+    loadIssues();
+  }catch(e){
+    if(e.sessionExpired) return goSignIn();
+    out.textContent='Could not assemble it: '+(e.message||'unknown error')+'. Nothing was changed.';
+    say(out.textContent,true);
+  }
+  b.disabled=false;
+});
+
+// ---- step two -------------------------------------------------------------
+async function loadCands(){
+  var status=document.getElementById('candstatus'), wrap=document.getElementById('cands');
+  wrap.innerHTML='';
+  try{
+    var r=await Kiln.api('/weekly/candidates');
+    var list=r.candidates||[];
+    if(!list.length){ status.textContent='No projects qualify this week. That is a real answer, not an error — nobody has to be featured.'; return; }
+    status.textContent=list.length+' project'+(list.length===1?'':'s')+' Clay could feature.';
+    list.forEach(function(c){
+      var d=el('div','cand');
+      d.appendChild(el('h3',null,c.title||'Untitled'));
+      d.appendChild(el('p','muted','By '+(c.owner_name||'a creator')));
+      if(c.signals&&c.signals.length){
+        var ul=document.createElement('ul');
+        c.signals.forEach(function(s){ ul.appendChild(el('li',null,s)); });
+        d.appendChild(ul);
+      }
+      var lab=el('label',null,'Why you\u2019re choosing it (Clay includes this in the ask)');
+      lab.setAttribute('for','why-'+c.concept_id); d.appendChild(lab);
+      var ta=document.createElement('textarea'); ta.id='why-'+c.concept_id; ta.rows=2; ta.maxLength=1000; d.appendChild(ta);
+      var acts=el('p','acts');
+      var ask=el('button','btn','Ask this creator'); ask.type='button';
+      ask.addEventListener('click', async function(){
+        ask.disabled=true;
+        try{
+          var out=await Kiln.api('/weekly/sponsor',{method:'POST',body:{concept_id:c.concept_id, reason:ta.value||undefined}});
+          var m=out.sent
+            ? 'Asked. Clay emailed the creator of '+(out.concept||'that project')+'. They decide — nothing is featured until they say yes.'
+            : 'The offer was recorded, but the email did not send. Nobody has been told yet.';
+          d.appendChild(el('p','muted',m)); say(m,true);
+          ask.remove();
+        }catch(e){
+          if(e.sessionExpired) return goSignIn();
+          say('Could not ask: '+(e.message||'unknown error')+'. Nothing was sent.',true);
+          ask.disabled=false;
+        }
+      });
+      acts.appendChild(ask); d.appendChild(acts);
+      wrap.appendChild(d);
+    });
+  }catch(e){
+    if(e.sessionExpired) return goSignIn();
+    status.textContent='Could not load candidates: '+(e.message||'unknown error');
+  }
+}
+
+// ---- steps three and four -------------------------------------------------
+function actBtn(label, cls, fn){ var b=el('button','btn'+(cls?' '+cls:''),label); b.type='button'; b.addEventListener('click',fn); return b; }
+
+async function loadIssues(){
+  var status=document.getElementById('issuestatus'), wrap=document.getElementById('issues');
+  wrap.innerHTML='';
+  try{
+    var r=await Kiln.api('/weekly');
+    var list=r.issues||[];
+    if(!list.length){ status.textContent='No issues yet. Assemble one in step one.'; return; }
+    status.textContent=list.length+' issue'+(list.length===1?'':'s')+'.';
+    list.forEach(function(i){
+      var d=el('div','issue');
+      var st=el('span','state', i.status); d.appendChild(st);
+      d.appendChild(el('h3',null,i.title||'Untitled issue'));
+      var bits=[];
+      if(i.published_at) bits.push('published');
+      if(i.sent_at) bits.push('emailed to '+i.recipients_count+' '+(i.recipients_count===1?'person':'people'));
+      else if(i.status==='published') bits.push('not emailed yet');
+      d.appendChild(el('p','muted', bits.join(' \u00B7 ') || 'not published yet'));
+
+      var acts=el('p','acts');
+
+      if(i.status==='draft'){
+        var preview=el('a','btn secondary','Read the draft'); preview.href='/weekly/'+encodeURIComponent(i.slug);
+        preview.style.textDecoration='none'; preview.style.lineHeight='44px';
+        // A draft has no public page yet, so say so rather than linking somewhere broken.
+        preview=el('span','muted','Approve it to see the page.');
+        acts.appendChild(preview);
+        acts.appendChild(actBtn('Approve this issue','',async function(){
+          try{ await Kiln.api('/weekly/'+i.id+'/approve',{method:'POST'});
+            say('Approved. It is not public yet — publishing is the next step.',true); loadIssues();
+          }catch(e){ if(e.sessionExpired) return goSignIn(); say('Could not approve: '+(e.message||''),true); }
+        }));
+      }
+
+      if(i.status==='approved'){
+        acts.appendChild(actBtn('Publish the public page','',async function(){
+          try{ var out=await Kiln.api('/weekly/'+i.id+'/publish',{method:'POST'});
+            say('Published. The page is live. '+(out.note||'Emailing is a separate step.'),true); loadIssues();
+          }catch(e){ if(e.sessionExpired) return goSignIn(); say('Could not publish: '+(e.message||''),true); }
+        }));
+      }
+
+      if(i.status==='published'){
+        var read=el('a','btn secondary','Read the published issue');
+        read.href='/weekly/'+encodeURIComponent(i.slug); read.style.textDecoration='none'; read.style.lineHeight='44px';
+        acts.appendChild(read);
+        if(!i.sent_at){
+          // Sending reaches real inboxes and cannot be undone: confirm in two steps, with the safe
+          // option focused, the same discipline used for deleting a project.
+          acts.appendChild(actBtn('Send it by email…','secondary',function(){
+            if(d.querySelector('.confirm-row')) return;
+            var row=el('div','confirm-row'); row.setAttribute('role','group');
+            row.setAttribute('aria-label','Confirm sending this issue by email');
+            row.appendChild(el('p',null,'Email this issue to everyone subscribed to Clay Weekly? This reaches real inboxes and cannot be undone. It can only be sent once.'));
+            var yes=actBtn('Yes, send it now','',async function(){
+              yes.disabled=true; no.disabled=true;
+              say('Sending…');
+              try{
+                var out=await Kiln.api('/weekly/'+i.id+'/send',{method:'POST'});
+                say('Sent to '+out.recipients+' of '+out.attempted+'. That count is what the mail provider actually accepted.',true);
+                loadIssues();
+              }catch(e){
+                if(e.sessionExpired) return goSignIn();
+                say('Not sent: '+(e.message||'unknown error')+'.',true);
+                yes.disabled=false; no.disabled=false;
+              }
+            });
+            var no=actBtn('No, not yet','secondary',function(){ row.remove(); say('Okay — nothing was sent.',true); });
+            row.appendChild(yes); row.appendChild(no); d.appendChild(row);
+            announce('Confirm required. Email this issue to every subscriber? This cannot be undone.',true);
+            if(no.focus) no.focus();
+          }));
+        }
+      }
+
+      d.appendChild(acts);
+      wrap.appendChild(d);
+    });
+  }catch(e){
+    if(e.sessionExpired) return goSignIn();
+    status.textContent='Could not load issues: '+(e.message||'unknown error');
+  }
+}
+
+(async function(){
+  try{
+    await Kiln.api('/weekly');           // access check: staff-only endpoint
+    gate.hidden=true; box.hidden=false;
+
+    // Staff can READ the newsroom, but every action here — asking a creator, approving, publishing,
+    // sending — belongs to an owner. Say that up front rather than letting someone press a button
+    // and collect a permission error they can't do anything about.
+    try{
+      var me=await Kiln.api('/auth/me');
+      var role=(me && me.user && me.user.role) || '';
+      if(role!=='master_staff'){
+        var noteEl=el('p','muted','You can see the newsroom, but producing an issue — asking a creator, approving, publishing, and sending — is limited to the platform owners. Nothing here will work from this account, and that is expected.');
+        noteEl.setAttribute('role','note');
+        box.insertBefore(noteEl, box.firstChild);
+        announce('You can view this newsroom, but producing an issue is limited to the platform owners.', true);
+      }
+    }catch(_){ /* the newsroom still works; this is only a courtesy heads-up */ }
+
+    loadCands(); loadIssues();
+  }catch(e){
+    if(e.sessionExpired||e.status===401) return goSignIn();
+    gate.textContent = (e.status===403)
+      ? 'This newsroom is for platform owners. Nothing is wrong with your account.'
+      : ('Could not load: '+(e.message||'unknown error'));
+  }
+})();
+</script>
+</body></html>
