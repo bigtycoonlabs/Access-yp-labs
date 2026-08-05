@@ -169,6 +169,57 @@
     if (btn) { btn.disabled = false; btn.textContent = 'Compute the real numbers'; }
   }
 
+  // ---- delete this project ----
+  // A creator must be able to remove their own work. Two steps on purpose: the first button only
+  // reveals the confirmation, so a mis-tap can never delete anything, and the confirm step states
+  // plainly and out loud that it is permanent. Owner-scoped server-side.
+  function deleteBox(conceptId, title) {
+    var box = el('div', 'danger-zone');
+    box.setAttribute('role', 'group');
+    box.setAttribute('aria-label', 'Delete this project');
+    box.appendChild(el('h2', null, 'Delete this project'));
+    box.appendChild(el('p', 'muted', 'Removes ' + title + ' and everything in it \u2014 every section, image, and product. This cannot be undone.'));
+
+    var start = el('button', 'btn secondary', 'Delete this project'); start.type = 'button';
+    box.appendChild(start);
+
+    start.addEventListener('click', function () {
+      if (box.querySelector('.confirm-row')) return;
+      var row = el('div', 'confirm-row');
+      row.setAttribute('role', 'group');
+      row.setAttribute('aria-label', 'Confirm deleting this project');
+      row.appendChild(el('p', null, 'Permanently delete ' + title + '? This cannot be undone.'));
+      var yes = el('button', 'btn', 'Yes, permanently delete'); yes.type = 'button';
+      var no = el('button', 'btn secondary', 'No, keep it'); no.type = 'button';
+      row.appendChild(yes); row.appendChild(no);
+      box.appendChild(row);
+      announce('Confirm required. Permanently delete ' + title + '? This cannot be undone.', true);
+      if (no.focus) no.focus();
+
+      no.addEventListener('click', function () {
+        row.remove();
+        announce('Okay \u2014 nothing was deleted.', true);
+        if (start.focus) start.focus();
+      });
+
+      yes.addEventListener('click', async function () {
+        yes.disabled = true; no.disabled = true;
+        try {
+          await Kiln.api('/concepts/' + conceptId, { method: 'DELETE' });
+          announce(title + ' was deleted. Taking you back to your Laboratory.', true);
+          setTimeout(function () { location.href = '/dashboard.html'; }, 1400);
+        } catch (e) {
+          yes.disabled = false; no.disabled = false;
+          if (e && e.sessionExpired) return goSignIn();
+          row.appendChild(el('p', 'msg err', 'That didn\u2019t go through \u2014 nothing was deleted.'));
+          announce('That did not go through. Nothing was deleted.', true);
+        }
+      });
+    });
+
+    actionsEl.appendChild(box);
+  }
+
   // ---- Extras: per-concept image budget, packs, and manual generation ----
   function extrasSummary(b) {
     var s = b.used_this_month + ' of ' + b.monthly_included + ' monthly image'
@@ -547,6 +598,7 @@
       loadExtras(id);
       loadStore(id);
       loadSales(id);
+      deleteBox(id, concept.title || 'this project');
 
       // ---- keep / unlock, only when something is actually locked ----
       if (!entitled && lockedCount) {

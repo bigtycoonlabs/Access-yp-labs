@@ -838,11 +838,20 @@
     const acts = el('div', 'actions');
     const label = c.tool === 'purchase_concept' ? 'Yes, open the purchase'
       : c.tool === 'list_on_marketplace' ? 'Yes, open the listing flow'
-      : c.tool === 'remove_concept' ? 'Yes, delete it' : 'Yes, do it';
+      : c.tool === 'remove_concept' ? 'Yes, delete it'
+      : c.tool === 'generate_concept' ? 'Yes, build it'
+      : c.tool === 'enhance_concept' ? 'Yes, make that change' : 'Yes, do it';
     const yes = el('button', 'btn', label); yes.type = 'button';
     yes.addEventListener('click', () => confirmChatAction(container, c, yes));
-    const no = el('button', 'btn secondary', 'Not now'); no.type = 'button';
-    no.addEventListener('click', () => { announce('Okay — holding off. Nothing was changed.', true); });
+    const no = el('button', 'btn secondary', 'No, not yet'); no.type = 'button';
+    no.addEventListener('click', () => {
+      const msg = c.tool === 'generate_concept'
+        ? 'Okay — I won\u2019t build it. Nothing was made. Tell me what to change and we\u2019ll shape it first.'
+        : 'Okay — holding off. Nothing was changed.';
+      container.appendChild(el('p', null, msg));
+      announce(msg, true);
+      acts.remove();
+    });
     acts.appendChild(yes); acts.appendChild(no);
     container.appendChild(acts);
     if (yes.focus) yes.focus();
@@ -858,8 +867,14 @@
         setTimeout(() => { location.href = r.url; }, 1200);
         return;
       }
-      container.appendChild(el('p', null, r.message || 'Done.'));
-      announce(r.message || 'Done.', true);
+      // A confirmed action may START a background build (generate_concept / enhance_concept):
+      // surface it and watch it, exactly like a build begun any other way.
+      const res = r.result || {};
+      const buildId = r.build_id || res.build_id;
+      const msg = r.message || res.message || 'Done.';
+      container.appendChild(el('p', null, msg));
+      announce(msg, true);
+      if (buildId) watchBuild(container, buildId);
       if (c.tool === 'remove_concept') { currentConceptId = null; chatHistory = []; setEditingConcept(false); }
     } catch (e) {
       container.appendChild(el('p', 'msg err', 'That didn’t go through — nothing was changed.'));

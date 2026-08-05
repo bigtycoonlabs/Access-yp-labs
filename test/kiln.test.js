@@ -83,7 +83,10 @@ test('spine asking rule: irreversible actions confirm even when fully specified'
   const r = spine.shouldAsk('purchase_concept', { listing_id: 'x' });
   assert.strictEqual(r.ask, true);
   assert.strictEqual(spine.requiresConfirmation('purchase_concept'), true);
-  assert.strictEqual(spine.requiresConfirmation('generate_concept'), false);
+  // Building a full project is gated too: it is minutes of work and a whole set of materials, so
+  // the person approves it first (that approval is also their way to STOP an unwanted build).
+  assert.strictEqual(spine.requiresConfirmation('generate_concept'), true);
+  assert.strictEqual(spine.requiresConfirmation('search_marketplace'), false);
 });
 
 test('social asset plan matches controlled vocabulary', () => {
@@ -129,7 +132,10 @@ test('agent never auto-runs irreversible actions; confirmation unlocks them', ()
 });
 
 test('agent runs reversible actions and rejects bad enums', () => {
-  assert.strictEqual(agent.planToolInvocation('generate_concept', { prompt: 'a tutoring service' }).action, 'execute');
+  assert.strictEqual(agent.planToolInvocation('search_marketplace', { query: 'tutoring' }).action, 'execute');
+  // A build is a PROPOSAL now — it asks before it starts.
+  assert.strictEqual(agent.planToolInvocation('generate_concept', { prompt: 'a tutoring service' }).action, 'confirm');
+  assert.strictEqual(agent.planToolInvocation('generate_concept', { prompt: 'a tutoring service' }, { confirmed: true }).action, 'execute');
   assert.strictEqual(agent.planToolInvocation('list_on_marketplace', { concept_id: 'x', format: 'barter', price: 5000 }).action, 'reject');
 });
 

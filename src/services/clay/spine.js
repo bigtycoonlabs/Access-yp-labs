@@ -66,10 +66,10 @@ const TOOLS = {
     summary: "Give the builder a concrete, spoken, step-by-step WORKED EXAMPLE of a core money project — margin (what you keep per sale), pricing_to_target (what to charge to hit an income goal), break_even (sales until you stop losing money), cac_ltv (cost to get a customer vs what they're worth), runway (how long the money lasts), or market_size (how big the opportunity honestly is). Call it when a beginner is stuck on an abstraction or asks how something actually works. Optionally pass concept_id to anchor the example to their project by name. The numbers it returns are round and ILLUSTRATIVE — a device to show the math, never a claim about their real business — and the example says so; keep it that way.",
   },
   generate_concept: {
-    irreversible: false, requires_confirmation: false,
+    irreversible: false, requires_confirmation: true,
     required: ['prompt'],
     enums: { category: CATEGORIES },
-    summary: 'Shape a full project package with Clay. Only call this once you actually understand the idea — never on a raw one-liner you have not pressure-tested with a sharpening question or two first, unless the person clearly says to just build it. Free; nothing is published.',
+    summary: 'Shape a full project package with Clay. Only call this once you actually understand the idea — never on a raw one-liner you have not pressure-tested with a sharpening question or two first, unless the person clearly says to just build it. The person is ALWAYS asked to approve before the build starts, so calling this is a PROPOSAL, not the act itself — say what you understood and what you are about to build, and let them say go. Free; nothing is published.',
   },
   build_enterprise: {
     irreversible: false, requires_confirmation: true,
