@@ -12,6 +12,7 @@ const intent = require('../services/clay/intent');
 const movement = require('../services/clay/movement');
 const launchPage = require('../services/clay/launchPage');
 const siteStore = require('../services/clay/siteStore');
+const store = require('../services/clay/store');
 const siteQuota = require('../services/clay/siteQuota');
 const domains = require('../services/clay/domains');
 const domainStore = require('../services/clay/domainStore');
@@ -1177,6 +1178,61 @@ function buildExecutors(user) {
       runDemoBuild({ user, concept: own.rows[0], buildId })
         .catch(() => {});
       return { status: 'building', build_id: buildId, message: 'Building your interactive demo now — this takes a minute or two, and you can watch it happen.' };
+    },
+    add_product: async ({ concept_id, name, price, description, image_url, currency }) => {
+      if (!(await query('SELECT 1 FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id])).rows.length) return { status: 'error', message: 'Concept not found.' };
+      const norm = store.normalizeProduct({ name, price, description, image_url, currency });
+      if (!norm.ok) return { status: 'error', message: norm.error };
+      const p = norm.product;
+      const r = await query(
+        `INSERT INTO store_products (concept_id, owner_id, name, price_cents, currency, description, image_url)
+         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, name, price_cents, currency`,
+        [concept_id, user.id, p.name, p.price_cents, p.currency, p.description, p.image_url]);
+      const row = r.rows[0];
+      const priced = store.formatPrice(row.price_cents, row.currency);
+      return { status: 'added', product_id: row.id, name: row.name, price: priced,
+        note: 'Added “' + row.name + '” at ' + priced + ' to the store. It shows as a Shop on the concept’s site once the site is published.' };
+    },
+    list_products: async ({ concept_id }) => {
+      if (!(await query('SELECT 1 FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id])).rows.length) return { status: 'error', message: 'Concept not found.' };
+      const r = await query('SELECT id, name, price_cents, currency, active, image_url FROM store_products WHERE concept_id=$1 ORDER BY sort_order, created_at', [concept_id]);
+      return { count: r.rows.length,
+        products: r.rows.map((p) => ({ product_id: p.id, name: p.name, price: store.formatPrice(p.price_cents, p.currency), active: p.active, has_image: !!p.image_url })) };
+    },
+    edit_product: async ({ concept_id, product_id, name, price, description, image_url, active }) => {
+      const own = await query('SELECT sp.id FROM store_products sp JOIN concepts c ON c.id=sp.concept_id WHERE sp.id=$1 AND sp.concept_id=$2 AND c.owner_id=$3', [product_id, concept_id, user.id]);
+      if (!own.rows.length) return { status: 'error', message: 'Product not found.' };
+      const sets = []; const vals = [product_id]; let n = 1;
+      if (name !== undefined) { const nm = String(name || '').trim(); if (nm) { sets.push('name=$' + (++n)); vals.push(nm.slice(0, 200)); } }
+      if (price !== undefined) { const cents = store.parsePriceToCents(price); if (cents == null) return { status: 'error', message: 'That price isn’t valid — give a number like 19.99.' }; sets.push('price_cents=$' + (++n)); vals.push(cents); }
+      if (description !== undefined) { sets.push('description=$' + (++n)); vals.push(description == null ? null : String(description).slice(0, 4000)); }
+      if (image_url !== undefined) { sets.push('image_url=$' + (++n)); vals.push(store.cleanImageUrl(image_url)); }
+      if (active !== undefined) { sets.push('active=$' + (++n)); vals.push(!!active); }
+      if (!sets.length) return { status: 'error', message: 'Nothing to change — tell me what to update.' };
+      sets.push('updated_at=now()');
+      await query('UPDATE store_products SET ' + sets.join(', ') + ' WHERE id=$1', vals);
+      return { status: 'updated', product_id };
+    },
+    store_payments: async () => {
+      if (!stripe.configured()) return { status: 'unavailable', message: 'Payments aren’t configured on the platform yet, so a store can’t take money right now — and nothing was created or charged.' };
+      const me = (await query('SELECT email FROM users WHERE id=$1', [user.id])).rows[0];
+      let row = (await query('SELECT stripe_account_id FROM seller_accounts WHERE user_id=$1', [user.id])).rows[0];
+      let accountId = row && row.stripe_account_id;
+      if (!accountId) {
+        const created = await stripe.createConnectedAccount(me.email);
+        if (!created.ok) return { status: 'error', message: 'Stripe couldn’t create the payout account' + (created.message ? ': ' + created.message : '') + '. Nothing was charged.' };
+        accountId = created.accountId;
+        await query(`INSERT INTO seller_accounts (user_id, stripe_account_id, kyc_status) VALUES ($1,$2,'pending') ON CONFLICT (user_id) DO UPDATE SET stripe_account_id=EXCLUDED.stripe_account_id`, [user.id, accountId]);
+      }
+      const acct = await stripe.retrieveAccount(accountId);
+      if (acct.ok && acct.charges_enabled) {
+        return { status: 'ready', message: 'Payments are READY — this account can accept charges, so the store can sell for real.' };
+      }
+      const base = (process.env.CLIENT_URL || '').startsWith('https') ? process.env.CLIENT_URL : 'https://accessyplabs.com';
+      const link = await stripe.createAccountLink({ accountId, refreshUrl: `${base}/dashboard.html?onboard=refresh`, returnUrl: `${base}/dashboard.html?onboard=done` });
+      if (!link.ok) return { status: 'error', message: 'Stripe couldn’t start onboarding' + (link.message ? ': ' + link.message : '') + '. Nothing was charged.' };
+      return { status: 'onboarding_needed', onboarding_url: link.url,
+        message: 'Payments aren’t verified yet. The creator finishes setup securely with Stripe here: ' + link.url + ' — Stripe collects the details directly; you never see a key. Once verified, the store can take real payments.' };
     },
     generate_social_content: async ({ concept_id, platforms, goal, count }) => {
       const c = await query('SELECT id,title,category,risk_summary FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);

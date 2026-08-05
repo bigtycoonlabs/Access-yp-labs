@@ -3,6 +3,7 @@
 // string building; all HTML is escaped, so authored content can't inject markup.
 const fs = require('fs');
 const path = require('path');
+const store = require('./store');
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -39,6 +40,25 @@ function bodyHtml(body) {
   return out.join('\n');
 }
 
+// Render the storefront: a "Shop" section of product cards — image, name, price, description —
+// for a concept's active products. A real catalog on the ownable site. (The live buy/checkout
+// action is wired separately, through the platform's Stripe Connect, once the owner sets the
+// store's payment policy — so this renders the products honestly without a dead button.)
+function shopHtml(products) {
+  const list = (products || []).filter(function (p) { return p && p.active !== false; });
+  if (!list.length) return '';
+  const cards = list.map(function (p) {
+    let card = '<div class="product-card">';
+    if (p.image_url) card += '<img class="product-img" src="' + esc(p.image_url) + '" alt="' + esc(p.name || '') + '">';
+    card += '<h3 class="product-name">' + esc(p.name || '') + '</h3>';
+    card += '<p class="product-price">' + esc(store.formatPrice(p.price_cents, p.currency)) + '</p>';
+    if (p.description) card += '<p class="product-desc">' + esc(p.description) + '</p>';
+    card += '</div>';
+    return card;
+  }).join('');
+  return '<section id="shop" class="shop"><h1>Shop</h1><div class="product-grid">' + cards + '</div></section>';
+}
+
 let CSS_CACHE = null;
 function themeCss() {
   if (CSS_CACHE != null) return CSS_CACHE;
@@ -49,25 +69,32 @@ function themeCss() {
 
 // Build one self-contained HTML document: home section + every page as its own section, with an
 // in-page anchor nav. `concept.launch_page` holds the home copy/look; `pages` are the site pages.
-function buildSingleFile(concept, pages) {
+function buildSingleFile(concept, pages, products) {
   const lp = concept.launch_page || {};
   const theme = lp.theme || 'warm';
   const title = lp.headline || concept.title || 'My site';
-  const nav = ['<a href="#home">Home</a>'].concat(
-    (pages || []).map(function (p) { return '<a href="#' + esc(p.slug) + '">' + esc(p.title) + '</a>'; })
-  ).join('');
+  const shop = shopHtml(products);
+  const nav = ['<a href="#home">Home</a>']
+    .concat(shop ? ['<a href="#shop">Shop</a>'] : [])
+    .concat((pages || []).map(function (p) { return '<a href="#' + esc(p.slug) + '">' + esc(p.title) + '</a>'; }))
+    .join('');
   let sections = '<section id="home">';
   if (lp.hero_image) sections += '<img class="site-hero" src="' + esc(lp.hero_image) + '" alt="">';
   sections += '<h1>' + esc(lp.headline || concept.title || '') + '</h1>';
   if (lp.subhead) sections += '<p class="site-sub">' + esc(lp.subhead) + '</p>';
   if (lp.blurb) sections += '<p class="site-blurb">' + esc(lp.blurb) + '</p>';
   sections += '</section>';
+  sections += shop;
   (pages || []).forEach(function (p) {
     sections += '<section id="' + esc(p.slug) + '" class="article"><h1>' + esc(p.title) + '</h1>' + bodyHtml(p.body) + '</section>';
   });
+  const shopCss = '\n.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px;margin-top:12px}'
+    + '\n.product-card{border:1px solid var(--line,#e5e0d8);border-radius:12px;padding:14px;background:var(--card,#fff)}'
+    + '\n.product-img{width:100%;height:auto;border-radius:8px;display:block;margin-bottom:10px}'
+    + '\n.product-name{margin:0 0 4px}\n.product-price{font-weight:700;margin:0 0 8px}\n.product-desc{margin:0;opacity:.85}';
   const html = '<!DOCTYPE html>\n<html lang="en"><head><meta charset="UTF-8">'
     + '<meta name="viewport" content="width=device-width, initial-scale=1.0"><title>' + esc(title) + '</title>'
-    + '<style>' + themeCss() + '\nsection{padding-top:8px}\n.sitenav{position:sticky;top:0;background:var(--bg)}</style></head>'
+    + '<style>' + themeCss() + '\nsection{padding-top:8px}\n.sitenav{position:sticky;top:0;background:var(--bg)}' + shopCss + '</style></head>'
     + '<body class="sitebody" data-theme="' + esc(theme) + '"><div class="site-wrap">'
     + '<nav class="sitenav" aria-label="Site pages">' + nav + '</nav>'
     + sections
@@ -76,4 +103,4 @@ function buildSingleFile(concept, pages) {
   return { filename: (lp.slug || 'my-site') + '.html', html: html };
 }
 
-module.exports = { buildSingleFile, bodyHtml, inlineHtml, esc };
+module.exports = { buildSingleFile, shopHtml, bodyHtml, inlineHtml, esc };

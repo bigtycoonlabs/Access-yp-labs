@@ -84,6 +84,30 @@ const TOOLS = {
     enums: {},
     summary: "Build a real, clickable, interactive HTML DEMO of THIS concept — a working prototype the creator can actually tab and click through, fully screen-reader operable. Clay does NOT put a demo in the standard package anymore; the standard build is the foundation. OFFER a demo AFTER the foundation is built, and pick the right kind: if the idea is an APPLICATION or app-like product, use build_demo (an interactive prototype); if it's simpler and a real website is the better proof, DON'T use this — build an actual published site instead with set_launch_page and add_site_page. Runs in the background; the creator can watch. Free.",
   },
+  add_product: {
+    irreversible: false, requires_confirmation: false,
+    required: ['concept_id', 'name', 'price'],
+    optional: ['description', 'image_url', 'currency'],
+    enums: {},
+    summary: "Add a real product to THIS concept's STORE, turning its site into an e-commerce storefront. name is the product name; price is a plain number like 19.99; optional description, image_url (a full https URL), and currency (usd by default). The products render as a real Shop on the concept's site. Build the catalog WITH the creator, product by product, with honest prices and good descriptions. Reversible.",
+  },
+  list_products: {
+    irreversible: false, requires_confirmation: false,
+    required: ['concept_id'], enums: {},
+    summary: "List the products in THIS concept's store, each with its price and whether it's active (shown) or hidden. Check this before adding or editing products so you know what's already there.",
+  },
+  edit_product: {
+    irreversible: false, requires_confirmation: false,
+    required: ['concept_id', 'product_id'],
+    optional: ['name', 'price', 'description', 'image_url', 'active'],
+    enums: {},
+    summary: "Edit a product in THIS concept's store — change its name, price, description, or image, or set active true to show it or false to hide it. Fully reversible.",
+  },
+  store_payments: {
+    irreversible: false, requires_confirmation: false,
+    required: [], enums: {},
+    summary: "Check and set up PAYMENTS so the creator's store can take real money. Access YP Labs uses Stripe Connect: this checks whether the creator already has a connected account (the SAME one they'd use to sell in the Dream Market or earn as a Dream Mover) and whether it can accept charges yet. If they aren't set up, it returns a secure Stripe onboarding link they finish themselves — Stripe collects their details directly and you NEVER touch a key or credential. Offer this when a creator wants their store to actually sell. Relay exactly what the result says — payments READY, PENDING verification, or NOT STARTED — and never claim payments are live unless the result says READY.",
+  },
   generate_social_content: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id'], optional: ['count'],
