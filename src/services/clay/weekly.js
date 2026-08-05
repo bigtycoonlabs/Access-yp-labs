@@ -19,6 +19,7 @@ const crypto = require('crypto');
 const agent = require('./agent');
 const provider = require('./provider');
 const { sendEmail, sendBatch } = require('../email');
+const { notifyStaff } = require('./staffNotify');
 
 const SITE = () => (process.env.CLIENT_URL || 'https://accessyplabs.com').replace(/\/+$/, '');
 
@@ -372,8 +373,51 @@ async function listForStaff(limit = 10) {
   return r.rows;
 }
 
+
+// ---- the weekly cadence ----------------------------------------------------------------------
+
+// Draft this week's issue on a schedule, then tell the owners it is waiting. It NEVER approves,
+// publishes, or emails anyone — an issue still only reaches a reader when a human says so.
+//
+// The claim is the insert itself: weekly_issues is UNIQUE on week_start, so INSERT ... ON CONFLICT
+// DO NOTHING either wins the week or returns nothing. That makes the tick safe to run every few
+// hours, across restarts and across multiple instances, with no separate schedule table to drift.
+async function tick() {
+  try {
+    if (!provider.available()) return { ok: false, reason: 'provider_down' };
+
+    const week = weekStartOf(Date.now());
+    const claim = await query(
+      `INSERT INTO weekly_issues (slug, week_start, title, status)
+       VALUES ($1, $2, $3, 'draft')
+       ON CONFLICT (week_start) DO NOTHING
+       RETURNING id`,
+      [slugForWeek(week), week, `Clay Weekly — week of ${week}`]);
+    if (!claim.rows.length) return { ok: false, reason: 'already_started' };
+
+    // Fill the claimed shell in with the real issue.
+    const out = await composeIssue({ weekStart: week });
+    if (!out.ok) return { ok: false, reason: out.reason || 'compose_failed' };
+
+    const c = out.counts || {};
+    await notifyStaff({
+      kind: 'weekly',
+      dedupeKey: 'weekly-draft-' + week,
+      subject: `Clay Weekly is drafted for the week of ${week}`,
+      body: `I put this week's issue together: ${c.articles || 0} Desk piece(s), `
+        + `${c.creators || 0} creator(s) who listed, and ${c.movers || 0} Dream Mover(s) who earned.\n\n`
+        + `Nothing is public and nothing has been emailed. Read it, approve it, publish it, and send it `
+        + `when you're ready: ${SITE()}/weekly-admin.html\n\n— Clay`,
+    });
+
+    return { ok: true, week, counts: c };
+  } catch (e) {
+    return { ok: false, reason: 'error', error: e && e.message };
+  }
+}
+
 module.exports = {
-  weekStartOf, slugForWeek, composeIssue, offerSponsorship, respondToSponsorship,
+  tick, weekStartOf, slugForWeek, composeIssue, offerSponsorship, respondToSponsorship,
   approve, publish, sendIssue, unsubscribe, getPublished, listPublished, listForStaff,
   sponsorCandidates, weekArticles, topCreators, topMovers,
 };

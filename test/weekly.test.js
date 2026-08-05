@@ -24,3 +24,20 @@ test('the service exposes the approval chain as separate, deliberate steps', () 
   ['composeIssue', 'approve', 'publish', 'sendIssue', 'offerSponsorship', 'respondToSponsorship', 'unsubscribe']
     .forEach((fn) => assert.strictEqual(typeof weekly[fn], 'function', fn + ' must exist'));
 });
+
+test('the cadence exists and is separate from anything that reaches a reader', () => {
+  assert.strictEqual(typeof weekly.tick, 'function');
+  // The scheduled job drafts only. Approving, publishing and sending stay distinct functions a
+  // human has to call, so no schedule can ever put an issue in front of a reader on its own.
+  ['approve', 'publish', 'sendIssue'].forEach((fn) => assert.strictEqual(typeof weekly[fn], 'function'));
+});
+
+test('one issue per week: the address a tick would claim is identical all week', () => {
+  const mon = weekly.slugForWeek(weekly.weekStartOf('2026-08-03T06:00:00Z'));
+  const fri = weekly.slugForWeek(weekly.weekStartOf('2026-08-07T18:00:00Z'));
+  const sun = weekly.slugForWeek(weekly.weekStartOf('2026-08-09T23:00:00Z'));
+  assert.strictEqual(mon, fri);
+  assert.strictEqual(fri, sun);
+  // and a new week is genuinely a different issue
+  assert.notStrictEqual(sun, weekly.slugForWeek(weekly.weekStartOf('2026-08-10T00:00:00Z')));
+});

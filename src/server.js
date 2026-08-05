@@ -179,6 +179,17 @@ if (require.main === module) {
     setTimeout(deskTick, 8 * 60 * 1000);          // a few minutes after boot
     setInterval(deskTick, 12 * 60 * 60 * 1000);   // then twice a day (DB claim gates it to ~3 days)
 
+    // Clay Weekly. The tick claims the week by inserting the issue row itself (weekly_issues is
+    // unique on week_start), so running it every few hours is safe across restarts and instances —
+    // it can only ever draft one issue per week. It drafts and then tells the owners it's waiting;
+    // it never approves, publishes, or emails a single reader. A failure can't crash boot.
+    const weeklyMag = require('./services/clay/weekly');
+    const weeklyTick = () => weeklyMag.tick()
+      .then((r) => { if (r && r.ok) console.log('clay weekly drafted:', JSON.stringify(r)); })
+      .catch((e) => console.error('clay weekly error:', e && e.message));
+    setTimeout(weeklyTick, 12 * 60 * 1000);        // a few minutes after boot
+    setInterval(weeklyTick, 6 * 60 * 60 * 1000);   // then every 6 hours (the DB claim gates it to weekly)
+
     // The weekly creator proof prompt. The tick claims a weekly slot atomically, then generates and
     // emails a prompt to each creator who doesn't have one this week. Deterministic content (no LLM
     // needed), best-effort, capped, and it can never double-send. A failure can't crash boot.
