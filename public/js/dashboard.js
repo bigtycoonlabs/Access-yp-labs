@@ -36,8 +36,8 @@
   function empty(container, text) { container.innerHTML = ''; container.appendChild(el('p', 'muted', text)); }
   function fail(container, e) { container.innerHTML = ''; container.appendChild(el('p', 'msg err', e.message)); }
 
-  // Download a concept's package, or surface the honest plan gate inline (with a
-  // one-tap Keep for this specific concept) if it isn't kept yet.
+  // Download a project's package, or surface the honest plan gate inline (with a
+  // one-tap Keep for this specific project) if it isn't kept yet.
   async function loadTodaysDreams() {
     const c = document.getElementById('today'); if (!c) return;
     const dg = document.getElementById('today-digest');
@@ -94,9 +94,9 @@
         };
         const maker = (e.data.options || []).find((o) => o.plan === 'maker');
         const sculptor = (e.data.options || []).find((o) => o.plan === 'sculptor');
-        if (maker) host.appendChild(actionBtn('Keep just this concept — $2.99/month', () => go({ plan: 'maker', concept_id: maker.concept_id })));
-        if (sculptor) host.appendChild(actionBtn('Keep everything — unlimited concepts, $49.99/month', () => go({ plan: 'sculptor' })));
-        announce('A plan is needed to download this concept. You can keep just this concept for $2.99 a month, or get unlimited concepts for $49.99 a month.', true);
+        if (maker) host.appendChild(actionBtn('Keep just this project — $2.99/month', () => go({ plan: 'maker', concept_id: maker.concept_id })));
+        if (sculptor) host.appendChild(actionBtn('Keep everything — unlimited projects, $49.99/month', () => go({ plan: 'sculptor' })));
+        announce('A plan is needed to download this project. You can keep just this project for $2.99 a month, or get unlimited projects for $49.99 a month.', true);
       } else { announce(e.message || 'Could not download.', true); }
     }
   }
@@ -151,7 +151,7 @@
     try {
       const { concepts } = await Kiln.api('/concepts');
       const items = (concepts || []).filter((x) => !x.is_operating);
-      if (!items.length) { empty(c, 'No concepts on the path yet. Open the laboratory to shape one with Clay.'); return; }
+      if (!items.length) { empty(c, 'No projects on the path yet. Open the laboratory to shape one with Clay.'); return; }
       BOARD_LANES.forEach((lane) => {
         const inLane = items.filter((x) => (x.movement_state || 'needs_customer_clarity') === lane.key);
         const sec = el('div', 'panel');
@@ -162,12 +162,12 @@
           item.appendChild(el('p', null, x.title));
           if (x.movement_note) item.appendChild(el('p', 'muted', 'Clay’s read: ' + x.movement_note));
           item.appendChild(el('p', 'muted', 'Next: ' + lane.moves));
-          const lbl = el('label', null, 'Move this concept to another lane'); lbl.setAttribute('for', 'mv-' + x.id);
+          const lbl = el('label', null, 'Move this project to another lane'); lbl.setAttribute('for', 'mv-' + x.id);
           const sel = el('select'); sel.id = 'mv-' + x.id;
           BOARD_LANES.forEach((l) => { const o = el('option', null, l.label); o.value = l.key; if (l.key === lane.key) o.selected = true; sel.appendChild(o); });
           const save = el('button', 'btn secondary', 'Update lane'); save.type = 'button';
           save.addEventListener('click', async () => {
-            if (sel.value === lane.key) { announce('That concept is already in ' + lane.label + '.', true); return; }
+            if (sel.value === lane.key) { announce('That project is already in ' + lane.label + '.', true); return; }
             save.disabled = true;
             try {
               await Kiln.api('/concepts/' + x.id + '/movement', { method: 'PUT', body: { movement_state: sel.value } });
@@ -226,10 +226,10 @@
     const c = document.getElementById('payouts'); c.innerHTML = '';
     try {
       const s = await Kiln.api('/sellers/status');
-      if (!s.stripe_configured) { empty(c, 'Payouts are not configured on the platform yet. You can still create and list concepts; buyers can transact once payouts are enabled.'); return; }
+      if (!s.stripe_configured) { empty(c, 'Payouts are not configured on the platform yet. You can still create and list projects; buyers can transact once payouts are enabled.'); return; }
 
       if (s.onboarded && s.kyc_status === 'verified') {
-        c.appendChild(el('p', 'msg ok', 'Payouts are ready. You can receive the money from concept sales and from consultant sessions.'));
+        c.appendChild(el('p', 'msg ok', 'Payouts are ready. You can receive the money from project sales and from consultant sessions.'));
         return;
       }
 
@@ -245,7 +245,7 @@
         c.appendChild(actionBtn('Refresh payout status', () => run(Kiln.api('/sellers/refresh', { method: 'POST' }), 'Refreshed.', loadPayouts), true));
         c.appendChild(actionBtn('Continue payout setup', () => startOnboard(c).catch(onError(c))));
       } else {
-        c.appendChild(el('p', null, 'Set up payouts so you can receive the money from concept sales and consultant sessions. It takes a few minutes with Stripe, our payments provider.'));
+        c.appendChild(el('p', null, 'Set up payouts so you can receive the money from project sales and consultant sessions. It takes a few minutes with Stripe, our payments provider.'));
         c.appendChild(actionBtn('Set up payouts', () => startOnboard(c).catch(onError(c))));
       }
     } catch (e) { fail(c, e); }
@@ -295,7 +295,7 @@
       };
       const sculptor = active.find((s) => s.plan === 'sculptor');
       if (sculptor) {
-        c.appendChild(el('p', 'msg ok', 'Sculptor plan active — unlimited concepts ($49.99/month).'));
+        c.appendChild(el('p', 'msg ok', 'Sculptor plan active — unlimited projects ($49.99/month).'));
         if (sculptor.cancel_at_period_end) {
           c.appendChild(el('p', 'muted', 'Ending at the close of your current period — you keep full access until then.'));
         } else {
@@ -307,7 +307,7 @@
       if (makers.length) {
         c.appendChild(el('p', null, makers.length + ' concept' + (makers.length > 1 ? 's' : '') + ' on the Maker plan ($2.99/month each).'));
         makers.forEach((m) => {
-          const name = m.concept_title ? '“' + m.concept_title + '”' : 'this concept';
+          const name = m.concept_title ? '“' + m.concept_title + '”' : 'this project';
           const line = el('div', 'sub-row'); line.style.margin = '6px 0';
           line.appendChild(el('p', 'muted', 'Maker — ' + name + ' ($2.99/month)'));
           if (m.cancel_at_period_end) {
@@ -318,10 +318,10 @@
           c.appendChild(line);
         });
       } else {
-        c.appendChild(el('p', 'muted', 'No plan yet. Build for free — a plan is asked for only when you download, share, or keep a concept past 30 days.'));
+        c.appendChild(el('p', 'muted', 'No plan yet. Build for free — a plan is asked for only when you download, share, or keep a project past 30 days.'));
       }
       c.appendChild(actionBtn('Go Sculptor — $49.99/month, unlimited', goSculptor));
-      c.appendChild(el('p', 'muted', 'The $2.99 Maker plan is per concept — you\u2019ll be offered it when you download a specific concept.'));
+      c.appendChild(el('p', 'muted', 'The $2.99 Maker plan is per project — you\u2019ll be offered it when you download a specific project.'));
     } catch (e) { fail(c, e); }
   }
 
@@ -330,7 +330,7 @@
     const c = document.getElementById('concepts'); c.innerHTML = '';
     try {
       const { concepts } = await Kiln.api('/concepts');
-      if (!concepts.length) { empty(c, 'No concepts yet. Open the laboratory to shape one with Clay.'); return; }
+      if (!concepts.length) { empty(c, 'No projects yet. Open the laboratory to shape one with Clay.'); return; }
       concepts.forEach((x) => {
         const claimed = x.origin === 'purchased';
         const prefix = x.is_operating ? 'Your running business · ' : (claimed ? 'Claimed from the Dream Market · ' : '');
@@ -469,7 +469,7 @@
         const A = r.actions;
         if (iAmConsultant) {
           if (e.state === 'requested') A.appendChild(actionBtn('Accept', () => run(Kiln.api('/consultants/engagements/' + e.id + '/accept', { method: 'POST' }), 'Accepted.', loadEngagements)));
-          if (e.state === 'accepted') A.appendChild(actionBtn('Sign NDA (required before concept is shared)', () => run(Kiln.api('/consultants/engagements/' + e.id + '/nda', { method: 'POST' }), 'NDA signed.', loadEngagements)));
+          if (e.state === 'accepted') A.appendChild(actionBtn('Sign NDA (required before project is shared)', () => run(Kiln.api('/consultants/engagements/' + e.id + '/nda', { method: 'POST' }), 'NDA signed.', loadEngagements)));
           if (e.state === 'paid') A.appendChild(actionBtn('Mark session delivered', () => run(Kiln.api('/consultants/engagements/' + e.id + '/deliver', { method: 'POST' }), 'Session delivered.', loadEngagements)));
         } else {
           if (e.state === 'nda_signed') A.appendChild(actionBtn('Pay $150 for this session', () => payForSession(e.id)));

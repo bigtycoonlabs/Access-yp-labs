@@ -44,8 +44,8 @@
   var actionsEl = document.getElementById('concept-actions');
 
   if (!id) {
-    titleEl.textContent = 'Concept not found';
-    assetsEl.appendChild(el('p', 'muted', 'This link is missing a concept. Head back to your Laboratory to pick one.'));
+    titleEl.textContent = 'Project not found';
+    assetsEl.appendChild(el('p', 'muted', 'This link is missing a project. Head back to your Laboratory to pick one.'));
     var back0 = el('a', 'btn', 'Back to your Laboratory'); back0.href = '/app.html'; assetsEl.appendChild(back0);
     return;
   }
@@ -81,7 +81,7 @@
       focusEl(body, label + ' loaded.');
     } catch (e) {
       if (e.sessionExpired) return goSignIn();
-      if (e.status === 402) { announce(label + ' unlocks when you keep this concept.', true); return; }
+      if (e.status === 402) { announce(label + ' unlocks when you keep this project.', true); return; }
       announce('Could not load ' + label + ': ' + e.message, true);
     }
   }
@@ -97,7 +97,7 @@
       announce(label + ' downloaded.', true);
     } catch (e) {
       if (e.sessionExpired) return goSignIn();
-      if (e.status === 402) { announce(label + ' unlocks when you keep this concept.', true); return; }
+      if (e.status === 402) { announce(label + ' unlocks when you keep this project.', true); return; }
       announce('Could not download ' + label + ': ' + e.message, true);
     }
   }
@@ -111,7 +111,7 @@
       announce('Your package download has started.', true);
     } catch (e) {
       if (e.sessionExpired) return goSignIn();
-      if (e.status === 402) { announce('Keep this concept to download the full package.', true); return; }
+      if (e.status === 402) { announce('Keep this project to download the full package.', true); return; }
       announce('Could not export: ' + e.message, true);
     }
   }
@@ -137,7 +137,7 @@
     if (btn) btn.disabled = false;
   }
 
-  // Compute REAL unit economics for this concept (the platform does the math; Clay only estimates
+  // Compute REAL unit economics for this project (the platform does the math; Clay only estimates
   // the inputs). Shows the computed figures right here and upgrades the money section for next time.
   async function computeEconomics(conceptId, btn) {
     if (btn) { btn.disabled = true; btn.textContent = 'Computing the real numbers…'; }
@@ -243,7 +243,7 @@
 
   function saleDate(s) { try { return new Date(s).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); } catch (e) { return ''; } }
 
-  // Your sales — a truthful read of this concept's storefront orders. Owner-only (the endpoint
+  // Your sales — a truthful read of this project's storefront orders. Owner-only (the endpoint
   // 404s for anyone else, so we skip quietly). Paid orders count toward the total; started-but-
   // unfinished checkouts are noted separately and never counted as money.
   async function loadSales(conceptId) {
@@ -392,7 +392,7 @@
   }
 
   // ---- Creator Path: where are you taking THIS concept? (per-concept intent) ----
-  // The plan shapes how Clay coaches this concept and is settable in plain conversation too; this is
+  // The plan shapes how Clay coaches this project and is settable in plain conversation too; this is
   // the visible, screen-reader-first control for it. There is no wrong answer and no ceiling.
   async function savePlan(conceptId, pathId, label, status) {
     status.textContent = 'Saving…';
@@ -435,9 +435,9 @@
 
   async function renderPlan(conceptId) {
     var host = el('section', 'plan-section');
-    host.setAttribute('aria-label', 'Your plan for this concept');
-    host.appendChild(el('h2', null, 'Your plan for this concept'));
-    host.appendChild(el('p', 'muted', 'Tell Clay where you’re taking this one — it shapes how he helps, and you can change it anytime. There’s no wrong answer and no ceiling: a concept can go as far as you want.'));
+    host.setAttribute('aria-label', 'Your plan for this project');
+    host.appendChild(el('h2', null, 'Your plan for this project'));
+    host.appendChild(el('p', 'muted', 'Tell Clay where you’re taking this one — it shapes how he helps, and you can change it anytime. There’s no wrong answer and no ceiling: a project can go as far as you want.'));
     var status = el('p', 'muted'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
     try {
       var r = await Kiln.api('/clay/concept/' + conceptId + '/path');
@@ -475,8 +475,8 @@
       var entitled = data.entitled !== false;
       var assets = (data.assets || []).filter(function (a) { return a && a.is_current !== false; });
 
-      document.title = (concept.title || 'Your concept') + ' — Access YP Labs';
-      titleEl.textContent = concept.title || 'Your concept';
+      document.title = (concept.title || 'Your project') + ' — Access YP Labs';
+      titleEl.textContent = concept.title || 'Your project';
       if (concept.clays_take) { takeEl.textContent = concept.clays_take; takeEl.hidden = false; }
 
       renderPlan(id);
@@ -504,7 +504,7 @@
           acts.appendChild(d);
         } else {
           lockedCount++;
-          sec.appendChild(el('p', 'muted', 'Built and waiting — unlocks when you keep this concept.'));
+          sec.appendChild(el('p', 'muted', 'Built and waiting — unlocks when you keep this project.'));
         }
         var edit = el('a', 'btn secondary', 'Request an edit');
         edit.href = '/app.html?concept=' + encodeURIComponent(id) + '&edit=' + encodeURIComponent(a.type) + '&editTitle=' + encodeURIComponent(label);
@@ -547,8 +547,8 @@
       // ---- keep / unlock, only when something is actually locked ----
       if (!entitled && lockedCount) {
         var keepBox = el('div', 'keep-note'); keepBox.setAttribute('role', 'note');
-        keepBox.appendChild(el('p', null, 'Your business plan, marketing strategy, and live demo stay open for free. Keep this concept to unlock and download every section.'));
-        var kb = el('button', 'btn', 'Keep this concept — $2.99'); kb.type = 'button';
+        keepBox.appendChild(el('p', null, 'Your business plan, marketing strategy, and live demo stay open for free. Keep this project to unlock and download every section.'));
+        var kb = el('button', 'btn', 'Keep this project — $2.99'); kb.type = 'button';
         kb.addEventListener('click', function () { keep(id, kb); });
         keepBox.appendChild(kb);
         var unlim = el('button', 'btn secondary', 'Or go unlimited — $49.99/month'); unlim.type = 'button';
@@ -557,13 +557,13 @@
         actionsEl.appendChild(keepBox);
       }
 
-      announce('Your vault for ' + (concept.title || 'your concept') + '. ' + assets.length + ' section' + (assets.length === 1 ? '' : 's') + ' listed, each with View, Download, and Request an edit.', true);
+      announce('Your vault for ' + (concept.title || 'your project') + '. ' + assets.length + ' section' + (assets.length === 1 ? '' : 's') + ' listed, each with View, Download, and Request an edit.', true);
       focusEl(titleEl);
     } catch (e) {
       if (e.sessionExpired) return goSignIn();
-      titleEl.textContent = 'Couldn’t open this concept';
+      titleEl.textContent = 'Couldn’t open this project';
       var msg = (e.status === 410 || e.status === 404)
-        ? 'That concept isn’t available anymore.'
+        ? 'That project isn’t available anymore.'
         : ('Something went wrong: ' + (e.message || 'unknown error'));
       assetsEl.appendChild(el('p', 'msg err', msg));
       var back = el('a', 'btn', 'Back to your Laboratory'); back.href = '/app.html'; assetsEl.appendChild(back);

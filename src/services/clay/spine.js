@@ -19,11 +19,11 @@ const { classifySection, assessCoverage, STATUSES } = require('./interpreter');
 const TOOLS = {
   list_my_concepts: {
     irreversible: false, requires_confirmation: false, required: [], enums: {},
-    summary: 'List the concepts the current user owns (read-only).',
+    summary: 'List the projects the current user owns (read-only).',
   },
   get_concept: {
     irreversible: false, requires_confirmation: false, required: ['concept_id'], enums: {},
-    summary: 'Read one of the user\'s concepts and which materials it has (read-only).',
+    summary: 'Read one of the user\'s projects and which materials it has (read-only).',
   },
   search_marketplace: {
     irreversible: false, requires_confirmation: false, required: [], optional: ['query'], enums: { category: CATEGORIES },
@@ -63,55 +63,55 @@ const TOOLS = {
     irreversible: false, requires_confirmation: false,
     required: ['topic'], optional: ['concept_id'],
     enums: { topic: ['margin', 'pricing_to_target', 'break_even', 'cac_ltv', 'runway', 'market_size'] },
-    summary: "Give the builder a concrete, spoken, step-by-step WORKED EXAMPLE of a core money concept — margin (what you keep per sale), pricing_to_target (what to charge to hit an income goal), break_even (sales until you stop losing money), cac_ltv (cost to get a customer vs what they're worth), runway (how long the money lasts), or market_size (how big the opportunity honestly is). Call it when a beginner is stuck on an abstraction or asks how something actually works. Optionally pass concept_id to anchor the example to their concept by name. The numbers it returns are round and ILLUSTRATIVE — a device to show the math, never a claim about their real business — and the example says so; keep it that way.",
+    summary: "Give the builder a concrete, spoken, step-by-step WORKED EXAMPLE of a core money project — margin (what you keep per sale), pricing_to_target (what to charge to hit an income goal), break_even (sales until you stop losing money), cac_ltv (cost to get a customer vs what they're worth), runway (how long the money lasts), or market_size (how big the opportunity honestly is). Call it when a beginner is stuck on an abstraction or asks how something actually works. Optionally pass concept_id to anchor the example to their project by name. The numbers it returns are round and ILLUSTRATIVE — a device to show the math, never a claim about their real business — and the example says so; keep it that way.",
   },
   generate_concept: {
     irreversible: false, requires_confirmation: false,
     required: ['prompt'],
     enums: { category: CATEGORIES },
-    summary: 'Shape a full concept package with Clay. Only call this once you actually understand the idea — never on a raw one-liner you have not pressure-tested with a sharpening question or two first, unless the person clearly says to just build it. Free; nothing is published.',
+    summary: 'Shape a full project package with Clay. Only call this once you actually understand the idea — never on a raw one-liner you have not pressure-tested with a sharpening question or two first, unless the person clearly says to just build it. Free; nothing is published.',
   },
   build_enterprise: {
     irreversible: false, requires_confirmation: true,
     required: ['prompt'],
     enums: {},
-    summary: 'Build a whole ENTERPRISE — a parent company that owns several child ventures — when the builder describes MORE THAN ONE business at once (e.g. "a holding company over a dozen stores", "a studio with several brands", "these three businesses under one umbrella"). Clay plans the ventures first (fast), tells the builder the plan, then builds each venture as its own full concept and assembles a parent overview that ties them together. Each piece is its own concept the builder can keep, list to sell on its own, or sell as the whole enterprise. Runs in the background; the builder can watch. Requires confirmation because it is a large, many-venture build. Use generate_concept for a single business — only reach for this when the request is genuinely multi-venture.',
+    summary: 'Build a whole ENTERPRISE — a parent company that owns several child ventures — when the builder describes MORE THAN ONE business at once (e.g. "a holding company over a dozen stores", "a studio with several brands", "these three businesses under one umbrella"). Clay plans the ventures first (fast), tells the builder the plan, then builds each venture as its own full project and assembles a parent overview that ties them together. Each piece is its own project the builder can keep, list to sell on its own, or sell as the whole enterprise. Runs in the background; the builder can watch. Requires confirmation because it is a large, many-venture build. Use generate_concept for a single business — only reach for this when the request is genuinely multi-venture.',
   },
   enhance_concept: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id', 'prompt'],
     enums: {},
-    summary: 'Refine an existing concept. Free; supersedes prior versions as history.',
+    summary: 'Refine an existing project. Free; supersedes prior versions as history.',
   },
   build_demo: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id'],
     enums: {},
-    summary: "Build a real, clickable, interactive HTML DEMO of THIS concept — a working prototype the creator can actually tab and click through, fully screen-reader operable. Clay does NOT put a demo in the standard package anymore; the standard build is the foundation. OFFER a demo AFTER the foundation is built, and pick the right kind: if the idea is an APPLICATION or app-like product, use build_demo (an interactive prototype); if it's simpler and a real website is the better proof, DON'T use this — build an actual published site instead with set_launch_page and add_site_page. Runs in the background; the creator can watch. Free.",
+    summary: "Build a real, clickable, interactive HTML DEMO of THIS project — a working prototype the creator can actually tab and click through, fully screen-reader operable. Clay does NOT put a demo in the standard package anymore; the standard build is the foundation. OFFER a demo AFTER the foundation is built, and pick the right kind: if the idea is an APPLICATION or app-like product, use build_demo (an interactive prototype); if it's simpler and a real website is the better proof, DON'T use this — build an actual published site instead with set_launch_page and add_site_page. Runs in the background; the creator can watch. Free.",
   },
   add_product: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id', 'name', 'price'],
     optional: ['description', 'image_url', 'currency', 'kind', 'fulfillment_url'],
     enums: { kind: ['digital', 'physical'] },
-    summary: "Add a real product to THIS concept's STORE, turning its site into an e-commerce storefront. name is the product name; price is a plain number like 19.99. kind is 'digital' (delivered by a link after payment — pass fulfillment_url, a full https link) or 'physical' (a shipping address is collected at checkout); default digital. Optional description, image_url (full https URL), currency (usd default). The products render as a real Shop on the concept's site. Build the catalog WITH the creator, product by product, with honest prices. Reversible.",
+    summary: "Add a real product to THIS project's STORE, turning its site into an e-commerce storefront. name is the product name; price is a plain number like 19.99. kind is 'digital' (delivered by a link after payment — pass fulfillment_url, a full https link) or 'physical' (a shipping address is collected at checkout); default digital. Optional description, image_url (full https URL), currency (usd default). The products render as a real Shop on the project's site. Build the catalog WITH the creator, product by product, with honest prices. Reversible.",
   },
   list_products: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id'], enums: {},
-    summary: "List the products in THIS concept's store, each with its price and whether it's active (shown) or hidden. Check this before adding or editing products so you know what's already there.",
+    summary: "List the products in THIS project's store, each with its price and whether it's active (shown) or hidden. Check this before adding or editing products so you know what's already there.",
   },
   list_sales: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id'], enums: {},
-    summary: "Read THIS concept's storefront sales — how many have sold, the total taken (which goes to the creator's OWN account; the platform takes nothing), and the most recent orders. Use it whenever the creator asks how their store or sales are doing. Report only what it returns; never invent a number.",
+    summary: "Read THIS project's storefront sales — how many have sold, the total taken (which goes to the creator's OWN account; the platform takes nothing), and the most recent orders. Use it whenever the creator asks how their store or sales are doing. Report only what it returns; never invent a number.",
   },
   edit_product: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id', 'product_id'],
     optional: ['name', 'price', 'description', 'image_url', 'active', 'kind', 'fulfillment_url'],
     enums: { kind: ['digital', 'physical'] },
-    summary: "Edit a product in THIS concept's store — change its name, price, description, image, kind (digital or physical), fulfillment_url (digital delivery link), or set active true to show it or false to hide it. Fully reversible.",
+    summary: "Edit a product in THIS project's store — change its name, price, description, image, kind (digital or physical), fulfillment_url (digital delivery link), or set active true to show it or false to hide it. Fully reversible.",
   },
   store_payments: {
     irreversible: false, requires_confirmation: false,
@@ -134,13 +134,13 @@ const TOOLS = {
     irreversible: true, requires_confirmation: true,
     required: ['listing_id'],
     enums: {},
-    summary: 'Buy a concept. Spends real money and transfers ownership.',
+    summary: 'Buy a project. Spends real money and transfers ownership.',
   },
   remove_concept: {
     irreversible: true, requires_confirmation: true,
     required: ['concept_id'],
     enums: {},
-    summary: 'Permanently delete a concept and all of its materials.',
+    summary: 'Permanently delete a project and all of its materials.',
   },
   remember: {
     irreversible: false, requires_confirmation: false,
@@ -162,36 +162,36 @@ const TOOLS = {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id', 'path'], optional: ['note'],
     enums: { path: ['build_myself', 'refine_to_sell', 'exploring'] },
-    summary: "Record the creator's plan for THIS concept when they tell you: build_myself (launch it as a real business they run), refine_to_sell (polish it to sell in the Dream Market), or exploring (undecided). note is an optional short line about their specific goal. Reversible — you can update it whenever their plan changes. Only set it from what the creator actually says; never guess it for them.",
+    summary: "Record the creator's plan for THIS project when they tell you: build_myself (launch it as a real business they run), refine_to_sell (polish it to sell in the Dream Market), or exploring (undecided). note is an optional short line about their specific goal. Reversible — you can update it whenever their plan changes. Only set it from what the creator actually says; never guess it for them.",
   },
   value_breakdown: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id'], enums: {},
-    summary: "Break down what THIS concept is honestly worth as a listing, and why — based on how launch-ready it is. Returns the value drivers it already carries (a business plan, a marketing strategy, a working build a buyer could actually launch, real proof of demand), a suggested starting price range, and the specific things that would raise its value. Use it when a creator asks what to charge, what their concept is worth, or how to make it worth more. The range is a COMPLETENESS-based starting guide, never a market appraisal or a promise — say so plainly: the creator sets the price and the marketplace decides.",
+    summary: "Break down what THIS project is honestly worth as a listing, and why — based on how launch-ready it is. Returns the value drivers it already carries (a business plan, a marketing strategy, a working build a buyer could actually launch, real proof of demand), a suggested starting price range, and the specific things that would raise its value. Use it when a creator asks what to charge, what their project is worth, or how to make it worth more. The range is a COMPLETENESS-based starting guide, never a market appraisal or a promise — say so plainly: the creator sets the price and the marketplace decides.",
   },
   set_movement_state: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id', 'state'], optional: ['note'],
     enums: { state: ['needs_customer_clarity', 'needs_proof', 'ready_to_package'] },
-    summary: "Place THIS concept on its honest movement lane from your proof read: needs_customer_clarity (no clear customer yet), needs_proof (a clear customer but nothing yet proves they'll pay), or ready_to_package (a clear customer AND real evidence they'll pay). note is a short line, in your own words, on WHY — it's shown to the creator on their board. Set it only from real behavior, never to flatter: ready_to_package needs evidence a stranger actually acted (a booked paid call, a preorder, a deposit, a converting landing page), not a strong plan. Reversible; update it as the truth changes.",
+    summary: "Place THIS project on its honest movement lane from your proof read: needs_customer_clarity (no clear customer yet), needs_proof (a clear customer but nothing yet proves they'll pay), or ready_to_package (a clear customer AND real evidence they'll pay). note is a short line, in your own words, on WHY — it's shown to the creator on their board. Set it only from real behavior, never to flatter: ready_to_package needs evidence a stranger actually acted (a booked paid call, a preorder, a deposit, a converting landing page), not a strong plan. Reversible; update it as the truth changes.",
   },
   set_launch_page: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id'],
     optional: ['headline', 'subhead', 'blurb', 'cta_label', 'theme', 'hero_image', 'publish'],
     enums: { theme: ['warm', 'ink', 'clean', 'bold', 'forest', 'dusk'] },
-    summary: "Write or update THIS concept's site home page — headline, subhead, blurb, button label — and its LOOK: theme (warm, ink, clean, bold, forest, or dusk) and hero_image (a full https image URL shown large at the top). Optionally publish. Publishing puts up a real public page at /p/<slug> whose email signups feed the concept's waitlist as genuine proof of demand: the creator's first customer list. Draft the copy WITH the creator in your own words, pick a theme that fits the idea's feeling, and only publish once they've seen it and said go. Reversible — publish=false takes it down without losing anything. Tell them the exact public link after you publish. This same page is the HOME of the concept's site — add more pages with add_site_page to turn it into a real, stunning starting MVP.",
+    summary: "Write or update THIS project's site home page — headline, subhead, blurb, button label — and its LOOK: theme (warm, ink, clean, bold, forest, or dusk) and hero_image (a full https image URL shown large at the top). Optionally publish. Publishing puts up a real public page at /p/<slug> whose email signups feed the project's waitlist as genuine proof of demand: the creator's first customer list. Draft the copy WITH the creator in your own words, pick a theme that fits the idea's feeling, and only publish once they've seen it and said go. Reversible — publish=false takes it down without losing anything. Tell them the exact public link after you publish. This same page is the HOME of the project's site — add more pages with add_site_page to turn it into a real, stunning starting MVP.",
   },
   list_site_pages: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id'], optional: [], enums: {},
-    summary: "List the pages of THIS concept's site — every page built so far, with its title, whether it's published, and its order. Check this before adding or editing pages so you know what already exists.",
+    summary: "List the pages of THIS project's site — every page built so far, with its title, whether it's published, and its order. Check this before adding or editing pages so you know what already exists.",
   },
   add_site_page: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id', 'title'], optional: ['body', 'kind', 'publish'],
     enums: { kind: ['page', 'post'] },
-    summary: "Add a real page to THIS concept's site. This is how you build an actual starting MVP — a resource site or a blog with genuine pages — not just a coming-soon page. title is the page's name. body is the FULL content you write for it: real, useful, article-quality writing, never a placeholder. Simple Markdown is supported and rendered — # and ## headings, - bullet lists, and [text](url) links — so structure it well. kind is 'page' for a standing page (About, Resources) or 'post' for a dated article/blog post. The page becomes public at /p/<site-slug>/<page-slug> once BOTH the site's home (its landing page) is published and this page's publish=true. Set publish only when the creator has seen it and said go. Build the site out page by page, with the creator.",
+    summary: "Add a real page to THIS project's site. This is how you build an actual starting MVP — a resource site or a blog with genuine pages — not just a coming-soon page. title is the page's name. body is the FULL content you write for it: real, useful, article-quality writing, never a placeholder. Simple Markdown is supported and rendered — # and ## headings, - bullet lists, and [text](url) links — so structure it well. kind is 'page' for a standing page (About, Resources) or 'post' for a dated article/blog post. The page becomes public at /p/<site-slug>/<page-slug> once BOTH the site's home (its landing page) is published and this page's publish=true. Set publish only when the creator has seen it and said go. Build the site out page by page, with the creator.",
   },
   edit_site_page: {
     irreversible: false, requires_confirmation: false,
@@ -202,19 +202,19 @@ const TOOLS = {
   claim_web_address: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id', 'label'], optional: [], enums: {},
-    summary: "Reserve THIS concept's short free web address on our platform: <label>.accessyplabs.com. label is a short word or two the creator chooses — letters, numbers, hyphens. The name is claimed at once, but the address only resolves once web addresses are switched on for the platform; the site's always-on shareable link is its /p/ address (once the home page is published). Relay exactly what the tool result says about whether it's live or just reserved — never claim it's live on your own. For a creator's OWN domain (like theirbusiness.com) don't use this — point them to the 'Web address' section in their Laboratory.",
+    summary: "Reserve THIS project's short free web address on our platform: <label>.accessyplabs.com. label is a short word or two the creator chooses — letters, numbers, hyphens. The name is claimed at once, but the address only resolves once web addresses are switched on for the platform; the site's always-on shareable link is its /p/ address (once the home page is published). Relay exactly what the tool result says about whether it's live or just reserved — never claim it's live on your own. For a creator's OWN domain (like theirbusiness.com) don't use this — point them to the 'Web address' section in their Laboratory.",
   },
 
   make_image: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id'], optional: ['kind', 'place_as_hero'], enums: {},
-    summary: "Make ONE real image for THIS concept — you write both the picture and a plain one-sentence description of it, so every image a blind creator gets is described. kind is what to make: 'hero image', 'logo', 'product mockup', and so on; it defaults to a hero. Set place_as_hero true to put it straight across the top of the site's home page (a hero is placed there automatically anyway when that slot is empty). Honest and dormant: if image generation isn't switched on, the result says so and NOTHING is made or charged — never say you made an image when the result reports unavailable. Each concept gets a small free allowance each month, then purchased Extras credits; the result tells you whether this one was free or used a credit and how many are left — pass that on, and check with the creator before making images that spend purchased credits. The image is saved to the concept; a hero shows on the site, other kinds you can add to a page.",
+    summary: "Make ONE real image for THIS project — you write both the picture and a plain one-sentence description of it, so every image a blind creator gets is described. kind is what to make: 'hero image', 'logo', 'product mockup', and so on; it defaults to a hero. Set place_as_hero true to put it straight across the top of the site's home page (a hero is placed there automatically anyway when that slot is empty). Honest and dormant: if image generation isn't switched on, the result says so and NOTHING is made or charged — never say you made an image when the result reports unavailable. Each project gets a small free allowance each month, then purchased Extras credits; the result tells you whether this one was free or used a credit and how many are left — pass that on, and check with the creator before making images that spend purchased credits. The image is saved to the project; a hero shows on the site, other kinds you can add to a page.",
   },
 
   // ---- staff-only tools (gated by role: never offered to a regular builder) ----
   platform_pulse: {
     irreversible: false, requires_confirmation: false, required: [], enums: {},
-    summary: "Staff only. Read-only snapshot of the platform right now: how many creators, concepts, and live listings there are, how many listings are waiting for review, how many reports are open, and whether Clay's brain, research, email, and payments are connected. Use it when a teammate asks how the platform is doing or what needs attention.",
+    summary: "Staff only. Read-only snapshot of the platform right now: how many creators, projects, and live listings there are, how many listings are waiting for review, how many reports are open, and whether Clay's brain, research, email, and payments are connected. Use it when a teammate asks how the platform is doing or what needs attention.",
   },
   review_queue: {
     irreversible: false, requires_confirmation: false, required: [], enums: {},
@@ -224,7 +224,7 @@ const TOOLS = {
     irreversible: false, requires_confirmation: true,
     required: ['listing_id', 'decision'], optional: ['reason', 'notes'],
     enums: { decision: ['approved', 'rejected'], reason: ['missing_baseline', 'running_business', 'fraud', 'missing_risk_disclosure'] },
-    summary: "Staff only, consequential — always confirm first. Approve or reject a listing in the review queue. Approving makes it live in the Dream Market; rejecting takes it out of review. A rejection MUST carry a policy reason: missing_baseline (no complete baseline package), running_business (it's an already-operating business, and this marketplace sells pre-proven concepts, not live businesses), fraud, or missing_risk_disclosure. 'It competes with mine' is never a valid reason. A moderator can't decide their own listing (owners may clear their own seed listings, recorded in the audit trail). Every decision is logged.",
+    summary: "Staff only, consequential — always confirm first. Approve or reject a listing in the review queue. Approving makes it live in the Dream Market; rejecting takes it out of review. A rejection MUST carry a policy reason: missing_baseline (no complete baseline package), running_business (it's an already-operating business, and this marketplace sells pre-proven projects, not live businesses), fraud, or missing_risk_disclosure. 'It competes with mine' is never a valid reason. A moderator can't decide their own listing (owners may clear their own seed listings, recorded in the audit trail). Every decision is logged.",
   },
   report_queue: {
     irreversible: false, requires_confirmation: false, required: [], enums: {},
