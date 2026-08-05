@@ -65,3 +65,22 @@ test('shopHtml renders a real Buy form only when a concept id is given', () => {
   assert.ok(withForm.includes('name="product_id" value="prod_123"'), 'carries the product id');
   assert.ok(withForm.includes('type="submit"'), 'is a real button');
 });
+
+test('summarizeOrders counts only paid orders as revenue', () => {
+  const rows = [
+    { status: 'paid', amount_cents: 2500, currency: 'usd' },
+    { status: 'paid', amount_cents: 1000, currency: 'usd' },
+    { status: 'pending', amount_cents: 9999, currency: 'usd' },
+    { status: 'failed', amount_cents: 5000, currency: 'usd' },
+  ];
+  const s = store.summarizeOrders(rows);
+  assert.strictEqual(s.paid_count, 2, 'two paid');
+  assert.strictEqual(s.paid_total_cents, 3500, 'only paid summed');
+  assert.strictEqual(s.unfinished, 2, 'pending+failed are unfinished');
+  assert.strictEqual(s.currency, 'usd');
+});
+
+test('summarizeOrders handles empty and junk input safely', () => {
+  assert.deepStrictEqual(store.summarizeOrders([]), { paid_count: 0, paid_total_cents: 0, currency: 'usd', unfinished: 0 });
+  assert.deepStrictEqual(store.summarizeOrders(null), { paid_count: 0, paid_total_cents: 0, currency: 'usd', unfinished: 0 });
+});

@@ -63,7 +63,17 @@ function normalizeProduct({ name, price, description, image_url, currency } = {}
   };
 }
 
+// Summarize a set of store_orders rows: paid orders count toward revenue; started-but-unfinished
+// checkouts are counted separately and NEVER as money. Pure, so the money math is unit-tested.
+function summarizeOrders(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  const paid = list.filter((r) => r && r.status === 'paid');
+  const paidTotal = paid.reduce((s, r) => s + (Number(r.amount_cents) || 0), 0);
+  const currency = (paid[0] && paid[0].currency) || (list[0] && list[0].currency) || 'usd';
+  return { paid_count: paid.length, paid_total_cents: paidTotal, currency, unfinished: list.length - paid.length };
+}
+
 module.exports = {
-  parsePriceToCents, normalizeCurrency, formatPrice, cleanImageUrl, normalizeProduct,
+  parsePriceToCents, normalizeCurrency, formatPrice, cleanImageUrl, normalizeProduct, summarizeOrders,
   CURRENCIES, DEFAULT_CURRENCY, MAX_PRICE_CENTS,
 };

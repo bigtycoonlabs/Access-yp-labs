@@ -5,6 +5,17 @@
 <title>Coming soon — Access YP Labs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <link rel="stylesheet" href="/css/site-themes.css"/>
+<style>
+.shop{margin:24px 0}
+.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-top:12px}
+.product-card{border:1px solid rgba(0,0,0,.15);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:6px}
+.product-img{width:100%;height:auto;border-radius:8px;display:block}
+.product-name{margin:.2em 0;font-size:1.05rem}
+.product-price{font-weight:700;margin:.1em 0}
+.product-desc{margin:.2em 0;opacity:.85}
+.buy-form{margin-top:auto}
+.buy-btn{width:100%}
+</style>
 </head>
 <body class="sitebody" data-theme="warm">
 <img id="hero" class="site-hero" alt="" hidden/>
@@ -16,6 +27,10 @@
     <p class="site-blurb" id="blurb" hidden></p>
     <nav id="nav" class="sitenav" aria-label="Site pages" hidden></nav>
     <article id="article" class="article" hidden></article>
+    <section id="shop" class="shop" hidden>
+      <h2 id="shop-h">Shop</h2>
+      <div id="shop-grid" class="product-grid"></div>
+    </section>
     <div class="capture">
       <label for="email">Enter your email to be first in line</label>
       <input id="email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-describedby="cap-note"/>
@@ -94,6 +109,33 @@
   }
   function setHero(url){ var h=document.getElementById('hero'); if(url){ h.src=url; h.hidden=false; } else { h.hidden=true; } }
 
+  // Render a real, buyable shop. No innerHTML — DOM nodes only, matching this file's XSS-safe style.
+  // The Buy button is a native form POST to the platform checkout, which starts a direct charge on
+  // the creator's own Stripe account. checkout_action is an absolute URL so it works on the /p/
+  // preview and on a creator's custom domain alike.
+  function renderShop(products, action){
+    var sec=document.getElementById('shop'); var grid=document.getElementById('shop-grid');
+    grid.textContent='';
+    if(!products || !products.length){ sec.hidden=true; return; }
+    products.forEach(function(p){
+      var card=document.createElement('div'); card.className='product-card';
+      if(p.image_url){ var img=document.createElement('img'); img.className='product-img'; img.src=p.image_url; img.alt=p.name||''; card.appendChild(img); }
+      var h=document.createElement('h3'); h.className='product-name'; h.textContent=p.name||''; card.appendChild(h);
+      var pr=document.createElement('p'); pr.className='product-price'; pr.textContent=p.price_display||''; card.appendChild(pr);
+      if(p.description){ var d=document.createElement('p'); d.className='product-desc'; d.textContent=p.description; card.appendChild(d); }
+      if(action && p.id){
+        var f=document.createElement('form'); f.className='buy-form'; f.method='POST'; f.action=action;
+        var hid=document.createElement('input'); hid.type='hidden'; hid.name='product_id'; hid.value=p.id; f.appendChild(hid);
+        var b=document.createElement('button'); b.type='submit'; b.className='btn-cta buy-btn';
+        b.textContent='Buy — '+(p.price_display||'');
+        b.setAttribute('aria-label','Buy '+(p.name||'')+' for '+(p.price_display||''));
+        f.appendChild(b); card.appendChild(f);
+      }
+      grid.appendChild(card);
+    });
+    sec.hidden=false;
+  }
+
   async function loadHome(){
     var r=await fetch(apiHome());
     if(!r.ok){ statusEl.textContent='This page isn’t available.'; return; }
@@ -106,6 +148,7 @@
     document.getElementById('join').textContent=d.cta_label||'Get early access';
     document.getElementById('cap-note').textContent=tally(d.count);
     renderNav(d.pages, '');
+    renderShop(d.products, d.checkout_action);
     statusEl.hidden=true; document.getElementById('page').hidden=false;
   }
   async function loadSubPage(){

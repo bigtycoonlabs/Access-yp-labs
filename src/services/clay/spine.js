@@ -96,6 +96,11 @@ const TOOLS = {
     required: ['concept_id'], enums: {},
     summary: "List the products in THIS concept's store, each with its price and whether it's active (shown) or hidden. Check this before adding or editing products so you know what's already there.",
   },
+  list_sales: {
+    irreversible: false, requires_confirmation: false,
+    required: ['concept_id'], enums: {},
+    summary: "Read THIS concept's storefront sales — how many have sold, the total taken (which goes to the creator's OWN account; the platform takes nothing), and the most recent orders. Use it whenever the creator asks how their store or sales are doing. Report only what it returns; never invent a number.",
+  },
   edit_product: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id', 'product_id'],

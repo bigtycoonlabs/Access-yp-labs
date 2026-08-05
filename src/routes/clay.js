@@ -1199,6 +1199,26 @@ function buildExecutors(user) {
       return { count: r.rows.length,
         products: r.rows.map((p) => ({ product_id: p.id, name: p.name, price: store.formatPrice(p.price_cents, p.currency), active: p.active, has_image: !!p.image_url })) };
     },
+    list_sales: async ({ concept_id }) => {
+      if (!(await query('SELECT 1 FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id])).rows.length) return { status: 'error', message: 'Concept not found.' };
+      const rows = (await query(
+        `SELECT product_name, amount_cents, currency, status, buyer_email, paid_at, created_at
+           FROM store_orders WHERE concept_id=$1 ORDER BY created_at DESC LIMIT 50`, [concept_id])).rows;
+      const paid = rows.filter((r) => r.status === 'paid');
+      const s = store.summarizeOrders(rows);
+      return {
+        paid_count: s.paid_count,
+        total_taken: store.formatPrice(s.paid_total_cents, s.currency),
+        goes_to: "the creator's own account — the platform takes nothing",
+        unfinished_checkouts: s.unfinished,
+        recent_sales: paid.slice(0, 10).map((r) => ({
+          product: r.product_name,
+          amount: store.formatPrice(r.amount_cents, r.currency),
+          buyer_email: r.buyer_email || null,
+          when: r.paid_at || r.created_at,
+        })),
+      };
+    },
     edit_product: async ({ concept_id, product_id, name, price, description, image_url, active }) => {
       const own = await query('SELECT sp.id FROM store_products sp JOIN concepts c ON c.id=sp.concept_id WHERE sp.id=$1 AND sp.concept_id=$2 AND c.owner_id=$3', [product_id, concept_id, user.id]);
       if (!own.rows.length) return { status: 'error', message: 'Product not found.' };

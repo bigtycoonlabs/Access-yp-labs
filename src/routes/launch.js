@@ -1,7 +1,21 @@
 const express = require('express');
 const { query } = require('../config/db');
 const { asyncHandler, ApiError } = require('../lib/http');
+const store = require('../services/clay/store');
 const router = express.Router();
+
+function checkoutBase() {
+  return (process.env.CLIENT_URL || '').startsWith('https') ? process.env.CLIENT_URL : 'https://accessyplabs.com';
+}
+async function activeProducts(conceptId) {
+  const r = await query(
+    'SELECT id, name, price_cents, currency, description, image_url FROM store_products WHERE concept_id=$1 AND active=true ORDER BY sort_order, created_at',
+    [conceptId]);
+  return r.rows.map((p) => ({
+    id: p.id, name: p.name, price_display: store.formatPrice(p.price_cents, p.currency),
+    description: p.description || '', image_url: p.image_url || '',
+  }));
+}
 
 // GET /api/launch/:slug — PUBLIC. Resolve a published launch page by its slug, returning the copy
 // and the concept id the coming-soon page needs to send signups to. Only published pages resolve.
@@ -16,6 +30,7 @@ router.get('/:slug', asyncHandler(async (req, res) => {
   const pages = await query(
     'SELECT slug, title, kind FROM site_pages WHERE concept_id=$1 AND published=true ORDER BY nav_order, created_at',
     [c.id]);
+  const products = await activeProducts(c.id);
   res.json({
     concept_id: c.id,
     title: c.title,
@@ -28,6 +43,8 @@ router.get('/:slug', asyncHandler(async (req, res) => {
     hero_image: p.hero_image || '',
     count: cnt.rows[0].n,
     pages: pages.rows,
+    products,
+    checkout_action: checkoutBase() + '/api/store/' + c.id + '/checkout',
   });
 }));
 

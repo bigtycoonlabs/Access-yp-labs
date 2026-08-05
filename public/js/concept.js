@@ -241,6 +241,47 @@
     } catch (e) { /* skip silently */ }
   }
 
+  function saleDate(s) { try { return new Date(s).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); } catch (e) { return ''; } }
+
+  // Your sales — a truthful read of this concept's storefront orders. Owner-only (the endpoint
+  // 404s for anyone else, so we skip quietly). Paid orders count toward the total; started-but-
+  // unfinished checkouts are noted separately and never counted as money.
+  async function loadSales(conceptId) {
+    try {
+      var r = await Kiln.api('/concepts/' + conceptId + '/orders');
+      if (!r || !r.ok) return;
+      var sum = r.summary || {};
+      var orders = r.orders || [];
+      var paid = orders.filter(function (o) { return o.status === 'paid'; });
+      // Only show the section once there's a store selling — no empty "sales" box on every concept.
+      if (!paid.length && !orders.length) return;
+      var sect = el('section', 'sales'); sect.setAttribute('aria-label', 'Your sales');
+      sect.appendChild(el('h2', null, 'Your sales'));
+      var line = (sum.paid_count === 1)
+        ? 'You’ve made 1 sale, ' + (sum.paid_total_display || '$0.00') + ' in total. This money goes to your own account.'
+        : 'You’ve made ' + (sum.paid_count || 0) + ' sales, ' + (sum.paid_total_display || '$0.00') + ' in total. This money goes to your own account.';
+      sect.appendChild(el('p', 'sales-summary', line));
+      if (!paid.length) {
+        sect.appendChild(el('p', 'muted', 'No completed sales yet. When someone buys, it’ll show up here.'));
+      } else {
+        var ul = el('ul', 'sales-list');
+        paid.forEach(function (o) {
+          var when = saleDate(o.paid_at || o.created_at);
+          var txt = o.product_name + ' — ' + o.amount_display + (when ? ' on ' + when : '') + (o.buyer_email ? ' — ' + o.buyer_email : '');
+          ul.appendChild(el('li', null, txt));
+        });
+        sect.appendChild(ul);
+      }
+      var unfinished = orders.length - paid.length;
+      if (unfinished > 0) {
+        sect.appendChild(el('p', 'muted', (unfinished === 1
+          ? '1 checkout was started but not completed'
+          : unfinished + ' checkouts were started but not completed') + ' — not counted above, and nothing was charged for those.'));
+      }
+      actionsEl.appendChild(sect);
+    } catch (e) { /* skip silently */ }
+  }
+
   // ---- Creator Path: where are you taking THIS concept? (per-concept intent) ----
   // The plan shapes how Clay coaches this concept and is settable in plain conversation too; this is
   // the visible, screen-reader-first control for it. There is no wrong answer and no ceiling.
@@ -391,6 +432,7 @@
       cActs.appendChild(econ);
       actionsEl.appendChild(cActs);
       loadExtras(id);
+      loadSales(id);
 
       // ---- keep / unlock, only when something is actually locked ----
       if (!entitled && lockedCount) {

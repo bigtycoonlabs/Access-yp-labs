@@ -17,6 +17,7 @@ const domainStore = require('../services/clay/domainStore');
 const valuation = require('../services/clay/valuation');
 const brief = require('../services/clay/brief');
 const launchPage = require('../services/clay/launchPage');
+const store = require('../services/clay/store');
 const crypto = require('crypto');
 
 const ASSET_TYPES = ['business_plan', 'marketing_strategy', 'customer_research', 'competitor_research',
@@ -421,6 +422,35 @@ router.delete('/:id', authenticate, asyncHandler(async (req, res) => {
   const r = await query('DELETE FROM concepts WHERE id=$1 AND owner_id=$2 RETURNING id', [req.params.id, req.user.id]);
   if (!r.rows.length) throw new ApiError(404, 'Concept not found.');
   res.json({ ok: true });
+}));
+
+// GET /:id/orders — the concept owner's storefront sales, newest first. Owner-only. The money is
+// the creator's; this is just a truthful read of their own ledger (paid orders count toward totals;
+// pending/failed are shown but never counted as revenue).
+router.get('/:id/orders', authenticate, asyncHandler(async (req, res) => {
+  const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
+  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  const rows = (await query(
+    `SELECT product_name, amount_cents, currency, status, buyer_email, created_at, paid_at
+       FROM store_orders WHERE concept_id=$1 ORDER BY created_at DESC LIMIT 200`, [req.params.id])).rows;
+  const s = store.summarizeOrders(rows);
+  res.json({
+    ok: true,
+    summary: {
+      paid_count: s.paid_count,
+      paid_total_cents: s.paid_total_cents,
+      paid_total_display: store.formatPrice(s.paid_total_cents, s.currency),
+      currency: s.currency,
+    },
+    orders: rows.map((r) => ({
+      product_name: r.product_name,
+      amount_display: store.formatPrice(r.amount_cents, r.currency),
+      status: r.status,
+      buyer_email: r.buyer_email || null,
+      created_at: r.created_at,
+      paid_at: r.paid_at,
+    })),
+  });
 }));
 
 module.exports = router;
