@@ -159,11 +159,8 @@ async function loadIssues(){
       var acts=el('p','acts');
 
       if(i.status==='draft'){
-        var preview=el('a','btn secondary','Read the draft'); preview.href='/weekly/'+encodeURIComponent(i.slug);
-        preview.style.textDecoration='none'; preview.style.lineHeight='44px';
-        // A draft has no public page yet, so say so rather than linking somewhere broken.
-        preview=el('span','muted','Approve it to see the page.');
-        acts.appendChild(preview);
+        // A draft has no public page yet, so say so rather than offering a link that 404s.
+        acts.appendChild(el('span','muted','Approve it to see the page.'));
         acts.appendChild(actBtn('Approve this issue','',async function(){
           try{ await Kiln.api('/weekly/'+i.id+'/approve',{method:'POST'});
             say('Approved. It is not public yet — publishing is the next step.',true); loadIssues();

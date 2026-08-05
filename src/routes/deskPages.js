@@ -134,8 +134,17 @@ router.get('/sitemap.xml', asyncHandler(async (req, res) => {
   ];
   let articles = [];
   try { articles = await deskCompose.publishedSlugs(500); } catch (_) { articles = []; }
+  // Clay Weekly issues are public pages too — they belong in the sitemap or nothing Clay writes
+  // for the magazine can be found. Required lazily so a failure here can never break the Desk.
+  let issues = [];
+  try { issues = await require('../services/clay/weekly').listPublished(200); } catch (_) { issues = []; }
 
-  const urls = core.map((c) => `  <url><loc>${esc(c.loc)}</loc><priority>${c.priority}</priority></url>`)
+  const urls = core.concat([{ loc: `${site}/weekly`, priority: '0.8' }])
+    .map((c) => `  <url><loc>${esc(c.loc)}</loc><priority>${c.priority}</priority></url>`)
+    .concat(issues.map((i) => {
+      const lastmod = i.published_at ? new Date(i.published_at).toISOString().slice(0, 10) : null;
+      return `  <url><loc>${esc(site + '/weekly/' + i.slug)}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ''}<priority>0.7</priority></url>`;
+    }))
     .concat(articles.map((a) => {
       const lastmod = a.published_at ? new Date(a.published_at).toISOString().slice(0, 10) : null;
       return `  <url><loc>${esc(site + '/desk/' + a.slug)}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ''}<priority>0.7</priority></url>`;

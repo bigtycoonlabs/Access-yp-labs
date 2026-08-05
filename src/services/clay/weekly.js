@@ -138,7 +138,11 @@ async function claySays(prompt, fallback) {
   try {
     if (!provider.available()) return fallback;
     const out = await agent.runChat({ messages: [{ role: 'user', content: prompt }], allowTools: [] });
-    const reply = out && out.reply ? String(out.reply).trim() : '';
+    // Only use the text when Clay ACTUALLY answered. On any other status the reply field carries an
+    // apology about the provider being down — publishing that as Clay's Note would put an error
+    // message in the magazine and email it to everyone. Fall back to honest, pre-written prose.
+    if (!out || out.status !== 'answered') return fallback;
+    const reply = out.reply ? String(out.reply).trim() : '';
     return reply || fallback;
   } catch (_) { return fallback; }
 }
@@ -152,11 +156,17 @@ async function composeIssue({ weekStart } = {}) {
     weekArticles(week), topCreators(week), topMovers(week),
   ]);
 
-  // An accepted sponsorship for this week, if a creator already said yes.
+  // An accepted sponsorship to feature. It must not already belong to a DIFFERENT issue: once a
+  // project has run as Project of the Week it is spent, otherwise the same creator would be
+  // featured every week forever. Re-running compose for the same week keeps its own sponsorship,
+  // which is why the existing issue's id is allowed through.
+  const existing = await query('SELECT id FROM weekly_issues WHERE week_start=$1', [week]);
+  const existingId = existing.rows.length ? existing.rows[0].id : null;
   const acc = await query(
-    `SELECT s.concept_id, s.reason, c.title, c.brief
+    `SELECT s.id, s.concept_id, s.reason, c.title, c.brief
        FROM weekly_sponsorships s JOIN concepts c ON c.id=s.concept_id
-      WHERE s.status='accepted' ORDER BY s.responded_at DESC LIMIT 1`);
+      WHERE s.status='accepted' AND (s.issue_id IS NULL OR s.issue_id = $1)
+      ORDER BY s.responded_at ASC LIMIT 1`, [existingId]);
   const sponsored = acc.rows[0] || null;
 
   const facts = [
@@ -194,9 +204,15 @@ async function composeIssue({ weekStart } = {}) {
      sponsored ? sponsored.concept_id : null, blurb, JSON.stringify(highlights)]);
 
   if (!r.rows.length) {
-    const existing = await query('SELECT id, slug, week_start, status FROM weekly_issues WHERE week_start=$1', [week]);
-    return { ok: false, reason: 'already_approved_or_published', issue: existing.rows[0] || null };
+    const already = await query('SELECT id, slug, week_start, status FROM weekly_issues WHERE week_start=$1', [week]);
+    return { ok: false, reason: 'already_approved_or_published', issue: already.rows[0] || null };
   }
+
+  // Spend the sponsorship on THIS issue so it can never be reused in a later week.
+  if (sponsored) {
+    await query('UPDATE weekly_sponsorships SET issue_id=$2 WHERE id=$1', [sponsored.id, r.rows[0].id]);
+  }
+
   return { ok: true, issue: r.rows[0], counts: { articles: articles.length, creators: creators.length, movers: movers.length } };
 }
 
@@ -273,6 +289,13 @@ async function sendIssue(id) {
   if (!issue) return { ok: false, reason: 'not_found' };
   if (issue.status !== 'published') return { ok: false, reason: 'not_published' };
   if (issue.sent_at) return { ok: false, reason: 'already_sent', recipients: issue.recipients_count };
+
+  // Anyone without a preferences row yet (an account created before this existed, or a row that
+  // failed to write) would otherwise be silently skipped — invisible, and impossible to notice from
+  // the outside. Give them the default row first, so the recipient list is genuinely everyone who
+  // has not opted out, rather than everyone we happen to have a row for.
+  await query(
+    `INSERT INTO user_email_prefs (user_id) SELECT id FROM users ON CONFLICT (user_id) DO NOTHING`);
 
   const rec = await query(
     `SELECT u.email, COALESCE(NULLIF(u.name,''),'there') AS name, p.token
