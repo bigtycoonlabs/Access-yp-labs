@@ -83,6 +83,8 @@ const research = require('./research');
 const { CLAY_VERSION_LABEL } = require('./version');
 const { glossarySize } = require('./glossary');
 let stripeSvc = null; try { stripeSvc = require('../stripe'); } catch (_) { /* optional until deployed */ }
+const image = require('../image');
+const storage = require('../storage');
 
 async function systemsStatus() {
   const env = process.env;
@@ -123,6 +125,12 @@ async function systemsStatus() {
     payments: { secret_key: stripeConfigured, webhook_secret: webhookSecret, events_recorded: stripeEvents },
     memory: { ok: memoryOk, facts_stored: memoryFacts },
     knowledge: { glossary_terms: glossarySize() },
+    images: {
+      configured: image.configured(),
+      host: image.configured() ? image.providerHost() : null,
+      model: image.configured() ? (process.env.IMAGE_MODEL || null) : null,
+      storage: storage.configured(),
+    },
   };
   status.summary = summarizeSystems(status);
   return status;
@@ -163,6 +171,15 @@ function summarizeSystems(s) {
   }
   if (s.knowledge && typeof s.knowledge.glossary_terms === 'number') {
     parts.push(`Clay can define ${s.knowledge.glossary_terms} business terms in plain language.`);
+  }
+  if (s.images) {
+    if (s.images.configured) {
+      parts.push(`Image generation is connected${s.images.host ? ` — provider ${s.images.host}` : ''}${s.images.model ? `, model ${s.images.model}` : ''}. ` + (s.images.storage
+        ? `Permanent image storage is ON, so generated images are saved for good.`
+        : `Permanent image storage is OFF — images may come back as temporary links, so turn on storage (SUPABASE_URL and the service-role key) if heroes need to stay put.`));
+    } else {
+      parts.push(`Image generation is NOT configured — set the image provider keys (IMAGE_API_KEY and IMAGE_API_URL) to let Clay make pictures.`);
+    }
   }
   return parts.join(' ');
 }
