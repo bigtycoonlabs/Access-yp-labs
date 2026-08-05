@@ -133,6 +133,18 @@ test('agent runs reversible actions and rejects bad enums', () => {
   assert.strictEqual(agent.planToolInvocation('list_on_marketplace', { concept_id: 'x', format: 'barter', price: 5000 }).action, 'reject');
 });
 
+test('make_image is a registered, reversible tool with a boolean hero-placement flag', () => {
+  assert.ok(spine.TOOLS.make_image, 'make_image is a registered tool');
+  assert.ok(spine.TOOLS.make_image.required.includes('concept_id'));
+  assert.ok(spine.TOOLS.make_image.optional.includes('place_as_hero'));
+  assert.strictEqual(spine.requiresConfirmation('make_image'), false);
+  const schema = agent.toolSchemas().find((s) => s.name === 'make_image');
+  assert.ok(schema, 'make_image is offered to the model');
+  assert.strictEqual(schema.input_schema.properties.place_as_hero.type, 'boolean');
+  // A creator making an image is reversible and safe to run without a confirmation gate.
+  assert.strictEqual(agent.planToolInvocation('make_image', { concept_id: 'x' }).action, 'execute');
+});
+
 // ---- Clay model provider selection ----
 const provider = require('../src/services/clay/provider');
 

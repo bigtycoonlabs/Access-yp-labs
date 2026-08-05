@@ -74,8 +74,24 @@ async function generateOne(concept, opts = {}) {
      VALUES ($1,'example_image',$2,$3,false,'not_required',1,true) RETURNING id`,
     [concept.id, brief.alt, src]);
 
+  // If this is a hero and we have a real hosted URL (object storage on), put it on the site's home.
+  // An explicit place_as_hero (the creator asked) replaces the current hero; an auto/first-build hero
+  // only fills an empty slot so it never clobbers the creator's own choice. Data-URL images can't be
+  // a web hero (the hero field only accepts http(s)), so those stay as a vault asset.
+  const httpsUrl = /^https?:\/\//i.test(src) ? src : null;
+  const wantHero = opts.placeAsHero === true || /hero/i.test(kind);
+  let placedAsHero = false;
+  if (wantHero && httpsUrl) {
+    const sql = opts.placeAsHero === true
+      ? "UPDATE concepts SET launch_page = jsonb_set(COALESCE(launch_page,'{}'::jsonb), '{hero_image}', to_jsonb($2::text)), updated_at=NOW() WHERE id=$1 RETURNING id"
+      : "UPDATE concepts SET launch_page = jsonb_set(COALESCE(launch_page,'{}'::jsonb), '{hero_image}', to_jsonb($2::text)), updated_at=NOW() WHERE id=$1 AND COALESCE(launch_page->>'hero_image','')='' RETURNING id";
+    const upd = await query(sql, [concept.id, httpsUrl]);
+    placedAsHero = upd.rows.length > 0;
+  }
+
   const after = await budget.budgetFor(concept.id, ownerId);
-  return { ok: true, asset_id: ins.rows[0].id, alt: brief.alt, billed: spent.billed, budget: after };
+  return { ok: true, asset_id: ins.rows[0].id, alt: brief.alt, billed: spent.billed, budget: after,
+    src, is_url: !!httpsUrl, placed_as_hero: placedAsHero };
 }
 
 module.exports = { generateOne, describeVisual };

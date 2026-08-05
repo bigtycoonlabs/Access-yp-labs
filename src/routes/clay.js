@@ -1041,6 +1041,35 @@ function buildExecutors(user) {
           ? `The site is live at https://${d.hostname} — a real address they can share.`
           : `Reserved https://${d.hostname}. ` + (shareUrl ? `The shareable link right now is ${shareUrl}. ` : 'Publish the home page to get a shareable link. ') + `The ${d.hostname} address goes live once web addresses are switched on — say it's reserved, not live.` };
     },
+    make_image: async ({ concept_id, kind, place_as_hero }) => {
+      const c = await query('SELECT id, owner_id, title, category FROM concepts WHERE id=$1', [concept_id]);
+      if (!c.rows.length) return { error: 'not_found', message: 'That concept could not be found.' };
+      const concept = c.rows[0];
+      const isStaff = ['staff', 'admin', 'master_staff'].includes(user.role);
+      if (concept.owner_id !== user.id && !isStaff) return { error: 'not_your_concept' };
+      const k = (typeof kind === 'string' && kind.trim()) ? kind.trim().slice(0, 40) : 'hero image';
+      const r = await images.generateOne(concept, { kind: k, source: 'manual', ownerId: concept.owner_id, placeAsHero: place_as_hero === true });
+      if (!r.ok) {
+        const msgs = {
+          unavailable: "Image generation isn't switched on yet — nothing was made and nothing was charged. Tell the creator plainly; don't pretend an image exists.",
+          no_budget: 'This concept has used its image allowance for the month — an Extras pack adds more.',
+          no_brief: "Couldn't compose the image just now — nothing was made and nothing was charged.",
+          empty: 'The image service returned nothing, so nothing was saved.',
+        };
+        return { ok: false, reason: r.reason, message: msgs[r.reason] || ('Could not make the image right now (' + r.reason + ').'), budget: r.budget || null };
+      }
+      const remaining = r.budget ? r.budget.total_remaining : null;
+      return {
+        ok: true, alt: r.alt, billed: r.billed, placed_as_hero: r.placed_as_hero, remaining,
+        on_site: r.placed_as_hero
+          ? 'It is now the hero image across the top of the site.'
+          : (r.is_url ? 'Saved to the concept — set it as the hero or add it to a page to show it on the site.'
+                      : 'Saved to the concept. Object storage is off, so it can’t be a web hero yet.'),
+        message: 'Made an image, described as: ' + r.alt + '.'
+          + (r.billed === 'paid' ? ' Used one Extras credit.' : ' Free this month.')
+          + (remaining != null ? ' ' + remaining + ' left this month.' : ''),
+      };
+    },
     define_term: async ({ term }) => {
       const e = glossary.defineTerm(term);
       return e

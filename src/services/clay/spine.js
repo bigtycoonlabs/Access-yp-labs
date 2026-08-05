@@ -159,6 +159,12 @@ const TOOLS = {
     summary: "Reserve THIS concept's short free web address on our platform: <label>.accessyplabs.com. label is a short word or two the creator chooses — letters, numbers, hyphens. The name is claimed at once, but the address only resolves once web addresses are switched on for the platform; the site's always-on shareable link is its /p/ address (once the home page is published). Relay exactly what the tool result says about whether it's live or just reserved — never claim it's live on your own. For a creator's OWN domain (like theirbusiness.com) don't use this — point them to the 'Web address' section in their Laboratory.",
   },
 
+  make_image: {
+    irreversible: false, requires_confirmation: false,
+    required: ['concept_id'], optional: ['kind', 'place_as_hero'], enums: {},
+    summary: "Make ONE real image for THIS concept — you write both the picture and a plain one-sentence description of it, so every image a blind creator gets is described. kind is what to make: 'hero image', 'logo', 'product mockup', and so on; it defaults to a hero. Set place_as_hero true to put it straight across the top of the site's home page (a hero is placed there automatically anyway when that slot is empty). Honest and dormant: if image generation isn't switched on, the result says so and NOTHING is made or charged — never say you made an image when the result reports unavailable. Each concept gets a small free allowance each month, then purchased Extras credits; the result tells you whether this one was free or used a credit and how many are left — pass that on, and check with the creator before making images that spend purchased credits. The image is saved to the concept; a hero shows on the site, other kinds you can add to a page.",
+  },
+
   // ---- staff-only tools (gated by role: never offered to a regular builder) ----
   platform_pulse: {
     irreversible: false, requires_confirmation: false, required: [], enums: {},
