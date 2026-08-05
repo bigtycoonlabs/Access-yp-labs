@@ -1,0 +1,12 @@
+-- 028_tech_spec_asset.sql
+-- Consolidate the technical build guidance into ONE document. Clay used to emit three separate
+-- sections — a website build prompt, an API-keys/services overview, and AI build instructions.
+-- A builder shouldn't have to stitch three assets together to know how to build the thing, so
+-- they become a single "technical build spec": the AI-builder prompt to paste, what the app or
+-- website should contain, the API keys and services needed (needed vs optional, what for,
+-- free-vs-paid), the platform/stack, and the step-by-step build flow — all in one place.
+--
+-- Additive: this only ADDS the new enum value. The old values (website_prompt, tech_requirements,
+-- build_instructions) stay in the enum so existing concepts' assets remain valid history; Clay
+-- simply stops producing them in new builds (that change is in code, not schema).
+ALTER TYPE asset_type ADD VALUE IF NOT EXISTS 'tech_spec';

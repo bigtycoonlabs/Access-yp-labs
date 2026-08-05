@@ -485,6 +485,54 @@ async function runEnterpriseBuild({ user, prompt, buildId, uploadIds = [] }) {
   }
 }
 
+// ---- On-request demo builder ----------------------------------------------------------------
+// Clay no longer bundles a demo into every concept. When a creator wants one for an APP-like idea,
+// this builds a real, interactive, accessible HTML demo as its own focused, higher-quality job and
+// attaches it to the concept. (For a simpler idea, Clay builds a real published website instead,
+// using set_launch_page + add_site_page — no demo build needed.) Background + watchable like any
+// other build; honest on failure and never fabricating.
+async function runDemoBuild({ user, concept, buildId }) {
+  const t0 = Date.now();
+  const onProgress = (text) => addBuildNote(buildId, text);
+  try {
+    await onProgress('Building a real, clickable demo of “' + (concept.title || 'your concept') + '” you can tab and click through…');
+    // Ground the demo in the concept's own current content so it's specific, not generic.
+    let context = '';
+    try {
+      const a = await query("SELECT type, body FROM assets WHERE concept_id=$1 AND is_current=true AND type IN ('business_plan','marketing_strategy','money_flow') ORDER BY created_at", [concept.id]);
+      context = a.rows.map((r) => '[' + r.type + '] ' + String(r.body || '').replace(/\s+/g, ' ').trim().slice(0, 2500)).join('\n\n');
+    } catch (_) { /* context is a bonus */ }
+    const demo = await clay.generateDemo({ concept, context });
+    if (demo.status !== 'answered') {
+      const m = demo.message || 'Clay couldn’t build the demo this time. Nothing was made up — try again in a moment.';
+      await journal.recordRun({ actorId: user.id, kind: 'generate', mode: 'enhance', category: concept.category || null,
+        conceptId: concept.id, resultStatus: demo.status === 'unavailable' ? 'unavailable' : 'empty',
+        providerAvailable: provider.available(), reason: 'demo_' + demo.status, durationMs: Date.now() - t0 }).catch(() => {});
+      await notifyBuildOutcome(user, m);
+      await finishBuild(buildId, { status: 'failed', message: m, note: m });
+      return;
+    }
+    await onProgress('Saving your demo to the concept…');
+    await persistResult(user.id,
+      { result_status: 'answered', title: concept.title,
+        assets: [{ type: 'html_demo', label: 'Working HTML demo', body: demo.html }] },
+      { conceptId: concept.id, mode: 'enhance', category: concept.category || null, prompt: 'demo' });
+    await journal.recordRun({ actorId: user.id, kind: 'generate', mode: 'enhance', category: concept.category || null,
+      conceptId: concept.id, resultStatus: 'answered', providerAvailable: provider.available(),
+      reason: 'demo_built', durationMs: Date.now() - t0 }).catch(() => {});
+    const doneMsg = 'Your interactive demo is ready and saved to “' + (concept.title || 'your concept') + '” — open it in your Laboratory to click through it.';
+    await finishBuild(buildId, { status: 'done', conceptId: concept.id, message: doneMsg, note: doneMsg });
+  } catch (e) {
+    await journal.recordRun({ actorId: user.id, kind: 'generate', mode: 'enhance', category: concept.category || null,
+      conceptId: concept.id, resultStatus: 'unavailable', providerAvailable: provider.available(),
+      reason: 'demo_build_error: ' + (e && e.message ? e.message : 'unknown'), durationMs: Date.now() - t0 }).catch(() => {});
+    health.checkAndAlert().catch(() => {});
+    const m = 'Clay hit a snag while building your demo and didn’t finish. Nothing was fabricated — please try again in a moment.';
+    await notifyBuildOutcome(user, m);
+    await finishBuild(buildId, { status: 'failed', message: m, note: m });
+  }
+}
+
 // POST /api/clay/generate  { mode, category?, prompt, concept_id? }
 // Async by design: a full concept takes 1–3 minutes to write, so we confirm immediately
 // and email the finished package rather than parking the user on a spinner.
@@ -1121,6 +1169,14 @@ function buildExecutors(user) {
       runBuild({ user, mode: 'enhance', category: own.rows[0].category || null, prompt: groundedPrompt, operating: false, conceptId: concept_id, buildId })
         .catch(() => {});
       return { status: 'building', build_id: buildId, message: 'Refining the materials now — this takes a minute or two, and you can watch it happen.' };
+    },
+    build_demo: async ({ concept_id }) => {
+      const own = await query('SELECT id, title, category, risk_summary, owner_id FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
+      if (!own.rows.length) return { status: 'error', message: 'Concept not found.' };
+      const buildId = await createBuild(user.id, buildOpener(own.rows[0].title || 'your concept', 'On it — building a demo of'));
+      runDemoBuild({ user, concept: own.rows[0], buildId })
+        .catch(() => {});
+      return { status: 'building', build_id: buildId, message: 'Building your interactive demo now — this takes a minute or two, and you can watch it happen.' };
     },
     generate_social_content: async ({ concept_id, platforms, goal, count }) => {
       const c = await query('SELECT id,title,category,risk_summary FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);

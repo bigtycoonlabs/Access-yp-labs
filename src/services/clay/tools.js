@@ -5,7 +5,11 @@ const CATEGORIES = [
   'ecommerce_pod', 'ai_product_service', 'remote_hybrid_physical', 'micro_solo',
 ];
 
-// The full concept package Clay assembles. Each becomes an `assets` row.
+// The full concept package Clay assembles by default — the FOUNDATION. Each becomes an `assets`
+// row. Note what's deliberately NOT here: the working demo. Clay no longer bundles a demo into
+// every build; it offers one afterward and picks the right kind (an interactive app demo, or a
+// real published website for simpler ideas). And the old three-part technical guidance
+// (website_prompt + tech_requirements + build_instructions) is now ONE `tech_spec` document.
 const ASSET_PLAN = [
   { type: 'business_plan',       label: 'Business plan' },
   { type: 'marketing_strategy',  label: 'Marketing strategy' },
@@ -16,11 +20,8 @@ const ASSET_PLAN = [
   { type: 'money_flow',          label: 'Payments, pricing & unit economics' },
   { type: 'growth_plan',         label: 'Low-budget go-to-market & scaling' },
   { type: 'presell_kit',         label: 'Pre-sell & demand-validation kit' },
-  { type: 'html_demo',           label: 'Working HTML demo' },
   { type: 'example_image',       label: 'Example image briefs' },
-  { type: 'website_prompt',      label: 'Website build prompt' },
-  { type: 'tech_requirements',   label: 'API keys, services & build flow' },
-  { type: 'build_instructions',  label: 'AI build instructions' },
+  { type: 'tech_spec',           label: 'Technical build spec' },
 ];
 
 const MODES = ['create', 'enhance'];

@@ -78,6 +78,12 @@ const TOOLS = {
     enums: {},
     summary: 'Refine an existing concept. Free; supersedes prior versions as history.',
   },
+  build_demo: {
+    irreversible: false, requires_confirmation: false,
+    required: ['concept_id'],
+    enums: {},
+    summary: "Build a real, clickable, interactive HTML DEMO of THIS concept — a working prototype the creator can actually tab and click through, fully screen-reader operable. Clay does NOT put a demo in the standard package anymore; the standard build is the foundation. OFFER a demo AFTER the foundation is built, and pick the right kind: if the idea is an APPLICATION or app-like product, use build_demo (an interactive prototype); if it's simpler and a real website is the better proof, DON'T use this — build an actual published site instead with set_launch_page and add_site_page. Runs in the background; the creator can watch. Free.",
+  },
   generate_social_content: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id'], optional: ['count'],

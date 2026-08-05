@@ -109,11 +109,8 @@ You must respond with a SINGLE valid JSON object and nothing else, matching:
     "money_flow": string,              // how money moves: the pricing/revenue model, how customers pay (which processor), how anyone gets paid out, the core unit economics (what one sale costs vs earns), and a rough path to break-even. Be concrete with numbers where you can and label estimates as estimates.
     "growth_plan": string,             // how to get the first customers on a near-zero budget, then scale: the specific low-cost channels for THIS business, a concrete pre-launch proof step a real stranger can act on (interview, landing page, preorder, paid pilot), and the path to scale (new verticals, milestones, what unlocks each). Favor time-and-creativity tactics over ad spend.
     "presell_kit": string,             // a ready-to-run play to PROVE demand BEFORE building: a simple, cheap waitlist/landing-page approach the user can stand up, 3-5 pre-launch social posts written and ready to publish, and how to read the signal (what response means "go"). This turns the concept from an idea into an idea with evidence.
-    "html_demo": string,               // a complete, self-contained, CLICKABLE/INTERACTIVE HTML document that MUST be fully accessible and operable with a screen reader (VoiceOver): set <html lang>, use semantic landmarks (header/nav/main/footer), real <button>/<a>/<label> elements (never click-only <div>s), a programmatic label on every control and form field, alt text on every image, a visible keyboard focus style, and touch targets at least 44px. All interactivity via INLINE JavaScript only (no external resources), keyboard-operable, behaving like a live prototype a blind user can tab and click through.
     "example_image": string,           // image-generation BRIEFS (labelled as prompts, not real images)
-    "website_prompt": string,          // a prompt the buyer pastes into their own AI to build the site
-    "tech_requirements": string,       // the external services, API keys, and infrastructure this build will actually need. For EACH: name it, mark it needed vs optional, say plainly what it's for, and give the free-vs-paid split (roughly what it costs). Then give the step-by-step FLOW the user follows to finish the build in their own code tool — everything EXCEPT writing the code itself (which the user completes). Be honest: if something can be built natively with no external key, say so.
-    "build_instructions": string       // step-by-step build incl. Supabase/Railway/GitHub guidance
+    "tech_spec": string                // ONE complete technical build spec — everything needed to build this, in a single document. Clearly section it: (1) BUILD PROMPT — the exact prompt the user pastes into their own AI builder (ChatGPT/Claude) to generate the app or site; (2) WHAT TO BUILD — what the website or application should actually contain: its pages/screens, the core features, the data it stores, and the main user flow; (3) SERVICES & API KEYS — every external service and key it will need, and for EACH: name it, mark needed vs optional, say plainly what it's for, and give the rough free-vs-paid cost; (4) PLATFORM & STACK — what to build on (e.g. GitHub, Railway, Supabase) and why; (5) BUILD FLOW — the step-by-step path the user follows in their own tools to stand it up, everything except writing the code itself. Be honest: if a piece needs no external key, say so. This is the single document a builder takes to actually build the thing.
   }
 }
 Do not wrap the JSON in markdown fences.`;
@@ -220,7 +217,7 @@ async function generate({ mode, category, prompt, operating = false, priorWork =
     'Shaping the business plan — the model, the money, and the first real customer.',
     'Pinning down exactly who this is for — the customer, in real detail.',
     'Now the marketing strategy — who hears about this first, and how they find you.',
-    'Building the working demo you’ll be able to click through.',
+    'Writing the technical build spec — the prompt, the platform, the keys, and the steps.',
     'Mapping the build path — the concrete steps to stand this up.',
     'Labeling the risks and any licensing honestly — no hand-waving.',
     'Tightening the language and making sure every piece fits together…',
@@ -392,6 +389,45 @@ async function describeMedia({ imageBase64, mediaType }) {
     : { status: 'empty', description: '', message: 'No description was produced.' };
 }
 
+// Build a real, working, interactive HTML DEMO of a concept — on request, not by default.
+// Because this is now its OWN focused call (not one of a dozen sections crammed into a single
+// generation), it gets a strong, dedicated prompt with room to breathe and a big token budget —
+// which is exactly what makes an opt-in demo BETTER than the old bundled one. Accessibility is a
+// hard requirement, not a nicety: the people who build here include blind creators who will
+// actually tab and click through this with VoiceOver.
+const DEMO_SYSTEM =
+  'You are Clay, building a REAL, working, interactive HTML demo of a product for a builder on Access YP Labs — a clickable prototype they (and a future buyer) can actually try, not a screenshot and not a description. ' +
+  'Output ONE complete, self-contained HTML document and NOTHING else — no explanation, no markdown fences. ' +
+  'Hard requirements: a full valid document with <!doctype html> and <html lang="en">; ALL CSS and JavaScript INLINE (no external resources, no CDNs, no network calls); genuinely interactive — the core actions of the product actually work in-page using inline JavaScript and in-memory state. ' +
+  'Accessibility is REQUIRED (a blind creator will operate this with VoiceOver): semantic landmarks (header, nav, main, footer), real <button>/<a>/<label> elements (never click-only <div>s), a programmatic label on every control and form field, alt text on every image (or an explicit decorative marking), a clearly visible keyboard focus style, logical heading order, and touch targets at least 44px. Everything must be keyboard-operable and announce state changes. ' +
+  'Make it feel real and specific to THIS product — real labels, realistic sample content, a coherent primary flow the user can complete — but NEVER present fabricated data as real: any sample numbers, names, or results are clearly illustrative placeholders, and you do not invent a real company, real users, or real metrics.';
+
+async function generateDemo({ concept, context = '' }) {
+  if (!provider.available()) {
+    return { status: 'unavailable', message: 'Clay could not run right now (generation service is not configured). Nothing was made.' };
+  }
+  const user = [
+    'Build a working, clickable, accessible HTML demo for this product.',
+    `Name: ${concept.title || 'Untitled product'}`,
+    concept.category ? `Category: ${concept.category}` : null,
+    concept.risk_summary ? `A risk to respect (do not overstate): ${String(concept.risk_summary).slice(0, 400)}` : null,
+    context ? ('\nContext from the concept, so the demo is specific and real:\n' + String(context).slice(0, 6000)) : null,
+    '\nReturn ONLY the complete HTML document.',
+  ].filter(Boolean).join('\n');
+  let out;
+  try {
+    out = await provider.complete({ system: DEMO_SYSTEM, user, json: false, maxTokens: 16000 });
+  } catch (e) {
+    return { status: 'unavailable', message: `Clay could not reach the generation service: ${(e && e.message) || 'unavailable'}. Nothing was made.` };
+  }
+  if (!out.ok) {
+    return { status: 'unavailable', message: `Clay could not reach the generation service: ${out.error || 'unavailable'}. Nothing was made.` };
+  }
+  const html = String(out.text || '').trim().replace(/^```(?:html)?/i, '').replace(/```$/, '').trim();
+  if (!/<html/i.test(html)) return { status: 'empty', message: 'Clay could not produce a working demo this time. Nothing was made up.' };
+  return { status: 'answered', html };
+}
+
 // Rewrite an HTML demo to fix specific accessibility issues WITHOUT changing its
 // look or behaviour. Returns the corrected document or an honest status.
 async function remediateDemo({ html, issues }) {
@@ -409,4 +445,4 @@ async function remediateDemo({ html, issues }) {
   return { status: 'answered', html: fixed };
 }
 
-module.exports = { generate, generateSocial, describeMedia, remediateDemo, selfCheckSources, modelName: provider.modelName, available: provider.available, providerName: provider.providerName };
+module.exports = { generate, generateDemo, generateSocial, describeMedia, remediateDemo, selfCheckSources, modelName: provider.modelName, available: provider.available, providerName: provider.providerName };
