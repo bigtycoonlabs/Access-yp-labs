@@ -11,6 +11,15 @@ test('subdomain labels: normalize + validate + reserved words', () => {
   assert.strictEqual(d.subdomainHost('empower'), 'empower.' + d.sitesRoot());
 });
 
+test('addressesLive is off unless explicitly switched on', () => {
+  const prev = process.env.WEB_ADDRESSES_LIVE;
+  delete process.env.WEB_ADDRESSES_LIVE;
+  assert.strictEqual(d.addressesLive(), false, 'default is not-yet-live so we never over-promise');
+  process.env.WEB_ADDRESSES_LIVE = 'true';
+  assert.strictEqual(d.addressesLive(), true);
+  if (prev === undefined) delete process.env.WEB_ADDRESSES_LIVE; else process.env.WEB_ADDRESSES_LIVE = prev;
+});
+
 test('free-path defaults: first-level addresses, reserved connect target', () => {
   // Default root is first-level so instant addresses are <label>.accessyplabs.com (free Universal SSL).
   assert.strictEqual(d.sitesRoot(), 'accessyplabs.com');

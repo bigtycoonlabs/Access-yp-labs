@@ -532,9 +532,10 @@
   // Web address manager: an instant free address on our platform, or connect your own domain.
   function renderDomains(container, concept) {
     let rootSuffix = 'accessyplabs.com', cnameTarget = '';
+    let addressesLive = false, published = false, shareUrl = '';
     const sec = el('div', 'site-domains'); sec.style.cssText = 'margin-top:16px;border-top:1px solid var(--line);padding-top:12px;';
     sec.appendChild(el('h4', null, 'Web address'));
-    sec.appendChild(el('p', 'muted', 'Give your site a real address. A free address on our platform is live the moment you claim it. Or connect your own domain.'));
+    sec.appendChild(el('p', 'muted', 'Give your site a real address. Reserve a short free address on our platform, or connect your own domain. A reserved address goes live once web addresses are switched on; your site is always shareable at its /p/ link once the home page is published.'));
     const list = el('div'); list.setAttribute('role', 'status'); sec.appendChild(list);
 
     const subL = el('label', null, 'Free address on our platform'); subL.setAttribute('for', 'dom-sub');
@@ -559,16 +560,22 @@
       try {
         const r = await Kiln.api('/concepts/' + concept.id + '/domains');
         rootSuffix = r.sites_root || rootSuffix; cnameTarget = r.cname_target || '';
+        addressesLive = !!r.addresses_live; published = !!r.published; shareUrl = r.share_url || '';
         subSuffix.textContent = '.' + rootSuffix;
         list.textContent = '';
         const ds = r.domains || [];
         if (!ds.length) list.appendChild(el('p', 'muted', 'No web address yet.'));
         ds.forEach(function (d) {
           const row = el('div'); row.style.cssText = 'padding:8px 0;border-bottom:1px solid var(--line);';
+          const isCustom = d.kind === 'custom';
+          const subLive = !isCustom && addressesLive && published;
+          const state = isCustom ? (d.status === 'active' ? 'live' : 'pending') : (subLive ? 'live' : 'reserved — goes live once web addresses are switched on');
           const t = el('p'); t.appendChild(el('strong', null, d.hostname));
-          t.appendChild(document.createTextNode(' — ' + (d.status === 'active' ? 'live' : 'pending')));
+          t.appendChild(document.createTextNode(' — ' + state));
           row.appendChild(t);
-          if (d.status === 'active') { const a = el('a', null, 'Open'); a.href = 'https://' + d.hostname; a.target = '_blank'; a.rel = 'noopener'; row.appendChild(a); }
+          const showOpen = isCustom ? d.status === 'active' : subLive;
+          if (showOpen) { const a = el('a', null, 'Open'); a.href = 'https://' + d.hostname; a.target = '_blank'; a.rel = 'noopener'; row.appendChild(a); }
+          if (!isCustom && !subLive && shareUrl) { const sa = el('a', null, 'Share now'); sa.href = shareUrl; sa.target = '_blank'; sa.rel = 'noopener'; sa.style.marginLeft = '8px'; row.appendChild(sa); }
           if (d.kind === 'custom' && d.status !== 'active') {
             const ck = el('button', 'btn secondary', 'Check status'); ck.type = 'button'; ck.style.marginLeft = '8px';
             ck.addEventListener('click', async function () { ck.disabled = true; try { const s = await Kiln.api('/concepts/' + concept.id + '/domains/' + d.id + '/recheck'); announce('Domain status: ' + s.status, true); await refresh(); } catch (e) { announce('Could not check the domain.', true); } ck.disabled = false; });
@@ -586,7 +593,7 @@
       const label = (subIn.value || '').trim();
       if (!label) { subOut.textContent = 'Type an address first.'; return; }
       subBtn.disabled = true; subOut.textContent = 'Claiming…';
-      try { const r = await Kiln.api('/concepts/' + concept.id + '/domains/subdomain', { method: 'POST', body: { label: label } }); subOut.textContent = 'Live at ' + r.url; announce('Your site now lives at ' + r.domain.hostname, true); subIn.value = ''; await refresh(); }
+      try { const r = await Kiln.api('/concepts/' + concept.id + '/domains/subdomain', { method: 'POST', body: { label: label } }); subOut.textContent = r.message || ('Reserved ' + (r.url || '')); announce(subOut.textContent, true); subIn.value = ''; await refresh(); }
       catch (e) { subOut.textContent = (e && e.message) || 'Could not claim that address.'; announce(subOut.textContent, true); }
       subBtn.disabled = false;
     });

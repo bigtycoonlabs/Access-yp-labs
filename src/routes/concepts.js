@@ -313,15 +313,22 @@ router.get('/:id/site/export', authenticate, asyncHandler(async (req, res) => {
 // domain via Cloudflare. All owner-scoped.
 router.get('/:id/domains', authenticate, asyncHandler(async (req, res) => {
   if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'Concept not found.');
+  const lp = await query("SELECT launch_page->>'slug' AS slug, (launch_page->>'enabled') AS enabled FROM concepts WHERE id=$1", [req.params.id]);
+  const published = !!(lp.rows[0] && lp.rows[0].enabled === 'true');
+  const shareUrl = published && lp.rows[0].slug ? `${siteBase()}/p/${lp.rows[0].slug}` : null;
   res.json({
     domains: await domainStore.listForConcept(req.params.id),
     sites_root: domains.sitesRoot(),
     custom_available: cloudflare.configured(),
     cname_target: domains.cnameTarget(),
+    addresses_live: domains.addressesLive(),
+    published,
+    share_url: shareUrl,
   });
 }));
 
-// Claim an instant subdomain — <label>.sites.accessyplabs.com — live immediately.
+// Reserve an instant subdomain — <label>.accessyplabs.com. The name is claimed at once; whether
+// the address actually resolves depends on web addresses being switched on. The /p/ link always works.
 router.post('/:id/domains/subdomain', authenticate, asyncHandler(async (req, res) => {
   if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'Concept not found.');
   const label = domains.normalizeLabel((req.body || {}).label);
@@ -329,7 +336,14 @@ router.post('/:id/domains/subdomain', authenticate, asyncHandler(async (req, res
   const hostname = domains.subdomainHost(label);
   if (await domainStore.hostnameTaken(hostname)) throw new ApiError(409, 'That address is already taken — try another.');
   const d = await domainStore.addSubdomain(req.params.id, req.user.id, hostname);
-  res.status(201).json({ ok: true, domain: d, url: 'https://' + hostname });
+  const lp = await query("SELECT launch_page->>'slug' AS slug, (launch_page->>'enabled') AS enabled FROM concepts WHERE id=$1", [req.params.id]);
+  const published = !!(lp.rows[0] && lp.rows[0].enabled === 'true');
+  const live = published && domains.addressesLive();
+  const shareUrl = published && lp.rows[0].slug ? `${siteBase()}/p/${lp.rows[0].slug}` : null;
+  const message = live
+    ? `Your site is live at https://${hostname} — a real address you can share.`
+    : `Reserved https://${hostname}. ` + (shareUrl ? `Share your site now at ${shareUrl}. ` : 'Publish your home page to get a shareable link. ') + 'This address goes live once web addresses are switched on.';
+  res.status(201).json({ ok: true, domain: d, url: 'https://' + hostname, live, share_url: shareUrl, message });
 }));
 
 // Connect a creator's own domain via Cloudflare for SaaS.

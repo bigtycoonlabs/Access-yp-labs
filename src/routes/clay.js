@@ -1031,12 +1031,15 @@ function buildExecutors(user) {
       const hostname = domains.subdomainHost(clean);
       if (await domainStore.hostnameTaken(hostname)) return { error: 'taken', message: `${hostname} is already taken — try another word.` };
       const d = await domainStore.addSubdomain(concept_id, user.id, hostname);
-      const c = await query("SELECT (launch_page->>'enabled') AS enabled FROM concepts WHERE id=$1", [concept_id]);
-      const live = c.rows[0] && c.rows[0].enabled === 'true';
-      return { status: 'web_address_claimed', hostname: d.hostname, url: 'https://' + d.hostname,
+      const c = await query("SELECT launch_page->>'slug' AS slug, (launch_page->>'enabled') AS enabled FROM concepts WHERE id=$1", [concept_id]);
+      const published = !!(c.rows[0] && c.rows[0].enabled === 'true');
+      const live = published && domains.addressesLive();
+      const base = (process.env.CLIENT_URL || 'https://accessyplabs.com').replace(/\/$/, '');
+      const shareUrl = published && c.rows[0].slug ? `${base}/p/${c.rows[0].slug}` : null;
+      return { status: 'web_address_reserved', hostname: d.hostname, address_live: live, share_url: shareUrl,
         message: live
-          ? `The site now lives at https://${d.hostname} — a real address they can share.`
-          : `Reserved https://${d.hostname}. It goes live the moment the site's home page is published.` };
+          ? `The site is live at https://${d.hostname} — a real address they can share.`
+          : `Reserved https://${d.hostname}. ` + (shareUrl ? `The shareable link right now is ${shareUrl}. ` : 'Publish the home page to get a shareable link. ') + `The ${d.hostname} address goes live once web addresses are switched on — say it's reserved, not live.` };
     },
     define_term: async ({ term }) => {
       const e = glossary.defineTerm(term);

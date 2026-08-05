@@ -156,7 +156,7 @@ const TOOLS = {
   claim_web_address: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id', 'label'], optional: [], enums: {},
-    summary: "Give THIS concept's site an instant, free web address on our platform: <label>.accessyplabs.com, live the moment you claim it (the site's home must be published to actually show). label is a short word or two the creator chooses — letters, numbers, hyphens. This makes the address feel real and shareable without any DNS setup; offer it as soon as a site is worth sharing. For a creator's OWN domain (like theirbusiness.com) don't use this — point them to the 'Web address' section in their Laboratory, which walks them through connecting it.",
+    summary: "Reserve THIS concept's short free web address on our platform: <label>.accessyplabs.com. label is a short word or two the creator chooses — letters, numbers, hyphens. The name is claimed at once, but the address only resolves once web addresses are switched on for the platform; the site's always-on shareable link is its /p/ address (once the home page is published). Relay exactly what the tool result says about whether it's live or just reserved — never claim it's live on your own. For a creator's OWN domain (like theirbusiness.com) don't use this — point them to the 'Web address' section in their Laboratory.",
   },
 
   // ---- staff-only tools (gated by role: never offered to a regular builder) ----

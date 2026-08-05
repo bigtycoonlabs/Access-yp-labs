@@ -67,7 +67,12 @@ function cnameTarget() {
   return root.split('.').length <= 2 ? 'connect.' + root : root;
 }
 
+// Whether platform web addresses actually resolve yet. The app can't detect the wildcard DNS
+// itself, so this is an explicit switch flipped once the Cloudflare records are confirmed up.
+// Until then, a claimed label is reserved but honestly not-yet-live; the /p/ link always works.
+function addressesLive() { return process.env.WEB_ADDRESSES_LIVE === 'true'; }
+
 module.exports = {
   RESERVED, sitesRoot, normalizeLabel, validLabel, subdomainHost,
-  normalizeCustomHost, validCustomHost, isAppHost, isSiteHost, hostOf, cnameTarget,
+  normalizeCustomHost, validCustomHost, isAppHost, isSiteHost, hostOf, cnameTarget, addressesLive,
 };
