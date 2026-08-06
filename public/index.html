@@ -10,12 +10,12 @@
     :root{
       --void:#0b0817; --dream:#b8a6ff; --dream2:#8ce0ff; --glow:#ffd9a8;
       --paper:#0b0817; --ink:#f3f1ff; --muted:#b9b2d8; --line:#2f2857;
-      --accent:#4c3bd4; --accent-dark:#3a2ba6; --focus:#1e40af;
+      --accent:#4c3bd4; --accent-dark:#3a2ba6; --accent-text:#c3b5ff; --focus:#8ce0ff;
     }
     *{box-sizing:border-box;}
     body{margin:0;background:var(--paper);color:var(--ink);
       font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:18px;line-height:1.6;}
-    a{color:var(--accent-dark);}
+    a{color:var(--accent-text);}
     a:focus-visible,button:focus-visible,.cta:focus-visible{outline:3px solid var(--focus);outline-offset:3px;border-radius:4px;}
     .skip{position:absolute;left:-999px;top:0;background:var(--ink);color:#fff;padding:12px 20px;z-index:100;}
     .skip:focus{left:0;}
@@ -43,7 +43,7 @@
     .cta.solid:hover{background:var(--accent-dark);}
     main{padding:52px 0 72px;}
     section{margin:0 0 48px;}
-    h2{font-size:27px;margin:0 0 12px;color:var(--accent-dark);}
+    h2{font-size:27px;margin:0 0 12px;color:var(--accent-text);}
     .lead{max-width:64ch;}
     .cards{display:grid;gap:16px;grid-template-columns:1fr;margin:18px 0;}
     @media(min-width:640px){.cards{grid-template-columns:1fr 1fr;}}
@@ -115,6 +115,17 @@
        Centring the column puts the weight where the eye lands. */
     .hero-grid{display:grid;gap:32px;grid-template-columns:1fr;align-items:start;justify-items:center;}
     #hero-inner{max-width:62ch;width:100%;}
+    /* This page carries its own styling and doesn't load the shared sheet, so the shared touch-target
+       rules never reach it. Same intent here: a link meant to be tapped gets room to be tapped. */
+    @media (max-width: 879px){
+      main p > a, main li > a, .cta-row a, #hero-inner p > a { padding-top:6px; padding-bottom:6px; display:inline-block; }
+      .brand { display:inline-block; padding:6px 0; }
+    }
+    .hero-doors{list-style:decimal;padding-left:22px;margin:0 0 20px;display:grid;gap:12px;}
+    .hero-doors li{line-height:1.55;}
+    .hero-doors .door-link{display:inline-block;min-height:44px;line-height:44px;color:var(--accent-text);text-decoration:none;}
+    .hero-doors .door-link:hover,.hero-doors .door-link:focus{text-decoration:underline;}
+    .hero-h2{font-size:1.05rem;margin:34px 0 10px;opacity:.95;}
     .hero-reassure{margin:10px 0 0;font-size:15px;opacity:.8;}
     /* The line under the headline explains; it should not shout as loudly as the headline itself. */
     #hero-greeting{font-weight:500;font-size:19px;line-height:1.55;opacity:.92;}
@@ -157,7 +168,7 @@
     /* feature icons + a little depth on cards */
     .card{box-shadow:0 3px 14px rgba(25,22,48,.06);}
     .ic{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:12px;
-      background:linear-gradient(180deg,#efeaff,#e3f4ff);border:1px solid var(--line);margin-bottom:12px;color:var(--accent-dark);}
+      background:linear-gradient(180deg,#efeaff,#e3f4ff);border:1px solid var(--line);margin-bottom:12px;color:var(--accent-text);}
     .ic svg{width:23px;height:23px;}
 
     /* "How it works" band — a scannable visual flow instead of a paragraph */
@@ -166,7 +177,7 @@
        surface now, so it still separates the section without changing what colour the words need. */
     .band{background:linear-gradient(180deg,#171240,#120e30);border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
     .how{padding:46px 0 40px;}
-    .how h2{text-align:center;color:var(--accent-dark);}
+    .how h2{text-align:center;color:var(--accent-text);}
     .how-lead{text-align:center;color:var(--muted);max-width:54ch;margin:0 auto 28px;}
     .how-steps{list-style:none;display:grid;gap:18px;grid-template-columns:1fr;padding:0;margin:0;}
     @media(min-width:760px){.how-steps{grid-template-columns:repeat(3,1fr);gap:22px;}}
@@ -174,7 +185,7 @@
     .how-step .top{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
     .how-step .n{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 auto;
       border-radius:50%;background:var(--accent);color:#fff;font-weight:700;font-size:16px;}
-    .how-step .hic{width:26px;height:26px;color:var(--accent-dark);flex:0 0 auto;}
+    .how-step .hic{width:26px;height:26px;color:var(--accent-text);flex:0 0 auto;}
     .how-step h3{margin:0 0 6px;font-size:19px;color:var(--ink);}
     .how-step p{margin:0;color:var(--muted);font-size:16px;line-height:1.55;}
   </style>

@@ -11,7 +11,7 @@
   --panel:#141033;         /* legacy name: panel background */
   --kiln:#0a0715;          /* header */
   --ink:#f3f1ff;           /* body text ON the dark surface */
-  --muted:#b9b2d8;         /* secondary text, still ~7:1 on --void */
+  --muted:#c2bbdd;         /* secondary text — ~8:1 on --void, comfortably past AA */
   --line:#2f2857;          /* borders */
   --clay:#b8a6ff;          /* primary accent (was rust) */
   --clay-dark:#c9bcff;     /* link colour — lighter than the accent so links read on dark */
@@ -187,3 +187,24 @@ legend{font-weight:700;padding:0 6px;}
 .tabs { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 16px; }
 .tabs .btn { min-height: 44px; }
 .tabs .btn[aria-selected="true"] { outline: 2px solid var(--dream2); outline-offset: 2px; }
+
+/* Touch targets on a phone.
+   The menu links were 26px tall — comfortably under the 44px a finger needs, and harder still for
+   anyone with a tremor or low vision. The height comes from PADDING so the rows stay compact
+   instead of each becoming 44px tall (which pushed the page content most of a screen down when it
+   was tried the other way round). */
+@media (max-width: 879px){
+  nav.top{display:flex;flex-wrap:wrap;gap:2px 16px;line-height:1.2;}
+  nav.top a{display:inline-block;margin-left:0;padding:12px 0;}
+  header.site .bar{padding:10px 0;}
+  footer.site nav a{display:inline-block;padding:10px 4px;}
+}
+
+/* Secondary links that act as calls to action — 'Create an account', 'I already have an account —
+   sign in' — were 20px tall. WCAG 2.2 asks for at least 24px, and a link someone is meant to TAP
+   deserves more than a line of text's worth of room. Vertical padding on the inline box gives the
+   height without changing how the sentence reads or wraps. */
+@media (max-width: 879px){
+  main p > a, main li > a { padding-top:6px; padding-bottom:6px; display:inline-block; }
+  .brand { display:inline-block; padding:6px 0; }
+}
