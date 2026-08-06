@@ -3,7 +3,8 @@
 <title>Your dashboard — Access YP Labs</title><link rel="stylesheet" href="/css/kiln.css"/>
 <style>.row{border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:14px 16px;margin:10px 0;}
 .row h3{margin:0 0 4px;font-size:18px;} .row .actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;}
-.pill{display:inline-block;font-size:13px;font-weight:700;padding:3px 10px;border-radius:999px;background:#f5f0e8;color:var(--clay-dark);text-transform:uppercase;letter-spacing:.03em;}</style>
+/* The status pill kept a cream fill from the old light theme, so its light-on-light text failed contrast. Tinted dark fill, same shape. */
+.pill{display:inline-block;font-size:13px;font-weight:700;padding:3px 10px;border-radius:999px;background:rgba(184,166,255,.16);color:var(--clay-dark);border:1px solid rgba(184,166,255,.35);text-transform:uppercase;letter-spacing:.03em;}</style>
   <meta name="robots" content="noindex, nofollow"/>
 </head><body>
 <a class="skip" href="#main">Skip to main content</a>
@@ -42,7 +43,7 @@
   <section aria-labelledby="con-h"><h2 id="con-h">Your projects</h2><div id="projects" class="stack"></div></section>
   <section aria-labelledby="board-h"><h2 id="board-h">Movement board</h2><p class="muted">Where each project really stands on the path from idea to a business someone will pay for. A project moves forward on proof — real behavior — not on how finished it reads. Move a project yourself when something real changes.</p><div id="board" class="stack"></div></section>
   <section aria-labelledby="pay-h"><h2 id="pay-h">Payouts</h2><div id="payouts" class="stack"></div></section>
-  <section aria-labelledby="pen-h"><h2 id="pen-h">Your pen name</h2><p class="muted">This is the name buyers see on your Dream Market listings — your public identity here. Your real name is never shown.</p><div id="penname" class="stack"></div></section>
+  <section aria-labelledby="pen-h"><h2 id="pen-h">Your dreamer tag</h2><p class="muted">This is the name people here know you by — on your listings, on the launch partner board, and on your Dream Mover page. Think of it as your gamer tag. Your real name is never shown.</p><div id="penname" class="stack"></div></section>
   <section aria-labelledby="sub-h"><h2 id="sub-h">Subscription</h2><div id="subs" class="stack"></div></section>
   <section aria-labelledby="lst-h"><h2 id="lst-h">Your Dream Market listings</h2><div id="listings" class="stack"></div></section>
   <section aria-labelledby="ord-h"><h2 id="ord-h">Your orders</h2><div id="orders" class="stack"></div></section>

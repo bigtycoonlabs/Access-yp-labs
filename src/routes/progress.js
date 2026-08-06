@@ -25,7 +25,10 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
     `SELECT
        (SELECT count(*) FROM concepts WHERE owner_id=$1)                                    AS projects,
        (SELECT count(*) FROM concepts WHERE owner_id=$1
-          AND (launch_page IS NOT NULL OR movement_state IN ('building','launching','operating'))) AS moving,
+          -- Real movement states (see the concepts_movement_state_check constraint):
+          -- needs_customer_clarity, needs_proof, ready_to_package. 'ready_to_package' is the one
+          -- that means the creator has taken it somewhere; the earlier two mean work still to do.
+          AND (launch_page IS NOT NULL OR movement_state = 'ready_to_package')) AS moving,
        (SELECT count(*) FROM listings l JOIN concepts c ON c.id=l.concept_id
          WHERE c.owner_id=$1 AND l.status='live')                                           AS live_listings,
        (SELECT count(*) FROM seller_accounts WHERE user_id=$1 AND kyc_status='verified')    AS payouts_ready,

@@ -105,7 +105,7 @@ async function toggleReview(id,host,btn){
 }
 function renderReview(d,host){
   host.innerHTML='';
-  if(d.is_clay_seed){ host.appendChild(el('p','muted','Seeded by Clay under a pen name. Review it exactly like any other concept.')); }
+  if(d.is_clay_seed){ host.appendChild(el('p','muted','Seeded by Clay under a dreamer tag. Review it exactly like any other concept.')); }
   const c=d.concept||{};
   const g=[]; g.push(c.research_grounded?'Research-grounded':'Not research-grounded');
   if(c.source_count){ g.push(c.source_count+' source'+(c.source_count>1?'s':'')); }

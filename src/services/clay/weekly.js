@@ -91,7 +91,7 @@ async function sponsorCandidates(limit = 8) {
        JOIN users u ON u.id = c.owner_id
       WHERE (
               c.launch_page IS NOT NULL
-              OR c.movement_state IN ('building','launching','operating')
+              OR c.movement_state = 'ready_to_package'   -- the state that means it is genuinely moving
               OR EXISTS (SELECT 1 FROM listings l WHERE l.concept_id=c.id AND l.status='live')
             )
         AND NOT EXISTS (

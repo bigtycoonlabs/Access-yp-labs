@@ -255,7 +255,7 @@
     } catch (e) { fail(c, e); }
   }
 
-  // The public pen name — see it and edit it. Uses the existing seller status + alias endpoints.
+  // The public dreamer tag — see it and edit it. Uses the existing seller status + alias endpoints.
   async function loadPenName() {
     const c = document.getElementById('penname'); if (!c) return; c.innerHTML = '';
     try {
@@ -264,19 +264,19 @@
       const shown = el('p'); shown.appendChild(document.createTextNode('Buyers currently see you as: '));
       shown.appendChild(el('strong', null, current || 'A Dream Market creator')); c.appendChild(shown);
 
-      const label = el('label', null, 'Edit your pen name (2 to 40 characters)'); label.setAttribute('for', 'pen-input');
+      const label = el('label', null, 'Edit your dreamer tag (2 to 40 characters)'); label.setAttribute('for', 'pen-input');
       const input = el('input'); input.id = 'pen-input'; input.type = 'text'; input.maxLength = 40; input.value = current; input.setAttribute('autocomplete', 'off');
       const out = el('p', 'muted'); out.setAttribute('role', 'status'); out.setAttribute('aria-live', 'polite');
-      const save = el('button', 'btn', 'Save pen name'); save.type = 'button';
+      const save = el('button', 'btn', 'Save your dreamer tag'); save.type = 'button';
       save.addEventListener('click', async () => {
         const name = input.value.trim();
-        if (name.length < 2 || name.length > 40) { out.className = 'msg err'; out.textContent = 'Your pen name needs to be between 2 and 40 characters.'; announce(out.textContent, true); return; }
+        if (name.length < 2 || name.length > 40) { out.className = 'msg err'; out.textContent = 'Your dreamer tag needs to be between 2 and 40 characters.'; announce(out.textContent, true); return; }
         save.disabled = true;
         try {
           const r = await Kiln.api('/sellers/alias', { method: 'PUT', body: { display_name: name } });
           announce('Saved. Buyers will now see you as ' + ((r && r.display_name) || name) + '.', true);
           loadPenName();
-        } catch (e) { out.className = 'msg err'; out.textContent = e.message || 'Could not save your pen name.'; announce(out.textContent, true); save.disabled = false; }
+        } catch (e) { out.className = 'msg err'; out.textContent = e.message || 'Could not save your dreamer tag.'; announce(out.textContent, true); save.disabled = false; }
       });
       c.appendChild(label); c.appendChild(input); c.appendChild(save); c.appendChild(out);
     } catch (e) { fail(c, e); }
