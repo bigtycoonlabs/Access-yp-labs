@@ -11,7 +11,8 @@
 <main id="main" class="wrap">
   <h1>Launch partners</h1>
   <p>Almost everyone building something is doing it alone, and being alone is what stops most people — not the idea. This is where you say what help you need, or offer what you are good at to someone who is building.</p>
-  <p class="muted">Two things worth knowing. Your contact details are never shown by browsing — someone offers, you decide, and only then are you introduced. And for a project that is not for sale, you and your partner arrange how you work together yourselves: hours, money, equity, or nothing at all. Access YP Labs introduces you and is not part of that agreement.</p>
+  <p class="muted">Three things worth knowing. Your contact details are never shown by browsing — someone offers, you decide, and only then are you introduced. This costs nothing and we take no cut: Access YP Labs makes no money from connecting you, so nothing here is nudging you toward a deal. And for a project that is not for sale, you and your partner arrange how you work together yourselves — time, scope, and whether any money changes hands. We introduce you and are not part of that agreement.</p>
+  <p class="muted">Equity is not part of what you arrange here. Don't offer or ask for an ownership stake through this board. If the two of you later decide on something like that between yourselves, it is entirely off-platform and entirely your own affair — put it in writing and get your own legal advice. We don't set it up, hold it, record it, or take responsibility for it.</p>
 
   <div id="gate" role="status" aria-live="polite" class="muted">Loading…</div>
 
@@ -75,7 +76,7 @@ async function renderAsk(){
   var l2=el('label',null,'What are you building, and what do you actually need? (at least 20 characters)'); l2.setAttribute('for','sum'); f.appendChild(l2);
   var sum=document.createElement('textarea'); sum.id='sum'; sum.rows=4; sum.maxLength=2000; f.appendChild(sum);
 
-  var l3=el('label',null,'How would you like to work together? Optional — and entirely up to the two of you.'); l3.setAttribute('for','arr'); f.appendChild(l3);
+  var l3=el('label',null,'How would you like to work together? Optional \u2014 time, scope, and whether any money changes hands. Please don\u2019t propose equity here.'); l3.setAttribute('for','arr'); f.appendChild(l3);
   var arr=document.createElement('textarea'); arr.id='arr'; arr.rows=2; arr.maxLength=1000; f.appendChild(arr);
 
   f.appendChild(btn('Post this ask','',async function(){

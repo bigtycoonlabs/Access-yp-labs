@@ -41,7 +41,9 @@ test('raising a hand does not hand the creator your contact details', () => {
 test('contact details are exchanged ONLY on acceptance, with the terms disclaimed', () => {
   const decide = block("router.post('/interest/:id/:decision'", 60);
   assert.ok(/helper_email/.test(decide) && /owner_email/.test(decide), 'both are introduced');
-  assert.ok(/not part of that agreement|holds no responsibility/i.test(decide),
+  // Match the GUARANTEE, not one exact phrasing, so rewording the sentence doesn't fail the test
+  // while dropping the disclaimer entirely still does.
+  assert.ok(/not a party to|not part of that agreement|holds? no responsibility/i.test(decide),
     'the introduction must say the platform is not part of the arrangement');
   // A decline must NOT introduce anyone.
   const declineChunk = decide.slice(decide.indexOf('if (!accept)'), decide.indexOf('// Accepted'));

@@ -14,6 +14,11 @@ const { sendEmail } = require('../services/email');
 // whatever they agree.
 //
 // Three rules hold this together:
+//   0. THE PLATFORM TAKES NOTHING. No fee, no commission, no cut of whatever the two of them agree.
+//      Unlike the old consultant flow, this is not a revenue line — it exists because people building
+//      alone is what stops them, and charging a toll on that would be working against the point.
+//      Equity is deliberately NOT part of what is offered or arranged here: if two people settle an
+//      ownership stake between themselves, that happens off-platform and we are not a party to it.
 //   1. NOBODY'S CONTACT DETAILS MOVE BY BROWSING. Emails are exchanged only when a creator accepts.
 //   2. The board shows pen names, not real names — the same private identity used across the market.
 //   3. It is not a feed. One ask per project, one hand per person, no comments. Almost nothing to
@@ -213,9 +218,13 @@ router.post('/interest/:id/:decision', authenticate, asyncHandler(async (req, re
   }
 
   // Accepted: introduce them to each other, and be explicit that the terms are theirs alone.
-  const terms = `You two arrange how you work together — hours, money, equity, or nothing at all. `
-    + `Access YP Labs is not part of that agreement and holds no responsibility for how it goes. `
-    + `Put whatever you agree in writing between yourselves.`;
+  const terms = `You two arrange how you work together — time, scope, and whether any money changes `
+    + `hands. Access YP Labs takes NO fee and NO cut of anything you agree: this introduction is free, `
+    + `and it stays free. We are not a party to your arrangement and hold no responsibility for how it `
+    + `goes.\n\nOne thing to be clear about: equity is not something this platform sets up, holds, or `
+    + `records. If the two of you decide on an ownership stake between yourselves, that is entirely `
+    + `off-platform and entirely your own affair — get it in writing, and get your own legal advice. `
+    + `Whatever you agree, put it in writing between yourselves.`;
   await sendEmail({
     to: it.owner_email,
     subject: `You accepted help on ${it.title}`,
