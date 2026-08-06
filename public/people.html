@@ -1,0 +1,160 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>People — Access YP Labs</title><link rel="stylesheet" href="/css/kiln.css"/>
+<meta name="robots" content="noindex, nofollow"/>
+<style>
+  .person{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:16px 18px;margin:12px 0;}
+  .person h3{margin:0 0 4px;font-size:19px;}
+  .tagline{color:var(--muted);font-size:15px;margin:0 0 8px;}
+  .flag{display:inline-block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+    border-radius:999px;padding:2px 10px;margin-right:6px;background:rgba(184,166,255,.16);color:var(--clay-dark);
+    border:1px solid rgba(184,166,255,.35);}
+  .flag.stopped{background:rgba(255,157,157,.14);color:var(--err);border-color:rgba(255,157,157,.45);}
+  .acts{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;}
+  .acts .btn{min-height:44px;}
+  .composer{margin-top:12px;}
+</style>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs</a>
+  <nav class="top" aria-label="Primary"><a href="/admin-overview.html">Overview</a><a href="/desk-admin.html">Desk review</a><a href="/weekly-admin.html">Clay Weekly</a></nav>
+</div></header>
+<main id="main" class="wrap">
+  <h1>People</h1>
+  <p class="muted">Everyone with an account. Suspending stops someone signing in and can be undone; it deletes nothing. Deleting is permanent, and is refused for anyone who has been part of an order — those records belong to the other side of the sale too.</p>
+
+  <div id="gate" role="status" aria-live="polite" class="muted">Checking access…</div>
+
+  <div id="console" hidden>
+    <div class="panel">
+      <label for="q">Search by name, dreamer tag, email or phone</label>
+      <input id="q" type="search" autocomplete="off"/>
+      <p><button type="button" class="btn" id="search">Search</button>
+      <button type="button" class="btn secondary" id="clear">Show everyone</button></p>
+    </div>
+    <p id="count" role="status" aria-live="polite" class="muted">Loading…</p>
+    <div id="people"></div>
+  </div>
+  <div id="result" role="alert" aria-live="assertive"></div>
+</main>
+<script src="/js/a11y.js?v=20260806a"></script><script src="/js/api.js?v=20260806a"></script><script src="/js/nav.js?v=20260806a"></script>
+<script>
+var gate=document.getElementById('gate'), box=document.getElementById('console'), result=document.getElementById('result');
+function el(t,c,x){var n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+function say(m,a){result.textContent=m;announce(m,!!a);}
+function goSignIn(){announce('Please sign in.',true);setTimeout(function(){location.href='/login.html?next=/people.html';},1200);}
+function money(c){return '$'+((c||0)/100).toFixed(2);}
+function btn(label,cls,fn){var b=el('button','btn'+(cls?' '+cls:''),label);b.type='button';b.addEventListener('click',fn);return b;}
+function when(s){ try{ return new Date(s).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});}catch(e){return '';} }
+
+// Two-step confirmation for anything that cannot be undone, with focus on the SAFE option — the
+// same pattern used everywhere else here, and it matters most on a screen full of real people.
+function confirmThen(host, question, confirmLabel, fn){
+  if(host.querySelector('.confirm-row')) return;
+  var row=el('div','confirm-row'); row.setAttribute('role','group'); row.setAttribute('aria-label',question);
+  row.appendChild(el('p',null,question));
+  var yes=btn(confirmLabel,'',async function(){ yes.disabled=true; no.disabled=true; try{ await fn(); row.remove(); }
+    catch(e){ say(e.message||'That did not go through.',true); yes.disabled=false; no.disabled=false; } });
+  var no=btn('No, leave it alone','secondary',function(){ row.remove(); say('Okay — nothing was changed.',true); });
+  row.appendChild(yes); row.appendChild(no); host.appendChild(row);
+  announce('Confirm required. '+question, true);
+  if(no.focus) no.focus();
+}
+
+async function load(q){
+  var wrap=document.getElementById('people'), count=document.getElementById('count');
+  wrap.innerHTML='';
+  try{
+    var r=await Kiln.api('/admin/users'+(q?('?q='+encodeURIComponent(q)):''));
+    var list=r.users||[];
+    count.textContent = list.length + (list.length===1?' person':' people') + (q?(' matching “'+q+'”'):'') + '.';
+    list.forEach(function(u){
+      var d=el('div','person');
+      d.appendChild(el('h3',null,(u.name||'(no name)')+(u.display_name?(' · '+u.display_name):'')));
+
+      var flags=el('p');
+      if(u.status==='suspended') flags.appendChild(el('span','flag stopped','suspended'));
+      if(u.role!=='member') flags.appendChild(el('span','flag',u.role.replace('_',' ')));
+      if(u.paying) flags.appendChild(el('span','flag','paying'));
+      if(flags.childNodes.length) d.appendChild(flags);
+
+      d.appendChild(el('p','tagline', u.email + (u.phone?(' · '+u.phone):' · no phone on file')));
+      d.appendChild(el('p','tagline',
+        'Joined '+when(u.created_at)+' · '+u.projects+' project'+(u.projects===1?'':'s')
+        +' · '+u.live_listings+' live listing'+(u.live_listings===1?'':'s')
+        +' · '+u.orders+' order'+(u.orders===1?'':'s')
+        +(u.earned_cents?(' · earned '+money(u.earned_cents)):'')));
+
+      var acts=el('p','acts');
+
+      // Contact
+      acts.appendChild(btn('Send them a message','secondary',function(){
+        if(d.querySelector('.composer')) return;
+        var c=el('div','composer');
+        var l1=el('label',null,'Subject'); l1.setAttribute('for','s-'+u.id); c.appendChild(l1);
+        var s=document.createElement('input'); s.id='s-'+u.id; s.type='text'; s.maxLength=150; c.appendChild(s);
+        var l2=el('label',null,'Message'); l2.setAttribute('for','b-'+u.id); c.appendChild(l2);
+        var b=document.createElement('textarea'); b.id='b-'+u.id; b.rows=4; b.maxLength=4000; c.appendChild(b);
+        c.appendChild(btn('Send','',async function(){
+          if(s.value.trim().length<3||b.value.trim().length<10) return say('Add a subject and a message first.',true);
+          try{ var out=await Kiln.api('/admin/users/'+u.id+'/message',{method:'POST',body:{subject:s.value,body:b.value}});
+            say(out.message,true); if(out.sent) c.remove();
+          }catch(e){ if(e.sessionExpired) return goSignIn(); say(e.message||'Could not send.',true); }
+        }));
+        d.appendChild(c);
+        if(s.focus) s.focus();
+      }));
+
+      // Suspend / restore
+      if(u.status==='suspended'){
+        acts.appendChild(btn('Let them back in','',async function(){
+          try{ var out=await Kiln.api('/admin/users/'+u.id+'/restore',{method:'POST'}); say(out.message,true); load(q); }
+          catch(e){ if(e.sessionExpired) return goSignIn(); say(e.message||'Could not restore.',true); }
+        }));
+      } else {
+        acts.appendChild(btn('Suspend this account','secondary',function(){
+          confirmThen(d, 'Suspend '+(u.name||u.email)+'? They will not be able to sign in. Nothing of theirs is deleted, and you can undo this.',
+            'Yes, suspend them', async function(){
+              var out=await Kiln.api('/admin/users/'+u.id+'/suspend',{method:'POST'}); say(out.message,true); load(q);
+            });
+        }));
+      }
+
+      // Delete — only offered where it is actually allowed, so the button is never a dead end.
+      if(u.orders===0){
+        acts.appendChild(btn('Delete permanently','secondary',function(){
+          confirmThen(d, 'Permanently delete '+(u.name||u.email)+' and everything they have made? This cannot be undone.',
+            'Yes, delete permanently', async function(){
+              var out=await Kiln.api('/admin/users/'+u.id,{method:'DELETE'}); say(out.message,true); load(q);
+            });
+        }));
+      } else {
+        acts.appendChild(el('span','muted','Cannot be deleted — has order history. Suspend instead.'));
+      }
+
+      d.appendChild(acts);
+      wrap.appendChild(d);
+    });
+  }catch(e){
+    if(e.sessionExpired||e.status===401) return goSignIn();
+    count.textContent='Could not load: '+(e.message||'unknown error');
+  }
+}
+
+document.getElementById('search').addEventListener('click',function(){ load(document.getElementById('q').value.trim()); });
+document.getElementById('clear').addEventListener('click',function(){ document.getElementById('q').value=''; load(''); });
+
+(async function(){
+  try{
+    await Kiln.api('/admin/users');
+    gate.hidden=true; box.hidden=false; load('');
+  }catch(e){
+    if(e.sessionExpired||e.status===401) return goSignIn();
+    gate.textContent = (e.status===403)
+      ? 'This page is for platform staff. Nothing is wrong with your account.'
+      : ('Could not load: '+(e.message||'unknown error'));
+  }
+})();
+</script>
+</body></html>
