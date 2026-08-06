@@ -164,13 +164,17 @@ router.post('/:id/release', authenticate, asyncHandler(async (req, res) => {
        WHERE user_id=$1 AND concept_id=$2 AND plan='maker' AND status='active'
        RETURNING stripe_subscription_id`,
       [order.seller_id, conceptId]);
-    // The purchase includes one month of Clay Maker on the bought concept, so the
-    // buyer can enhance and export it immediately. It's complimentary (no Stripe)
-    // and expires after 30 days via current_period_end.
-    await client.query(
-      `INSERT INTO subscriptions (user_id, plan, status, concept_id, price_cents, current_period_end, stripe_subscription_id)
-       VALUES ($1,'maker','active',$2,0, now() + interval '30 days', NULL)`,
-      [order.buyer_id, conceptId]);
+    // WHAT THE BUYER GETS: the project, permanently.
+    //
+    // This used to grant a 30-day 'maker' subscription on the bought project. That still technically
+    // works — entitlement has a per-project maker check — but it is wrong now for two reasons. It
+    // expires, so someone who PAID for a project would quietly lose the ability to export it after a
+    // month; and it grants access through a plan we no longer sell, which is exactly the kind of
+    // dependency that rots silently when the retired path is finally removed.
+    //
+    // Marking the project itself is simpler and matches what actually happened: they bought it, so
+    // it is theirs. Same flag used for anyone who paid under the old per-project pricing.
+    await client.query('UPDATE concepts SET free_forever = true WHERE id = $1', [conceptId]);
     const done = await client.query(
       `UPDATE orders_transfers SET status='released' WHERE id=$1 RETURNING *`, [order.id]);
     // People watching this dream should learn it is gone, rather than discovering it later.

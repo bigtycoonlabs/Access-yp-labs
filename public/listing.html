@@ -26,7 +26,7 @@
   <div id="status" role="status" aria-live="polite" class="muted">Loading…</div>
   <div id="detail"></div>
 </main>
-<script src="/js/a11y.js?v=20260806f"></script><script src="/js/api.js?v=20260806f"></script><script src="/js/nav.js?v=20260806f"></script><script src="/js/proof.js?v=20260806f"></script>
+<script src="/js/a11y.js?v=20260806g"></script><script src="/js/api.js?v=20260806g"></script><script src="/js/nav.js?v=20260806g"></script><script src="/js/proof.js?v=20260806g"></script>
 <script>
 const id=new URLSearchParams(location.search).get('id');
 const moverSlug=new URLSearchParams(location.search).get('m')||'';
@@ -325,7 +325,18 @@ function openBuy(listing){
     try{
       const {order,checkout}=await Kiln.api('/orders',{method:'POST',body:{listing_id:id,agreement_accepted:true,risk_ack:true,no_refund_ack:true,mover:moverSlug||undefined}});
       if(checkout&&checkout.url){announce('Redirecting to secure checkout.');location.href=checkout.url;return;}
-      out.appendChild(el('p','msg ok','Order created. Payment checkout will open once the seller has completed payout onboarding. Your order id is '+order.id+'.'));
+      // Checkout did not start. Say WHY, from the reason the server actually gave, instead of
+      // always blaming seller onboarding — telling a buyer the seller needs to finish setup when
+      // the truth is our payments are misconfigured sends them to chase the wrong person, and
+      // makes a seller look unprepared when they are not.
+      var why = (checkout && checkout.reason) || 'unknown';
+      var said = {
+        seller_not_onboarded: 'The seller has not finished setting up payouts yet, so payment cannot be taken. Your order is saved and nothing has been charged.',
+        stripe_not_configured: 'Payments are not switched on right now, so checkout could not open. Your order is saved and nothing has been charged — this is on our side, not the seller\u2019s.',
+        stripe_error: 'Our payments provider refused to open checkout just now. Your order is saved and nothing has been charged. Worth trying again shortly.'
+      }[why] || 'Checkout could not open just now. Your order is saved and nothing has been charged.';
+      out.appendChild(el('p','msg', said + ' Your order id is ' + order.id + '.'));
+      announce(said, true);
       announce('Order created. Awaiting seller payout onboarding.',true);
     }catch(e){out.appendChild(el('p','msg err',e.message));announce(e.message,true);go.disabled=false;}
   });
