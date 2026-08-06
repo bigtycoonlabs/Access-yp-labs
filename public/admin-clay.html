@@ -4,13 +4,13 @@
 <style>
   .stat{border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:14px 16px;margin:8px 0;}
   .stat .big{font-size:26px;font-weight:800;margin:0;}
-  .stat .lbl{margin:2px 0 0;color:#555;font-size:14px;}
+  .stat .lbl{margin:2px 0 0;color:var(--muted);font-size:14px;}
   .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;}
   .run{border:1px solid var(--line);border-left-width:5px;border-radius:8px;background:var(--panel);padding:10px 12px;margin:8px 0;}
   .run.answered{border-left-color:#1a8f5a;} .run.empty{border-left-color:#c58a00;}
   .run.unavailable{border-left-color:#b03a2e;} .run.other{border-left-color:#8e63ce;}
-  .run .meta{color:#555;font-size:14px;margin:3px 0 0;}
-  .pill{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 8px;background:#eee;margin-right:6px;}
+  .run .meta{color:var(--muted);font-size:14px;margin:3px 0 0;}
+  .pill{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 8px;background:rgba(184,166,255,.16);margin-right:6px;}
 </style>
   <meta name="robots" content="noindex, nofollow"/>
 </head><body>
@@ -214,7 +214,7 @@ function renderSchedule(s, imageReady){
   schedState = s || null;
   var ig = document.getElementById('schedimg');
   if(ig){
-    if(imageReady === false){ ig.textContent = 'Image generation is off — new seeds will have no visuals until it’s configured.'; ig.style.color='#8a6d00'; }
+    if(imageReady === false){ ig.textContent = 'Image generation is off — new seeds will have no visuals until it’s configured.'; ig.style.color='var(--warn)'; }
     else if(imageReady === true){ ig.textContent = 'Image generation is on — new seeds will include a couple of visuals.'; ig.style.color=''; }
     else { ig.textContent=''; }
   }

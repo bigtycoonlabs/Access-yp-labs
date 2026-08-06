@@ -397,7 +397,7 @@
 
   // ---------- Concepts ----------
   async function loadConcepts() {
-    const c = document.getElementById('concepts'); c.innerHTML = '';
+    const c = document.getElementById('projects'); c.innerHTML = '';
     try {
       const { concepts } = await Kiln.api('/concepts');
       if (!concepts.length) { empty(c, 'No projects yet. Open the laboratory to shape one with Clay.'); return; }
