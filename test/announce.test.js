@@ -25,10 +25,14 @@ test('the pricing notice states the change, and what is NOT changing', async () 
     const a = m.preview('pricing-2026-08');
     assert.match(a.text, /first project is now free/i);
     assert.match(a.text, /\$19 a month/);
-    assert.match(a.text, /building with me is still free and unlimited/i);
+    assert.match(a.text, /still free and still unlimited/i);
     // The part people most need and companies most often omit.
-    assert.match(a.text, /already on an older plan, nothing about it changes/i);
-    assert.match(a.text, /not moving anyone onto the new plan/i);
+    // Anyone who was paying per project must be told two things without ambiguity: the charge has
+    // stopped, and what they bought is still theirs.
+    assert.match(a.text, /you will not be charged again/i);
+    assert.match(a.text, /stays yours, unlocked, permanently/i);
+    // And it must read as a choice we made, not an apology for a blunder.
+    assert.match(a.text, /this is a decision, not a correction/i);
   });
 });
 

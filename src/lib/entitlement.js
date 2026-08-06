@@ -32,9 +32,16 @@ async function conceptEntitlement(user, conceptId) {
   if (billingExempt(user)) return { entitled: true, reason: 'staff' };
 
   const c = (await query(
-    'SELECT id, owner_id, origin, access_expires_at FROM concepts WHERE id=$1', [conceptId])).rows[0];
+    'SELECT id, owner_id, origin, access_expires_at, free_forever FROM concepts WHERE id=$1', [conceptId])).rows[0];
   if (!c) return { entitled: false, reason: 'not_found', http: 404 };
   if (c.owner_id !== user.id) return { entitled: false, reason: 'not_owner', http: 403 };
+
+  // A project someone ALREADY PAID FOR stays theirs, free, permanently. We retired the per-project
+  // charge and stopped billing them; the project they bought must not re-lock behind the new plan.
+  // They bought it under one deal, and changing our packaging is not their problem. Checked before
+  // anything else, and it keeps holding after the old subscription is cancelled — which is the
+  // whole case it exists for.
+  if (c.free_forever) return { entitled: true, reason: 'already_paid_for' };
 
   // THE FIRST PROJECT IS FREE, FOREVER, IN FULL. Not a trial and not a teaser: someone can shape a
   // real business here, own it, add to it, list it and sell it without paying us anything. An empty

@@ -25,7 +25,8 @@ const UNKEPT_PREDICATE = `
       c.expired_at IS NULL
       AND (c.origin IS DISTINCT FROM 'purchased')
       AND u.role NOT IN ('staff','admin','master_staff')
-      -- Never expire someone's FIRST project: it is free forever, in full.
+      -- Never expire a project someone already paid for, or their free first project.
+      AND c.free_forever = false
       AND c.id <> (SELECT id FROM concepts c2 WHERE c2.owner_id=c.owner_id ORDER BY c2.created_at ASC, c2.id ASC LIMIT 1)
       AND NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.user_id=c.owner_id AND s.plan IN ('builder','sculptor')
                         AND s.status='active' AND (s.current_period_end IS NULL OR s.current_period_end > now()))

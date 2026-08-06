@@ -23,37 +23,35 @@ function pricingChange() {
   const url = SITE();
   const text = `Hi {{name}},
 
-Clay here. We changed how Access YP Labs charges, and I want you to hear it from me rather than notice it later.
+Clay here. We have changed how Access YP Labs charges, and I would rather you hear it from me than notice it on a statement.
 
-What changed:
+Your first project is now free. Not a trial — free, in full, and with no time limit. You can build it with me, upload your own material to it, keep adding to it, download it, take it off the platform entirely, work with a launch partner on it, list it in the Dream Market, and sell it, without paying anything.
 
-Your first project is now free. Not a trial — free, in full, forever. You can build it with me, upload your own material to it, keep adding to it, download it, take it off the platform entirely, work with a launch partner on it, list it in the Dream Market, and sell it, without paying anything.
+Everything beyond that first project is one plan at $19 a month. It covers unlimited projects, and it now includes the website builder and landing pages, which used to be a separate cost. The images I make while we work are part of it too.
 
-Everything beyond that first project is now one plan at $19 a month. It covers unlimited projects, and it now includes the website builder and landing pages, which used to cost extra. Images I make while we work are included too.
+If you were on the $2.99 per-project plan, that plan is finished and you will not be charged again. The project you paid for stays yours, unlocked, permanently — you do not need a plan to keep it, download it, or sell it. If you have other projects you want to unlock as well, the $19 plan covers all of them; if you do not, there is nothing here for you to buy.
 
-What went away: the $2.99-per-project charge, the $49.99 plan, and the image packs. Charging you for each idea was a bad idea on our part — it made you think twice about having another one, which is the opposite of the point.
+Building with me has not changed at all. It is still free and still unlimited. Shape as many projects as you like, for as long as you like, and pay nothing.
 
-What has not changed: building with me is still free and unlimited. You can shape as many projects as you like, for as long as you like, and pay nothing.
+I want to be clear that this is a decision, not a correction. Charging for each project made people weigh up whether to have another idea, and that is the exact opposite of what this place is for. We would rather have far more people building, listing and selling than collect a few dollars from the ones already here. We are early enough that we can make that call now, and take the harder road while it is still cheap to choose.
 
-If you are already on an older plan, nothing about it changes. You keep exactly what you are paying for, at the price you agreed. We are not moving anyone onto the new plan or quietly repricing you.
+One thing worth stating plainly, since it is easy to misread. When something sells through the Dream Market, we take 20% and you keep 80% — that applies to every marketplace sale, whether we sent the buyer or you did. When you sell through the website we build for your project, direct to your own customers, we take nothing at all.
 
-One more thing, because it is worth being plain about. When something sells through the Dream Market, the platform takes 20% and you keep 80% — that applies to every marketplace sale, whether we sent the buyer or you did. When you sell through the website we build for your project, direct to your own customers, we take nothing at all.
-
-That is the whole change. Nothing needs doing on your side.
+That is the whole change. There is nothing you need to do.
 
 ${url}
 
 — Clay`;
 
   const html = `<p>Hi {{name}},</p>
-<p>Clay here. We changed how Access YP Labs charges, and I want you to hear it from me rather than notice it later.</p>
-<p><strong>Your first project is now free.</strong> Not a trial — free, in full, forever. Build it with me, upload your own material, keep adding to it, download it, take it off the platform, work with a launch partner, list it in the Dream Market, and sell it, without paying anything.</p>
-<p><strong>Everything beyond that first project is one plan at $19 a month.</strong> Unlimited projects, and it now includes the website builder and landing pages, which used to cost extra. Images I make while we work are included too.</p>
-<p><strong>What went away:</strong> the $2.99-per-project charge, the $49.99 plan, and the image packs. Charging you for each idea was a bad idea on our part — it made you think twice about having another one, which is the opposite of the point.</p>
-<p><strong>What has not changed:</strong> building with me is still free and unlimited. As many projects as you like, for as long as you like, at no cost.</p>
-<p>If you are already on an older plan, nothing about it changes. You keep exactly what you are paying for, at the price you agreed. We are not moving anyone across or quietly repricing you.</p>
-<p>One more thing, because it is worth being plain about. When something sells <strong>through the Dream Market</strong>, the platform takes 20% and you keep 80% — every marketplace sale, whether we sent the buyer or you did. When you sell through <strong>the website we build for your project</strong>, direct to your own customers, we take nothing at all.</p>
-<p>That is the whole change. Nothing needs doing on your side.</p>
+<p>Clay here. We have changed how Access YP Labs charges, and I would rather you hear it from me than notice it on a statement.</p>
+<p><strong>Your first project is now free.</strong> Not a trial — free, in full, and with no time limit. Build it with me, upload your own material, keep adding to it, download it, take it off the platform, work with a launch partner, list it in the Dream Market, and sell it, without paying anything.</p>
+<p><strong>Everything beyond that first project is one plan at $19 a month.</strong> Unlimited projects, and it now includes the website builder and landing pages, which used to be a separate cost. The images I make while we work are part of it too.</p>
+<p><strong>If you were on the $2.99 per-project plan, that plan is finished and you will not be charged again.</strong> The project you paid for stays yours, unlocked, permanently — you do not need a plan to keep it, download it, or sell it. If you have other projects you want to unlock as well, the $19 plan covers all of them; if you do not, there is nothing here for you to buy.</p>
+<p><strong>Building with me has not changed at all.</strong> Still free, still unlimited. As many projects as you like, for as long as you like, at no cost.</p>
+<p>I want to be clear that this is a decision, not a correction. Charging for each project made people weigh up whether to have another idea, and that is the exact opposite of what this place is for. We would rather have far more people building, listing and selling than collect a few dollars from the ones already here. We are early enough that we can make that call now, and take the harder road while it is still cheap to choose.</p>
+<p>One thing worth stating plainly, since it is easy to misread. When something sells <strong>through the Dream Market</strong>, we take 20% and you keep 80% — every marketplace sale, whether we sent the buyer or you did. When you sell through <strong>the website we build for your project</strong>, direct to your own customers, we take nothing at all.</p>
+<p>That is the whole change. There is nothing you need to do.</p>
 <p><a href="${url}">${url.replace(/^https?:\/\//, '')}</a></p>
 <p>— Clay</p>`;
 
