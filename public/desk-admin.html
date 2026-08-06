@@ -17,10 +17,20 @@
   <nav class="top" aria-label="Primary"><a href="/people.html">People</a><a href="/weekly-admin.html">Clay Weekly</a><a href="/admin-clay.html">Clay health</a><a href="/moderation.html">Moderation</a><a href="/desk">The Desk</a></nav>
 </div></header>
 <main id="main" class="wrap">
-  <h1>Clay's Desk — review</h1>
-  <p class="muted">Clay drafts help articles and short stories for the public Desk. Nothing is public until you publish it here. You can also ask Clay to draft a new one now.</p>
+  <h1>Review — Clay's Desk and Clay Weekly</h1>
+  <p class="muted">Everything Clay writes for the public waits here until a person approves it — the Desk articles below, and the weekly magazine. Nothing reaches a reader on its own.</p>
   <div id="gate" role="status" aria-live="polite" class="muted">Checking access…</div>
   <div id="console" hidden>
+    <!-- Clay Weekly sits in the SAME review area as the Desk drafts, because they are one job:
+         approving what Clay publishes. The four-step workflow itself still lives on its own page —
+         it is a long, deliberate sequence and squeezing it in here would make both harder to use —
+         but its state is shown here so nothing sits waiting unnoticed. -->
+    <section aria-labelledby="weekly-h">
+      <h2 id="weekly-h">Clay Weekly</h2>
+      <p id="weekly-state" role="status" aria-live="polite" class="muted">Checking this week's issue…</p>
+      <p><a class="btn secondary" href="/weekly-admin.html">Open the newsroom</a></p>
+    </section>
+
     <section aria-labelledby="compose-h">
       <h2 id="compose-h">Ask Clay to draft one</h2>
       <p class="acts" style="display:flex;gap:10px;flex-wrap:wrap;">
@@ -36,7 +46,7 @@
     </section>
   </div>
 </main>
-<script src="/js/a11y.js?v=20260806e"></script><script src="/js/api.js?v=20260806e"></script><script src="/js/nav.js?v=20260806e"></script>
+<script src="/js/a11y.js?v=20260806f"></script><script src="/js/api.js?v=20260806f"></script><script src="/js/nav.js?v=20260806f"></script>
 <script>
 const gate=document.getElementById('gate');
 function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
@@ -125,5 +135,23 @@ async function init(){
   loadDrafts();
 }
 init();
+
+// The week's issue at a glance, so a draft cannot sit unnoticed. Says plainly when there is nothing
+// rather than leaving the line blank, and says plainly when it cannot tell.
+(async function(){
+  var el2=document.getElementById('weekly-state');
+  if(!el2) return;
+  try{
+    var r=await Kiln.api('/weekly');
+    var list=(r.issues||[]);
+    if(!list.length){ el2.textContent='No issue drafted yet this week.'; return; }
+    var i=list[0];
+    var when=i.week_start? (' for the week of '+new Date(i.week_start).toLocaleDateString(undefined,{month:'short',day:'numeric'})) : '';
+    var state={draft:'is drafted and waiting for you to approve it',approved:'is approved and ready to publish',published:'is published'}[i.status]||('is '+i.status);
+    el2.textContent='This week\u2019s issue'+when+' '+state+(i.sent_at?(', and it has been sent.'):'.');
+  }catch(e){
+    el2.textContent='Could not check this week\u2019s issue right now.';
+  }
+})();
 </script>
 </body></html>

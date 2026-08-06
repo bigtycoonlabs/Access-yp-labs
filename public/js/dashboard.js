@@ -491,58 +491,6 @@
     if (no.focus) no.focus();
   }
 
-  function openEditor(row, l, done) {
-    if (row.querySelector('.listing-editor')) return;
-    const box = el('div', 'listing-editor');
-    box.setAttribute('role', 'group');
-    box.setAttribute('aria-label', 'Edit this listing');
-    const isAuction = l.format === 'auction';
-    const dollars = (c) => ((Number(c) || 0) / 100).toFixed(2);
-
-    const priceId = 'price-' + l.id;
-    const priceLabel = el('label', null, isAuction ? 'Starting bid, in dollars' : 'Price, in dollars');
-    priceLabel.setAttribute('for', priceId);
-    const price = document.createElement('input');
-    price.id = priceId; price.type = 'number'; price.min = '10'; price.step = '0.01';
-    price.value = dollars(isAuction ? l.starting_bid_cents : l.price_cents);
-    box.appendChild(priceLabel); box.appendChild(price);
-
-    let close = null;
-    if (isAuction) {
-      const closeId = 'close-' + l.id;
-      const cl = el('label', null, 'When the auction ends');
-      cl.setAttribute('for', closeId);
-      close = document.createElement('input');
-      close.id = closeId; close.type = 'datetime-local';
-      if (l.auction_close_at) { try { close.value = new Date(l.auction_close_at).toISOString().slice(0, 16); } catch (e) {} }
-      box.appendChild(cl); box.appendChild(close);
-    }
-
-    box.appendChild(el('p', 'muted',
-      'Saving updates your listing. It is off the market while you edit; submit it again when you are ready and everything in it is kept.'));
-
-    const save = el('button', 'btn', 'Save changes'); save.type = 'button';
-    save.addEventListener('click', async () => {
-      const d = Number(price.value);
-      if (!(d >= 10)) { announce('The price needs to be at least ten dollars.', true); return; }
-      const body = {};
-      const cents = Math.round(d * 100);
-      if (isAuction) { body.starting_bid_cents = cents; } else { body.price_cents = cents; }
-      if (close && close.value) body.auction_close_at = new Date(close.value).toISOString();
-      save.disabled = true;
-      try {
-        await Kiln.api('/listings/' + l.id, { method: 'PATCH', body: body });
-        announce('Listing updated. It is still live — nothing was relisted.', true);
-        box.remove(); if (done) done();
-      } catch (e) { announce(e.message || 'That did not save.', true); save.disabled = false; }
-    });
-    const cancel = el('button', 'btn secondary', 'Cancel'); cancel.type = 'button';
-    cancel.addEventListener('click', () => { box.remove(); announce('No changes made.', true); });
-    box.appendChild(save); box.appendChild(cancel);
-    row.appendChild(box);
-    if (price.focus) price.focus();
-  }
-
   async function loadListings() {
     const c = document.getElementById('listings'); c.innerHTML = '';
     try {
@@ -552,29 +500,37 @@
       listings.forEach((l) => {
         const price = l.format === 'auction' ? ('auction from ' + money(l.starting_bid_cents)) : money(l.price_cents);
         const r = row(l.title, nice(l.category) + ' · ' + price, l.status);
-        if (l.status === 'draft') {
-          r.actions.appendChild(actionBtn('Submit for review', () => run(Kiln.api('/listings/' + l.id + '/submit', { method: 'POST' }), 'Submitted for review.', loadListings)));
+        // A WITHDRAWN listing needs the way back, or editing it strands it: you take it down to
+        // change a price and then there is no button that puts it back, so it looks like the
+        // listing is gone and the only option is building a new one. Same action as a draft.
+        if (l.status === 'draft' || l.status === 'withdrawn') {
+          r.actions.appendChild(actionBtn(
+            l.status === 'withdrawn' ? 'Put it back on the market' : 'Submit for review',
+            () => run(Kiln.api('/listings/' + l.id + '/submit', { method: 'POST' }),
+              l.status === 'withdrawn' ? 'Back on the market, pending review.' : 'Submitted for review.',
+              loadListings)));
           const editWrap = el('div', 'stack'); editWrap.style.marginTop = '8px';
           r.actions.appendChild(actionBtn('Edit', () => { editWrap.innerHTML = ''; buildEditor(l, editWrap); }, true));
           r.appendChild(editWrap);
         }
-        // A DRAFT edits in place. A LIVE listing cannot be edited while it is live — the server
-        // refuses, and it is right to: people may be looking at it, or bidding on it, and terms
-        // must not shift under them. So instead of a button that fails, this offers the real
-        // sequence as ONE action and says plainly what it does.
-        if (l.status === 'draft') {
-          r.actions.appendChild(actionBtn('Edit this listing', () => openEditor(r, l, loadListings)));
-        } else if (['in_review', 'live'].includes(l.status)) {
+        // A LIVE listing cannot be edited while it is live — the server refuses, and it is right
+        // to: people may be looking at it, or bidding on it, and terms must not shift under them.
+        // So rather than a button that fails, this offers the real sequence as ONE action, using
+        // the SAME editor a draft uses. (I had added a second, thinner editor here without noticing
+        // buildEditor already existed — two editors for one job is how they drift apart.)
+        if (['in_review', 'live'].includes(l.status)) {
+          const editWrap2 = el('div', 'stack'); editWrap2.style.marginTop = '8px';
           r.actions.appendChild(actionBtn('Change the price or terms', () => {
             confirmIn(r, 'To change this, it comes off the market first — nobody can act on terms while '
               + 'they are changing. You will edit it, then put it back. Your listing and everything in it is kept.',
               'Take it off and edit', async () => {
                 await Kiln.api('/listings/' + l.id + '/withdraw', { method: 'POST' });
-                announce('Taken off the market. Edit it below, then put it back when you are ready.', true);
-                const fresh = Object.assign({}, l, { status: 'draft' });
-                openEditor(r, fresh, loadListings);
+                announce('Taken off the market. Edit it below, then use “Put it back on the market”.', true);
+                editWrap2.innerHTML = '';
+                buildEditor(Object.assign({}, l, { status: 'withdrawn' }), editWrap2);
               });
           }));
+          r.appendChild(editWrap2);
         }
         if (['draft', 'in_review', 'live'].includes(l.status)) r.actions.appendChild(actionBtn('Withdraw', () => run(Kiln.api('/listings/' + l.id + '/withdraw', { method: 'POST' }), 'Listing withdrawn.', loadListings), true));
         c.appendChild(r);
@@ -735,24 +691,21 @@
     catch (_) { location.replace('/login.html'); return; }
     if (['staff', 'admin', 'master_staff'].includes(me.role)) {
       const g = document.getElementById('global');
-      // Clay files help articles and stories to his Desk as drafts. Surface where to review them,
-      // with a live count — staff couldn't easily find the review page before.
+      // STAFF WORK LIVES IN THE STAFF PANEL, not here. The dashboard is a creator's own workspace —
+      // their projects, their listings, their money. Review queues and the newsroom are a different
+      // job, and mixing the two made this page read as everyone's inbox at once. One door instead:
+      // the Staff panel, which already collects all of it.
       try {
         const { drafts } = await Kiln.api('/desk/drafts');
         const n = (drafts || []).length;
-        const desk = el('a', 'btn' + (n ? '' : ' secondary'),
-          n ? ('Clay\u2019s Desk \u2014 ' + n + ' draft' + (n === 1 ? '' : 's') + ' waiting for review')
-            : 'Clay\u2019s Desk \u2014 review drafts');
-        desk.href = '/desk-admin.html'; desk.setAttribute('role', 'button'); g.appendChild(desk);
-      } catch (_) {}
-      // The consultant enrol action used to sit here. Paid consultant sessions are retired in
-      // favour of launch partners, so offering staff a way to join a directory nobody can reach
-      // was leftover furniture from a previous version of the platform.
-
-      // Clay Weekly — the newsroom had no link from anywhere a person actually visits.
-      const wk = el('a', 'btn secondary', 'Clay Weekly — the newsroom');
-      wk.href = '/weekly-admin.html'; wk.setAttribute('role', 'button');
-      wk.style.marginLeft = '8px'; g.appendChild(wk);
+        const panel = el('a', 'btn' + (n ? '' : ' secondary'),
+          n ? ('Staff panel \u2014 ' + n + ' draft' + (n === 1 ? '' : 's') + ' waiting for review')
+            : 'Staff panel');
+        panel.href = '/admin-overview.html'; panel.setAttribute('role', 'button'); g.appendChild(panel);
+      } catch (_) {
+        const panel = el('a', 'btn secondary', 'Staff panel');
+        panel.href = '/admin-overview.html'; panel.setAttribute('role', 'button'); g.appendChild(panel);
+      }
 
       // Testing-mode toggle: flip your own account between full staff access (no paywalls, for
       // testing building and publishing) and the real pay flow (paywalls on, to test money),

@@ -18,9 +18,19 @@ test('the server still refuses to edit a listing while it is live', () => {
 
 test('the UI never offers an edit the server will refuse', () => {
   // A button that returns 409 is worse than no button — it teaches someone the product is broken.
-  assert.match(dash, /if \(l\.status === 'draft'\) \{\s*r\.actions\.appendChild\(actionBtn\('Edit this listing'/);
+  // Draft and withdrawn edit in place with the existing editor; live gets the take-it-off flow.
+  assert.match(dash, /if \(l\.status === 'draft' \|\| l\.status === 'withdrawn'\)/);
   assert.match(dash, /\['in_review', 'live'\]\.includes\(l\.status\)/);
-  assert.match(flat(dash), /instead of a button that fails, this offers the real sequence as ONE action/i);
+  // ONE editor for one job — a second, thinner one is how two paths drift apart.
+  assert.strictEqual((dash.match(/function buildEditor/g) || []).length, 1);
+  assert.ok(!/function openEditor/.test(dash), 'the duplicate editor is gone');
+  assert.match(flat(dash), /rather than a button that fails, this offers the real sequence as ONE action/i);
+});
+
+test('a withdrawn listing has a way back onto the market', () => {
+  // Without this, editing strands it: you take it down to change a price and no button puts it back.
+  assert.match(dash, /Put it back on the market/);
+  assert.match(flat(dash), /editing it strands it/i);
 });
 
 test('taking a live listing down to edit is confirmed, and says what is kept', () => {
