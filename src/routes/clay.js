@@ -16,6 +16,7 @@ const store = require('../services/clay/store');
 const similarity = require('../services/clay/similarity');
 const awareness = require('../services/clay/awareness');
 const siteAccess = require('../services/clay/siteAccess');
+const buildSpec = require('../services/clay/buildSpec');
 const siteQuota = require('../services/clay/siteQuota');
 const domains = require('../services/clay/domains');
 const domainStore = require('../services/clay/domainStore');
@@ -1519,6 +1520,28 @@ function buildExecutors(user) {
       return e
         ? { found: true, term: e.term, definition: e.definition }
         : { found: false, term, note: "Not in Clay's business glossary — explain it in plain words as general knowledge, not as an authoritative definition." };
+    },
+    build_spec_package: async ({ concept_id, focus }) => {
+      const out = await buildSpec.buildSpec(concept_id, user.id, { focus });
+      if (!out.ok) {
+        return { ok: false, status: out.reason,
+          message: out.message || 'I could not find that project, or it is not yours.' };
+      }
+      const doc = buildSpec.renderSpec(out.title, out.spec);
+      // Saved as a normal asset on the project, so it lives with everything else, can be revised,
+      // and follows the same rules as the rest of their work for keeping and exporting.
+      await query(
+        `INSERT INTO assets (concept_id, type, title, body, is_baseline, scan_status, version, is_current)
+         VALUES ($1,'tech_spec',$2,$3,false,'not_required',1,true)`,
+        [concept_id, 'Build spec package', doc]);
+      return {
+        ok: true, concept_id, title: out.title,
+        open_questions: out.spec.open_questions || [],
+        message: 'Written and saved to the project. This is a hand-off document — we do not build or '
+          + 'host applications, so this is what you give a developer or paste into a builder like '
+          + 'Claude Code, Cursor or Lovable. It is yours to take anywhere.',
+        document: doc,
+      };
     },
     worked_example: async ({ topic, concept_id }) => {
       // Anchor to the builder's OWN concept by name only (illustrative numbers stay illustrative).

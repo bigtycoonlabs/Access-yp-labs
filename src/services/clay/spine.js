@@ -75,6 +75,13 @@ const TOOLS = {
     enums: { topic: ['margin', 'pricing_to_target', 'break_even', 'cac_ltv', 'runway', 'market_size'] },
     summary: "Give the builder a concrete, spoken, step-by-step WORKED EXAMPLE of a core money project — margin (what you keep per sale), pricing_to_target (what to charge to hit an income goal), break_even (sales until you stop losing money), cac_ltv (cost to get a customer vs what they're worth), runway (how long the money lasts), or market_size (how big the opportunity honestly is). Call it when a beginner is stuck on an abstraction or asks how something actually works. Optionally pass concept_id to anchor the example to their project by name. The numbers it returns are round and ILLUSTRATIVE — a device to show the math, never a claim about their real business — and the example says so; keep it that way.",
   },
+  build_spec_package: {
+    irreversible: false, requires_confirmation: false,
+    required: ['concept_id'],
+    optional: ['focus'],
+    enums: {},
+    summary: "Write a complete BUILD SPEC PACKAGE for a project — the hand-off document someone takes to a developer or to an AI builder (Claude Code, Cursor, Lovable, Replit) to get the actual software built. This is what Clay does INSTEAD of building applications: the screens and what each one does, the data model, the user flows end to end, the business rules, the external services and keys needed with honest costs, what counts as done, and a paste-ready opening prompt. Call it when someone needs a real APPLICATION rather than a website — accounts, dashboards, custom logic, a database — or asks what it would take to build their idea for real. Free to generate; taking the file away is part of the plan. Pass focus to aim it at one area (for example 'booking flow') when the whole thing is too broad.",
+  },
   generate_concept: {
     irreversible: false, requires_confirmation: true,
     required: ['prompt'],
