@@ -195,6 +195,16 @@ if (require.main === module) {
     setTimeout(auctionTick, 3 * 60 * 1000);        // shortly after boot
     setInterval(auctionTick, 10 * 60 * 1000);      // then every 10 minutes — a closed auction shouldn't wait
 
+    // Telling people about the dreams they watch. Events are recorded as they happen and mailed in
+    // batches, so a burst of activity on one listing becomes a single message rather than five.
+    // Runs often because news that arrives late is barely news. A failure can't crash boot.
+    const watchActivity = require('./services/clay/watchActivity');
+    const watchTick = () => watchActivity.notifyWatchers()
+      .then((r) => { if (r && r.ok && r.sent) console.log('watch activity sent:', JSON.stringify(r)); })
+      .catch((e) => console.error('watch activity error:', e && e.message));
+    setTimeout(watchTick, 4 * 60 * 1000);
+    setInterval(watchTick, 15 * 60 * 1000);
+
     // Clay Weekly. The tick claims the week by inserting the issue row itself (weekly_issues is
     // unique on week_start), so running it every few hours is safe across restarts and instances —
     // it can only ever draft one issue per week. It drafts and then tells the owners it's waiting;

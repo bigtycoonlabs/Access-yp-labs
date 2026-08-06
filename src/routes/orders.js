@@ -6,6 +6,7 @@ const { asyncHandler, ApiError } = require('../lib/http');
 const { platformFeeCents, moverCommissionCents } = require('../lib/money');
 const { normalizeSlug } = require('../lib/movers');
 const stripe = require('../services/stripe');
+const watchActivity = require('../services/clay/watchActivity');
 const router = express.Router();
 
 // Create an order for a live listing. All three acknowledgments are mandatory:
@@ -172,6 +173,8 @@ router.post('/:id/release', authenticate, asyncHandler(async (req, res) => {
       [order.buyer_id, conceptId]);
     const done = await client.query(
       `UPDATE orders_transfers SET status='released' WHERE id=$1 RETURNING *`, [order.id]);
+    // People watching this dream should learn it is gone, rather than discovering it later.
+    watchActivity.record(order.listing_id, 'sold', watchActivity.say.sold()).catch((e) => console.error('watch note failed:', e && e.message));
     // Dream Mover commission: if a mover drove this sale, accrue their 5% now — inside the
     // same transaction as the transfer, keyed UNIQUE by order so it can only ever be
     // recorded once. It's paid out of the platform's take; the seller's 80% is untouched.

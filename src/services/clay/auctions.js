@@ -15,6 +15,7 @@
 const { query } = require('../../config/db');
 const { sendEmail } = require('../email');
 const { notifyStaff } = require('./staffNotify');
+const watchActivity = require('./watchActivity');
 
 const SITE = () => (process.env.CLIENT_URL || 'https://accessyplabs.com').replace(/\/+$/, '');
 const money = (c) => '$' + ((Number(c) || 0) / 100).toFixed(2);
@@ -59,6 +60,7 @@ async function settleOne(listingId) {
         + `it often just means the right buyer hadn't seen it yet. You can relist it, set a different starting `
         + `price, or add more to the listing to raise what it's worth: ${link}\n\n— Clay`,
     }).catch((e) => console.error('auction settlement email failed:', e && e.message));
+    watchActivity.record(listingId, 'auction_ended', watchActivity.say.auctionEnded(null)).catch((e) => console.error('watch note failed:', e && e.message));
     return { listing_id: listingId, winner: null };
   }
 
@@ -81,6 +83,7 @@ async function settleOne(listingId) {
       + `transferred yet: ${link}\n\n— Clay`,
   }).catch((e) => console.error('auction settlement email failed:', e && e.message));
 
+  watchActivity.record(listingId, 'auction_ended', watchActivity.say.auctionEnded(winner.amount_cents)).catch((e) => console.error('watch note failed:', e && e.message));
   return { listing_id: listingId, winner: winner.bidder_id, amount_cents: winner.amount_cents };
 }
 

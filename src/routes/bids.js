@@ -4,6 +4,7 @@ const { query, getClient } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { isAboveFloor, PRICE_FLOOR_CENTS } = require('../lib/money');
+const watchActivity = require('../services/clay/watchActivity');
 const router = express.Router();
 
 // Place a bid on a live auction listing. Must beat the current high bid and the floor.
@@ -39,9 +40,12 @@ router.post('/:listingId', authenticate, [
       `INSERT INTO bids (listing_id, bidder_id, amount_cents) VALUES ($1,$2,$3) RETURNING *`,
       [req.params.listingId, req.user.id, amount_cents]);
     await client.query('COMMIT');
+    // Tell the people watching. After COMMIT and never awaited into the response: a bid that
+    // succeeded must not fail, or slow down, because of an activity note.
+    watchActivity.record(req.params.listingId, 'bid', watchActivity.say.bid(amount_cents)).catch((e) => console.error('watch note failed:', e && e.message));
     res.status(201).json({ bid: r.rows[0] });
   } catch (e) {
-    await client.query('ROLLBACK').catch(() => {});
+    await client.query('ROLLBACK').catch((e) => console.error('watch note failed:', e && e.message));
     throw e;
   } finally {
     client.release();

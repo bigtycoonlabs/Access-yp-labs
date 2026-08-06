@@ -55,25 +55,66 @@ router.get('/me', authenticate, asyncHandler(async (req, res) => {
   res.json({ enrolled: true, mover: m.rows[0], earnings: e.rows[0], payout });
 }));
 
+
+// A Dream Mover's page is theirs to shape: a photo, a bio, and links to their own work off this
+// platform. Links are normalised and limited rather than trusted: only http(s) is allowed (so a
+// javascript: URL can never be stored), each gets a plain label, and the list is capped so a page
+// can't become a link farm.
+function cleanLinks(input) {
+  if (!Array.isArray(input)) return null;
+  const out = [];
+  for (const raw of input.slice(0, 8)) {
+    const url = String((raw && raw.url) || '').trim();
+    const label = String((raw && raw.label) || '').trim().slice(0, 60);
+    if (!url) continue;
+    let parsed;
+    try { parsed = new URL(url); } catch (_) { continue; }
+    if (!['http:', 'https:'].includes(parsed.protocol)) continue;   // no javascript:, no data:
+    out.push({ url: parsed.toString().slice(0, 400), label: label || parsed.hostname });
+  }
+  return out;
+}
+
 // Update my page or pause/resume being a mover.
 router.put('/me', authenticate, [
   body('headline').optional().isString().isLength({ max: 120 }),
   body('bio').optional().isString().isLength({ max: 600 }),
   body('status').optional().isIn(['active', 'paused']),
+  body('photo_url').optional({ nullable: true }).isString().isLength({ max: 400 }),
+  body('show_real_name').optional().isBoolean(),
+  body('links').optional().isArray(),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  // A photo must be an https image URL. http is refused rather than silently accepted: a page
+  // served securely that pulls an insecure image shows a broken or warned image to visitors.
+  let photo = req.body.photo_url === undefined ? null : String(req.body.photo_url || '').trim();
+  if (photo) {
+    let ok = false;
+    try { ok = new URL(photo).protocol === 'https:'; } catch (_) { ok = false; }
+    if (!ok) throw new ApiError(400, 'A photo link needs to start with https:// so it loads safely on your page.');
+  }
+  const links = cleanLinks(req.body.links);
+
   const r = await query(
     `UPDATE dream_movers SET
-        headline   = COALESCE($2, headline),
-        bio        = COALESCE($3, bio),
-        status     = COALESCE($4, status),
-        updated_at = now()
+        headline       = COALESCE($2, headline),
+        bio            = COALESCE($3, bio),
+        status         = COALESCE($4, status),
+        photo_url      = CASE WHEN $5::text IS NULL THEN photo_url
+                              WHEN $5 = '' THEN NULL ELSE $5 END,
+        links          = COALESCE($6::jsonb, links),
+        show_real_name = COALESCE($7, show_real_name),
+        updated_at     = now()
       WHERE user_id=$1 RETURNING *`,
     [req.user.id,
      req.body.headline === undefined ? null : req.body.headline,
      req.body.bio === undefined ? null : req.body.bio,
-     req.body.status === undefined ? null : req.body.status]);
+     req.body.status === undefined ? null : req.body.status,
+     req.body.photo_url === undefined ? null : photo,
+     links === null ? null : JSON.stringify(links),
+     req.body.show_real_name === undefined ? null : !!req.body.show_real_name]);
   if (!r.rows.length) throw new ApiError(404, 'You are not enrolled as a Dream Mover yet.');
   res.json({ mover: r.rows[0] });
 }));
@@ -154,9 +195,14 @@ router.get('/:slug', asyncHandler(async (req, res) => {
   // The dreamer tag carries here too. It is ONE identity across the platform — listings, the
   // partner board, and this promo page — so a person is known by the same name everywhere and their
   // real name stays private. Changing the tag changes it here as well, by design.
+  // The displayed name is the mover's own choice. It defaults to the dreamer tag — showing a real
+  // name has to be something a person deliberately turns on, never something that happens to them.
   const m = await query(
     `SELECT dm.user_id, dm.slug, dm.headline, dm.bio, dm.status,
-            COALESCE(NULLIF(u.display_name,''), 'A Dream Mover') AS dreamer_tag
+            dm.photo_url, dm.links, dm.show_real_name,
+            COALESCE(NULLIF(u.display_name,''), 'A Dream Mover') AS dreamer_tag,
+            CASE WHEN dm.show_real_name THEN COALESCE(NULLIF(u.name,''), NULLIF(u.display_name,''), 'A Dream Mover')
+                 ELSE COALESCE(NULLIF(u.display_name,''), 'A Dream Mover') END AS shown_name
        FROM dream_movers dm JOIN users u ON u.id = dm.user_id
       WHERE dm.slug=$1`, [slug]);
   if (!m.rows.length || m.rows[0].status !== 'active') throw new ApiError(404, 'No Dream Mover here.');

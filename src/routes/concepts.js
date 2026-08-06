@@ -3,6 +3,7 @@ const { body, validationResult } = require('express-validator');
 const { query } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
+const watchActivity = require('../services/clay/watchActivity');
 const { CATEGORIES, MODES } = require('../services/clay/tools');
 const { conceptEntitlement, paywall, isStaff, billingExempt, redactLockedAssets } = require('../lib/entitlement');
 const protect = require('../lib/protect');
@@ -91,6 +92,16 @@ router.post('/:id/assets', authenticate, [
     [req.params.id, type, title || null, assetBody,
      ['business_plan', 'marketing_strategy'].includes(type), scanStatus, scanDetail, nextVersion]);
   const blocked = scanStatus === 'flagged';
+  // If this project is live in the Dream Market, adding real material to it is news for anyone
+  // watching — it is the seller raising what the listing is worth. Flagged material is NOT
+  // announced: it isn't visible to anyone yet, so saying value was added would not be true.
+  if (!blocked) {
+    query("SELECT id FROM listings WHERE concept_id=$1 AND status='live'", [req.params.id])
+      .then((ls) => ls.rows.forEach((l) => watchActivity
+        .record(l.id, 'value_added', watchActivity.say.valueAdded(title || String(type).replace(/_/g, ' ')))
+        .catch((e) => console.error('watch note failed:', e && e.message))))
+      .catch((e) => console.error('watch note failed:', e && e.message));
+  }
   res.status(201).json({
     asset: r.rows[0],
     scan: { status: scanStatus, detail: scanDetail },

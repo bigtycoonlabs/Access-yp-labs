@@ -1,6 +1,7 @@
 const express = require('express');
 const { asyncHandler } = require('../lib/http');
 const weekly = require('../services/clay/weekly');
+const watchActivity = require('../services/clay/watchActivity');
 
 // PUBLIC pages for Clay Weekly, rendered on the SERVER so search engines and link previews get real
 // HTML (the same reason the Desk articles are rendered this way), and so a screen reader gets a
@@ -188,6 +189,21 @@ router.get('/weekly/:slug', asyncHandler(async (req, res) => {
   }
   res.set('Cache-Control', 'public, max-age=300');
   res.type('html').send(issueHtml(issue));
+}));
+
+
+// GET/POST /watch/unsubscribe/:token — stop news about dreams you watch. Separate switch from the
+// magazine, because wanting one and not the other is a perfectly normal thing to want.
+router.get('/watch/unsubscribe/:token', asyncHandler(async (req, res) => {
+  const ok = await watchActivity.unsubscribeWatch(req.params.token);
+  const body = ok
+    ? `<h1>You're unsubscribed</h1><p>You won't get news about dreams you're watching any more. You are still watching them — you can see everything on your dashboard whenever you like — and your other emails are unaffected.</p><p><a href="/dashboard.html">Go to your dashboard</a></p>`
+    : `<h1>That link didn't work</h1><p>It may already have been used. Nothing was changed.</p>`;
+  res.type('html').send(shell('Watching — unsubscribe', body, { noindex: true }));
+}));
+router.post('/watch/unsubscribe/:token', asyncHandler(async (req, res) => {
+  await watchActivity.unsubscribeWatch(req.params.token);
+  res.status(200).send('unsubscribed');
 }));
 
 module.exports = router;

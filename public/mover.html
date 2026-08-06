@@ -42,14 +42,43 @@ async function init(){
     const m=data.mover||{};
     // The dreamer tag is who this person IS here; the headline is what they chose to say. Show the
     // tag so the same name follows them across listings, the partner board, and this page.
-    titleEl.textContent=m.headline||((m.dreamer_tag||('@'+m.slug))+' — Dream Mover');
+    titleEl.textContent=m.headline||((m.shown_name||m.dreamer_tag||('@'+m.slug))+' — Dream Mover');
+    // The mover's own page: their photo, who they chose to appear as, their words, their links.
+    // Everything is set with textContent or as attributes on real elements — never innerHTML — so a
+    // bio or a link label can't inject anything into the page.
+    (function(){
+      var head=document.createElement('div');
+      if(m.photo_url){
+        var img=document.createElement('img');
+        img.src=m.photo_url;
+        img.alt='Photo of '+(m.shown_name||m.dreamer_tag||'this Dream Mover');
+        img.width=96; img.height=96; img.loading='lazy';
+        img.style.borderRadius='50%'; img.style.objectFit='cover'; img.style.display='block';
+        head.appendChild(img);
+      }
+      if(m.shown_name){
+        var who=document.createElement('p'); who.className='muted';
+        who.textContent='Dreams moved by '+m.shown_name;
+        head.appendChild(who);
+      }
+      if(m.bio){ var b=document.createElement('p'); b.textContent=m.bio; head.appendChild(b); }
+      var links=Array.isArray(m.links)?m.links:[];
+      if(links.length){
+        var nav=document.createElement('nav'); nav.setAttribute('aria-label','Links from this Dream Mover');
+        var ul=document.createElement('ul');
+        links.forEach(function(l){
+          if(!l||!l.url) return;
+          var li=document.createElement('li'); var a=document.createElement('a');
+          a.href=l.url; a.textContent=l.label||l.url;
+          a.rel='nofollow noopener noreferrer'; a.target='_blank';
+          li.appendChild(a); ul.appendChild(li);
+        });
+        nav.appendChild(ul); head.appendChild(nav);
+      }
+      if(head.childNodes.length) titleEl.insertAdjacentElement('afterend', head);
+    })();
     // Make the browser tab and any in-app share reflect WHOSE page this is, not a generic title.
     document.title=(m.dreamer_tag||m.headline||('@'+m.slug))+' — Dreams worth building — Access YP Labs';
-    if(m.dreamer_tag && m.headline){
-      var who=document.createElement('p'); who.className='muted';
-      who.textContent='Dreams moved by '+m.dreamer_tag;
-      titleEl.insertAdjacentElement('afterend', who);
-    }
     if(m.bio){ headEl.appendChild(el('p','muted',m.bio)); }
     statusEl.textContent='';
     render(data.dreams||[]);
