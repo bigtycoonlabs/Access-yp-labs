@@ -1045,6 +1045,20 @@ function buildExecutors(user) {
          WHERE ${clauses.join(' AND ')} ORDER BY l.created_at DESC LIMIT 25`, args);
       return { listings: r.rows };
     },
+    get_dreamer_tag: async () => {
+      const r = await query('SELECT display_name, open_to_partnering FROM users WHERE id=$1', [user.id]);
+      const tag = (r.rows[0] && (r.rows[0].display_name || '').trim()) || null;
+      return { has_tag: !!tag, dreamer_tag: tag, open_to_partnering: !!(r.rows[0] && r.rows[0].open_to_partnering) };
+    },
+    set_dreamer_tag: async ({ tag }) => {
+      const name = String(tag || '').trim();
+      if (name.length < 2 || name.length > 40) {
+        return { ok: false, message: 'A dreamer tag needs to be between 2 and 40 characters.' };
+      }
+      await query('UPDATE users SET display_name=$1 WHERE id=$2', [name, user.id]);
+      return { ok: true, dreamer_tag: name,
+        message: `Done — you are ${name} here now. That is the name on your listings, on the launch partner board, and on your Dream Mover page. Your real name stays private.` };
+    },
     find_similar_listings: async ({ idea }) => {
       const tokens = similarity.significantTokens(idea || '');
       if (tokens.length < 2) return { strong: false, matches: [], note: 'Not enough detail to compare — describe the idea a little more.' };

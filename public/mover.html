@@ -31,12 +31,19 @@ async function init(){
   try{
     const data=await Kiln.api('/movers/'+encodeURIComponent(slug),{auth:false});
     const m=data.mover||{};
-    titleEl.textContent=m.headline||('@'+m.slug+' — Dream Mover');
+    // The dreamer tag is who this person IS here; the headline is what they chose to say. Show the
+    // tag so the same name follows them across listings, the partner board, and this page.
+    titleEl.textContent=m.headline||((m.dreamer_tag||('@'+m.slug))+' — Dream Mover');
+    if(m.dreamer_tag && m.headline){
+      var who=document.createElement('p'); who.className='muted';
+      who.textContent='Dreams moved by '+m.dreamer_tag;
+      titleEl.insertAdjacentElement('afterend', who);
+    }
     if(m.bio){ headEl.appendChild(el('p','muted',m.bio)); }
     statusEl.textContent='';
     render(data.dreams||[]);
     titleEl.focus();
-    announce('Promo page for '+(m.headline||m.slug)+'. '+((data.dreams||[]).length)+' Dreams.',false);
+    announce('Promo page for '+(m.dreamer_tag||m.headline||m.slug)+'. '+((data.dreams||[]).length)+' Dreams.',false);
   }catch(e){
     statusEl.textContent = e.status===404 ? 'This Dream Mover page was not found.' : (e.message||'Could not load this page.');
   }

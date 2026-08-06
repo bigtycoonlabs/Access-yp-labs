@@ -151,8 +151,14 @@ router.post('/payout', authenticate, asyncHandler(async (req, res) => {
 // dollar commission and a promo link that credits this mover on a sale.
 router.get('/:slug', asyncHandler(async (req, res) => {
   const slug = normalizeSlug(req.params.slug);
+  // The dreamer tag carries here too. It is ONE identity across the platform — listings, the
+  // partner board, and this promo page — so a person is known by the same name everywhere and their
+  // real name stays private. Changing the tag changes it here as well, by design.
   const m = await query(
-    'SELECT user_id, slug, headline, bio, status FROM dream_movers WHERE slug=$1', [slug]);
+    `SELECT dm.user_id, dm.slug, dm.headline, dm.bio, dm.status,
+            COALESCE(NULLIF(u.display_name,''), 'A Dream Mover') AS dreamer_tag
+       FROM dream_movers dm JOIN users u ON u.id = dm.user_id
+      WHERE dm.slug=$1`, [slug]);
   if (!m.rows.length || m.rows[0].status !== 'active') throw new ApiError(404, 'No Dream Mover here.');
   const mover = m.rows[0];
 

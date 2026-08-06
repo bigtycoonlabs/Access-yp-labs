@@ -117,6 +117,12 @@
         if(q.brief) d.appendChild(el('p','muted',q.brief));
         if(q.arrangement) d.appendChild(el('p','muted','How they would like to work: '+q.arrangement));
         if(!q.brief) d.appendChild(el('p','muted','The creator is keeping the rest of the project private until they take someone on.'));
+        // The same project may also be for sale — offer that door too rather than dead-ending.
+        if(q.listing_id){
+          var sl=el('p'); var sa=el('a',null,'This project is also for sale — see the listing');
+          sa.href='/listing.html?id='+encodeURIComponent(q.listing_id);
+          sl.appendChild(sa); d.appendChild(sl);
+        }
         var a=el('a','btn secondary', q.mine ? 'This is your project' : (q.already_raised ? 'You already offered' : 'Offer to be their launch partner'));
         a.href='/partners.html'; a.style.textDecoration='none'; a.style.lineHeight='44px'; a.style.display='inline-block';
         d.appendChild(a);

@@ -102,6 +102,18 @@ function clarityBlock(listing){
   if(listing.completion_target) getting+=' The seller expects it can be launch-ready by '+listing.completion_target+'.';
   box.appendChild(part('What you get:',getting));
 
+  // The same project can also be looking for a launch partner. Point at that side rather than
+  // hiding a second way in: some people don't want to BUY it, they want to help build it.
+  if(listing.partner_request_id){
+    const pp=el('div','panel');
+    pp.appendChild(el('h2',null,'This creator is also looking for a launch partner'));
+    pp.appendChild(el('p',null,'You do not have to buy this project to be part of it. The creator is open to someone joining them to help build it — read what they need, and tell them what you would bring.'));
+    const pa=el('a','btn secondary','See what they need, and offer to help');
+    pa.href='/partners.html'; pa.style.textDecoration='none'; pa.style.lineHeight='44px'; pa.style.display='inline-block';
+    pp.appendChild(pa);
+    box.appendChild(pp);
+  }
+
   const bits=[];
   if(listing.waiting>0) bits.push(listing.waiting+(listing.waiting===1?' person has':' people have')+' already raised a hand for it');
   if(listing.research_grounded) bits.push('it was written against real research');

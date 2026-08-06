@@ -29,6 +29,16 @@ const TOOLS = {
     irreversible: false, requires_confirmation: false, required: [], optional: ['query'], enums: { category: CATEGORIES },
     summary: 'Search live marketplace listings by keyword and/or category (read-only).',
   },
+  set_dreamer_tag: {
+    irreversible: false, requires_confirmation: true,
+    required: ['tag'], enums: {},
+    summary: "Set the person's DREAMER TAG — the public name they are known by across Access YP Labs: on their listings, on the launch partner board, and on their Dream Mover page. Their real name stays private. It is like a gamer tag. They are asked to confirm before it changes, because changing it changes how people recognise them everywhere going forward.",
+  },
+  get_dreamer_tag: {
+    irreversible: false, requires_confirmation: false,
+    required: [], enums: {},
+    summary: "Check whether this person has a dreamer tag yet, and what it is. Use this before suggesting they pick one, so you never nag someone who already has one.",
+  },
   find_similar_listings: {
     irreversible: false, requires_confirmation: false,
     required: ['idea'], enums: {},

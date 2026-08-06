@@ -45,6 +45,11 @@ router.get('/board', authenticate, asyncHandler(async (req, res) => {
             c.title, c.category,
             CASE WHEN pr.visibility = 'full' THEN c.brief ELSE NULL END AS brief,
             COALESCE(NULLIF(u.display_name,''), 'A creator') AS creator,
+            -- The same project may also be for sale. Say so, and carry the listing id, so someone
+            -- can cross over instead of hitting a dead end.
+            (SELECT l.id FROM listings l
+              WHERE l.concept_id = pr.concept_id AND l.status='live'
+              ORDER BY l.created_at DESC LIMIT 1) AS listing_id,
             (pr.owner_id = $1) AS mine,
             EXISTS (SELECT 1 FROM partner_interest pi
                      WHERE pi.request_id = pr.id AND pi.user_id = $1) AS already_raised,

@@ -292,6 +292,10 @@ router.get('/:id', asyncHandler(async (req, res) => {
     `SELECT l.*, c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dream Market creator') AS seller_alias,
             c.research_grounded, c.claims_verified, c.source_count, c.next_steps, c.clays_take, c.brief,
             (SELECT COUNT(*)::int FROM waitlist_signups w WHERE w.concept_id=l.concept_id) AS waiting,
+            -- A project can be BOTH for sale and looking for a launch partner. Surfacing that here
+            -- lets the listing point at the partner side instead of hiding a second way in.
+            (SELECT pr.id FROM partner_requests pr
+              WHERE pr.concept_id = l.concept_id AND pr.status='open') AS partner_request_id,
             CASE WHEN c.show_working_since THEN c.working_since ELSE NULL END AS working_since
      FROM listings l JOIN concepts c ON c.id=l.concept_id JOIN users u ON u.id=l.seller_id
      WHERE l.id=$1`, [req.params.id]);
