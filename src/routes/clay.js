@@ -1598,17 +1598,35 @@ router.get('/earning-paths', authenticate, asyncHandler(async (req, res) => {
 async function buildChatContext(req) {
   let conceptContext = null;
   if (req.body.concept_id) {
-    // Ownership OR staff. Clay-seeded projects belong to Clay's own account, not to the staff member
-    // reading them — so an owner-only lookup silently returned nothing and Clay appeared unable to
-    // see a project that was plainly on the screen. Staff can already read any project everywhere
-    // else in the product; the chat was the odd one out, and the failure looked like Clay being
-    // broken rather than a permission boundary.
+    // WHO MAY SEE A PROJECT IN CHAT.
+    //
+    // Yours, always. Someone else's private work — never, including staff. A person shaping an idea
+    // here has not asked for an audience, and being able to read it because we can is not a reason.
+    //
+    // Staff may see it only where the project has ALREADY left the private stage, and only for the
+    // reason it left:
+    //   * it is in the Dream Market or waiting on review — we are asked to review it;
+    //   * it has a published site or landing page — it is public already;
+    //   * it is a Clay-seeded project, owned by the platform rather than by a person.
+    //
+    // (An earlier version of this let staff read ANY project to fix seeded ones being invisible.
+    // That traded someone's privacy for a convenience, which is not a trade that was ours to make.)
     const staffViewer = ['staff', 'admin', 'master_staff'].includes(req.user.role);
     const c = await query(
-      staffViewer
-        ? 'SELECT id, title, category, stage, risk_summary, movement_state, movement_note FROM concepts WHERE id=$1'
-        : 'SELECT id, title, category, stage, risk_summary, movement_state, movement_note FROM concepts WHERE id=$1 AND owner_id=$2',
-      staffViewer ? [req.body.concept_id] : [req.body.concept_id, req.user.id]);
+      `SELECT c.id, c.title, c.category, c.stage, c.risk_summary, c.movement_state, c.movement_note
+         FROM concepts c
+        WHERE c.id = $1
+          AND (
+            c.owner_id = $2
+            OR ($3 = true AND (
+                 c.origin = 'clay_seed'
+                 OR (c.launch_page->>'enabled') = 'true'
+                 OR EXISTS (SELECT 1 FROM listings l
+                             WHERE l.concept_id = c.id
+                               AND l.status IN ('in_review', 'live', 'sold'))
+               ))
+          )`,
+      [req.body.concept_id, req.user.id, staffViewer]);
     if (c.rows.length) {
       const a = await query(
         "SELECT type, title, body FROM assets WHERE concept_id=$1 AND is_current=true ORDER BY created_at",
