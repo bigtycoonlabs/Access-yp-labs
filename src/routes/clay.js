@@ -1639,6 +1639,22 @@ router.post('/chat', authenticate, [
   res.json(out);
 }));
 
+// Small word-groups so an answer arrives like speech rather than a wall, keeping the paragraph
+// breaks the writer meant. Borrowed from Arbo, which had already solved this.
+function answerChunks(text) {
+  const out = [];
+  for (const para of String(text || '').split(/\n\n+/)) {
+    const words = para.split(/\s+/).filter(Boolean);
+    for (let i = 0; i < words.length; i += 3) {
+      out.push((i === 0 ? '' : ' ') + words.slice(i, i + 3).join(' '));
+    }
+    out.push('\n\n');
+  }
+  if (out[out.length - 1] === '\n\n') out.pop();
+  return out;
+}
+const nap = (ms) => new Promise((r) => setTimeout(r, ms));
+
 // POST /api/clay/chat/stream — the same conversation, but you can watch Clay work.
 //
 // Why this exists: a request that takes twenty seconds and shows nothing looks broken, and for
@@ -1674,6 +1690,11 @@ router.post('/chat/stream', authenticate, [
   let closed = false;
   req.on('close', () => { closed = true; });
 
+  // Instant first phase, sent BEFORE any work starts. Borrowed from Arbo: time-to-first-signal is
+  // immediate, so nobody stares at nothing while context is being assembled. It is also true —
+  // reading the message is genuinely the first thing that happens.
+  send({ type: 'phase', key: 'reading', note: 'Reading what you said' });
+
   try {
     const ctx = await buildChatContext(req);
     const out = await agent.runChat({
@@ -1690,6 +1711,19 @@ router.post('/chat/stream', authenticate, [
     if (outcome.build_id) out.build_id = outcome.build_id;
     if (outcome.concept_id) { out.concept_updated = true; out.concept_id = outcome.concept_id; }
     out.bubbles = pacing.bubblesFor(out.reply || '', { serious: out.status !== 'answered' });
+
+    // The answer arrives in small groups of words rather than as a wall. The pauses are
+    // COMPREHENSION PACING, not theatre: they give a screen reader time to announce one piece
+    // before the next arrives, which is the difference between following along and being talked
+    // over. Paragraph breaks the writer intended are preserved.
+    if (!closed && out.reply) {
+      for (const chunk of answerChunks(out.reply)) {
+        if (closed) break;
+        send({ type: 'delta', text: chunk });
+        await nap(22);
+      }
+    }
+
     if (!closed) { send({ type: 'done', result: out }); }
   } catch (e) {
     console.error('chat stream error:', e && e.message);

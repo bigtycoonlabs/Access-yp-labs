@@ -54,3 +54,21 @@ test('there is always a way to stop', () => {
   assert.match(client, /AbortController/);
   assert.match(client, /clay-stop/);
 });
+
+test('the first signal is instant, before any work begins', () => {
+  // Borrowed from Arbo: silence at the start is the worst moment, especially with no spinner to see.
+  assert.match(route, /Instant first phase, sent BEFORE any work starts/i);
+  const phaseAt = route.indexOf("send({ type: 'phase', key: 'reading'");
+  const workAt = route.indexOf('buildChatContext(req)', phaseAt);
+  assert.ok(phaseAt > -1 && phaseAt < workAt, 'the phase is sent before context is built');
+});
+
+test('answer pieces are shown but never announced piece by piece', () => {
+  assert.match(client, /NEVER announced piece by piece/i);
+  assert.match(client, /answerEl\.setAttribute\('aria-hidden', 'true'\)/);
+});
+
+test('the pauses are comprehension pacing, not theatre', () => {
+  assert.match(route, /COMPREHENSION PACING, not theatre/i);
+  assert.match(route, /time to announce one piece before the next arrives/i);
+});

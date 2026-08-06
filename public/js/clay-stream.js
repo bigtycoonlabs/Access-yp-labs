@@ -46,6 +46,7 @@
     const { log, spoken } = makeStatusRegion(host);
     let lastSpokeAt = 0;
     let sawAnything = false;
+    let answerEl = null;
 
     const show = (text) => {
       const p = document.createElement('p');
@@ -122,7 +123,23 @@
           let ev;
           try { ev = JSON.parse(line.slice(6)); } catch (_) { continue; }
 
-          if (ev.type === 'thinking') {
+          if (ev.type === 'phase') {
+            // The instant first signal, before any work. Announced once so a blind person knows
+            // immediately that something is happening — silence at the start is the worst moment.
+            show(ev.note + '…');
+            speak('Clay is reading your message.', true);
+          } else if (ev.type === 'delta') {
+            // The answer arriving in pieces. Shown live; NEVER announced piece by piece — that is
+            // exactly the firehose. The whole answer is announced once, at the end, by the caller.
+            sawAnything = true;
+            if (!answerEl) {
+              answerEl = document.createElement('p');
+              answerEl.className = 'clay-answer-stream';
+              answerEl.setAttribute('aria-hidden', 'true');
+              host.appendChild(answerEl);
+            }
+            answerEl.textContent += ev.text;
+          } else if (ev.type === 'thinking') {
             show(ev.note + '…');
             // Not announced: "working out what to do next" is reassuring to see and tedious to hear
             // every few seconds. The first one is worth saying, so a blind person knows it started.
@@ -143,6 +160,7 @@
             finished = true;
             stop.remove();
             log.remove();
+            if (answerEl) answerEl.remove();   // the caller renders the real answer properly
             // The answer is announced as ONE whole thing. This is the moment the person has been
             // waiting for, and a complete sentence is what they can actually use.
             spoken.textContent = '';
