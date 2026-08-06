@@ -48,6 +48,9 @@
 
   <section aria-label="Conversation with Clay">
     <div id="log" class="log" role="log" aria-live="polite" aria-relevant="additions" aria-label="Messages"></div>
+    <!-- Progress lives OUTSIDE the conversation log on purpose: the log is already a live region,
+         and nesting one live region inside another makes screen readers announce things twice. -->
+    <div id="progress-host"></div>
   </section>
 
   <div class="composer" id="composer">
@@ -97,5 +100,5 @@
       </nav>
     </footer>
 
-<script src="/js/a11y.js?v=20260806b"></script><script src="/js/api.js?v=20260806b"></script><script src="/js/nav.js?v=20260806b"></script><script src="/js/app.js?v=20260806b"></script>
+<script src="/js/a11y.js?v=20260806c"></script><script src="/js/api.js?v=20260806c"></script><script src="/js/clay-stream.js?v=20260806c"></script><script src="/js/nav.js?v=20260806c"></script><script src="/js/app.js?v=20260806c"></script>
 </body></html>

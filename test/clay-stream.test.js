@@ -72,3 +72,21 @@ test('the pauses are comprehension pacing, not theatre', () => {
   assert.match(route, /COMPREHENSION PACING, not theatre/i);
   assert.match(route, /time to announce one piece before the next arrives/i);
 });
+
+test('progress never nests inside an existing live region', () => {
+  // The conversation logs are already aria-live. Mounting the stream inside one would make a
+  // screen reader announce everything twice — which is the failure this whole design avoids.
+  const appHtml = fs.readFileSync('public/app.html', 'utf8');
+  const appJs = fs.readFileSync('public/js/app.js', 'utf8');
+  const chatHtml = fs.readFileSync('public/clay-chat.html', 'utf8');
+  assert.match(appHtml, /id="progress-host"/);
+  assert.match(appJs, /streamChat\(chatBody, document\.getElementById\('progress-host'\)/);
+  assert.match(chatHtml, /id="progress-host"/);
+  assert.match(chatHtml, /getElementById\('progress-host'\)/);
+});
+
+test('a streaming failure falls back instead of losing the message', () => {
+  const appJs = flat(fs.readFileSync('public/js/app.js', 'utf8'));
+  assert.match(appJs, /A transport problem is ours, not theirs/i);
+  assert.match(appJs, /Kiln\.api\('\/clay\/chat'/);
+});

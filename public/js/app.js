@@ -760,10 +760,34 @@
       // (File attachments still go through the builder, which knows how to fold them in.)
       if (!pendingUploadIds.length) {
         chatHistory.push({ role: 'user', content: prompt });
-        const data = await Kiln.api('/clay/chat', { method: 'POST', body: { messages: chatHistory, concept_id: currentConceptId || undefined } });
-        if (Array.isArray(data.messages)) chatHistory = data.messages;
-        thinking.removeChild(think);
-        renderChatReply(thinking, data);
+        const chatBody = { messages: chatHistory, concept_id: currentConceptId || undefined };
+
+        // Watch Clay work rather than staring at a spinner. The streaming endpoint returns the
+        // SAME result object as the plain one, so everything downstream is unchanged — which is
+        // also why falling back is safe: if streaming is unavailable for any reason, the plain
+        // request runs and the person gets the identical answer, just without the running commentary.
+        const finish = (data) => {
+          if (Array.isArray(data.messages)) chatHistory = data.messages;
+          if (think.parentNode === thinking) thinking.removeChild(think);
+          renderChatReply(thinking, data);
+        };
+        if (window.ClayStream) {
+          await new Promise((resolve) => {
+            ClayStream.streamChat(chatBody, document.getElementById('progress-host'), (data) => { finish(data); resolve(); },
+              async () => {
+                // Streaming failed. Do the plain request instead rather than making them retype:
+                // a transport problem is ours, not theirs.
+                try { finish(await Kiln.api('/clay/chat', { method: 'POST', body: chatBody })); }
+                catch (e) {
+                  if (think.parentNode === thinking) thinking.removeChild(think);
+                  announce(e.message || 'Clay could not answer that one.', true);
+                }
+                resolve();
+              });
+          });
+          return;
+        }
+        finish(await Kiln.api('/clay/chat', { method: 'POST', body: chatBody }));
         return;
       }
 
