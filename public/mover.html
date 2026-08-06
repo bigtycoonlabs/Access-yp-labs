@@ -1,6 +1,15 @@
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>A Dream Mover — Access YP Labs</title><link rel="stylesheet" href="/css/kiln.css"/>
+<title>A Dream Mover — Access YP Labs</title>
+<meta name="description" content="Businesses worth building, picked out by a Dream Mover. Each one was shaped and proven before it exists — claim one and launch it as your own."/>
+<meta property="og:type" content="profile"/>
+<meta property="og:title" content="Dreams worth building — Access YP Labs"/>
+<meta property="og:description" content="A hand-picked set of pre-proven businesses you can claim and launch as your own."/>
+<meta property="og:site_name" content="Access YP Labs"/>
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Dreams worth building — Access YP Labs"/>
+<meta name="twitter:description" content="A hand-picked set of pre-proven businesses you can claim and launch as your own."/>
+<link rel="stylesheet" href="/css/kiln.css"/>
 <style>
 .dream{border:1px solid var(--line);border-radius:12px;background:#fff;padding:18px;margin:14px 0;}
 .dream h3{margin:0 0 6px;}
@@ -34,6 +43,8 @@ async function init(){
     // The dreamer tag is who this person IS here; the headline is what they chose to say. Show the
     // tag so the same name follows them across listings, the partner board, and this page.
     titleEl.textContent=m.headline||((m.dreamer_tag||('@'+m.slug))+' — Dream Mover');
+    // Make the browser tab and any in-app share reflect WHOSE page this is, not a generic title.
+    document.title=(m.dreamer_tag||m.headline||('@'+m.slug))+' — Dreams worth building — Access YP Labs';
     if(m.dreamer_tag && m.headline){
       var who=document.createElement('p'); who.className='muted';
       who.textContent='Dreams moved by '+m.dreamer_tag;
