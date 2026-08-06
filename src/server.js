@@ -17,7 +17,34 @@ if (process.env.NODE_ENV === 'production' && (missingConfig.length || weakSecret
   console.error('YP Labs configuration incomplete.', { missing: missingConfig, weakSecrets });
 }
 
-app.use(helmet({ contentSecurityPolicy: false }));
+// A Content Security Policy was switched off entirely, which threw away helmet's most valuable
+// protection: without it, an injected <script src> to any domain would simply run. It is on now.
+//
+// 'unsafe-inline' is included for scripts and styles because most pages carry inline blocks — an
+// honest compromise rather than a pretend one. What this DOES buy, even so: no script can be loaded
+// from a domain we do not name, no page can be framed by anyone (clickjacking), no plugins or
+// objects, forms can only post back to us, and any http asset gets upgraded to https. Removing
+// 'unsafe-inline' later means moving those blocks into files, which is worth doing but is not a
+// reason to run with no policy at all in the meantime.
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:'],          // generated + stored images arrive over https
+      connectSrc: ["'self'", 'https:'],
+      fontSrc: ["'self'", 'data:'],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],                      // nobody may frame this site
+      formAction: ["'self'"],
+      baseUri: ["'self'"],
+      upgradeInsecureRequests: [],
+    },
+  },
+  crossOriginEmbedderPolicy: false,                    // would block third-party images we do use
+}));
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
@@ -34,6 +61,24 @@ const apiLimiter = rateLimit({
   message: { error: 'Too many requests. Please try again shortly.' },
 });
 app.use('/api/', apiLimiter);
+
+// Credential endpoints get a MUCH tighter limit than the rest of the API. The general limit allows
+// 200 requests per quarter hour, which is sensible for browsing but would also permit roughly eight
+// hundred password guesses an hour from a single address. Sign-in, sign-up and token refresh are
+// where an attacker actually spends their effort, so they get their own budget. Successful sign-ins
+// are not counted, so a person using the product normally will never meet this — only someone
+// guessing will.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 12,
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many attempts from this device. Please wait a few minutes and try again.' },
+});
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/refresh', authLimiter);
 // Server-rendered pages: Clay's Desk articles (each at its own address, with real HTML for search
 // engines and link previews) and a generated sitemap. Mounted BEFORE the static handler so the
 // generated sitemap wins over the static file.
