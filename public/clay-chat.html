@@ -17,7 +17,7 @@
 </div></header>
 <main id="main" class="wrap">
   <h1>Talk with Clay</h1>
-  <p class="muted">Clay can shape and refine concepts and social content with you. Clay will always ask before anything irreversible — publishing a listing, buying, or deleting — and hands those to the proper flow so you stay in control.</p>
+  <p class="muted">Clay can shape and refine projects and social content with you. Clay will always ask before anything irreversible — publishing a listing, buying, or deleting — and hands those to the proper flow so you stay in control.</p>
   <div id="unavailable" role="status" class="muted"></div>
   <div id="log" role="log" aria-live="polite" aria-label="Conversation with Clay"></div>
   <div id="confirmzone" aria-live="assertive"></div>
@@ -27,7 +27,7 @@
     <button type="button" class="btn" id="send">Send</button>
   </div>
 </main>
-<script src="/js/a11y.js?v=20260806a"></script><script src="/js/api.js?v=20260806a"></script><script src="/js/nav.js?v=20260806a"></script>
+<script src="/js/a11y.js?v=20260806b"></script><script src="/js/api.js?v=20260806b"></script><script src="/js/nav.js?v=20260806b"></script>
 <script>
 if(!Kiln.isLoggedIn())location.replace('/login.html');
 const log=document.getElementById('log'),confirmzone=document.getElementById('confirmzone'),sendBtn=document.getElementById('send'),msg=document.getElementById('msg');
@@ -41,7 +41,7 @@ function addTurn(who,text){
 }
 async function checkStatus(){
   try{const s=await Kiln.api('/clay/status');
-    if(!s.available){document.getElementById('unavailable').innerHTML='<div class="msg err">Clay isn’t fully awake for chat yet — his conversation engine hasn’t been switched on. You can still shape full concepts in the laboratory, and he’ll be ready to talk here soon.</div>';}
+    if(!s.available){document.getElementById('unavailable').innerHTML='<div class="msg err">Clay isn’t fully awake for chat yet — his conversation engine hasn’t been switched on. You can still shape full projects in the laboratory, and he’ll be ready to talk here soon.</div>';}
   }catch(_){}
 }
 async function send(){
@@ -93,7 +93,7 @@ async function watchBuild(buildId){
       }
       if(data.status==='done'){
         done=true;
-        const m=data.message||'Your concept is ready.';
+        const m=data.message||'Your project is ready.';
         cap.textContent=m;
         if(data.concept_id){
           d.appendChild(document.createElement('br'));

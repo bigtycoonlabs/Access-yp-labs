@@ -37,15 +37,15 @@
     </section>
     <section aria-labelledby="seed-h">
       <h2 id="seed-h">Seed the Dream Market</h2>
-      <p class="muted">Ask Clay to invent, build, and post one seed concept under his dreamer tag. It goes to the <a href="/moderation.html">review queue</a> — nothing is public until you approve it there.</p>
-      <p><button type="button" class="btn" id="seedbtn">Seed a concept</button></p>
+      <p class="muted">Ask Clay to invent, build, and post one seed project under his dreamer tag. It goes to the <a href="/moderation.html">review queue</a> — nothing is public until you approve it there.</p>
+      <p><button type="button" class="btn" id="seedbtn">Seed a project</button></p>
       <p id="seedresult" role="status" aria-live="polite" class="muted"></p>
       <h3 id="sched-h" style="margin-top:14px">Auto-seed schedule</h3>
-      <p class="muted">When on, Clay adds a couple of concepts a day to the review queue on its own, spaced out. Everything still goes through the <a href="/moderation.html">review queue</a> — nothing is public until you approve it.</p>
+      <p class="muted">When on, Clay adds a couple of projects a day to the review queue on its own, spaced out. Everything still goes through the <a href="/moderation.html">review queue</a> — nothing is public until you approve it.</p>
       <p id="schedstatus" role="status" aria-live="polite" class="muted">Loading the schedule…</p>
       <p id="schedimg" class="muted"></p>
       <p><button type="button" class="btn secondary" id="schedtoggle" disabled>Loading…</button></p>
-      <div id="schedtargets" role="group" aria-label="Concepts per day"></div>
+      <div id="schedtargets" role="group" aria-label="Projects per day"></div>
       <p id="schedresult" role="status" aria-live="polite" class="muted"></p>
     </section>
     <section aria-labelledby="rec-h">
@@ -54,7 +54,7 @@
     </section>
   </div>
 </main>
-<script src="/js/a11y.js?v=20260806a"></script><script src="/js/api.js?v=20260806a"></script><script src="/js/nav.js?v=20260806a"></script>
+<script src="/js/a11y.js?v=20260806b"></script><script src="/js/api.js?v=20260806b"></script><script src="/js/nav.js?v=20260806b"></script>
 <script>
 const gate=document.getElementById('gate');
 function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
@@ -196,11 +196,11 @@ if(sb){
   sb.addEventListener('click',async()=>{
     sb.disabled=true;
     const out=document.getElementById('seedresult');
-    out.textContent='Asking Clay to seed a concept…'; announce('Asking Clay to seed a concept.');
+    out.textContent='Asking Clay to seed a project…'; announce('Asking Clay to seed a project.');
     try{
       const r=await Kiln.api('/clay/seed',{method:'POST'});
       const msg=r.message||(r.status==='seeding'
-        ?'Clay is building a seed concept now. It’ll appear in the review queue in a minute or two, and staff will be emailed.'
+        ?'Clay is building a seed project now. It’ll appear in the review queue in a minute or two, and staff will be emailed.'
         :'Done.');
       out.textContent=msg; announce(msg,true);
     }catch(e){ if(e.sessionExpired) return goSignIn(); out.textContent=e.message||'Could not start seeding.'; announce(out.textContent,true); }

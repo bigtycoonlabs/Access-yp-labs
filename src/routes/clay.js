@@ -833,7 +833,7 @@ router.post('/concept/:id/image', authenticate, asyncHandler(async (req, res) =>
   if (!r.ok) {
     const msgs = {
       unavailable: 'Image generation isn’t switched on yet, so nothing was made and nothing was charged.',
-      no_budget: 'This concept has used its image allowance for the month. Buy an Extras pack to make more.',
+      no_budget: 'This project has used its image allowance for the month. It resets at the start of next month.',
       no_brief: 'Clay couldn’t compose the image just now, so nothing was made and nothing was charged.',
       empty: 'The image service returned nothing, so nothing was saved.',
     };

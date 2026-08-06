@@ -1,4 +1,4 @@
-// Concept vault — a calm, screen-reader-first home for ONE concept's materials.
+// Project vault — a calm, screen-reader-first home for ONE project's materials.
 // The Laboratory chat now sends people here with a single button instead of stacking a
 // "View" button per asset in the conversation (which was overwhelming with VoiceOver).
 // Here each section can be viewed, downloaded, and sent back to Clay for an edit.
@@ -38,10 +38,10 @@
 
   var params = new URLSearchParams(location.search);
   var id = /^[0-9a-f-]{36}$/i.test(params.get('id') || '') ? params.get('id') : null;
-  var titleEl = document.getElementById('concept-title');
+  var titleEl = document.getElementById('project-title');
   var takeEl = document.getElementById('clays-take');
   var assetsEl = document.getElementById('assets');
-  var actionsEl = document.getElementById('concept-actions');
+  var actionsEl = document.getElementById('project-actions');
 
   if (!id) {
     titleEl.textContent = 'Project not found';
@@ -111,7 +111,7 @@
     try {
       var r = await Kiln.api('/concepts/' + conceptId + '/export');
       var text = (r.assets || []).map(function (a) { return '# ' + (a.title || a.type) + '\n\n' + (a.body || '') + '\n'; }).join('\n\n');
-      saveText(text, 'concept-package.md');
+      saveText(text, 'project-package.md');
       announce('Your package download has started.', true);
     } catch (e) {
       if (e.sessionExpired) return goSignIn();
@@ -153,7 +153,7 @@
         if (!out) {
           out = el('div', 'asset-body'); out.id = 'econ-out'; out.setAttribute('tabindex', '-1');
           out.setAttribute('role', 'region'); out.setAttribute('aria-label', 'Computed unit economics');
-          var host = document.getElementById('concept-actions');
+          var host = document.getElementById('project-actions');
           if (host) host.appendChild(out);
         }
         out.hidden = false; out.textContent = r.body;
@@ -220,11 +220,11 @@
     actionsEl.appendChild(box);
   }
 
-  // ---- Extras: per-concept image budget, packs, and manual generation ----
+  // ---- Extras: per-project image budget, packs, and manual generation ----
   function extrasSummary(b) {
     var s = b.used_this_month + ' of ' + b.monthly_included + ' monthly image'
       + (b.monthly_included === 1 ? '' : 's') + ' used — ' + b.free_remaining + ' left this month.';
-    if (b.purchased_balance > 0) s += ' Plus ' + b.purchased_balance + ' from your Extras packs.';
+    if (b.purchased_balance > 0) s += ' Plus ' + b.purchased_balance + ' you bought earlier, which still work.';
     return s;
   }
 
@@ -282,12 +282,10 @@
       var mk = el('button', 'btn secondary', 'Make an image'); mk.type = 'button';
       mk.addEventListener('click', function () { makeImage(conceptId, mk, sect); });
       acts.appendChild(mk);
-      (r.packs || []).forEach(function (p) {
-        var lbl = 'Buy ' + p.images + ' more images — $' + (p.price_cents / 100).toFixed(2);
-        var pb = el('button', 'btn secondary', lbl); pb.type = 'button';
-        pb.addEventListener('click', function () { buyPack(conceptId, p.id, pb, sect); });
-        acts.appendChild(pb);
-      });
+      // Image packs are retired. The monthly allowance is per account and generous enough that
+      // almost nobody reached the paywall, so selling packs earned close to nothing while making
+      // the product feel like it was counting pennies. Any balance someone already bought is still
+      // honoured and still spends — it is shown in the summary above.
       sect.appendChild(acts);
       var status = el('p', 'muted extras-status');
       status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
@@ -308,7 +306,7 @@
       var sum = r.summary || {};
       var orders = r.orders || [];
       var paid = orders.filter(function (o) { return o.status === 'paid'; });
-      // Only show the section once there's a store selling — no empty "sales" box on every concept.
+      // Only show the section once there's a store selling — no empty "sales" box on every project.
       if (!paid.length && !orders.length) return;
       var sect = el('section', 'sales'); sect.setAttribute('aria-label', 'Your sales');
       sect.appendChild(el('h2', null, 'Your sales'));
@@ -446,7 +444,7 @@
     actionsEl.appendChild(sect);
   }
 
-  // ---- Creator Path: where are you taking THIS concept? (per-concept intent) ----
+  // ---- Creator Path: where are you taking THIS project? (per-project intent) ----
   // The plan shapes how Clay coaches this project and is settable in plain conversation too; this is
   // the visible, screen-reader-first control for it. There is no wrong answer and no ceiling.
   async function savePlan(conceptId, pathId, label, status) {
@@ -526,13 +524,13 @@
   (async function load() {
     try {
       var data = await Kiln.api('/concepts/' + id);
-      var concept = data.concept || {};
+      var project = data.project || {};
       var entitled = data.entitled !== false;
       var assets = (data.assets || []).filter(function (a) { return a && a.is_current !== false; });
 
-      document.title = (concept.title || 'Your project') + ' — Access YP Labs';
-      titleEl.textContent = concept.title || 'Your project';
-      if (concept.clays_take) { takeEl.textContent = concept.clays_take; takeEl.hidden = false; }
+      document.title = (project.title || 'Your project') + ' — Access YP Labs';
+      titleEl.textContent = project.title || 'Your project';
+      if (project.clays_take) { takeEl.textContent = project.clays_take; takeEl.hidden = false; }
 
       renderPlan(id);
 
@@ -562,13 +560,13 @@
           sec.appendChild(el('p', 'muted', 'Built and waiting — unlocks when you keep this project.'));
         }
         var edit = el('a', 'btn secondary', 'Request an edit');
-        edit.href = '/app.html?concept=' + encodeURIComponent(id) + '&edit=' + encodeURIComponent(a.type) + '&editTitle=' + encodeURIComponent(label);
+        edit.href = '/app.html?project=' + encodeURIComponent(id) + '&edit=' + encodeURIComponent(a.type) + '&editTitle=' + encodeURIComponent(label);
         acts.appendChild(edit);
         sec.appendChild(acts);
         assetsEl.appendChild(sec);
       });
 
-      // ---- concept-level actions ----
+      // ---- project-level actions ----
       var cActs = el('div', 'actions');
       if (entitled) {
         var dlAll = el('button', 'btn', 'Download the whole package'); dlAll.type = 'button';
@@ -576,20 +574,20 @@
         cActs.appendChild(dlAll);
       }
       var chat = el('a', 'btn' + (entitled ? ' secondary' : ''), 'Keep building with Clay');
-      chat.href = '/app.html?concept=' + encodeURIComponent(id);
+      chat.href = '/app.html?project=' + encodeURIComponent(id);
       cActs.appendChild(chat);
       if (assets.some(function (a) { return a.type === 'html_demo' || a.type === 'built_site'; })) {
         var demo = el('a', 'btn secondary', 'Open the live demo');
-        demo.href = '/sandbox.html?concept=' + encodeURIComponent(id);
+        demo.href = '/sandbox.html?project=' + encodeURIComponent(id);
         cActs.appendChild(demo);
       }
-      if (!concept.is_operating) {
+      if (!project.is_operating) {
         var list = el('a', 'btn secondary', 'List this in the Dream Market');
-        list.href = '/app.html?concept=' + encodeURIComponent(id) + '&action=list';
+        list.href = '/app.html?project=' + encodeURIComponent(id) + '&action=list';
         cActs.appendChild(list);
       }
       var consult = el('a', 'btn secondary', 'Book a consultant');
-      consult.href = '/consultants.html?concept=' + encodeURIComponent(id);
+      consult.href = '/consultants.html?project=' + encodeURIComponent(id);
       cActs.appendChild(consult);
       var econ = el('button', 'btn secondary', 'Compute the real numbers'); econ.type = 'button';
       econ.addEventListener('click', function () { computeEconomics(id, econ); });
@@ -598,7 +596,7 @@
       loadExtras(id);
       loadStore(id);
       loadSales(id);
-      deleteBox(id, concept.title || 'this project');
+      deleteBox(id, project.title || 'this project');
 
       // ---- keep / unlock, only when something is actually locked ----
       if (!entitled && lockedCount) {
@@ -613,7 +611,7 @@
         actionsEl.appendChild(keepBox);
       }
 
-      announce('Your vault for ' + (concept.title || 'your project') + '. ' + assets.length + ' section' + (assets.length === 1 ? '' : 's') + ' listed, each with View, Download, and Request an edit.', true);
+      announce('Your vault for ' + (project.title || 'your project') + '. ' + assets.length + ' section' + (assets.length === 1 ? '' : 's') + ' listed, each with View, Download, and Request an edit.', true);
       focusEl(titleEl);
     } catch (e) {
       if (e.sessionExpired) return goSignIn();

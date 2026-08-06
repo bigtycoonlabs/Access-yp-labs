@@ -379,7 +379,7 @@
         <a href="/risk.html" style="display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Risk Disclosure</a>
       </nav>
     </footer>
-<script src="/js/a11y.js?v=20260806a"></script><script src="/js/api.js?v=20260806a"></script><script src="/js/nav.js?v=20260806a"></script>
+<script src="/js/a11y.js?v=20260806b"></script><script src="/js/api.js?v=20260806b"></script><script src="/js/nav.js?v=20260806b"></script>
 <script>
 (function(){
   const inner=document.getElementById('hero-inner');
@@ -446,11 +446,11 @@
             out.appendChild(el('p','build-inside-h','What the full build would include:'));
             const ul=el('ul','build-inside');r.inside.forEach(i=>ul.appendChild(el('li',null,i)));out.appendChild(ul);
           }
-          out.appendChild(el('p','muted','This is just a taste. Create a free account and Clay builds the full concept for you — that takes a few minutes, so Clay emails it to you the moment it’s ready. That’s what the account is for. Free until you download it.'));
-          announce('Clay shaped your idea into '+r.title+'. Create a free account so Clay can build the full concept and email it to you when it’s ready.',true);
+          out.appendChild(el('p','muted','This is just a taste. Create a free account and Clay builds the full project for you — that takes a few minutes, so Clay emails it to you the moment it’s ready. That’s what the account is for. Free until you download it.'));
+          announce('Clay shaped your idea into '+r.title+'. Create a free account so Clay can build the full project and email it to you when it’s ready.',true);
         }else{
           out.appendChild(el('p','build-lead','I’ve got it — and I’m ready to build it out with you.'));
-          out.appendChild(el('p','muted','Create a free account and Clay builds the whole concept. It takes a few minutes, so Clay emails it to you when it’s ready — that’s why an account is needed. Free until you download it.'));
+          out.appendChild(el('p','muted','Create a free account and Clay builds the whole project. It takes a few minutes, so Clay emails it to you when it’s ready — that’s why an account is needed. Free until you download it.'));
           announce('Clay has your idea. Create a free account so Clay can build it and email you when it’s ready.',true);
         }
         const cta=el('a','cta solid','Create a free account & keep building');cta.href='/register.html';cta.style.marginTop='10px';out.appendChild(cta);
@@ -543,12 +543,12 @@
     if(!box) return;
     let d; try{ d=await Kiln.api('/liveness',{auth:false}); }catch(_){ return; }
     const chips=[];
-    if(d.in_dreamhold>0) chips.push(d.in_dreamhold+(d.in_dreamhold===1?' concept':' concepts')+' in the Dream Market');
+    if(d.in_dreamhold>0) chips.push(d.in_dreamhold+(d.in_dreamhold===1?' project':' projects')+' in the Dream Market');
     if(d.waiting>0) chips.push(d.waiting+(d.waiting===1?' person':' people')+' waiting for a builder');
     if(d.ideas_shaped>0) chips.push(d.ideas_shaped+(d.ideas_shaped===1?' idea':' ideas')+' shaped with Clay');
     box.innerHTML='';
     if(!chips.length){
-      const p=el('p','live-empty','The first concepts are being shaped right now — yours could be next.');
+      const p=el('p','live-empty','The first projects are being shaped right now — yours could be next.');
       box.appendChild(p);
     }else{
       const ul=el('ul','live-row');

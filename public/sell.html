@@ -94,7 +94,7 @@ fieldset{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margi
     </div>
   </section>
 </main>
-<script src="/js/a11y.js?v=20260806a"></script><script src="/js/api.js?v=20260806a"></script><script src="/js/nav.js?v=20260806a"></script>
+<script src="/js/a11y.js?v=20260806b"></script><script src="/js/api.js?v=20260806b"></script><script src="/js/nav.js?v=20260806b"></script>
 <script>
 if(!Kiln.isLoggedIn())location.replace('/login.html');
 const fb=document.getElementById('feedback');
@@ -125,7 +125,7 @@ async function loadProjects(){
     const {concepts}=await Kiln.api('/concepts');
     const sel=document.getElementById('project');
     // Running businesses can't be listed in the Dream Market — never offer them here.
-    concepts.filter(c=>!c.is_operating).forEach(c=>{const o=el('option',null,c.title);o.value=c.id;sel.appendChild(o);});
+    projects.filter(c=>!c.is_operating).forEach(c=>{const o=el('option',null,c.title);o.value=c.id;sel.appendChild(o);});
   }catch(e){show(e.message);}
 }
 document.getElementById('project').addEventListener('change',e=>pickProject(e.target.value));
@@ -160,7 +160,7 @@ document.getElementById('savepen').addEventListener('click',async()=>{
 document.getElementById('newproj').addEventListener('click',async()=>{
   const title=window.prompt('Name your project:'); if(!title)return;
   try{const {concept}=await Kiln.api('/concepts',{method:'POST',body:{title,mode:'create'}});
-    const sel=document.getElementById('project');const o=el('option',null,concept.title);o.value=concept.id;sel.appendChild(o);sel.value=concept.id;pickProject(concept.id);
+    const sel=document.getElementById('project');const o=el('option',null,project.title);o.value=project.id;sel.appendChild(o);sel.value=project.id;pickProject(project.id);
     show('Project created. Add your materials below.','ok');
   }catch(e){show(e.message);}
 });
@@ -225,10 +225,10 @@ document.getElementById('createlisting').addEventListener('click',async()=>{
       catch(e){show(e.message);submit.disabled=false;}});
     pc.appendChild(submit);
     const wl=el('div','panel');
-    wl.appendChild(el('h3',null,'Your concept has a built-in waitlist'));
+    wl.appendChild(el('h3',null,'Your project has a built-in waitlist'));
     wl.appendChild(el('p','muted','Once this listing is live, anyone can join the waitlist for the business — no account needed. Share this link to capture real demand before it launches:'));
     wl.appendChild(el('p',null,location.origin+'/listing.html?id='+listing.id));
-    wl.appendChild(el('p','muted','That demand travels with the concept — whoever buys it inherits the waitlist. It is proof your idea is wanted.'));
+    wl.appendChild(el('p','muted','That demand travels with the project — whoever buys it inherits the waitlist. It is proof your idea is wanted.'));
     const mgr=el('a','btn secondary','Manage waitlist & send launch announcement');
     mgr.href='/waitlist.html?concept='+conceptId;
     wl.appendChild(mgr);
@@ -236,7 +236,7 @@ document.getElementById('createlisting').addEventListener('click',async()=>{
     btn.disabled=false;
   }catch(e){
     btn.disabled=false;
-    if(e.status===422){show('This concept needs a business plan, a marketing strategy, and a build path. Add them in section 2, or build them in Clay, then try again.');document.getElementById('sec2').hidden=false;}
+    if(e.status===422){show('This project needs a business plan, a marketing strategy, and a build path. Add them in section 2, or build them in Clay, then try again.');document.getElementById('sec2').hidden=false;}
     else if(e.status===409){show(e.message);}
     else show(e.message);
   }

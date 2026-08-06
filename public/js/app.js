@@ -19,20 +19,20 @@
   const attachedEl = document.getElementById('attached');
   let pendingUploadIds = [];
   let mode = 'create';
-  // The concept we're actively working on. Once a concept exists, the next message
-  // refines THAT concept (a new version) instead of spawning a fresh one. Cleared
-  // by choosing "Create" or "Start a fresh concept".
+  // The project we're actively working on. Once a project exists, the next message
+  // refines THAT project (a new version) instead of spawning a fresh one. Cleared
+  // by choosing "Create" or "Start a fresh project".
   let currentConceptId = null;
-  // Running back-and-forth with Clay while refining the CURRENT concept. Sent to
+  // Running back-and-forth with Clay while refining the CURRENT project. Sent to
   // /clay/chat each turn (the server returns the canonical transcript to replay).
-  // Reset whenever we switch concepts or start fresh, so contexts never bleed.
+  // Reset whenever we switch projects or start fresh, so contexts never bleed.
   let chatHistory = [];
   // The three pieces anyone can see and keep refining for free. Must match the server's
   // PREVIEW_TYPES in lib/entitlement.js. Everything else is built and updated but stays
-  // locked until the concept is kept.
+  // locked until the project is kept.
   const PREVIEW_TYPES = ['business_plan', 'marketing_strategy', 'html_demo', 'built_site'];
 
-  // When you're refining an existing concept there's no decision to make — hide the
+  // When you're refining an existing project there's no decision to make — hide the
   // create/enhance toggles (and the "already running" checkbox). They come back when you
   // start fresh, where the choice actually matters.
   function setEditingConcept(editing) {
@@ -89,7 +89,7 @@
     const box = el('div', 'locked-note');
     box.setAttribute('role', 'note');
     box.appendChild(el('p', 'take-label', 'Built and waiting — unlocks when you keep this'));
-    box.appendChild(el('p', null, 'Also ready inside this concept: ' + names.join(', ') + '. Your business plan, marketing strategy, and live demo stay open for free — the rest opens the moment you keep it.'));
+    box.appendChild(el('p', null, 'Also ready inside this project: ' + names.join(', ') + '. Your business plan, marketing strategy, and live demo stay open for free — the rest opens the moment you keep it.'));
     const kb = el('button', 'btn', 'Unlock everything — $19/month'); kb.type = 'button';
     kb.addEventListener('click', () => keepConcept(conceptId, kb));
     box.appendChild(kb);
@@ -157,8 +157,8 @@
       build_path: 'Build path', roadmap: 'Build path', html_demo: 'Interactive demo',
       built_site: 'Working demo', money_flow: 'Money flow', unit_economics: 'Money flow',
       customer_research: 'Customer research', competitor_research: 'Competitor research',
-      regulatory_risk: 'Risk & regulation', image_prompt: 'Visual concept',
-      example_image: 'Visual concept', video_script: 'Video script', social: 'Social content'
+      regulatory_risk: 'Risk & regulation', image_prompt: 'Visual project',
+      example_image: 'Visual project', video_script: 'Video script', social: 'Social content'
     };
     if (map[t]) return map[t];
     return String(t || 'Section').replace(/_/g, ' ').replace(/^\w/, function (c) { return c.toUpperCase(); });
@@ -208,14 +208,14 @@
       } else {
         el2.textContent = 'Clay’s builder isn’t switched on yet. You can still browse and manage your work — building will light up as soon as it’s connected.';
         el2.setAttribute('role', 'alert');
-        announce('Heads up: Clay’s builder isn’t connected yet, so it can’t create concepts right now. You can still browse and manage your work.', true);
+        announce('Heads up: Clay’s builder isn’t connected yet, so it can’t create projects right now. You can still browse and manage your work.', true);
       }
     } catch (_) {}
-    // Opening an existing concept to keep refining it — skip the generic opening.
+    // Opening an existing project to keep refining it — skip the generic opening.
     if (openId) {
       await loadConceptIntoWorkspace(openId);
-      // Deep-links from the concept vault: open the listing form, or pre-load an edit
-      // request for one section. Editing the loaded concept is already the refine path, so we
+      // Deep-links from the project vault: open the listing form, or pre-load an edit
+      // request for one section. Editing the loaded project is already the refine path, so we
       // just prime the message box — no mode toggle needed.
       const action = params.get('action');
       const editType = (params.get('edit') || '').toLowerCase();
@@ -231,7 +231,7 @@
       }
       return;
     }
-    // Figure out whether this is a returning builder BEFORE greeting them. Their own concepts
+    // Figure out whether this is a returning builder BEFORE greeting them. Their own projects
     // are the truth — someone with work in progress must never be greeted like a first-timer,
     // even if they never filled in interests.
     let myConcepts = [];
@@ -242,7 +242,7 @@
     let opening;
     if (myConcepts.length) {
       opening = (firstName ? ('Welcome back, ' + firstName + '. ') : 'Welcome back. ')
-        + 'Your Laboratory is right where you left it — ' + myConcepts.length + ' concept'
+        + 'Your Laboratory is right where you left it — ' + myConcepts.length + ' project'
         + (myConcepts.length === 1 ? '' : 's') + ' waiting for you below. Open any one to pick up building, or start something new with “Create.”';
     } else if (prefs && prefs.interests && prefs.interests.length) {
       const words = prefs.interests.map((i) => CATEGORY_WORDS[i] || i.replace(/_/g, ' '));
@@ -261,15 +261,15 @@
       }
     } catch (_) {}
     m.appendChild(el('p', null, opening));
-    // Hannah's feedback: finished concepts read better BELOW the chat window, not stacked
+    // Hannah's feedback: finished projects read better BELOW the chat window, not stacked
     // inside Clay's opening message. Render them into the dedicated area beneath the composer;
     // fall back to the message only if that container somehow isn't present.
-    await renderMyConcepts(document.getElementById('my-concepts-area') || m, myConcepts);
+    await renderMyConcepts(document.getElementById('my-projects-area') || m, myConcepts);
     // Offer to tune the Dream Market from the lab — opt-in, never a gate. Skipped if they're
     // already tuned, or arrived mid-flow with an idea already sitting in the box.
     if (prefs && !prefs.onboarded && !(promptEl && promptEl.value)) maybeOfferTuning();
 
-    // Gentle, mutable reminder about concepts built but not yet kept. Honest and
+    // Gentle, mutable reminder about projects built but not yet kept. Honest and
     // easy to silence — never shown to subscribers or staff (their count is 0).
     try {
       const u = await Kiln.api('/concepts/unkept-summary');
@@ -277,11 +277,11 @@
         const r = message('clay', 'Clay');
         const names = (u.sample || []).map((s) => s.title).filter(Boolean);
         const lead = u.count === 1
-          ? 'One gentle nudge: you’ve built a concept you haven’t kept yet'
-          : ('One gentle nudge: you’ve built ' + u.count + ' concepts you haven’t kept yet');
+          ? 'One gentle nudge: you’ve built a project you haven’t kept yet'
+          : ('One gentle nudge: you’ve built ' + u.count + ' projects you haven’t kept yet');
         r.appendChild(el('p', null, lead + (names.length ? (' — ' + names.join(', ')) : '') + '. Your first project is free to download and keep; the plan covers the rest at $19 a month. No rush — and you can quiet these whenever you like.'));
         const acts = el('div', 'actions');
-        const see = el('a', 'btn secondary', 'See my concepts'); see.href = '/dashboard.html'; acts.appendChild(see);
+        const see = el('a', 'btn secondary', 'See my projects'); see.href = '/dashboard.html'; acts.appendChild(see);
         const quiet = el('button', 'btn secondary', 'Quiet these reminders'); quiet.type = 'button';
         quiet.addEventListener('click', async () => {
           quiet.disabled = true;
@@ -308,23 +308,23 @@
       opWrap.hidden = next !== 'enhance';
       if (next !== 'enhance') { const ob = document.getElementById('operating'); if (ob) ob.checked = false; }
     }
-    announce(next === 'create' ? 'Create a new concept selected.' : 'Enhance selected. You can mark this as a business you already run.');
+    announce(next === 'create' ? 'Create a new project selected.' : 'Enhance selected. You can mark this as a business you already run.');
   }
   document.getElementById('mode-create').addEventListener('click', () => setMode('create'));
   document.getElementById('mode-enhance').addEventListener('click', () => setMode('enhance'));
 
-  // Let the person see and change the concept's NAME — there was no way to rename a built
+  // Let the person see and change the project's NAME — there was no way to rename a built
   // concept before. Uses the existing PATCH /concepts/:id endpoint.
-  function renderConceptName(container, concept) {
-    const wrap = el('div', 'concept-name'); wrap.style.cssText = 'margin:8px 0;';
-    const row = el('p'); row.appendChild(el('strong', null, 'Concept name: '));
-    const nameSpan = el('span', null, concept.title || 'Untitled concept'); row.appendChild(nameSpan);
+  function renderConceptName(container, project) {
+    const wrap = el('div', 'project-name'); wrap.style.cssText = 'margin:8px 0;';
+    const row = el('p'); row.appendChild(el('strong', null, 'Project name: '));
+    const nameSpan = el('span', null, project.title || 'Untitled project'); row.appendChild(nameSpan);
     wrap.appendChild(row);
-    const editBtn = el('button', 'btn secondary', 'Rename this concept'); editBtn.type = 'button';
+    const editBtn = el('button', 'btn secondary', 'Rename this project'); editBtn.type = 'button';
     wrap.appendChild(editBtn);
     const form = el('div'); form.hidden = true; form.style.marginTop = '8px';
-    const inp = el('input'); inp.type = 'text'; inp.maxLength = 120; inp.value = concept.title || '';
-    inp.setAttribute('aria-label', 'New concept name'); inp.style.cssText = 'width:100%;min-height:44px;margin-bottom:8px;';
+    const inp = el('input'); inp.type = 'text'; inp.maxLength = 120; inp.value = project.title || '';
+    inp.setAttribute('aria-label', 'New project name'); inp.style.cssText = 'width:100%;min-height:44px;margin-bottom:8px;';
     const save = el('button', 'btn', 'Save name'); save.type = 'button';
     const out = el('p', 'muted'); out.setAttribute('role', 'status');
     save.addEventListener('click', async function () {
@@ -333,11 +333,11 @@
       save.disabled = true; out.textContent = 'Saving…';
       try {
         const r = await Kiln.api('/concepts/' + concept.id, { method: 'PATCH', body: { title: v } });
-        concept.title = (r.concept && r.concept.title) || v;
-        nameSpan.textContent = concept.title;
-        out.textContent = 'Name saved.'; announce('Concept renamed to ' + concept.title + '.', true);
+        project.title = (r.project && r.project.title) || v;
+        nameSpan.textContent = project.title;
+        out.textContent = 'Name saved.'; announce('Project renamed to ' + project.title + '.', true);
         form.hidden = true; editBtn.focus();
-      } catch (e) { out.textContent = (e && e.message) ? e.message : 'Could not rename. Please try again.'; announce('Could not rename the concept.', true); }
+      } catch (e) { out.textContent = (e && e.message) ? e.message : 'Could not rename. Please try again.'; announce('Could not rename the project.', true); }
       save.disabled = false;
     });
     form.appendChild(inp); form.appendChild(save); form.appendChild(out);
@@ -346,11 +346,11 @@
     container.appendChild(wrap);
   }
 
-  // Show (and let the person edit/publish) this concept's landing page — a real clickable link
+  // Show (and let the person edit/publish) this project's landing page — a real clickable link
   // when it's live, and a simple form when they want to create or change it. This is the "where's
   // my landing page and how do I edit it" surface.
-  function renderLaunchPage(container, concept) {
-    const lp = concept.launch_page || {};
+  function renderLaunchPage(container, project) {
+    const lp = project.launch_page || {};
     const liveUrl = lp.slug ? (location.origin + '/p/' + lp.slug) : '';
     const wrap = el('div', 'launch-panel');
     wrap.style.cssText = 'border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:12px 0;background:#fff;';
@@ -373,7 +373,7 @@
       inp.style.cssText = 'width:100%;min-height:' + (isArea ? '80px' : '44px') + ';margin:4px 0 10px;';
       form.appendChild(l); form.appendChild(inp); return inp;
     }
-    const hIn = field('Headline (required)', 'lp-headline', lp.headline || concept.title || '');
+    const hIn = field('Headline (required)', 'lp-headline', lp.headline || project.title || '');
     const sIn = field('Subheadline', 'lp-subhead', lp.subhead || '');
     const bIn = field('Short blurb', 'lp-blurb', lp.blurb || '', true);
     const cIn = field('Button label', 'lp-cta', lp.cta_label || 'Get early access');
@@ -396,7 +396,7 @@
       save.disabled = true; out.textContent = 'Saving…';
       try {
         const r = await Kiln.api('/concepts/' + concept.id + '/launch-page', { method: 'PUT', body: { headline: hIn.value, subhead: sIn.value, blurb: bIn.value, cta_label: cIn.value, theme: themeSel.value, hero_image: heroIn.value, publish: pub.checked } });
-        concept.launch_page = r.launch_page || concept.launch_page;
+        project.launch_page = r.launch_page || project.launch_page;
         out.textContent = '';
         out.appendChild(document.createTextNode(pub.checked ? 'Your landing page is live: ' : 'Saved as a draft. '));
         if (r.url) { const a = el('a', null, r.url); a.href = r.url; a.target = '_blank'; a.rel = 'noopener'; out.appendChild(a); }
@@ -413,7 +413,7 @@
     seeBtn.addEventListener('click', async function () {
       seeBtn.disabled = true; signupsOut.textContent = 'Loading…';
       try {
-        const r = await Kiln.api('/waitlist/' + concept.id);
+        const r = await Kiln.api('/waitlist/' + project.id);
         const list = (r && r.signups) || [];
         const n = (r && typeof r.count === 'number') ? r.count : list.length;
         signupsOut.textContent = '';
@@ -428,16 +428,16 @@
     });
     wrap.appendChild(seeBtn);
     wrap.appendChild(signupsOut);
-    renderDomains(wrap, concept);
-    renderSitePages(wrap, concept);
+    renderDomains(wrap, project);
+    renderSitePages(wrap, project);
     container.appendChild(wrap);
   }
 
-  // The site manager: see, add, and edit the pages that make this concept a real site — not
+  // The site manager: see, add, and edit the pages that make this project a real site — not
   // just a landing page. Mirrors what Clay can do, so the person has direct control too.
-  function renderSitePages(container, concept) {
-    const siteSlug = (concept.launch_page && concept.launch_page.slug) || null;
-    const homeLive = !!(concept.launch_page && concept.launch_page.enabled);
+  function renderSitePages(container, project) {
+    const siteSlug = (project.launch_page && project.launch_page.slug) || null;
+    const homeLive = !!(project.launch_page && project.launch_page.enabled);
     const sec = el('div', 'site-pages'); sec.style.cssText = 'margin-top:16px;border-top:1px solid var(--line);padding-top:12px;';
     sec.appendChild(el('h4', null, 'Site pages'));
     sec.appendChild(el('p', 'muted', 'Turn this into a real resource site or blog: add pages with genuine content. Each goes live under your landing page once it and the home page are published. Ask Clay to write and add pages, or add one yourself.'));
@@ -530,7 +530,7 @@
   }
 
   // Web address manager: an instant free address on our platform, or connect your own domain.
-  function renderDomains(container, concept) {
+  function renderDomains(container, project) {
     let rootSuffix = 'accessyplabs.com', cnameTarget = '';
     let addressesLive = false, published = false, shareUrl = '';
     const sec = el('div', 'site-domains'); sec.style.cssText = 'margin-top:16px;border-top:1px solid var(--line);padding-top:12px;';
@@ -615,38 +615,38 @@
     container.appendChild(sec);
   }
 
-  // ---- open an existing concept to keep refining it ----
+  // ---- open an existing project to keep refining it ----
   async function loadConceptIntoWorkspace(id) {
     try {
       const { concept, assets, entitled } = await Kiln.api('/concepts/' + id);
-      currentConceptId = concept.id;
+      currentConceptId = project.id;
       chatHistory = [];
-      setEditingConcept(true); // refining an existing concept — hide the create/enhance toggles
+      setEditingConcept(true); // refining an existing project — hide the create/enhance toggles
       const m = message('clay', 'Clay');
-      m.appendChild(el('p', null, 'Picking up where we left off on “' + (concept.title || 'your concept') + '.” Everything you built is still here — tell me what to change or add and I’ll refine this same concept. You can start a fresh one anytime.'));
-      renderConceptName(m, concept);
-      renderClaysTake(m, concept);
+      m.appendChild(el('p', null, 'Picking up where we left off on “' + (project.title || 'your project') + '.” Everything you built is still here — tell me what to change or add and I’ll refine this same project. You can start a fresh one anytime.'));
+      renderConceptName(m, project);
+      renderClaysTake(m, project);
       const current = (assets || []).filter((a) => a.is_current !== false);
       if (current.length) {
-        vaultHandoff(m, concept.id, current, { demo: current.some((a) => a.type === 'html_demo' || a.type === 'built_site') });
+        vaultHandoff(m, project.id, current, { demo: current.some((a) => a.type === 'html_demo' || a.type === 'built_site') });
         const acts = el('div', 'actions');
-        const fresh = el('button', 'btn secondary', 'Start a fresh concept instead'); fresh.type = 'button';
+        const fresh = el('button', 'btn secondary', 'Start a fresh project instead'); fresh.type = 'button';
         fresh.addEventListener('click', startFreshConcept);
         acts.appendChild(fresh);
         m.appendChild(acts);
         const isEntitled = entitled !== false;
         const lockedNames = current.filter((a) => !(isEntitled || PREVIEW_TYPES.includes(a.type))).map((a) => a.title || a.label || a.type);
-        lockedNotice(m, concept.id, lockedNames);
+        lockedNotice(m, project.id, lockedNames);
       }
-      renderLaunchPage(m, concept);
-      announce('Continuing your concept: ' + (concept.title || 'your concept') + '. Add a message to refine it.', true);
+      renderLaunchPage(m, project);
+      announce('Continuing your project: ' + (project.title || 'your project') + '. Add a message to refine it.', true);
       if (promptEl) promptEl.focus();
     } catch (e) {
       if (e.sessionExpired) { goSignIn(); return; }
       const m = message('clay', 'Clay');
       const msg = (e.status === 410 || e.status === 404)
-        ? (e.message || 'That concept isn’t available anymore. You can start a fresh one below.')
-        : 'I couldn’t open that concept — it may have been removed. You can start a new one below.';
+        ? (e.message || 'That project isn’t available anymore. You can start a fresh one below.')
+        : 'I couldn’t open that project — it may have been removed. You can start a new one below.';
       m.appendChild(el('p', 'msg err', msg));
       announce(msg, true);
     }
@@ -657,8 +657,8 @@
     chatHistory = [];
     setEditingConcept(false);
     const m = message('clay', 'Clay');
-    m.appendChild(el('p', null, 'Fresh start — this next idea will be its own concept. What are we building?'));
-    announce('Starting a new concept.', true);
+    m.appendChild(el('p', null, 'Fresh start — this next idea will be its own project. What are we building?'));
+    announce('Starting a new project.', true);
     if (promptEl) { promptEl.value = ''; promptEl.focus(); }
   }
 
@@ -751,11 +751,11 @@
 
     try {
       // TALK FIRST. Every plain text message goes to Clay as a CONVERSATION — whether or not a
-      // concept is open. Clay decides what the message actually needs: answering a question,
+      // project is open. Clay decides what the message actually needs: answering a question,
       // running a diagnostic, asking a clarifying question, or building. When he does decide to
       // build, he calls the build tool himself and the reply carries a build id we watch below,
-      // so nothing is lost. Previously a message with no concept open was sent straight to the
-      // builder, which meant ANY first message — even "check systems" — started a full concept
+      // so nothing is lost. Previously a message with no project open was sent straight to the
+      // builder, which meant ANY first message — even "check systems" — started a full project
       // build with no chance to ask what the person actually wanted.
       // (File attachments still go through the builder, which knows how to fold them in.)
       if (!pendingUploadIds.length) {
@@ -775,11 +775,11 @@
       if (pendingUploadIds.length) body.upload_ids = pendingUploadIds.slice();
       const data = await Kiln.api('/clay/generate', { method: 'POST', body });
       // Files were handed to this build; clear them so they aren't attached again. (They're
-      // linked to the concept server-side, so future enhancements still see them.)
+      // linked to the project server-side, so future enhancements still see them.)
       pendingUploadIds = [];
       if (attachedEl) attachedEl.textContent = '';
-      // From here on, keep refining the same concept until they start fresh.
-      if (data && data.status === 'answered' && data.concept) { currentConceptId = data.concept.id; setEditingConcept(true); }
+      // From here on, keep refining the same project until they start fresh.
+      if (data && data.status === 'answered' && data.project) { currentConceptId = data.project.id; setEditingConcept(true); }
       thinking.removeChild(think);
       renderResult(thinking, data);
     } catch (e) {
@@ -799,7 +799,7 @@
   }
   sendBtn.addEventListener('click', send);
 
-  // ---- render a conversational reply from Clay (concept-editing chat) ----
+  // ---- render a conversational reply from Clay (project-editing chat) ----
   function renderChatReply(container, data) {
     if (!data || data.status === 'unavailable') {
       container.appendChild(el('p', 'msg err', (data && data.reply) || 'Clay couldn’t run just now — and he never makes things up, so nothing was changed.'));
@@ -885,7 +885,7 @@
     }
   }
 
-  // Re-fetch and show the concept's CURRENT materials (new versions after an edit).
+  // Re-fetch and show the project's CURRENT materials (new versions after an edit).
   async function showConceptMaterials(container, conceptId) {
     try {
       const { assets, entitled } = await Kiln.api('/concepts/' + conceptId);
@@ -955,7 +955,7 @@
 
   // Watch Clay build in real time: poll the build's progress notes and surface each new
   // one as Clay posts it, announced for VoiceOver. If the user steps away, the email
-  // still covers them. When it finishes, the concept opens right here.
+  // still covers them. When it finishes, the project opens right here.
   function watchBuild(container, buildId) {
     const log = el('div', 'build-log');
     log.setAttribute('aria-label', 'Clay’s build progress');
@@ -969,7 +969,7 @@
     // finished materials will emerge below it — pulled out of the flame one at a time.
     const flameWrap = el('div', 'build-flame');
     const flame = clayMark(); flame.classList.add('thinking');
-    const cap = el('span', 'bf-cap', 'Clay is shaping your concept…');
+    const cap = el('span', 'bf-cap', 'Clay is shaping your project…');
     flameWrap.appendChild(flame); flameWrap.appendChild(cap);
     log.appendChild(flameWrap);
     container.appendChild(log);
@@ -996,15 +996,15 @@
       }
       if (data.status === 'done') {
         clearInterval(timer); settle();
-        setCap('Your concept is taking shape — here’s what I pulled out:');
+        setCap('Your project is taking shape — here’s what I pulled out:');
         if (data.concept_id) {
           currentConceptId = data.concept_id; setEditingConcept(true);
           await revealMaterials(log, data.concept_id); // real assets, emerging one at a time
-          const open = el('a', 'btn', 'Open your concept');
+          const open = el('a', 'btn', 'Open your project');
           open.href = '/app.html?concept=' + encodeURIComponent(data.concept_id);
           log.appendChild(open);
         }
-        const msg = data.message || 'Your concept is ready — open it above or in your Laboratory.';
+        const msg = data.message || 'Your project is ready — open it above or in your Laboratory.';
         log.appendChild(el('p', 'msg ok', msg));
         announce(msg, true); // honest: says whether it emailed or not
       } else if (data.status === 'failed') {
@@ -1032,11 +1032,11 @@
     }, 2500);
   }
 
-  // Reveal a finished concept's REAL materials, drawn out of the flame one at a time. The
+  // Reveal a finished project's REAL materials, drawn out of the flame one at a time. The
   // sections were written together in the build's big step, so this is honest presentation —
   // showing true, finished assets appear in sequence — not invented progress. Each lands with
   // a warm edge that cools to cyan, is announced as it arrives, and shows a lock when the user
-  // hasn't kept the concept (present and visible, not yet openable).
+  // hasn't kept the project (present and visible, not yet openable).
   async function revealMaterials(log, conceptId) {
     let assets = [];
     try {
@@ -1046,7 +1046,7 @@
     if (!assets.length) return;
     const tray = el('div', 'material-tray');
     tray.setAttribute('role', 'list');
-    tray.setAttribute('aria-label', 'Your concept materials');
+    tray.setAttribute('aria-label', 'Your project materials');
     log.appendChild(tray);
     for (let i = 0; i < assets.length; i++) {
       const a = assets[i];
@@ -1058,52 +1058,52 @@
       card.appendChild(el('span', 'mc-name', name));
       if (a.locked) {
         const lk = el('span', 'mc-lock'); lk.setAttribute('aria-hidden', 'true'); card.appendChild(lk);
-        card.setAttribute('aria-label', name + ', ready — locked until you keep this concept');
+        card.setAttribute('aria-label', name + ', ready — locked until you keep this project');
       } else {
         card.setAttribute('aria-label', name + ', ready');
       }
       tray.appendChild(card);
       requestAnimationFrame(function () { card.classList.add('in'); });
       setTimeout(function () { card.classList.add('cool'); }, 700); // warm → settles cool
-      announce(name + (a.locked ? ' — ready, locked until you keep the concept.' : ' — ready.'));
+      announce(name + (a.locked ? ' — ready, locked until you keep the project.' : ' — ready.'));
       scrollToLatest(tray);
     }
     // The cards named each section; add one clear next step into the calm vault.
     vaultHandoff(log, conceptId, assets, { quiet: true, demo: assets.some((a) => a.type === 'html_demo' || a.type === 'built_site') });
-    announce('Your concept is ready. Open your vault to view, download, or edit each section.', true);
+    announce('Your project is ready. Open your vault to view, download, or edit each section.', true);
   }
 
   // ---- render Clay's result honestly by status ----
-  // Clay's own voice on a concept — its honest take and the next moves it would make —
+  // Clay's own voice on a project — its honest take and the next moves it would make —
   // shown before the files so the person hears a partner's thinking, not just documents.
   // Announced politely so a VoiceOver user actually hears the take, not just reaches it.
-  // Your concepts, front and center in the Laboratory — so picking up a project is the
+  // Your projects, front and center in the Laboratory — so picking up a project is the
   // easiest thing to do, and continuing is always free (paying is only to keep/download).
   async function renderMyConcepts(container, prefetched) {
-    let concepts = prefetched;
-    if (!concepts) {
+    let projects = prefetched;
+    if (!projects) {
       try { const r = await Kiln.api('/concepts'); concepts = (r && r.concepts) || []; } catch (_) { return; }
     }
-    if (!concepts.length) return;
-    const panel = el('div', 'my-concepts');
+    if (!projects.length) return;
+    const panel = el('div', 'my-projects');
     panel.setAttribute('role', 'region');
-    panel.setAttribute('aria-label', 'Your concepts');
-    panel.appendChild(el('p', 'take-label', 'Your concepts — pick up where you left off'));
+    panel.setAttribute('aria-label', 'Your projects');
+    panel.appendChild(el('p', 'take-label', 'Your projects — pick up where you left off'));
     panel.appendChild(el('p', 'muted', 'Open any one to keep building for free. Your first project is yours to download and keep at no cost; the $19 plan covers every project after it.'));
     const acts = el('div', 'actions');
-    concepts.slice(0, 8).forEach((c) => {
-      const b = el('button', 'btn secondary', 'Continue: ' + (c.title || 'Untitled concept')); b.type = 'button';
+    projects.slice(0, 8).forEach((c) => {
+      const b = el('button', 'btn secondary', 'Continue: ' + (c.title || 'Untitled project')); b.type = 'button';
       b.addEventListener('click', () => loadConceptIntoWorkspace(c.id));
       acts.appendChild(b);
     });
     panel.appendChild(acts);
-    if (concepts.length > 8) panel.appendChild(el('p', 'muted', 'And ' + (concepts.length - 8) + ' more in your dashboard.'));
+    if (projects.length > 8) panel.appendChild(el('p', 'muted', 'And ' + (projects.length - 8) + ' more in your dashboard.'));
     container.appendChild(panel);
-    announce('You have ' + concepts.length + ' concept' + (concepts.length === 1 ? '' : 's') + ' waiting. Open any to keep building.');
+    announce('You have ' + projects.length + ' project' + (projects.length === 1 ? '' : 's') + ' waiting. Open any to keep building.');
   }
 
-  function renderClaysTake(container, concept) {
-    const c = concept || {};
+  function renderClaysTake(container, project) {
+    const c = project || {};
     const steps = Array.isArray(c.next_steps) ? c.next_steps.filter(Boolean) : [];
     if (!c.clays_take && !steps.length) return;
     const take = el('div', 'clays-take');
@@ -1152,8 +1152,8 @@
 
   function renderResult(container, data) {
     if (data.status === 'answered') {
-      container.appendChild(el('p', null, data.message || 'Here is your concept.'));
-      renderClaysTake(container, data.concept || {});
+      container.appendChild(el('p', null, data.message || 'Here is your project.'));
+      renderClaysTake(container, data.project || {});
       if (data.coverage && !data.coverage.complete) {
         container.appendChild(el('p', 'coverage', data.coverage.gap_description));
       }
@@ -1174,12 +1174,12 @@
       const lockedNames = (data.assets || [])
         .filter((a) => !(entitled || PREVIEW_TYPES.includes(a.type)))
         .map((a) => a.title || a.label || a.type);
-      // Calm handoff: one button to the concept vault (view / download / edit each piece
+      // Calm handoff: one button to the project vault (view / download / edit each piece
       // there), plus the live demo if there is one — instead of a wall of per-asset buttons.
       const hasDemo = (data.assets || []).some((a) => a.type === 'html_demo' || a.type === 'built_site');
-      vaultHandoff(container, data.concept.id, data.assets, { demo: hasDemo });
+      vaultHandoff(container, data.project.id, data.assets, { demo: hasDemo });
       // A running business is never listed for sale — still offer a complementary dream if Clay named one.
-      if (data.concept && data.concept.is_operating && data.dreamhold_suggestion && data.dreamhold_suggestion.reason) {
+      if (data.project && data.project.is_operating && data.dreamhold_suggestion && data.dreamhold_suggestion.reason) {
         container.appendChild(el('p', 'muted', 'Clay suggests: ' + data.dreamhold_suggestion.reason));
         const findBtn = el('a', 'btn secondary', 'Find a complementary dream in the Dream Market');
         const cat = data.dreamhold_suggestion.category;
@@ -1189,30 +1189,30 @@
 
       // A brand-new user asked whether finishing a build auto-posts to the Dream Market. It does
       // not — say so right here, at the moment they'd wonder. Only for listable (not operating)
-      // concepts, since operating ones are never listed for sale at all.
-      if (data.concept && !data.concept.is_operating) {
+      // projects, since operating ones are never listed for sale at all.
+      if (data.project && !data.project.is_operating) {
         const priv = el('p', 'muted');
         priv.textContent = 'Private to your Laboratory — this isn’t posted anywhere automatically. It only reaches the Dream Market if you choose “List this in the Dream Market,” and even then it goes to review first, never straight to sale.';
         container.appendChild(priv);
       }
       // Not kept yet: name the pieces that are built and waiting, with one way to unlock
       // them all. The business plan, marketing strategy, and demo stay free above.
-      if (data.entitled === false && data.concept) {
+      if (data.entitled === false && data.project) {
         if (lockedNames.length) {
-          lockedNotice(container, data.concept.id, lockedNames);
+          lockedNotice(container, data.project.id, lockedNames);
         } else {
           const keep = el('div', 'keep-note');
           keep.setAttribute('role', 'note');
           keep.appendChild(el('p', null, 'This project is yours to explore and refine right now — free. Your first project stays free to download and keep for good; from the second onward it is $19 a month for everything, sites and landing pages included.'));
           const kb = el('button', 'btn', 'Unlimited projects — $19/month'); kb.type = 'button';
-          kb.addEventListener('click', () => keepConcept(data.concept.id, kb));
+          kb.addEventListener('click', () => keepConcept(data.project.id, kb));
           keep.appendChild(kb);
           keep.appendChild(sculptorButton());
           container.appendChild(keep);
         }
       }
       // Retrieval grounding, surfaced honestly: the user's own related prior work
-      // Clay had in mind while building. Only their real earlier concepts.
+      // Clay had in mind while building. Only their real earlier projects.
       if (Array.isArray(data.related_prior) && data.related_prior.length) {
         const names = data.related_prior.map((p) => p.title).filter(Boolean);
         if (names.length) {
@@ -1221,14 +1221,14 @@
           container.appendChild(note);
         }
       }
-      announce('Clay assembled your concept, with ' + (data.assets || []).length + ' sections. Suggested next steps are available.');
+      announce('Clay assembled your project, with ' + (data.assets || []).length + ' sections. Suggested next steps are available.');
       return;
     }
-    // Async build: Clay confirmed it's working and will email the finished concept.
+    // Async build: Clay confirmed it's working and will email the finished project.
     // The user is free to leave — no spinner, no waiting.
     if (data.status === 'building') {
-      container.appendChild(el('p', 'msg ok', data.message || 'I’m building your concept now and will email it to you when it’s ready.'));
-      announce(data.message || 'Clay is building your concept now. This usually takes 1 to 3 minutes. You’ll get an email when it’s ready, and it will be in your Laboratory. You don’t need to wait here.', true);
+      container.appendChild(el('p', 'msg ok', data.message || 'I’m building your project now and will email it to you when it’s ready.'));
+      announce(data.message || 'Clay is building your project now. This usually takes 1 to 3 minutes. You’ll get an email when it’s ready, and it will be in your Laboratory. You don’t need to wait here.', true);
       if (data.build_id) watchBuild(container, data.build_id);
       return;
     }
@@ -1262,7 +1262,7 @@
       const text = (assets || []).map((a) => '# ' + (a.title || a.type) + '\n\n' + (a.body || '') + '\n').join('\n\n');
       const blob = new Blob([text], { type: 'text/plain' });
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob); a.download = 'concept-package.txt';
+      a.href = URL.createObjectURL(blob); a.download = 'project-package.txt';
       document.body.appendChild(a); a.click(); a.remove();
       announce('Your package download has started.', true);
     } catch (e) {
@@ -1314,13 +1314,13 @@
       if (e.status === 402) {
         const cid = currentConceptId || (e.data && e.data.options && e.data.options[0] && e.data.options[0].concept_id);
         const box = el('div', 'locked-note'); box.setAttribute('role', 'note');
-        box.appendChild(el('p', null, '“' + label + '” is part of this concept and unlocks when you keep it. Your business plan, marketing strategy, and live demo stay open for free.'));
+        box.appendChild(el('p', null, '“' + label + '” is part of this project and unlocks when you keep it. Your business plan, marketing strategy, and live demo stay open for free.'));
         const kb = el('button', 'btn', 'Unlock everything — $19/month'); kb.type = 'button';
         kb.addEventListener('click', () => keepConcept(cid, kb));
         box.appendChild(kb);
         box.appendChild(sculptorButton());
         container.appendChild(box);
-        focusEl(box, label + ' is locked until you keep this concept.');
+        focusEl(box, label + ' is locked until you keep this project.');
         return;
       }
       announce('Could not load ' + label + ': ' + e.message, true);
@@ -1434,7 +1434,7 @@
 
   function openListingForm(container, conceptId) {
     const form = el('div', 'panel');
-    form.appendChild(el('h3', null, 'List this concept on The Dream Market'));
+    form.appendChild(el('h3', null, 'List this project on The Dream Market'));
     form.appendChild(el('p', 'muted', 'You set the price. $10 minimum. Selling transfers ownership to the buyer.'));
 
     const fmtLabel = el('label'); fmtLabel.textContent = 'Sale format'; fmtLabel.setAttribute('for', 'l-format');
@@ -1446,7 +1446,7 @@
 
     const riskWrap = el('label'); riskWrap.style.fontWeight = '400';
     const risk = el('input'); risk.type = 'checkbox'; risk.id = 'l-risk'; risk.style.width = 'auto'; risk.style.minHeight = 'auto'; risk.style.marginRight = '10px';
-    riskWrap.appendChild(risk); riskWrap.appendChild(document.createTextNode(' I have disclosed the regulatory and licensing risk in this concept.'));
+    riskWrap.appendChild(risk); riskWrap.appendChild(document.createTextNode(' I have disclosed the regulatory and licensing risk in this project.'));
 
     const ownWrap = el('label'); ownWrap.style.fontWeight = '400';
     const own = el('input'); own.type = 'checkbox'; own.id = 'l-own'; own.style.width = 'auto'; own.style.minHeight = 'auto'; own.style.marginRight = '10px';

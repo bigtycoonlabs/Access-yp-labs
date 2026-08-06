@@ -116,7 +116,7 @@
 
       <section class="about" aria-labelledby="about-h">
         <h2 id="about-h">What this is</h2>
-        <p>Everyone carries businesses they never got around to building. At Access YP Labs, Clay helps you shape one of those ideas into a complete, pre-proven concept — with real research behind it — and then sell it or build it on your own terms. The Desk is where you can watch that happen: the whitespace, being filled, one idea at a time.</p>
+        <p>Everyone carries businesses they never got around to building. At Access YP Labs, Clay helps you shape one of those ideas into a complete, pre-proven project — with real research behind it — and then sell it or build it on your own terms. The Desk is where you can watch that happen: the whitespace, being filled, one idea at a time.</p>
         <p style="margin-top:18px">
           <a class="cta" href="/">Shape your idea</a>
           <a class="cta ghost" href="/dreamhold.html">Explore the Dream Market</a>
@@ -127,7 +127,7 @@
 
   <footer>
     <div class="wrap">
-      Access YP Labs is a brand of Set Up Your Place LLC. The Dream Market is a neutral marketplace; it is not a party to any transaction between members. Concepts are pre-proven starting points, not guarantees of income.
+      Access YP Labs is a brand of Set Up Your Place LLC. The Dream Market is a neutral marketplace; it is not a party to any transaction between members. Projects are pre-proven starting points, not guarantees of income.
       <br>
       <a href="/">Home</a> · <a href="/values.html">Values</a> · <a href="/dreamhold.html">Dream Market</a>
     </div>
@@ -168,7 +168,7 @@
       var p = document.createElement('p'); p.className = 'line';
       if (it.kind === 'arrived'){
         var em = document.createElement('span'); em.className = 'em';
-        em.textContent = '\u201C' + (it.title || 'A new concept') + '\u201D';   // textContent = XSS-safe
+        em.textContent = '\u201C' + (it.title || 'A new project') + '\u201D';   // textContent = XSS-safe
         p.appendChild(em);
         p.appendChild(document.createTextNode(' just entered the Dream Market.'));
       } else {

@@ -1,6 +1,6 @@
-// Proof badge — the visible trust signal that makes a Dream Market concept
+// Proof badge — the visible trust signal that makes a Dream Market project
 // different from a bare idea on a flip site. Renders real, earned signals only:
-// captured waitlist demand, whether the concept was written against real
+// captured waitlist demand, whether the project was written against real
 // research, and whether its concrete claims passed a source self-check. Honest:
 // shows a caution state when claims need review, and says plainly when nothing
 // has been proven yet. Screen-reader first — the whole badge is spoken as one
@@ -37,7 +37,7 @@
       if (!opts.full) return null; // compact cards stay clean when nothing's proven
       const p = document.createElement('p');
       p.className = 'muted';
-      p.textContent = 'No proof captured yet — no waitlist demand or grounded research on this concept so far.';
+      p.textContent = 'No proof captured yet — no waitlist demand or grounded research on this project so far.';
       wrap.appendChild(p);
       return wrap;
     }

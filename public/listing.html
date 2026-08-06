@@ -2,18 +2,18 @@
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Listing — The Dream Market</title><link rel="stylesheet" href="/css/kiln.css"/>
   <link rel="canonical" href="https://accessyplabs.com/listing.html"/>
-  <meta name="description" content="A business concept listed on the Dream Market — a complete, pre-proven idea you can claim and make your own."/>
+  <meta name="description" content="A business project listed on the Dream Market — a complete, pre-proven idea you can claim and make your own."/>
   <meta property="og:type" content="website"/>
   <meta property="og:site_name" content="Access YP Labs"/>
   <meta property="og:title" content="Listing — The Dream Market"/>
-  <meta property="og:description" content="A business concept listed on the Dream Market — a complete, pre-proven idea you can claim and make your own."/>
+  <meta property="og:description" content="A business project listed on the Dream Market — a complete, pre-proven idea you can claim and make your own."/>
   <meta property="og:url" content="https://accessyplabs.com/listing.html"/>
   <meta property="og:image" content="https://accessyplabs.com/img/og-cover.png"/>
   <meta property="og:image:width" content="1200"/>
   <meta property="og:image:height" content="630"/>
   <meta name="twitter:card" content="summary_large_image"/>
   <meta name="twitter:title" content="Listing — The Dream Market"/>
-  <meta name="twitter:description" content="A business concept listed on the Dream Market — a complete, pre-proven idea you can claim and make your own."/>
+  <meta name="twitter:description" content="A business project listed on the Dream Market — a complete, pre-proven idea you can claim and make your own."/>
   <meta name="twitter:image" content="https://accessyplabs.com/img/og-cover.png"/>
 </head><body>
 <a class="skip" href="#main">Skip to main content</a>
@@ -26,7 +26,7 @@
   <div id="status" role="status" aria-live="polite" class="muted">Loading…</div>
   <div id="detail"></div>
 </main>
-<script src="/js/a11y.js?v=20260806a"></script><script src="/js/api.js?v=20260806a"></script><script src="/js/nav.js?v=20260806a"></script><script src="/js/proof.js?v=20260806a"></script>
+<script src="/js/a11y.js?v=20260806b"></script><script src="/js/api.js?v=20260806b"></script><script src="/js/nav.js?v=20260806b"></script><script src="/js/proof.js?v=20260806b"></script>
 <script>
 const id=new URLSearchParams(location.search).get('id');
 const moverSlug=new URLSearchParams(location.search).get('m')||'';
@@ -34,9 +34,9 @@ const statusEl=document.getElementById('status'), detail=document.getElementById
 function money(c){return '$'+((c||0)/100).toFixed(2);}
 function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
 
-// The dream, up front: what this concept is, and what it would be like to own it running as a
+// The dream, up front: what this project is, and what it would be like to own it running as a
 // business. Honest and evocative — it never invents specific outcomes; it frames what claiming
-// a pre-proven concept on this platform actually means. The concept-specific "what it does"
+// a pre-proven project on this platform actually means. The project-specific "what it does"
 // comes from the working demo and previews below.
 function dreamHero(listing){
   const cat=(listing.category||'concept').replace(/_/g,' ');
@@ -97,8 +97,8 @@ function clarityBlock(listing){
     const p=el('p');p.appendChild(el('strong',null,label+' '));p.appendChild(document.createTextNode(text));return p;
   }
 
-  const stageWord={concept:'a shaped concept, not yet built',in_build:'a concept already part-built',prepared_to_start:'a concept prepared and ready to start'}[listing.stage_label]||'a shaped concept';
-  let getting='You are claiming the full concept package — '+stageWord+', yours exclusively once you claim it.';
+  const stageWord={project:'a shaped project, not yet built',in_build:'a project already part-built',prepared_to_start:'a project prepared and ready to start'}[listing.stage_label]||'a shaped project';
+  let getting='You are claiming the full project package — '+stageWord+', yours exclusively once you claim it.';
   if(listing.completion_target) getting+=' The seller expects it can be launch-ready by '+listing.completion_target+'.';
   box.appendChild(part('What you get:',getting));
 
@@ -201,7 +201,7 @@ async function renderWaitlist(container, conceptId, listingId){
       out.innerHTML='';
       out.appendChild(el('p','msg ok', r.message+(r.count?(' You\u2019re one of '+r.count+' waiting.'):'')));
       const share=location.origin+'/listing.html?id='+encodeURIComponent(listingId)+'&ref='+encodeURIComponent(r.ref_code);
-      out.appendChild(el('p','muted','Share this concept to grow its waitlist: '+share));
+      out.appendChild(el('p','muted','Share this project to grow its waitlist: '+share));
       announce(r.message+' There are now '+r.count+' people waiting.',true);
     }catch(e){ out.innerHTML=''; out.appendChild(el('p','msg err', e.message)); announce(e.message,true); }
     finally{ btn.disabled=false; }
@@ -219,7 +219,7 @@ async function load(){
     detail.appendChild(el('h1',null,listing.title));
     detail.appendChild(el('p','muted',(listing.category||'').replace(/_/g,' ')+' · '+(listing.stage_label||'').replace(/_/g,' ')+' · by '+listing.seller_alias));
     if(listing.working_since){detail.appendChild(el('p','muted','In development since '+new Date(listing.working_since).toLocaleDateString()));}
-    // Lead with the dream, not the fine print: what this concept is and what it's like to own it.
+    // Lead with the dream, not the fine print: what this project is and what it's like to own it.
     detail.appendChild(dreamHero(listing));
     var askP=el('p');askP.style.margin='2px 0 16px';
     var askA=el('a','btn secondary','Ask Clay about this dream');askA.href='/app.html';askA.style.textDecoration='none';
@@ -252,13 +252,13 @@ async function load(){
       await renderWaitlist(detail, listing.concept_id, id);
       const rp0=riskPanel(listing); if(rp0) detail.appendChild(rp0);
       const box=el('div','panel');
-      box.appendChild(el('p',null,'This is a concept from the Dream Market — a business you can own and build before it exists. Create a free account to claim it, place a bid, or follow it before it launches.'));
+      box.appendChild(el('p',null,'This is a project from the Dream Market — a business you can own and build before it exists. Create a free account to claim it, place a bid, or follow it before it launches.'));
       const p=el('p');p.style.display='flex';p.style.gap='10px';p.style.flexWrap='wrap';
       const create=el('a','btn','Create a free account to claim this');create.href='/register.html?next='+back;
       const signin=el('a','btn secondary','I already have an account');signin.href='/login.html?next='+back;
       p.appendChild(create);p.appendChild(signin);box.appendChild(p);
       detail.appendChild(box);
-      announce('This concept is open to view. Create a free account to claim it, bid, or follow it before it launches.');
+      announce('This project is open to view. Create a free account to claim it, bid, or follow it before it launches.');
       return;
     }
     // The claim/purchase action lives right here, up front, inside the listing — one tap starts it.
@@ -314,7 +314,7 @@ function openBuy(listing){
   if(listing.risk_summary){f.appendChild(el('p','muted','Before you confirm — regulatory & licensing risk:'));f.appendChild(el('p',null,listing.risk_summary));}
   const mk=(txt)=>{const w=el('label');w.style.fontWeight='400';const c=el('input');c.type='checkbox';c.style.width='auto';c.style.minHeight='auto';c.style.marginRight='10px';w.appendChild(c);w.appendChild(document.createTextNode(' '+txt));f.appendChild(w);return c;}
   const a1=mk('I accept the transfer agreement.');
-  const a2=mk('I acknowledge the risk in this concept.');
+  const a2=mk('I acknowledge the risk in this project.');
   const a3=mk('I understand this purchase is final and non-refundable.');
   const out=el('div');out.setAttribute('role','alert');out.setAttribute('aria-live','assertive');
   const go=el('button','btn','Confirm purchase');go.type='button';

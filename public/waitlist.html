@@ -9,7 +9,7 @@
   <nav class="top" aria-label="Primary"><a href="/app.html">Laboratory</a><a href="/marketplace.html">Dream Market</a></nav>
 </div></header>
 <main id="main" class="wrap">
-  <h1>Your concept's waitlist</h1>
+  <h1>Your project's waitlist</h1>
   <div id="feedback" role="alert" aria-live="assertive"></div>
   <div id="summary" class="panel"><p class="muted">Loading…</p></div>
 
@@ -33,7 +33,7 @@
     <div id="people"></div>
   </section>
 </main>
-<script src="/js/a11y.js?v=20260806a"></script><script src="/js/api.js?v=20260806a"></script><script src="/js/nav.js?v=20260806a"></script>
+<script src="/js/a11y.js?v=20260806b"></script><script src="/js/api.js?v=20260806b"></script><script src="/js/nav.js?v=20260806b"></script>
 <script>
 function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
 function show(m,k){document.getElementById('feedback').innerHTML='<div class="msg '+(k||'err')+'">'+m+'</div>';announce(m,true);}
@@ -46,7 +46,7 @@ async function load(){
   try{ data=await Kiln.api('/waitlist/'+conceptId); }
   catch(e){
     if(e&&(e.sessionExpired||e.status===401)){ location.href='/login.html?next='+encodeURIComponent(location.pathname+location.search); return; }
-    show(e.status===404?'This isn\u2019t your concept, or it doesn\u2019t exist.':e.message); return;
+    show(e.status===404?'This isn\u2019t your project, or it doesn\u2019t exist.':e.message); return;
   }
   const sum=document.getElementById('summary'); sum.innerHTML='';
   sum.appendChild(el('p',null, data.count>0

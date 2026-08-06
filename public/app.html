@@ -13,11 +13,11 @@
   .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
   .asset-body{white-space:pre-wrap;background:#faf7f2;border:1px solid var(--line);border-radius:10px;padding:16px;margin-top:10px;font-size:16px;}
   .coverage{font-size:15px;color:var(--muted);margin-top:8px;}
-  /* The finished-concepts area now lives BELOW the chat window (a new user found that
+  /* The finished-projects area now lives BELOW the chat window (a new user found that
      clearer to read). Since content sits beneath it, the composer flows in normal order
-     instead of sticking to the bottom, so nothing can overlap the concepts on any screen.
-     A separator sets the concepts area apart, but only when there are concepts to show. */
-  #my-concepts-area:not(:empty){margin-top:24px;padding-top:8px;border-top:1px solid var(--line);}
+     instead of sticking to the bottom, so nothing can overlap the projects on any screen.
+     A separator sets the projects area apart, but only when there are projects to show. */
+  #my-projects-area:not(:empty){margin-top:24px;padding-top:8px;border-top:1px solid var(--line);}
   @media (max-width:640px){ .log{min-height:0;} }
 </style>
   <meta name="robots" content="noindex, nofollow"/>
@@ -59,7 +59,7 @@
     <details class="composer-options">
       <summary>More options — type of work, category, and files</summary>
       <div class="modes" id="modes" role="group" aria-label="What would you like to do?">
-        <button type="button" class="btn mode-btn" id="mode-create" aria-pressed="true">Create a new concept</button>
+        <button type="button" class="btn mode-btn" id="mode-create" aria-pressed="true">Create a new project</button>
         <button type="button" class="btn mode-btn" id="mode-enhance" aria-pressed="false">Enhance an idea or business</button>
       </div>
       <div id="operating-wrap" hidden style="margin:8px 0;">
@@ -87,9 +87,9 @@
       </div>
     </details>
   </div>
-  <div id="my-concepts-area"></div>
+  <div id="my-projects-area"></div>
 </main>
-<footer class="site"><div class="wrap"><p>The Dream Market is a neutral marketplace and is not a party to any transaction between members. Concepts are pre-proven starting points, not guarantees of income.</p></div>
+<footer class="site"><div class="wrap"><p>The Dream Market is a neutral marketplace and is not a party to any transaction between members. Projects are pre-proven starting points, not guarantees of income.</p></div>
       <nav aria-label="Legal" class="legal-links" style="margin-top:10px">
         <a href="/terms.html" style="display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Terms of Service</a> ·
         <a href="/privacy.html" style="display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Privacy Policy</a> ·
@@ -97,5 +97,5 @@
       </nav>
     </footer>
 
-<script src="/js/a11y.js?v=20260806a"></script><script src="/js/api.js?v=20260806a"></script><script src="/js/nav.js?v=20260806a"></script><script src="/js/app.js?v=20260806a"></script>
+<script src="/js/a11y.js?v=20260806b"></script><script src="/js/api.js?v=20260806b"></script><script src="/js/nav.js?v=20260806b"></script><script src="/js/app.js?v=20260806b"></script>
 </body></html>

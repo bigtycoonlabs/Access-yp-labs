@@ -35,7 +35,7 @@
       <div id="images-cfg" style="margin-top:16px"></div></section>
   </div>
 </main>
-<script src="/js/a11y.js?v=20260806a"></script><script src="/js/api.js?v=20260806a"></script><script src="/js/nav.js?v=20260806a"></script>
+<script src="/js/a11y.js?v=20260806b"></script><script src="/js/api.js?v=20260806b"></script><script src="/js/nav.js?v=20260806b"></script>
 <script>
 const gate=document.getElementById('gate');
 function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
@@ -64,13 +64,13 @@ async function load(){
     : 'Clay’s provider has been available on every recorded run.';
   const clayNote = a.total===0 ? 'Clay has no recorded runs yet.'
     : (answeredPct+'% of '+a.total+' Clay runs answered. '+providerNote);
-  const headline = c.users+' member'+(c.users===1?'':'s')+', '+c.concepts+' concept'+(c.concepts===1?'':'s')+' shaped, '
+  const headline = c.users+' member'+(c.users===1?'':'s')+', '+c.projects+' project'+(c.projects===1?'':'s')+' shaped, '
     + c.live_listings+' live in the Dream Market, '+c.waitlist+' on the waitlist. '+clayNote;
   const h=document.getElementById('headline'); h.textContent=headline; announce(headline,true);
 
   const people=document.getElementById('people'); people.innerHTML='';
   stat(people,c.users,'Members');
-  stat(people,c.concepts,'Concepts shaped');
+  stat(people,c.projects,'Projects shaped');
   stat(people,c.live_listings,'Live in the Dream Market');
   stat(people,c.waitlist,'On the waitlist');
 

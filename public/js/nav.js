@@ -5,7 +5,8 @@
 //
 // Logged-in menu:  Laboratory · Dashboard · The Dream Market · Dream Mover · Profile
 //                  · Staff (staff only) · Sign out
-// Logged-out menu: Home · The Dream Market · Become a Dream Mover · The Desk · Sign in · Sign up
+// Logged-out menu: Home · The Dream Market · Become a Dream Mover · The Desk · Clay Weekly
+//                  · Sign in · Sign up
 //
 // Launch partners is deliberately NOT here: it is a tab INSIDE the Dream Market, not a separate
 // destination. Two entrances to one room only makes people wonder which is the real one.
@@ -64,6 +65,7 @@
     nav.appendChild(link('/marketplace.html', 'The Dream Market'));
     nav.appendChild(link('/movers.html', 'Become a Dream Mover'));
     nav.appendChild(link('/desk', 'The Desk'));
+    nav.appendChild(link('/weekly', 'Clay Weekly'));
     nav.appendChild(link('/login.html', 'Sign in'));
     nav.appendChild(link('/register.html', 'Sign up'));
   }

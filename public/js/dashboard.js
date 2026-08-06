@@ -467,6 +467,63 @@
     fSel.focus();
   }
 
+  // Inline editor for a listing. Deliberately in place rather than on another page: changing a
+  // price should feel like changing a price, not like relisting. The PATCH endpoint always existed
+  // — there was simply no way to reach it, so the only apparent route to a new price was
+  // withdraw-and-relist, which looks like starting over and risks a live listing for a small edit.
+  function openEditor(row, l, done) {
+    if (row.querySelector('.listing-editor')) return;
+    const box = el('div', 'listing-editor');
+    box.setAttribute('role', 'group');
+    box.setAttribute('aria-label', 'Edit this listing');
+    const isAuction = l.format === 'auction';
+    const dollars = (c) => ((Number(c) || 0) / 100).toFixed(2);
+
+    const priceId = 'price-' + l.id;
+    const priceLabel = el('label', null, isAuction ? 'Starting bid, in dollars' : 'Price, in dollars');
+    priceLabel.setAttribute('for', priceId);
+    const price = document.createElement('input');
+    price.id = priceId; price.type = 'number'; price.min = '10'; price.step = '0.01';
+    price.value = dollars(isAuction ? l.starting_bid_cents : l.price_cents);
+    box.appendChild(priceLabel); box.appendChild(price);
+
+    let close = null;
+    if (isAuction) {
+      const closeId = 'close-' + l.id;
+      const cl = el('label', null, 'When the auction ends');
+      cl.setAttribute('for', closeId);
+      close = document.createElement('input');
+      close.id = closeId; close.type = 'datetime-local';
+      if (l.auction_close_at) { try { close.value = new Date(l.auction_close_at).toISOString().slice(0, 16); } catch (e) {} }
+      box.appendChild(cl); box.appendChild(close);
+    }
+
+    box.appendChild(el('p', 'muted', l.status === 'live'
+      ? 'Saving updates the listing straight away. It stays live — you are not relisting it.'
+      : 'Saving updates your draft. Nothing is published until you submit it.'));
+
+    const save = el('button', 'btn', 'Save changes'); save.type = 'button';
+    save.addEventListener('click', async () => {
+      const d = Number(price.value);
+      if (!(d >= 10)) { announce('The price needs to be at least ten dollars.', true); return; }
+      const body = {};
+      const cents = Math.round(d * 100);
+      if (isAuction) { body.starting_bid_cents = cents; } else { body.price_cents = cents; }
+      if (close && close.value) body.auction_close_at = new Date(close.value).toISOString();
+      save.disabled = true;
+      try {
+        await Kiln.api('/listings/' + l.id, { method: 'PATCH', body: body });
+        announce('Listing updated. It is still live — nothing was relisted.', true);
+        box.remove(); if (done) done();
+      } catch (e) { announce(e.message || 'That did not save.', true); save.disabled = false; }
+    });
+    const cancel = el('button', 'btn secondary', 'Cancel'); cancel.type = 'button';
+    cancel.addEventListener('click', () => { box.remove(); announce('No changes made.', true); });
+    box.appendChild(save); box.appendChild(cancel);
+    row.appendChild(box);
+    if (price.focus) price.focus();
+  }
+
   async function loadListings() {
     const c = document.getElementById('listings'); c.innerHTML = '';
     try {
@@ -481,6 +538,9 @@
           const editWrap = el('div', 'stack'); editWrap.style.marginTop = '8px';
           r.actions.appendChild(actionBtn('Edit', () => { editWrap.innerHTML = ''; buildEditor(l, editWrap); }, true));
           r.appendChild(editWrap);
+        }
+        if (['draft', 'in_review', 'live'].includes(l.status)) {
+          r.actions.appendChild(actionBtn('Edit this listing', () => openEditor(r, l, loadListings)));
         }
         if (['draft', 'in_review', 'live'].includes(l.status)) r.actions.appendChild(actionBtn('Withdraw', () => run(Kiln.api('/listings/' + l.id + '/withdraw', { method: 'POST' }), 'Listing withdrawn.', loadListings), true));
         c.appendChild(r);
@@ -651,25 +711,14 @@
             : 'Clay\u2019s Desk \u2014 review drafts');
         desk.href = '/desk-admin.html'; desk.setAttribute('role', 'button'); g.appendChild(desk);
       } catch (_) {}
-      // Staff navigation now lives in the top menu (Staff → the staff hub), so the
-      // dashboard stays uncluttered. Only the consultant-enroll action remains here.
-      // Staff can post as a consultant directly — no application, no wait.
-      try {
-        const { consultant } = await Kiln.api('/consultants/me');
-        if (consultant && consultant.approved) {
-          const done = el('a', 'btn secondary', 'You post as a consultant — view directory');
-          done.href = '/consultants.html'; done.style.marginLeft = '8px'; g.appendChild(done);
-        } else {
-          const enroll = el('button', 'btn secondary', 'Post as a consultant'); enroll.type = 'button';
-          enroll.style.marginLeft = '8px';
-          enroll.addEventListener('click', async () => {
-            enroll.disabled = true;
-            try { await Kiln.api('/consultants/enroll', { method: 'POST' }); enroll.textContent = 'You now post as a consultant'; announce('You can now post as a consultant.', true); }
-            catch (e) { announce(e.message, true); enroll.disabled = false; }
-          });
-          g.appendChild(enroll);
-        }
-      } catch (_) {}
+      // The consultant enrol action used to sit here. Paid consultant sessions are retired in
+      // favour of launch partners, so offering staff a way to join a directory nobody can reach
+      // was leftover furniture from a previous version of the platform.
+
+      // Clay Weekly — the newsroom had no link from anywhere a person actually visits.
+      const wk = el('a', 'btn secondary', 'Clay Weekly — the newsroom');
+      wk.href = '/weekly-admin.html'; wk.setAttribute('role', 'button');
+      wk.style.marginLeft = '8px'; g.appendChild(wk);
 
       // Testing-mode toggle: flip your own account between full staff access (no paywalls, for
       // testing building and publishing) and the real pay flow (paywalls on, to test money),
