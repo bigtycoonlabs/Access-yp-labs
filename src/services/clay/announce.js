@@ -99,12 +99,26 @@ async function send(key) {
     sent += (out && out.sent) || 0;
   }
 
-  // Record it so it can never be sent a second time, even from another instance.
+  // Record it so it can never be sent a second time, even from another instance. Recorded as
+  // sent ONLY if something actually went out — otherwise a total failure would permanently block
+  // the retry of an announcement nobody ever received.
   await query(
     `INSERT INTO email_log (to_email, kind, sent, reason) VALUES ($1,$2,$3,$4)`,
     ['(all accounts)', 'announce:' + key, sent > 0, `delivered ${sent} of ${rec.rows.length}`]);
 
-  return { ok: true, sent, attempted: rec.rows.length };
+  // Zero delivered is NOT success, however cleanly the code ran. Reporting ok on an announcement
+  // that reached nobody would let someone believe their creators had been told when they had not —
+  // and they would find out from the confusion afterwards.
+  if (sent === 0) {
+    return { ok: false, reason: 'nothing_delivered', sent: 0, attempted: rec.rows.length,
+      message: `Nothing was delivered. All ${rec.rows.length} attempts failed, so nobody has been told. `
+        + 'The announcement has NOT been marked as sent, so it can be tried again.' };
+  }
+  if (sent < rec.rows.length) {
+    return { ok: true, sent, attempted: rec.rows.length,
+      message: `Sent to ${sent} of ${rec.rows.length}. The rest did not go through — that difference is real, not a rounding.` };
+  }
+  return { ok: true, sent, attempted: rec.rows.length, message: `Sent to all ${sent}.` };
 }
 
 module.exports = { preview, send, alreadySent, ANNOUNCEMENTS };

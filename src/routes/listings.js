@@ -146,9 +146,9 @@ router.post('/', authenticate, [
 router.post('/:id/submit', authenticate, asyncHandler(async (req, res) => {
   const r = await query(
     `UPDATE listings SET status='in_review', updated_at=NOW()
-     WHERE id=$1 AND seller_id=$2 AND status='draft' RETURNING *`,
+     WHERE id=$1 AND seller_id=$2 AND status IN ('draft','withdrawn') RETURNING *`,
     [req.params.id, req.user.id]);
-  if (!r.rows.length) throw new ApiError(404, 'Draft listing not found.');
+  if (!r.rows.length) throw new ApiError(404, 'No listing of yours is ready to submit — it may already be live or sold.');
   res.json({ listing: r.rows[0] });
 }));
 
@@ -180,8 +180,12 @@ router.patch('/:id', authenticate, [
   const cur = await query('SELECT * FROM listings WHERE id=$1 AND seller_id=$2', [req.params.id, req.user.id]);
   if (!cur.rows.length) throw new ApiError(404, 'Listing not found.');
   const l = cur.rows[0];
-  if (l.status !== 'draft') {
-    throw new ApiError(409, 'Only a draft listing can be edited. Withdraw this listing first, then edit and resubmit — that way nobody is acting on terms while they change.');
+  // Draft OR withdrawn. A withdrawn listing is OFF the market, so nobody can be looking at it or
+  // bidding on it — which is the whole reason a live one is locked. Refusing to edit it too left
+  // people genuinely stuck: they took a listing down to change a price and then could neither
+  // change it nor put it back, so the only way forward was to build the whole listing again.
+  if (!['draft', 'withdrawn'].includes(l.status)) {
+    throw new ApiError(409, 'This listing is live, so its terms are locked while people can act on them. Take it off the market first — then you can change it and put it straight back.');
   }
 
   const format = req.body.format || l.format;
@@ -206,7 +210,9 @@ router.patch('/:id', authenticate, [
     `UPDATE listings SET format=$3, price_cents=$4, starting_bid_cents=$5, stage_label=$6,
        completion_target=$7, auction_close_at=$8, updated_at=NOW(),
        partner_offered=$9, partner_areas=$10, partner_scope=$11, partner_sessions=$12, partner_weeks=$13
-     WHERE id=$1 AND seller_id=$2 AND status='draft' RETURNING *`,
+     -- Same rule as the guard above: draft or withdrawn. Kept in the WHERE clause as well as the
+     -- guard so a live listing can never be edited by a race between the two.
+     WHERE id=$1 AND seller_id=$2 AND status IN ('draft','withdrawn') RETURNING *`,
     [req.params.id, req.user.id, format,
      format === 'flat' ? price : null, format === 'auction' ? bid : null,
      stage, target || null, closeAt || null,

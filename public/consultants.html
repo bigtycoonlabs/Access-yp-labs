@@ -1,79 +1,20 @@
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Consultants — Access YP Labs</title><link rel="stylesheet" href="/css/kiln.css"/>
-<style>.card{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:20px;margin:0 0 14px;}</style>
-  <link rel="canonical" href="https://accessyplabs.com/consultants.html"/>
-  <meta name="description" content="Work with an experienced entrepreneur. Book a 90-minute session about your business project — your idea stays private until an NDA is signed."/>
-  <meta property="og:type" content="website"/>
-  <meta property="og:site_name" content="Access YP Labs"/>
-  <meta property="og:title" content="Consultants — Access YP Labs"/>
-  <meta property="og:description" content="Work with an experienced entrepreneur. Book a 90-minute session about your business project — your idea stays private until an NDA is signed."/>
-  <meta property="og:url" content="https://accessyplabs.com/consultants.html"/>
-  <meta property="og:image" content="https://accessyplabs.com/img/og-cover.png"/>
-  <meta property="og:image:width" content="1200"/>
-  <meta property="og:image:height" content="630"/>
-  <meta name="twitter:card" content="summary_large_image"/>
-  <meta name="twitter:title" content="Consultants — Access YP Labs"/>
-  <meta name="twitter:description" content="Work with an experienced entrepreneur. Book a 90-minute session about your business project — your idea stays private until an NDA is signed."/>
-  <meta name="twitter:image" content="https://accessyplabs.com/img/og-cover.png"/>
+<title>This has moved — Access YP Labs</title><link rel="stylesheet" href="/css/kiln.css"/>
+<meta name="robots" content="noindex, nofollow"/>
 </head><body>
 <a class="skip" href="#main">Skip to main content</a>
-<header class="site"><div class="wrap bar">
-  <a class="brand" href="/">Access YP Labs</a>
-  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/marketplace.html">The Dream Market</a><a href="/app.html">Laboratory</a></nav>
-</div></header>
+<header class="site"><div class="wrap bar"><a class="brand" href="/">Access YP Labs</a>
+<nav class="top" aria-label="Primary"></nav></div></header>
 <main id="main" class="wrap">
-  <h1>Work with a consultant</h1>
-  <p class="muted">Book a 90-minute session for $150 with an experienced entrepreneur. How it works: you request a session, the consultant accepts and <strong>signs an NDA before your project is ever shared</strong>, you pay $150 to unlock the project, then you meet. Afterward you have a 12-hour window to keep going, free. That first session is the platform's part. After it, if you both want to keep working together, you arrange it directly — including how the consultant is paid — however you like.</p>
-  <p><a class="btn secondary" href="/consultant-apply.html">Become a consultant</a></p>
-  <div id="project-note" class="msg ok" hidden></div>
-  <div id="status" role="status" aria-live="polite" class="muted"></div>
-  <div id="list"></div>
-  <div id="booking" role="alert" aria-live="assertive"></div>
+  <h1>This has moved</h1>
+  <!-- Kept as a real page rather than deleted: old links, bookmarks and search results still point
+       here, and a 404 tells someone nothing about where to go instead. -->
+  <p>Paid consultant sessions have been retired. What replaced them is better suited to what people
+    were actually after: a launch partner — someone who joins you on a project and helps you get it
+    off the ground. You agree between yourselves how you work together, and we take no cut of it.</p>
+  <p><a class="btn" href="/partners.html">Find a launch partner</a></p>
+  <p><a href="/">Back to the home page</a></p>
 </main>
-<script src="/js/a11y.js?v=20260806d"></script><script src="/js/api.js?v=20260806d"></script><script src="/js/nav.js?v=20260806d"></script>
-<script>
-const conceptId=new URLSearchParams(location.search).get('concept');
-const listEl=document.getElementById('list'), statusEl=document.getElementById('status'), booking=document.getElementById('booking');
-function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
-if(conceptId){const n=document.getElementById('concept-note');n.hidden=false;n.textContent='This session will be about the concept you selected in your laboratory.';}
-async function load(){
-  statusEl.textContent='Loading consultants…';
-  try{
-    const {consultants}=await Kiln.api('/consultants',{auth:false});
-    if(!consultants.length){statusEl.textContent='No consultants are available yet.';announce('No consultants are available yet.');return;}
-    statusEl.textContent=consultants.length+' consultant'+(consultants.length>1?'s':'')+' available.';
-    consultants.forEach(c=>{
-      const card=el('article','card');
-      card.appendChild(el('h3',null,c.name));
-      card.appendChild(el('p','muted',(c.rate_display||'$150 / 90-min session')+' · '+(c.successful_launches||0)+' confirmed launches'));
-      if(Kiln.isLoggedIn()){
-        const b=el('button','btn','Request a session');b.type='button';
-        b.addEventListener('click',()=>request(c.user_id,c.name,b));
-        card.appendChild(b);
-      }else{
-        const a=el('a','btn','Sign in to request');a.href='/login.html';card.appendChild(a);
-      }
-      listEl.appendChild(card);
-    });
-  }catch(e){statusEl.textContent='Could not load consultants: '+e.message;}
-}
-async function request(consultantId,name,btn){
-  btn.disabled=true;announce('Requesting a session with '+name+'…');
-  try{
-    const body={consultant_id:consultantId};if(conceptId)body.concept_id=conceptId;
-    await Kiln.api('/consultants/engagements',{method:'POST',body});
-    booking.innerHTML='';booking.appendChild(el('p','msg ok','Session requested with '+name+'. You will be able to continue once they accept and sign the NDA.'));
-    announce('Session requested with '+name+'.',true);btn.textContent='Requested';
-  }catch(e){booking.innerHTML='';booking.appendChild(el('p','msg err',e.message));announce(e.message,true);btn.disabled=false;}
-}
-load();
-</script>
-  <footer style="border-top:1px solid var(--line);color:var(--muted);font-size:15px;padding:22px 24px;text-align:center;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
-    <nav aria-label="Legal">
-      <a href="/terms.html" style="color:var(--clay-dark);display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Terms of Service</a> ·
-      <a href="/privacy.html" style="color:var(--clay-dark);display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Privacy Policy</a> ·
-      <a href="/risk.html" style="color:var(--clay-dark);display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Risk Disclosure</a>
-    </nav>
-  </footer>
+<script src="/js/a11y.js?v=20260806e"></script><script src="/js/api.js?v=20260806e"></script><script src="/js/nav.js?v=20260806e"></script>
 </body></html>

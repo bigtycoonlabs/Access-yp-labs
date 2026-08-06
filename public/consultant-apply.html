@@ -1,62 +1,20 @@
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Become a consultant — Access YP Labs</title><link rel="stylesheet" href="/css/kiln.css"/>
-  <link rel="canonical" href="https://accessyplabs.com/consultant-apply.html"/>
-  <meta name="description" content="Become a consultant on Access YP Labs — get matched with founders and paid to advise on real, pre-proven business projects."/>
-  <meta property="og:type" content="website"/>
-  <meta property="og:site_name" content="Access YP Labs"/>
-  <meta property="og:title" content="Become a consultant — Access YP Labs"/>
-  <meta property="og:description" content="Become a consultant on Access YP Labs — get matched with founders and paid to advise on real, pre-proven business projects."/>
-  <meta property="og:url" content="https://accessyplabs.com/consultant-apply.html"/>
-  <meta property="og:image" content="https://accessyplabs.com/img/og-cover.png"/>
-  <meta property="og:image:width" content="1200"/>
-  <meta property="og:image:height" content="630"/>
-  <meta name="twitter:card" content="summary_large_image"/>
-  <meta name="twitter:title" content="Become a consultant — Access YP Labs"/>
-  <meta name="twitter:description" content="Become a consultant on Access YP Labs — get matched with founders and paid to advise on real, pre-proven business projects."/>
-  <meta name="twitter:image" content="https://accessyplabs.com/img/og-cover.png"/>
+<title>This has moved — Access YP Labs</title><link rel="stylesheet" href="/css/kiln.css"/>
+<meta name="robots" content="noindex, nofollow"/>
 </head><body>
 <a class="skip" href="#main">Skip to main content</a>
-<header class="site"><div class="wrap bar">
-  <a class="brand" href="/">Access YP Labs</a>
-  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a></nav>
-</div></header>
+<header class="site"><div class="wrap bar"><a class="brand" href="/">Access YP Labs</a>
+<nav class="top" aria-label="Primary"></nav></div></header>
 <main id="main" class="wrap">
-  <h1>Become a consultant</h1>
-  <p class="muted">Consultants are experienced entrepreneurs who have taken projects to market. Sessions are $150 for 90 minutes; you keep $120 of each. Tell us about your background and we'll review your application.</p>
-  <div id="feedback" role="alert" aria-live="assertive"></div>
-  <div class="panel"><div class="stack">
-    <div><label for="hist">Your entrepreneurial history</label>
-      <textarea id="hist" aria-describedby="hist-h"></textarea>
-      <p id="hist-h" class="muted">Businesses you've started or run.</p></div>
-    <div><label for="track">Marketplace or sales track record</label><textarea id="track"></textarea></div>
-    <div><label for="mkt">Projects you've taken to market</label><textarea id="mkt"></textarea></div>
-    <div><label for="prior">Prior businesses</label><textarea id="prior"></textarea></div>
-    <button type="button" class="btn" id="submit">Submit application</button>
-  </div></div>
+  <h1>This has moved</h1>
+  <!-- Kept as a real page rather than deleted: old links, bookmarks and search results still point
+       here, and a 404 tells someone nothing about where to go instead. -->
+  <p>Paid consultant sessions have been retired. What replaced them is better suited to what people
+    were actually after: a launch partner — someone who joins you on a project and helps you get it
+    off the ground. You agree between yourselves how you work together, and we take no cut of it.</p>
+  <p><a class="btn" href="/partners.html">Find a launch partner</a></p>
+  <p><a href="/">Back to the home page</a></p>
 </main>
-<script src="/js/a11y.js?v=20260806d"></script><script src="/js/api.js?v=20260806d"></script><script src="/js/nav.js?v=20260806d"></script>
-<script>
-const fb=document.getElementById('feedback');
-function show(m,k){fb.innerHTML='<div class="msg '+(k||'err')+'">'+m+'</div>';announce(m,true);}
-document.getElementById('submit').addEventListener('click',async()=>{
-  if(!Kiln.isLoggedIn()){show('Please sign in first.');setTimeout(()=>location.href='/login.html',1200);return;}
-  const body={entrepreneur_history:document.getElementById('hist').value.trim(),
-    marketplace_track:document.getElementById('track').value.trim(),
-    concepts_to_market:document.getElementById('mkt').value.trim(),
-    prior_businesses:document.getElementById('prior').value.trim()};
-  if(!body.entrepreneur_history){return show('Please describe your entrepreneurial history.');}
-  const btn=document.getElementById('submit');btn.disabled=true;announce('Submitting your application…');
-  try{await Kiln.api('/consultants/apply',{method:'POST',body});
-    show('Application submitted. We will review it and follow up.','ok');btn.textContent='Submitted';
-  }catch(e){show(e.message);btn.disabled=false;}
-});
-</script>
-  <footer style="border-top:1px solid var(--line);color:var(--muted);font-size:15px;padding:22px 24px;text-align:center;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
-    <nav aria-label="Legal">
-      <a href="/terms.html" style="color:var(--clay-dark);display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Terms of Service</a> ·
-      <a href="/privacy.html" style="color:var(--clay-dark);display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Privacy Policy</a> ·
-      <a href="/risk.html" style="color:var(--clay-dark);display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Risk Disclosure</a>
-    </nav>
-  </footer>
+<script src="/js/a11y.js?v=20260806e"></script><script src="/js/api.js?v=20260806e"></script><script src="/js/nav.js?v=20260806e"></script>
 </body></html>

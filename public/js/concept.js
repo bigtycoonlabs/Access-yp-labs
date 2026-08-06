@@ -586,9 +586,11 @@
         list.href = '/app.html?project=' + encodeURIComponent(id) + '&action=list';
         cActs.appendChild(list);
       }
-      var consult = el('a', 'btn secondary', 'Book a consultant');
-      consult.href = '/consultants.html?project=' + encodeURIComponent(id);
-      cActs.appendChild(consult);
+      // 'Book a consultant' pointed at a retired offer — a live button to a room nobody is in.
+      // Launch partners is what replaced it, so that is where this goes now.
+      var partner = el('a', 'btn secondary', 'Find a launch partner');
+      partner.href = '/partners.html?project=' + encodeURIComponent(id);
+      cActs.appendChild(partner);
       var econ = el('button', 'btn secondary', 'Compute the real numbers'); econ.type = 'button';
       econ.addEventListener('click', function () { computeEconomics(id, econ); });
       cActs.appendChild(econ);

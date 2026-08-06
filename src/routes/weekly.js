@@ -96,6 +96,7 @@ router.post('/announcement/:key/send', authenticate, authorize('master_staff'), 
       unknown_announcement: 'No announcement by that name.',
       already_sent: 'That announcement has already gone out. It will not be sent twice.',
       no_recipients: 'There is nobody to send it to.',
+      nothing_delivered: 'Nothing was delivered — nobody has been told. It has not been marked as sent, so you can try again.',
     }[out.reason] || 'It could not be sent.';
     return res.status(409).json({ error: why, detail: out });
   }

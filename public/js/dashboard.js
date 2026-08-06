@@ -471,6 +471,26 @@
   // price should feel like changing a price, not like relisting. The PATCH endpoint always existed
   // — there was simply no way to reach it, so the only apparent route to a new price was
   // withdraw-and-relist, which looks like starting over and risks a live listing for a small edit.
+  // Two-step confirm with focus on the SAFE choice, same as everywhere else that changes something
+  // a person cares about.
+  function confirmIn(row, question, yesLabel, fn) {
+    if (row.querySelector('.confirm-row')) return;
+    const box = el('div', 'confirm-row');
+    box.setAttribute('role', 'group'); box.setAttribute('aria-label', question);
+    box.appendChild(el('p', null, question));
+    const yes = el('button', 'btn', yesLabel); yes.type = 'button';
+    const no = el('button', 'btn secondary', 'No, leave it as it is'); no.type = 'button';
+    yes.addEventListener('click', async () => {
+      yes.disabled = true; no.disabled = true;
+      try { await fn(); box.remove(); }
+      catch (e) { announce(e.message || 'That did not go through.', true); yes.disabled = false; no.disabled = false; }
+    });
+    no.addEventListener('click', () => { box.remove(); announce('Left as it is.', true); });
+    box.appendChild(yes); box.appendChild(no); row.appendChild(box);
+    announce('Confirm required. ' + question, true);
+    if (no.focus) no.focus();
+  }
+
   function openEditor(row, l, done) {
     if (row.querySelector('.listing-editor')) return;
     const box = el('div', 'listing-editor');
@@ -498,9 +518,8 @@
       box.appendChild(cl); box.appendChild(close);
     }
 
-    box.appendChild(el('p', 'muted', l.status === 'live'
-      ? 'Saving updates the listing straight away. It stays live — you are not relisting it.'
-      : 'Saving updates your draft. Nothing is published until you submit it.'));
+    box.appendChild(el('p', 'muted',
+      'Saving updates your listing. It is off the market while you edit; submit it again when you are ready and everything in it is kept.'));
 
     const save = el('button', 'btn', 'Save changes'); save.type = 'button';
     save.addEventListener('click', async () => {
@@ -539,8 +558,23 @@
           r.actions.appendChild(actionBtn('Edit', () => { editWrap.innerHTML = ''; buildEditor(l, editWrap); }, true));
           r.appendChild(editWrap);
         }
-        if (['draft', 'in_review', 'live'].includes(l.status)) {
+        // A DRAFT edits in place. A LIVE listing cannot be edited while it is live — the server
+        // refuses, and it is right to: people may be looking at it, or bidding on it, and terms
+        // must not shift under them. So instead of a button that fails, this offers the real
+        // sequence as ONE action and says plainly what it does.
+        if (l.status === 'draft') {
           r.actions.appendChild(actionBtn('Edit this listing', () => openEditor(r, l, loadListings)));
+        } else if (['in_review', 'live'].includes(l.status)) {
+          r.actions.appendChild(actionBtn('Change the price or terms', () => {
+            confirmIn(r, 'To change this, it comes off the market first — nobody can act on terms while '
+              + 'they are changing. You will edit it, then put it back. Your listing and everything in it is kept.',
+              'Take it off and edit', async () => {
+                await Kiln.api('/listings/' + l.id + '/withdraw', { method: 'POST' });
+                announce('Taken off the market. Edit it below, then put it back when you are ready.', true);
+                const fresh = Object.assign({}, l, { status: 'draft' });
+                openEditor(r, fresh, loadListings);
+              });
+          }));
         }
         if (['draft', 'in_review', 'live'].includes(l.status)) r.actions.appendChild(actionBtn('Withdraw', () => run(Kiln.api('/listings/' + l.id + '/withdraw', { method: 'POST' }), 'Listing withdrawn.', loadListings), true));
         c.appendChild(r);
