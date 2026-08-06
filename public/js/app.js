@@ -52,7 +52,7 @@
   async function keepConcept(conceptId, btn) {
     if (btn) btn.disabled = true;
     try {
-      const r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'maker', concept_id: conceptId } });
+      const r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'builder' } });
       if (r && r.url) { location.href = r.url; return; }
       announce((r && r.message) || 'Billing isn’t set up yet, so nothing was charged.', true);
     } catch (e) {
@@ -67,7 +67,7 @@
   async function goUnlimited(btn) {
     if (btn) btn.disabled = true;
     try {
-      const r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'sculptor' } });
+      const r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'builder' } });
       if (r && r.url) { location.href = r.url; return; }
       announce((r && r.message) || 'Billing isn’t set up yet, so nothing was charged.', true);
     } catch (e) {
@@ -78,7 +78,7 @@
   }
   // The unlimited option as a ready-to-append button, so every keep surface offers the same choice.
   function sculptorButton() {
-    const b = el('button', 'btn secondary', 'Or go unlimited — $49.99/month'); b.type = 'button';
+    const b = el('button', 'btn secondary', 'Unlimited projects — $19/month'); b.type = 'button';
     b.addEventListener('click', () => goUnlimited(b));
     return b;
   }
@@ -90,7 +90,7 @@
     box.setAttribute('role', 'note');
     box.appendChild(el('p', 'take-label', 'Built and waiting — unlocks when you keep this'));
     box.appendChild(el('p', null, 'Also ready inside this concept: ' + names.join(', ') + '. Your business plan, marketing strategy, and live demo stay open for free — the rest opens the moment you keep it.'));
-    const kb = el('button', 'btn', 'Unlock everything — $2.99'); kb.type = 'button';
+    const kb = el('button', 'btn', 'Unlock everything — $19/month'); kb.type = 'button';
     kb.addEventListener('click', () => keepConcept(conceptId, kb));
     box.appendChild(kb);
     box.appendChild(sculptorButton());
@@ -279,7 +279,7 @@
         const lead = u.count === 1
           ? 'One gentle nudge: you’ve built a concept you haven’t kept yet'
           : ('One gentle nudge: you’ve built ' + u.count + ' concepts you haven’t kept yet');
-        r.appendChild(el('p', null, lead + (names.length ? (' — ' + names.join(', ')) : '') + '. They’re yours to download anytime with Maker, $2.99 each. No rush — and you can quiet these whenever you like.'));
+        r.appendChild(el('p', null, lead + (names.length ? (' — ' + names.join(', ')) : '') + '. Your first project is free to download and keep; the plan covers the rest at $19 a month. No rush — and you can quiet these whenever you like.'));
         const acts = el('div', 'actions');
         const see = el('a', 'btn secondary', 'See my concepts'); see.href = '/dashboard.html'; acts.appendChild(see);
         const quiet = el('button', 'btn secondary', 'Quiet these reminders'); quiet.type = 'button';
@@ -1089,7 +1089,7 @@
     panel.setAttribute('role', 'region');
     panel.setAttribute('aria-label', 'Your concepts');
     panel.appendChild(el('p', 'take-label', 'Your concepts — pick up where you left off'));
-    panel.appendChild(el('p', 'muted', 'Open any one to keep building for free. Keeping a concept ($2.99) is only for downloading it and unlocking every section.'));
+    panel.appendChild(el('p', 'muted', 'Open any one to keep building for free. Your first project is yours to download and keep at no cost; the $19 plan covers every project after it.'));
     const acts = el('div', 'actions');
     concepts.slice(0, 8).forEach((c) => {
       const b = el('button', 'btn secondary', 'Continue: ' + (c.title || 'Untitled concept')); b.type = 'button';
@@ -1203,8 +1203,8 @@
         } else {
           const keep = el('div', 'keep-note');
           keep.setAttribute('role', 'note');
-          keep.appendChild(el('p', null, 'This concept is yours to explore and refine right now — free. Whenever you want to download it, share it, or keep it for good, that’s Maker: $2.99 for this one concept.'));
-          const kb = el('button', 'btn', 'Keep this concept — $2.99'); kb.type = 'button';
+          keep.appendChild(el('p', null, 'This project is yours to explore and refine right now — free. Your first project stays free to download and keep for good; from the second onward it is $19 a month for everything, sites and landing pages included.'));
+          const kb = el('button', 'btn', 'Unlimited projects — $19/month'); kb.type = 'button';
           kb.addEventListener('click', () => keepConcept(data.concept.id, kb));
           keep.appendChild(kb);
           keep.appendChild(sculptorButton());
@@ -1282,7 +1282,7 @@
       b.addEventListener('click', async () => {
         b.disabled = true;
         try {
-          const body = o.plan === 'maker' ? { plan: 'maker', concept_id: o.concept_id } : { plan: 'sculptor' };
+          const body = { plan: 'builder' };   // one plan now; older subscriptions keep working untouched
           const r = await Kiln.api('/subscriptions', { method: 'POST', body });
           if (r.url) { location.href = r.url; return; }
           announce(r.message || 'Billing is not configured yet.', true); b.disabled = false;
@@ -1315,7 +1315,7 @@
         const cid = currentConceptId || (e.data && e.data.options && e.data.options[0] && e.data.options[0].concept_id);
         const box = el('div', 'locked-note'); box.setAttribute('role', 'note');
         box.appendChild(el('p', null, '“' + label + '” is part of this concept and unlocks when you keep it. Your business plan, marketing strategy, and live demo stay open for free.'));
-        const kb = el('button', 'btn', 'Unlock everything — $2.99'); kb.type = 'button';
+        const kb = el('button', 'btn', 'Unlock everything — $19/month'); kb.type = 'button';
         kb.addEventListener('click', () => keepConcept(cid, kb));
         box.appendChild(kb);
         box.appendChild(sculptorButton());

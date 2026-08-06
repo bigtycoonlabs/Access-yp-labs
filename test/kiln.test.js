@@ -23,10 +23,10 @@ test('consultant split is $150 -> $30 / $120', () => {
 });
 
 test('plan prices', () => {
-  assert.strictEqual(money.MAKER_CENTS, 299);
-  assert.strictEqual(money.SCULPTOR_CENTS, 4999);
-  assert.strictEqual(money.planCents('maker'), 299);
-  assert.strictEqual(money.planCents('sculptor'), 4999);
+  // One plan now. The price is a hypothesis we expect to revisit, so it lives in one constant —
+  // this asserts the constant and the plan table cannot drift apart, not that $19 is forever.
+  assert.strictEqual(money.BUILDER_CENTS, 1900);
+  assert.strictEqual(money.planCents('builder'), money.BUILDER_CENTS);
 });
 
 test('malware scan flags pipe-to-shell, passes benign', () => {
@@ -292,12 +292,14 @@ test('clay health assess uses honest thresholds', () => {
 });
 
 test('money path: plan prices are locked and match the webhook write', () => {
-  const { PLANS, planCents } = require('../src/lib/money');
-  assert.strictEqual(planCents('maker'), 299);     // $2.99
-  assert.strictEqual(planCents('sculptor'), 4999); // $49.99
-  assert.strictEqual(PLANS.maker.per_concept, true);
-  assert.strictEqual(PLANS.sculptor.per_concept, false);
-  assert.strictEqual(planCents('nope'), null);     // unknown plan yields no price
+  const { PLANS, planCents, FREE_PROJECTS } = require('../src/lib/money');
+  assert.strictEqual(planCents('builder'), 1900);            // $19.00
+  assert.strictEqual(PLANS.builder.per_concept, false);      // never charged per project again
+  assert.strictEqual(FREE_PROJECTS, 1);                      // the first project is free, in full
+  // The retired plans must no longer be sellable — an old price cannot be charged by accident.
+  assert.strictEqual(planCents('maker'), null);
+  assert.strictEqual(planCents('sculptor'), null);
+  assert.strictEqual(planCents('nope'), null);
 });
 
 // --- Adaptive reasoning effort: Clay scales thinking power to the task ---

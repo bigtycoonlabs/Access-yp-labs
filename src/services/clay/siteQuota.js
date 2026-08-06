@@ -11,7 +11,10 @@ const SCULPTOR_SITE_LIMIT = 10;
 async function activePlans(userId) {
   const s = await query("SELECT plan FROM subscriptions WHERE user_id=$1 AND status='active'", [userId]);
   const plans = s.rows.map((r) => r.plan);
-  return { sculptor: plans.includes('sculptor'), addon: plans.includes('site_addon') };
+  // The website builder and landing pages are part of the plan now, not a separate purchase.
+  // They are among the most valuable things Clay makes, and putting them behind a second decision
+  // cost more in hesitation than the add-on ever earned.
+  return { sculptor: plans.includes('builder') || plans.includes('sculptor'), addon: plans.includes('site_addon') };
 }
 
 async function publishedThisMonth(userId) {

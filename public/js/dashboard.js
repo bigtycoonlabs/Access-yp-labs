@@ -165,9 +165,8 @@
         };
         const maker = (e.data.options || []).find((o) => o.plan === 'maker');
         const sculptor = (e.data.options || []).find((o) => o.plan === 'sculptor');
-        if (maker) host.appendChild(actionBtn('Keep just this project — $2.99/month', () => go({ plan: 'maker', concept_id: maker.concept_id })));
-        if (sculptor) host.appendChild(actionBtn('Keep everything — unlimited projects, $49.99/month', () => go({ plan: 'sculptor' })));
-        announce('A plan is needed to download this project. You can keep just this project for $2.99 a month, or get unlimited projects for $49.99 a month.', true);
+                host.appendChild(actionBtn('Unlimited projects — $19/month', () => go({ plan: 'builder' })));
+        announce('Your first project is free to download. For any project after that, the plan is $19 a month and covers everything, including sites and landing pages.', true);
       } else { announce(e.message || 'Could not download.', true); }
     }
   }
@@ -333,7 +332,7 @@
       }
       const active = subscriptions.filter((s) => s.status === 'active');
       const goSculptor = async () => {
-        const r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'sculptor' } });
+        const r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'builder' } });
         if (r.url) { location.href = r.url; return; }
         announce(r.message || 'Billing is not configured yet.', true);
       };
@@ -366,7 +365,7 @@
       };
       const sculptor = active.find((s) => s.plan === 'sculptor');
       if (sculptor) {
-        c.appendChild(el('p', 'msg ok', 'Sculptor plan active — unlimited projects ($49.99/month).'));
+        c.appendChild(el('p', 'msg ok', 'Your plan is active — unlimited projects, sites and landing pages included.'));
         if (sculptor.cancel_at_period_end) {
           c.appendChild(el('p', 'muted', 'Ending at the close of your current period — you keep full access until then.'));
         } else {
@@ -376,11 +375,11 @@
       }
       const makers = active.filter((s) => s.plan === 'maker');
       if (makers.length) {
-        c.appendChild(el('p', null, makers.length + ' concept' + (makers.length > 1 ? 's' : '') + ' on the Maker plan ($2.99/month each).'));
+        c.appendChild(el('p', null, makers.length + ' project' + (makers.length > 1 ? 's' : '') + ' on an older per-project plan. These keep working exactly as they are.'));
         makers.forEach((m) => {
           const name = m.concept_title ? '“' + m.concept_title + '”' : 'this project';
           const line = el('div', 'sub-row'); line.style.margin = '6px 0';
-          line.appendChild(el('p', 'muted', 'Maker — ' + name + ' ($2.99/month)'));
+          line.appendChild(el('p', 'muted', 'Older per-project plan — ' + name));
           if (m.cancel_at_period_end) {
             line.appendChild(el('p', 'muted', 'Ending at the close of your current period — access continues until then.'));
           } else {
@@ -391,7 +390,7 @@
       } else {
         c.appendChild(el('p', 'muted', 'No plan yet. Build for free — a plan is asked for only when you download, share, or keep a project past 30 days.'));
       }
-      c.appendChild(actionBtn('Go Sculptor — $49.99/month, unlimited', goSculptor));
+      c.appendChild(actionBtn('Unlimited projects — $19/month', goSculptor));
       c.appendChild(el('p', 'muted', 'The $2.99 Maker plan is per project — you\u2019ll be offered it when you download a specific project.'));
     } catch (e) { fail(c, e); }
   }

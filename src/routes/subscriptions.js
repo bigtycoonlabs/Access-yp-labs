@@ -12,7 +12,7 @@ const router = express.Router();
 // A subscription becomes active only via the verified webhook after real
 // payment — never created unpaid here. Staff never pay.
 router.post('/', authenticate, [
-  body('plan').isIn(['maker', 'sculptor']),
+  body('plan').isIn(['builder']),
   body('concept_id').optional().isUUID(),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);

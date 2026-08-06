@@ -11,8 +11,8 @@ const credits = require('../../lib/imageCredits');
 async function planFor(ownerId) {
   if (!ownerId) return 'base';
   const r = await query(
-    "SELECT 1 FROM subscriptions WHERE user_id=$1 AND plan='sculptor' AND status='active' LIMIT 1", [ownerId]);
-  return r.rows.length ? 'sculptor' : 'base';
+    "SELECT 1 FROM subscriptions WHERE user_id=$1 AND plan IN ('builder','sculptor') AND status='active' LIMIT 1", [ownerId]);
+  return r.rows.length ? 'builder' : 'base';
 }
 
 async function usedThisMonth(conceptId) {
