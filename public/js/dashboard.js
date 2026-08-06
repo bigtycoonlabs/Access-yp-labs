@@ -38,6 +38,53 @@
 
   // Download a project's package, or surface the honest plan gate inline (with a
   // one-tap Keep for this specific project) if it isn't kept yet.
+
+  // ---- Your path: the visible route from arriving to earning -----------------------------------
+  // Every step here is EARNED FROM THE RECORD — a step reads as done only because the thing really
+  // happened. No points, no streaks, nothing that rewards merely showing up. It is ordered and
+  // spoken, so it works read aloud: what you've done, what's next, and the true earnings number.
+  async function loadPath() {
+    const sec = document.getElementById('path-sec');
+    const wrap = document.getElementById('path');
+    const summary = document.getElementById('path-summary');
+    if (!sec || !wrap) return;
+    try {
+      const p = await Kiln.api('/progress');
+      wrap.innerHTML = '';
+      const steps = p.steps || [];
+
+      // The headline: how far along, what's next, and what you've actually earned.
+      const bits = [`${p.completed} of ${p.total} steps done.`];
+      if (p.next) bits.push(`Next: ${p.next.title}.`);
+      bits.push(p.earned_spoken || '');
+      summary.textContent = bits.filter(Boolean).join(' ');
+
+      const ol = document.createElement('ol');
+      steps.forEach((s) => {
+        const li = document.createElement('li');
+        // Say done/not-done in WORDS, not with a symbol or a colour — this has to work when heard.
+        const head = el('p', null, (s.done ? 'Done — ' : 'Not yet — ') + s.title);
+        li.appendChild(head);
+        li.appendChild(el('p', 'muted', s.spoken || ''));
+        if (!s.done && s.action && s.action.href) {
+          const a = el('a', 'btn secondary', s.action.label);
+          a.href = s.action.href;
+          a.style.display = 'inline-block';
+          a.style.textDecoration = 'none';
+          a.style.lineHeight = '44px';       // a real tap target
+          li.appendChild(a);
+        }
+        ol.appendChild(li);
+      });
+      wrap.appendChild(ol);
+      sec.hidden = false;
+    } catch (e) {
+      if (e && e.sessionExpired) return;
+      // A path that can't load is not worth guessing at — stay quiet rather than show a fake one.
+      sec.hidden = true;
+    }
+  }
+
   async function loadTodaysDreams() {
     const c = document.getElementById('today'); if (!c) return;
     const dg = document.getElementById('today-digest');
@@ -609,7 +656,7 @@
       setTimeout(() => loadSubs(), 8000);
     }
     if (q.get('sub') === 'canceled') announce('Checkout canceled — you were not charged.', true);
-    loadTodaysDreams(); loadProofStep(); loadPayouts(); loadPenName(); loadSubs(); loadConcepts(); loadBoard(); loadListings(); loadOrders(); loadEngagements(); loadWatches(); loadTuning();
+    loadPath(); loadTodaysDreams(); loadProofStep(); loadPayouts(); loadPenName(); loadSubs(); loadConcepts(); loadBoard(); loadListings(); loadOrders(); loadEngagements(); loadWatches(); loadTuning();
     document.getElementById('signout').addEventListener('click', (e) => { e.preventDefault(); Kiln.clearTokens(); location.href = '/'; });
   })();
 })();
