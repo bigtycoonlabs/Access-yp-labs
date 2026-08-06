@@ -70,7 +70,9 @@
       .feed li.new{animation:none;}
       .stat .n{transition:none;}
     }
-  </style>
+    .weekly-link{display:inline-block;color:var(--dream2);font-weight:600;text-decoration:none;padding:8px 0;}
+  .weekly-link:hover,.weekly-link:focus{text-decoration:underline;}
+</style>
 </head>
 <body>
   <a class="skip" href="#main">Skip to main content</a>
@@ -88,6 +90,7 @@
       <div class="hero">
         <h1>The Desk</h1>
         <p>A live, honest look at the ideas of the future — taking shape, getting proven, and finding their owner.</p>
+        <p><a href="/weekly" class="weekly-link">Read Clay Weekly — the week here, written up →</a></p>
       </div>
       <!-- The pulse. aria-live so a screen reader hears the numbers change, but only when they actually do. -->
       <ul class="pulse" aria-label="Live platform pulse" aria-live="polite">
@@ -112,6 +115,15 @@
         <h2 id="desk-h">From Clay's desk</h2>
         <p class="sub">Notes and short stories, written by Clay.</p>
         <div id="desk-articles"></div>
+      </section>
+
+      <!-- Clay Weekly lives HERE rather than as its own entry in the top menu. To a reader the Desk
+           and the magazine are the same thing — writing about what is happening on this platform —
+           and two menu entries for one idea just makes someone wonder what the difference is. -->
+      <section aria-labelledby="weekly-h">
+        <h2 id="weekly-h">Clay Weekly</h2>
+        <p>Once a week, Clay writes up what actually happened here: what got shaped, what reached the Dream Market, and one project worth a closer look. Nothing goes out unless a person has read it first.</p>
+        <p><a class="btn secondary" href="/weekly">Read Clay Weekly</a></p>
       </section>
 
       <section class="about" aria-labelledby="about-h">

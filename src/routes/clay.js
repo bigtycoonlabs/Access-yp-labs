@@ -1598,8 +1598,17 @@ router.get('/earning-paths', authenticate, asyncHandler(async (req, res) => {
 async function buildChatContext(req) {
   let conceptContext = null;
   if (req.body.concept_id) {
-    const c = await query('SELECT id, title, category, stage, risk_summary, movement_state, movement_note FROM concepts WHERE id=$1 AND owner_id=$2',
-      [req.body.concept_id, req.user.id]);
+    // Ownership OR staff. Clay-seeded projects belong to Clay's own account, not to the staff member
+    // reading them — so an owner-only lookup silently returned nothing and Clay appeared unable to
+    // see a project that was plainly on the screen. Staff can already read any project everywhere
+    // else in the product; the chat was the odd one out, and the failure looked like Clay being
+    // broken rather than a permission boundary.
+    const staffViewer = ['staff', 'admin', 'master_staff'].includes(req.user.role);
+    const c = await query(
+      staffViewer
+        ? 'SELECT id, title, category, stage, risk_summary, movement_state, movement_note FROM concepts WHERE id=$1'
+        : 'SELECT id, title, category, stage, risk_summary, movement_state, movement_note FROM concepts WHERE id=$1 AND owner_id=$2',
+      staffViewer ? [req.body.concept_id] : [req.body.concept_id, req.user.id]);
     if (c.rows.length) {
       const a = await query(
         "SELECT type, title, body FROM assets WHERE concept_id=$1 AND is_current=true ORDER BY created_at",

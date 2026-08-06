@@ -20,6 +20,7 @@ router.get('/overview', authenticate, authorize('staff', 'admin', 'master_staff'
         (SELECT COUNT(*) FROM concepts)::int AS concepts,
         (SELECT COUNT(*) FROM listings WHERE status='live')::int AS live_listings,
         (SELECT COUNT(*) FROM waitlist_signups)::int AS waitlist,
+        (SELECT COUNT(*) FROM subscriptions WHERE status='active' AND plan='builder')::int AS builder_subs,
         (SELECT COUNT(*) FROM subscriptions WHERE status='active' AND plan='maker')::int AS maker_subs,
         (SELECT COUNT(*) FROM subscriptions WHERE status='active' AND plan='sculptor')::int AS sculptor_subs`);
     const clayAll = await query(`

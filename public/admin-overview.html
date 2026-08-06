@@ -22,9 +22,11 @@
     <p id="headline" role="status" aria-live="polite"></p>
     <section aria-labelledby="tools-h"><h2 id="tools-h">Staff tools</h2>
       <p><a class="btn" href="/admin-clay.html">Clay health &amp; connection test</a></p>
+      <p><a class="btn secondary" href="/people.html">People — every account</a>
+         <a class="btn secondary" href="/weekly-admin.html" style="margin-left:8px">Clay Weekly newsroom</a>
+         <a class="btn secondary" href="/desk-admin.html" style="margin-left:8px">Desk review</a></p>
       <p><a class="btn secondary" href="/moderation.html">Review queue</a>
-         <a class="btn secondary" href="/admin-tools.html" style="margin-left:8px">Moderation tools</a>
-         <a class="btn secondary" href="/admin-consultants.html" style="margin-left:8px">Consultant applications</a></p>
+         <a class="btn secondary" href="/admin-tools.html" style="margin-left:8px">Moderation tools</a></p>
     </section>
     <section aria-labelledby="p-h"><h2 id="p-h">People &amp; ideas</h2><div class="grid" id="people"></div></section>
     <section aria-labelledby="m-h"><h2 id="m-h">Money</h2><div class="grid" id="money"></div>
@@ -35,7 +37,7 @@
       <div id="images-cfg" style="margin-top:16px"></div></section>
   </div>
 </main>
-<script src="/js/a11y.js?v=20260806c"></script><script src="/js/api.js?v=20260806c"></script><script src="/js/nav.js?v=20260806c"></script>
+<script src="/js/a11y.js?v=20260806d"></script><script src="/js/api.js?v=20260806d"></script><script src="/js/nav.js?v=20260806d"></script>
 <script>
 const gate=document.getElementById('gate');
 function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
@@ -75,8 +77,11 @@ async function load(){
   stat(people,c.waitlist,'On the waitlist');
 
   const money=document.getElementById('money'); money.innerHTML='';
-  stat(money,c.maker_subs,'Maker plans ($2.99/concept)');
-  stat(money,c.sculptor_subs,'Sculptor plans ($49.99/mo)');
+  // The plan that actually exists, plus anyone still on a retired plan — labelled as retired so a
+  // number on this page can never be mistaken for something we still sell.
+  stat(money,(c.builder_subs||0),'On the plan ($19/mo)');
+  const legacy=(c.maker_subs||0)+(c.sculptor_subs||0);
+  if(legacy) stat(money,legacy,'On a retired plan (honoured, not sold)');
 
   // Payments diagnostic — the exact reason a subscribe failed, readable (and speakable) here
   // instead of buried in server logs.
@@ -123,10 +128,9 @@ async function load(){
   const ihost = document.getElementById('images'); ihost.innerHTML='';
   stat(ihost, im.generated_this_month||0, 'Images this month');
   stat(ihost, im.auto_this_month||0, 'Auto (on build)');
-  stat(ihost, im.paid_this_month||0, 'Paid (from packs)');
-  stat(ihost, im.credits_outstanding||0, 'Extras credits outstanding');
-  stat(ihost, im.packs_sold_this_month||0, 'Packs sold this month');
-  stat(ihost, '$'+(((im.pack_revenue_this_month_cents||0)/100).toFixed(2)), 'Pack revenue this month');
+  // Packs are retired. Any outstanding balance is still honoured and still spends, so it is worth
+  // seeing — but 'sold this month' and 'pack revenue' are not lines of business any more.
+  stat(ihost, im.credits_outstanding||0, 'Bought credits still unspent');
   const icfg=document.getElementById('images-cfg'); icfg.innerHTML='';
   icfg.appendChild(el('h3', null, 'Image configuration'));
   const iul = el('ul');
@@ -135,9 +139,8 @@ async function load(){
   iul.appendChild(genLi);
   iul.appendChild(el('li', null, 'Image storage: ' + (im.storage_configured ? 'Supabase bucket' : 'inline data URLs — set SUPABASE_URL + key to use the bucket')));
   icfg.appendChild(iul);
-  announce('Images: ' + (im.generated_this_month||0) + ' generated this month, '
-    + (im.packs_sold_this_month||0) + ' Extras pack' + (im.packs_sold_this_month===1?'':'s') + ' sold for $'
-    + (((im.pack_revenue_this_month_cents||0)/100).toFixed(2)) + '. Generation is ' + (im.configured?'on':'off') + '.', true);
+  announce('Images: ' + (im.generated_this_month||0) + ' generated this month. Generation is '
+    + (im.configured?'on':'off') + '. Storage is ' + (im.storage_configured?'on':'off') + '.', true);
 }
 load();
 </script>
