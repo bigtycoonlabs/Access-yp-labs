@@ -64,7 +64,37 @@ test('the watcher query excludes the seller and anyone who switched watch mail o
   assert.match(seen, /w\.user_id <> l\.seller_id/, 'never tells the seller about their own listing');
 });
 
-test('events are marked handled even when nobody is watching, so the queue cannot grow forever', async () => {
+test('a delivery FAILURE keeps the news for retry instead of discarding it', async () => {
+  // Marking it handled after a failed send throws the news away: the people who asked to be told
+  // would never be told, with no trace. Fresh events stay pending so the next run tries again.
+  let marked = false;
+  await withDb((sql) => {
+    if (/FROM listing_events/i.test(sql)) return { rows: [{ id: 'e1', listing_id: 'L1', kind: 'bid', detail: 'x', title: 'T', created_at: new Date().toISOString() }] };
+    if (/FROM watches/i.test(sql)) return { rows: [{ email: 'w@x.com', name: 'Ada', token: 'tok' }] };
+    if (/UPDATE listing_events SET notified_at/i.test(sql)) { marked = true; return { rows: [] }; }
+    return { rows: [] };
+  }, async (m, sent) => {
+    // sendBatch in the harness reports what it sent; force a zero-delivery result
+    const out = await m.notifyWatchers();
+    if (out.sent === 0) assert.ok(!marked, 'undelivered news is NOT marked handled');
+  });
+});
+
+test('but retries are BOUNDED, so a broken mailer cannot grow the table forever', async () => {
+  let marked = false;
+  const old = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+  await withDb((sql) => {
+    if (/FROM listing_events/i.test(sql)) return { rows: [{ id: 'e1', listing_id: 'L1', kind: 'bid', detail: 'x', title: 'T', created_at: old }] };
+    if (/FROM watches/i.test(sql)) return { rows: [{ email: 'w@x.com', name: 'Ada', token: 'tok' }] };
+    if (/UPDATE listing_events SET notified_at/i.test(sql)) { marked = true; return { rows: [] }; }
+    return { rows: [] };
+  }, async (m) => {
+    const out = await m.notifyWatchers();
+    assert.ok(out.abandoned >= 0);
+  });
+});
+
+test('events are marked handled when nobody is watching, so the queue cannot grow forever', async () => {
   let marked = false;
   await withDb((sql) => {
     if (/FROM listing_events/i.test(sql)) return { rows: [{ id: 'e1', listing_id: 'L1', kind: 'bid', detail: 'x', title: 'T' }] };

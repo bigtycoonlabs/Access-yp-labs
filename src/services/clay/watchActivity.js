@@ -15,6 +15,9 @@
 
 const { query } = require('../../config/db');
 const { sendBatch } = require('../email');
+const { notifyStaff } = require('./staffNotify');
+
+const STALE_AFTER_MS = 3 * 24 * 60 * 60 * 1000;   // after three days, activity news is not news
 
 const SITE = () => (process.env.CLIENT_URL || 'https://accessyplabs.com').replace(/\/+$/, '');
 const money = (c) => '$' + ((Number(c) || 0) / 100).toFixed(2);
@@ -67,7 +70,10 @@ async function notifyWatchers(limit = 200) {
     });
 
     let sent = 0;
+    let undelivered = 0;
+    let abandoned = 0;
     for (const [listingId, group] of byListing) {
+      let groupSent = 0;
       // Who is watching, minus anyone who switched watch mail off. The seller is excluded: they get
       // their own notices and shouldn't be told about their own listing as if they were a bystander.
       const watchers = await query(
@@ -99,16 +105,60 @@ async function notifyWatchers(limit = 200) {
         });
         for (let i = 0; i < emails.length; i += 100) {
           const out = await sendBatch(emails.slice(i, i + 100));
-          sent += (out && out.sent) || 0;
+          groupSent += (out && out.sent) || 0;
         }
+        sent += groupSent;
       }
 
-      // Mark handled either way: with nobody watching there is nothing to send, and leaving the
-      // events pending forever would make the queue grow without end.
-      await query('UPDATE listing_events SET notified_at = now() WHERE id = ANY($1::uuid[])',
-        [group.events.map((e) => e.id)]);
+      // TWO DIFFERENT OUTCOMES THAT USED TO LOOK THE SAME.
+      //
+      // Nobody watching: there is genuinely nothing to send, so mark it handled — leaving it
+      // pending forever would grow the queue without end.
+      //
+      // Watchers, but delivery FAILED: marking it handled throws the news away. The people who
+      // asked to be told would never be told, and there would be no trace. Those events stay
+      // pending so the next run tries again, and a repeated failure is reported rather than
+      // quietly eating everyone's notifications.
+      const nobodyToTell = watchers.rows.length === 0;
+      const delivered = groupSent > 0;
+      if (nobodyToTell || delivered) {
+        await query('UPDATE listing_events SET notified_at = now() WHERE id = ANY($1::uuid[])',
+          [group.events.map((e) => e.id)]);
+      } else {
+        // Retried, but not forever. If email stays broken, holding every event for all time just
+        // trades one silent failure for an unbounded table. After three days the news is stale
+        // enough that sending it would confuse more than it helps, so it is released — and that
+        // release is REPORTED, because giving up quietly is the thing this whole change exists to
+        // prevent.
+        const stale = group.events.filter((e) => (Date.now() - new Date(e.created_at).getTime()) > STALE_AFTER_MS);
+        if (stale.length) {
+          await query('UPDATE listing_events SET notified_at = now() WHERE id = ANY($1::uuid[])',
+            [stale.map((e) => e.id)]);
+          abandoned += stale.length;
+        }
+        undelivered += group.events.length - stale.length;
+      }
     }
-    return { ok: true, sent, events: ev.rows.length, listings: byListing.size };
+
+    if (abandoned > 0) {
+      console.error(`watch activity: gave up on ${abandoned} event(s) older than three days`);
+    }
+    if (undelivered > 0 || abandoned > 0) {
+      console.error(`watch activity: ${undelivered} event(s) could not be delivered; left pending for retry`);
+      try {
+        await notifyStaff({
+          kind: 'watch_delivery_failed',
+          dedupeKey: 'watch-undelivered-' + new Date().toISOString().slice(0, 13),
+          subject: 'Watchers are not being told about activity',
+          body: `${undelivered} activity notice(s) could not be delivered to people watching a project`
+            + (abandoned ? `, and ${abandoned} older than three days were given up on entirely.` : '.')
+            + '\n\nQueued notices will be retried, so those are not lost yet — but people who asked to be '
+            + 'kept informed are currently not being. Worth checking email delivery.',
+        });
+      } catch (e) { console.error('could not report undelivered watch notices:', e && e.message); }
+    }
+
+    return { ok: undelivered === 0 && abandoned === 0, sent, undelivered, abandoned, events: ev.rows.length, listings: byListing.size };
   } catch (e) {
     return { ok: false, reason: 'error', error: e && e.message };
   }
