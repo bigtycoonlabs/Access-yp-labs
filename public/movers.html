@@ -6,7 +6,7 @@
 <meta property="og:description" content="Promote businesses you believe in and earn on every sale you drive. Free to join."/>
 <meta name="twitter:card" content="summary"/><link rel="stylesheet" href="/css/kiln.css"/>
 <style>
-.card{border:1px solid var(--line);border-radius:12px;background:#fff;padding:18px;margin:14px 0;}
+.card{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:18px;margin:14px 0;}
 .field{margin:12px 0;} .field label{display:block;font-weight:600;margin-bottom:6px;}
 .field input,.field textarea{width:100%;box-sizing:border-box;padding:12px;font-size:16px;border:1px solid var(--line);border-radius:8px;}
 .field textarea{min-height:80px;}
@@ -39,7 +39,10 @@ function goSignIn(){announce('Please sign in.',true);setTimeout(function(){locat
 let state={enrolled:false,mover:null,earnings:null,promoted:new Set()};
 
 async function init(){
-  if(!Kiln.isLoggedIn()){location.replace('/login.html');return;}
+  // A visitor who has never signed in is exactly who this page is FOR. Redirecting them to a login
+  // screen sends them away before they learn what they'd be signing up for — which is what used to
+  // happen here, and it made the whole page unreachable to the people it was written for.
+  if(!Kiln.isLoggedIn()) return renderSignedOut();
   try{ await load(); }
   catch(e){
     // A LOGGED-OUT visitor arriving from the homepage must not be bounced to a login screen with no

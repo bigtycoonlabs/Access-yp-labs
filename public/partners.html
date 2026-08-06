@@ -45,6 +45,27 @@ var NEEDS=[];
 
 function btn(label,cls,fn){var b=el('button','btn'+(cls?' '+cls:''),label);b.type='button';b.addEventListener('click',fn);return b;}
 
+// What a visitor sees before they have an account: what this board is, and both ways in.
+function renderSignedOut(){
+  gate.hidden=true; box.hidden=false; box.innerHTML='';
+  var c=el('div','card');
+  c.appendChild(el('h2',null,'Take part'));
+  // The page intro above already makes the case and states the terms. Repeating it here would just
+  // make someone read the same paragraph twice, so this card only does the one job left: get in.
+  var ul=document.createElement('ul');
+  ['Post a project and the help you want \u2014 marketing, development, design, advice, coaching, staffing.',
+   'Or read what other people need, and offer what you would bring.'
+  ].forEach(function(s){ ul.appendChild(el('li',null,s)); });
+  c.appendChild(ul);
+  var go=el('a','btn','Create a free account'); go.href='/register.html?next=/partners.html';
+  go.style.display='inline-block'; go.style.textDecoration='none'; go.style.lineHeight='44px';
+  c.appendChild(go);
+  var p2=el('p'); var a2=el('a',null,'I already have an account \u2014 sign in'); a2.href='/login.html?next=/partners.html';
+  p2.appendChild(a2); c.appendChild(p2);
+  box.appendChild(c);
+  announce('Launch partners. Say what help you need on a project, or offer your skills to someone building. Create a free account to take part.', true);
+}
+
 // ---- post an ask ----------------------------------------------------------
 async function renderAsk(){
   var wrap=document.getElementById('askbox'); wrap.innerHTML='';
@@ -193,10 +214,17 @@ async function loadBoard(){
 (async function(){
   try{
     var n=await Kiln.api('/partners/needs'); NEEDS=n.needs||[];
+    // The vocabulary endpoint is public, so it succeeds even signed out — and the authenticated
+    // loaders below would then each fail and bounce the visitor to a login screen. Decide here
+    // instead: no account means the explainer, not a redirect away from the page.
+    if(!Kiln.isLoggedIn()) return renderSignedOut();
     gate.hidden=true; box.hidden=false;
     renderAsk(); loadMine(); loadBoard();
   }catch(e){
-    if(e.sessionExpired||e.status===401) return goSignIn();
+    // Someone who hasn't signed in is exactly who this page has to convince. Sending them to a
+    // login screen first tells them nothing about what they'd be joining — so explain it, and let
+    // them decide.
+    if(e.sessionExpired||e.status===401) return renderSignedOut();
     gate.textContent='Could not load: '+(e.message||'unknown error');
   }
 })();
