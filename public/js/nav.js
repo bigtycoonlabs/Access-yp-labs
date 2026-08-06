@@ -3,10 +3,12 @@
 // on each screen. Renders synchronously (so #signout exists for other page scripts),
 // then reveals a Staff link for staff accounts after checking the session.
 //
-// Logged-in menu:  Laboratory · Dashboard · The Dream Market · Launch partners · Dream Mover
-//                  · Profile · Staff (staff only) · Sign out
-// Logged-out menu: Home · The Dream Market · Launch partners · Become a Dream Mover · The Desk
-//                  · Sign in · Sign up
+// Logged-in menu:  Laboratory · Dashboard · The Dream Market · Dream Mover · Profile
+//                  · Staff (staff only) · Sign out
+// Logged-out menu: Home · The Dream Market · Become a Dream Mover · The Desk · Sign in · Sign up
+//
+// Launch partners is deliberately NOT here: it is a tab INSIDE the Dream Market, not a separate
+// destination. Two entrances to one room only makes people wonder which is the real one.
 //
 // IMPORTANT: this file REPLACES whatever markup a page has in nav.top. Adding a link to a page's
 // HTML therefore does nothing — it is wiped on load. Every destination has to be listed HERE, or it
@@ -34,7 +36,6 @@
     nav.appendChild(link('/app.html', 'Laboratory'));
     nav.appendChild(link('/dashboard.html', 'Dashboard'));
     nav.appendChild(link('/marketplace.html', 'The Dream Market'));
-    nav.appendChild(link('/partners.html', 'Launch partners'));
     nav.appendChild(link('/movers.html', 'Dream Mover'));
     nav.appendChild(link('/profile.html', 'Profile'));
 
@@ -61,7 +62,6 @@
   } else {
     nav.appendChild(link('/', 'Home'));
     nav.appendChild(link('/marketplace.html', 'The Dream Market'));
-    nav.appendChild(link('/partners.html', 'Launch partners'));
     nav.appendChild(link('/movers.html', 'Become a Dream Mover'));
     nav.appendChild(link('/desk', 'The Desk'));
     nav.appendChild(link('/login.html', 'Sign in'));

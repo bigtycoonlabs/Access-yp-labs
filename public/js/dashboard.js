@@ -554,9 +554,14 @@
 
   async function loadEngagements() {
     const c = document.getElementById('engagements'); c.innerHTML = '';
+    // Paid consultant sessions have been retired in favour of launch partners. Anyone who already
+    // has a session still sees and can finish it — but a creator who never had one should not be
+    // shown an empty section for an offer that no longer exists, wondering what they missed.
+    const section = document.getElementById('eng-sec') || (c.closest && c.closest('section'));
     try {
       const { engagements } = await Kiln.api('/consultants/engagements');
-      if (!engagements.length) { empty(c, 'No consultant sessions yet.'); return; }
+      if (!engagements.length) { if (section) section.hidden = true; return; }
+      if (section) section.hidden = false;
       engagements.forEach((e) => {
         const iAmConsultant = e.consultant_id === me.id;
         const r = row(iAmConsultant ? 'Session you are delivering' : 'Session you requested',
@@ -575,7 +580,10 @@
         }
         c.appendChild(r);
       });
-    } catch (e) { fail(c, e); }
+    } catch (e) {
+      // A retired feature failing is not something a creator needs to read about; stay quiet.
+      if (section) section.hidden = true;
+    }
   }
 
   // ---------- Watchlist ----------
