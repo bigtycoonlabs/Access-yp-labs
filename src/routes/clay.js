@@ -15,6 +15,7 @@ const siteStore = require('../services/clay/siteStore');
 const store = require('../services/clay/store');
 const similarity = require('../services/clay/similarity');
 const awareness = require('../services/clay/awareness');
+const siteAccess = require('../services/clay/siteAccess');
 const siteQuota = require('../services/clay/siteQuota');
 const domains = require('../services/clay/domains');
 const domainStore = require('../services/clay/domainStore');
@@ -1393,7 +1394,15 @@ function buildExecutors(user) {
       const cur = own.rows[0].launch_page || {};
       const copy = launchPage.parseConfig({ ...cur, headline, subhead, blurb, cta_label, theme, hero_image });
       let enabled = !!cur.enabled;
-      if (publish === true || publish === 'true') enabled = true;
+      if (publish === true || publish === 'true') {
+        // Going live is the moment a site stops being private and starts being hosted for the
+        // public under our name. That is what the plan buys. Building and previewing stay free.
+        const access = await siteAccess.siteAccess(user, concept.owner_id || user.id);
+        if (!access.allowed) {
+          return { ok: false, status: 'plan_required', message: access.message };
+        }
+        enabled = true;
+      }
       if (publish === false || publish === 'false') enabled = false;
       if (enabled && !copy.headline) return { status: 'error', message: 'It needs a headline before it can go public.' };
       const alreadyCounted = siteQuota.countedThisMonth(cur);

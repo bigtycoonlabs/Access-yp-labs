@@ -2,6 +2,21 @@ const express = require('express');
 const { query } = require('../config/db');
 const { asyncHandler, ApiError } = require('../lib/http');
 const store = require('../services/clay/store');
+const siteAccess = require('../services/clay/siteAccess');
+const jwt = require('jsonwebtoken');
+
+// Who is asking, if anyone. This endpoint stays PUBLIC — an unsigned visitor is normal and must not
+// be redirected or challenged — so this reads the token when one happens to be present and returns
+// nothing at all when it is not. Never throws.
+async function viewerId(req) {
+  try {
+    const h = req.headers.authorization || '';
+    const token = h.startsWith('Bearer ') ? h.slice(7) : null;
+    if (!token) return null;
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    return (payload && payload.id) || null;
+  } catch (_) { return null; }
+}
 const router = express.Router();
 
 function checkoutBase() {
@@ -21,11 +36,21 @@ async function activeProducts(conceptId) {
 // and the concept id the coming-soon page needs to send signups to. Only published pages resolve.
 router.get('/:slug', asyncHandler(async (req, res) => {
   const r = await query(
-    "SELECT id, title, launch_page FROM concepts WHERE launch_page->>'slug'=$1 AND (launch_page->>'enabled')='true' LIMIT 1",
+    "SELECT id, owner_id, title, launch_page FROM concepts WHERE launch_page->>'slug'=$1 AND (launch_page->>'enabled')='true' LIMIT 1",
     [req.params.slug]);
   if (!r.rows.length) throw new ApiError(404, 'This page isn’t available.');
   const c = r.rows[0];
   const p = c.launch_page || {};
+
+  // A site without a plan behind it is a PREVIEW: it resolves for the person who built it, and for
+  // nobody else. That is deliberate — a preview link that works for strangers is just publishing
+  // through a side door, and the whole point is that going public is what the plan buys. The owner
+  // still sees their own work in full, exactly as visitors eventually would.
+  if (!(await siteAccess.publiclyVisible(c.id))) {
+    const viewer = await viewerId(req);
+    if (!viewer || viewer !== c.owner_id) throw new ApiError(404, 'This page isn’t available.');
+  }
+
   const cnt = await query('SELECT COUNT(*)::int AS n FROM waitlist_signups WHERE concept_id=$1', [c.id]);
   const pages = await query(
     'SELECT slug, title, kind FROM site_pages WHERE concept_id=$1 AND published=true ORDER BY nav_order, created_at',
@@ -52,7 +77,7 @@ router.get('/:slug', asyncHandler(async (req, res) => {
 // plus the site's nav, so the whole thing reads as one real resource site / blog.
 router.get('/:slug/:page', asyncHandler(async (req, res) => {
   const r = await query(
-    "SELECT id, title, launch_page FROM concepts WHERE launch_page->>'slug'=$1 AND (launch_page->>'enabled')='true' LIMIT 1",
+    "SELECT id, owner_id, title, launch_page FROM concepts WHERE launch_page->>'slug'=$1 AND (launch_page->>'enabled')='true' LIMIT 1",
     [req.params.slug]);
   if (!r.rows.length) throw new ApiError(404, 'This page isn’t available.');
   const c = r.rows[0];

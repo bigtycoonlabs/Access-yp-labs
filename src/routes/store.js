@@ -68,6 +68,16 @@ router.post('/:conceptId/checkout', asyncHandler(async (req, res) => {
   if (!productId) {
     return res.status(400).type('html').send(page('Missing product', '<h1>Something went wrong</h1><p>No product was specified. Nothing was charged.</p>'));
   }
+
+  // A storefront can only take money while the plan behind it is live. Checked at the moment of
+  // CHECKOUT rather than only when the button was drawn, because a stale page, a cached copy or a
+  // direct post could otherwise still start a payment on a site that is no longer public. Nobody
+  // should be able to be charged through a shopfront that is not supposed to be open.
+  if (!(await siteAccess.publiclyVisible(conceptId))) {
+    return res.status(403).type('html').send(page('Not available',
+      '<h1>This shop isn’t open</h1><p>Nothing was charged. This storefront isn’t currently available — '
+      + 'if it’s yours, it needs an active plan before it can take payments.</p>'));
+  }
   const pr = await query(
     `SELECT sp.id, sp.name, sp.price_cents, sp.currency, sp.active, sp.kind, c.owner_id
      FROM store_products sp JOIN concepts c ON c.id = sp.concept_id

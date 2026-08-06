@@ -7,6 +7,7 @@ const { asyncHandler, ApiError } = require('../lib/http');
 const domains = require('../services/clay/domains');
 const domainStore = require('../services/clay/domainStore');
 const store = require('../services/clay/store');
+const siteAccess = require('../services/clay/siteAccess');
 const router = express.Router();
 
 function checkoutBase() {
@@ -24,7 +25,10 @@ router.get('/', asyncHandler(async (req, res) => {
   const r = await query('SELECT id, title, launch_page FROM concepts WHERE id=$1 LIMIT 1', [conceptId]);
   const c = r.rows[0];
   const p = (c && c.launch_page) || {};
+  // Enabled AND currently allowed to be public. Checked here rather than trusted from the stored
+  // flag, so a site cannot keep being served to strangers after the plan behind it has lapsed.
   if (!c || String(p.enabled) !== 'true') throw new ApiError(404, 'This page isn’t available.');
+  if (!(await siteAccess.publiclyVisible(c.id))) throw new ApiError(404, 'This page isn’t available.');
   const cnt = await query('SELECT COUNT(*)::int AS n FROM waitlist_signups WHERE concept_id=$1', [c.id]);
   const pages = await query('SELECT slug, title, kind FROM site_pages WHERE concept_id=$1 AND published=true ORDER BY nav_order, created_at', [c.id]);
   const prods = await query('SELECT id, name, price_cents, currency, description, image_url, kind FROM store_products WHERE concept_id=$1 AND active=true ORDER BY sort_order, created_at', [c.id]);
@@ -45,6 +49,7 @@ router.get('/:page', asyncHandler(async (req, res) => {
   const c = r.rows[0];
   const p = (c && c.launch_page) || {};
   if (!c || String(p.enabled) !== 'true') throw new ApiError(404, 'This page isn’t available.');
+  if (!(await siteAccess.publiclyVisible(c.id))) throw new ApiError(404, 'This page isn’t available.');
   const pg = await query('SELECT slug, title, body, kind FROM site_pages WHERE concept_id=$1 AND slug=$2 AND published=true LIMIT 1', [conceptId, req.params.page]);
   if (!pg.rows.length) throw new ApiError(404, 'This page isn’t available.');
   const nav = await query('SELECT slug, title, kind FROM site_pages WHERE concept_id=$1 AND published=true ORDER BY nav_order, created_at', [conceptId]);

@@ -12,6 +12,7 @@ const movement = require('../services/clay/movement');
 const siteStore = require('../services/clay/siteStore');
 const siteQuota = require('../services/clay/siteQuota');
 const siteExport = require('../services/clay/siteExport');
+const siteAccess = require('../services/clay/siteAccess');
 const domains = require('../services/clay/domains');
 const cloudflare = require('../services/clay/cloudflare');
 const domainStore = require('../services/clay/domainStore');
@@ -313,6 +314,12 @@ router.get('/:id/pages/:pageId', authenticate, asyncHandler(async (req, res) => 
 router.get('/:id/site/export', authenticate, asyncHandler(async (req, res) => {
   const own = await query('SELECT id, title, launch_page FROM concepts WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
   if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+
+  // Taking the site file away is part of the plan, alongside going live and taking payments.
+  // Building it and previewing it are free — this is the door out, not the workshop.
+  const access = await siteAccess.siteAccess(req.user, req.user.id);
+  if (!access.allowed) throw new ApiError(402, access.message);
+
   const pages = await query(
     'SELECT slug, title, body, kind, nav_order FROM site_pages WHERE concept_id=$1 ORDER BY nav_order, created_at',
     [req.params.id]);
