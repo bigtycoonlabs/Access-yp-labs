@@ -107,23 +107,32 @@
     .liveness .live-empty{color:#c3bce0;font-size:15px;margin:0;}
 
     /* ── Visual layer (additive; decorative pieces are aria-hidden, text stays for VoiceOver) ── */
+    /* One column, on purpose. The hero's job is a single act — say what this is, then let you try
+       it — so nothing sits beside the demo competing for attention. Measure is capped for reading
+       comfort rather than stretched to the viewport. */
     .hero-grid{display:grid;gap:32px;grid-template-columns:1fr;align-items:start;}
-    @media(min-width:880px){.hero-grid{grid-template-columns:1.04fr .96fr;gap:44px;align-items:center;}}
+    #hero-inner{max-width:62ch;}
+    .hero-reassure{margin:10px 0 0;font-size:15px;opacity:.85;}
+
+    /* Sticky call to action on small screens. Tested guidance is that a sticky bottom CTA carries
+       most of the addressable lift on its own, so this is the one place the page pushes. It is a
+       real link, it never covers content (the body gets padding to match), and it is hidden once
+       the page's own CTA is on screen would require JS — simpler and calmer to just keep it. */
+    .sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:40;padding:10px 14px;
+      background:rgba(12,8,32,.94);border-top:1px solid rgba(255,255,255,.14);
+      display:flex;gap:10px;align-items:center;justify-content:center;}
+    .sticky-cta a{display:inline-block;min-height:44px;line-height:44px;text-decoration:none;font-weight:700;}
+    @media(min-width:880px){.sticky-cta{display:none;}}
+    @media(max-width:879px){body{padding-bottom:72px;}}
+
+    /* Anyone who has asked their system to reduce motion gets none of it. */
+    @media (prefers-reduced-motion: reduce){
+      *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;
+        transition-duration:.001ms !important;scroll-behavior:auto !important;}
+    }
     /* A styled preview of a Clay exchange — the product is a conversation, so this IS the
        "product screenshot." Decorative: the surrounding copy already explains Clay, so the
        whole card is aria-hidden and never read to VoiceOver. */
-    .chat-preview{background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.03));
-      border:1px solid rgba(184,166,255,.30);border-radius:18px;padding:18px 18px 20px;
-      box-shadow:0 24px 60px rgba(11,8,23,.45);}
-    .cp-head{display:flex;align-items:center;gap:9px;margin:0 0 14px;color:#c3bce0;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;}
-    .cp-dot{width:8px;height:8px;border-radius:50%;background:#8ce0ff;box-shadow:0 0 10px #8ce0ff;flex:0 0 auto;}
-    .cp-msg{border-radius:14px;padding:12px 15px;margin:0 0 12px;line-height:1.5;font-size:16px;max-width:90%;}
-    .cp-you{margin-left:auto;background:rgba(255,217,168,.16);border:1px solid rgba(255,217,168,.34);color:#fbe6cf;border-bottom-right-radius:5px;}
-    .cp-clay{background:linear-gradient(180deg,rgba(184,166,255,.22),rgba(140,224,255,.12));border:1px solid rgba(184,166,255,.34);color:#f2eefb;border-bottom-left-radius:5px;margin-bottom:0;}
-    .cp-clay .cp-t{display:block;color:#fff;font-weight:700;font-size:18px;margin-bottom:3px;}
-    .cp-clay .cp-s{display:block;color:#dcecff;font-size:14px;line-height:1.5;}
-    .cp-tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px;}
-    .cp-tag{background:rgba(140,224,255,.13);border:1px solid rgba(140,224,255,.36);color:#d8f2ff;border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:600;}
 
     /* feature icons + a little depth on cards */
     .card{box-shadow:0 3px 14px rgba(25,22,48,.06);}
@@ -183,9 +192,10 @@
       <div class="hero" id="hero">
         <div class="hero-grid">
           <div id="hero-inner">
-          <h1>Build a business worth owning — before you spend a dollar proving it.</h1>
-          <p class="tag">Your idea, shaped by Clay into something real. Then sell it, launch it, or claim someone else’s.</p>
-          <p>Most good ideas die in a notes app. Not because they were bad — because proving one takes time, money, and a plan nobody ever writes. Here, you describe an idea in plain words and Clay, your AI partner, turns it into a complete, pre-proven business: the plan, the research, the demo. Free to build. Yours to keep.</p>
+          <h1>Your idea is worth something before it&rsquo;s a business.</h1>
+          <p class="tag" id="hero-greeting">Describe the one you keep coming back to. Clay turns it into a real business — the plan, the research, the demo — while you watch.</p>
+          <div id="hero-demo"></div>
+          <p class="hero-reassure">Free. No card. The idea stays yours.</p>
 
           <h2 class="hero-h2">Three ways to play</h2>
           <ol class="hero-doors">
@@ -206,15 +216,6 @@
           <p class="cta-row"><a class="cta" href="/register.html">Start free — shape your first idea →</a></p>
           <p style="margin-top:12px;"><a href="/dreamhold.html" style="color:var(--dream2);font-weight:600;">Or look around the Dream Market first →</a></p>
           <p style="margin-top:16px;"><a href="/values.html" style="color:var(--dream2);font-weight:600;">What we stand for →</a></p>
-          </div>
-          <div class="chat-preview" aria-hidden="true">
-            <p class="cp-head"><span class="cp-dot"></span>Clay · a project taking shape</p>
-            <div class="cp-msg cp-you">A subscription box for genuinely left-handed kitchen tools.</div>
-            <div class="cp-msg cp-clay">
-              <span class="cp-t">Southpaw Supply</span>
-              <span class="cp-s">A curated monthly box of real left-handed kitchen tools — a clear gap, a findable first customer, and a price that works.</span>
-              <div class="cp-tags"><span class="cp-tag">Business plan</span><span class="cp-tag">Market research</span><span class="cp-tag">Working demo</span></div>
-            </div>
           </div>
         </div>
       </div>
@@ -470,28 +471,31 @@
     }
     let hello={visits:1,returning:false,has_spark:false};
     try{hello=await Kiln.api('/hello',{auth:false});}catch(_){}
-    inner.innerHTML='';
+    // The hero used to be ERASED here and rebuilt as a greeting plus the box — which meant a real
+    // visitor never saw the headline, what this place is, or the three ways in. Those are the whole
+    // point of the page, so they stay. Clay's greeting and his live demo fill slots INSIDE the hero
+    // instead of replacing it: the promise, the personal welcome, and the working demo all at once.
+    const greet=document.getElementById('hero-greeting');
+    const demo=document.getElementById('hero-demo');
+    if(!demo) return;
+    demo.innerHTML='';
+
+    let prompt='What’s the one you can’t stop thinking about?';
     if(hello.returning){
-      inner.appendChild(el('h1',null,'Back again.'));
-      // Count the visits up to three — after that, naming the number gets weird, so just be warm.
       const countable = hello.visits <= 3;
       const nth = ordinalWord(hello.visits);
       if(hello.has_spark){
-        inner.appendChild(el('p','tag', countable
+        if(greet) greet.textContent = countable
           ? ('That idea you told me? Still right here. This is the '+nth+' time you’ve stood at this door — let’s finish it.')
-          : 'That idea you told me? Still right here — let’s finish it.'));
-      }else{
-        inner.appendChild(el('p','tag', countable
+          : 'That idea you told me? Still right here — let’s finish it.';
+      }else if(greet){
+        greet.textContent = countable
           ? (cap(nth)+' time you’ve stood at this door. Still turning it over? I dare you to actually do it this time.')
-          : 'Still turning it over? I dare you to actually do it this time.'));
+          : 'Still turning it over? I dare you to actually do it this time.';
       }
-      inner.appendChild(ideaBox('Say it out loud — what’s the idea?'));
-    }else{
-      inner.appendChild(el('h1',null,'There you are.'));
-      inner.appendChild(el('p','tag','I’ve been hoping someone with an idea would walk in.'));
-      inner.appendChild(ideaBox('What’s the one you can’t stop thinking about?'));
+      prompt='Say it out loud — what’s the idea?';
     }
-    inner.appendChild(dreamholdLink());
+    demo.appendChild(ideaBox(prompt));
   }
   render();
   (function mountAsk(){var h=document.getElementById('ask-clay');if(h)h.appendChild(askClayBox());})();
@@ -529,5 +533,8 @@
     }).catch(function(){});
   })();
 </script>
+<div class="sticky-cta">
+  <a class="cta solid" href="/register.html">Start free — shape your first idea</a>
+</div>
 </body>
 </html>
