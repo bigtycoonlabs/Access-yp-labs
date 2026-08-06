@@ -45,6 +45,18 @@
     <div id="leaping-list"></div>
     <p class="muted">Below, wander the whole Dream Market by category — including dreams that aren’t leaping yet.</p>
   </section>
+  <div class="tabs" role="tablist" aria-label="What you are browsing">
+    <button type="button" class="btn" id="tab-sale" role="tab" aria-selected="true" aria-controls="panel-sale">Projects for sale</button>
+    <button type="button" class="btn secondary" id="tab-partner" role="tab" aria-selected="false" aria-controls="panel-partner">Projects looking for a launch partner</button>
+  </div>
+
+  <div id="panel-partner" role="tabpanel" aria-labelledby="tab-partner" hidden>
+    <p>These have no price. Someone is building them and wants help — the currency here is the work. Read what they need, then tell them what you would bring.</p>
+    <p class="muted" id="partner-status" role="status" aria-live="polite">Loading…</p>
+    <div id="partner-list"></div>
+  </div>
+
+  <div id="panel-sale" role="tabpanel" aria-labelledby="tab-sale">
   <div class="panel"><div class="filters">
     <div><label for="f-category">Category</label>
       <select id="f-category"><option value="">All categories</option>
@@ -63,9 +75,61 @@
   </div></div>
   <div id="status" role="status" aria-live="polite" class="muted"></div>
   <div id="listings"></div>
+  </div>
 </main>
 <script src="/js/a11y.js?v=20260805b"></script><script src="/js/api.js?v=20260805b"></script><script src="/js/nav.js?v=20260805b"></script><script src="/js/proof.js?v=20260805b"></script>
 <script>
+// ---- two kinds of opportunity, one market ------------------------------------------------
+// Projects for sale, and projects being built that want a launch partner. Real tab semantics, so a
+// screen reader announces which is selected; the panels are plain sections, not visual trickery.
+(function(){
+  var tabSale=document.getElementById('tab-sale'), tabPartner=document.getElementById('tab-partner');
+  var panelSale=document.getElementById('panel-sale'), panelPartner=document.getElementById('panel-partner');
+  var loadedPartners=false;
+
+  function show(which){
+    var sale = which==='sale';
+    panelSale.hidden=!sale; panelPartner.hidden=sale;
+    tabSale.setAttribute('aria-selected', sale?'true':'false');
+    tabPartner.setAttribute('aria-selected', sale?'false':'true');
+    tabSale.className = sale?'btn':'btn secondary';
+    tabPartner.className = sale?'btn secondary':'btn';
+    announce(sale ? 'Showing projects for sale.' : 'Showing projects looking for a launch partner.');
+    if(!sale && !loadedPartners){ loadedPartners=true; loadPartnerBoard(); }
+  }
+  tabSale.addEventListener('click', function(){ show('sale'); });
+  tabPartner.addEventListener('click', function(){ show('partner'); });
+
+  function el(t,c,x){var n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+
+  async function loadPartnerBoard(){
+    var st=document.getElementById('partner-status'), wrap=document.getElementById('partner-list');
+    try{
+      var r=await Kiln.api('/partners/board');
+      var list=r.requests||[];
+      if(!list.length){ st.textContent='Nobody is asking for a launch partner yet. If you are building something, you could be the first — it is not a weakness to ask.'; return; }
+      st.textContent=list.length+' project'+(list.length===1?'':'s')+' looking for a partner.';
+      list.forEach(function(q){
+        var d=el('div','card');
+        d.appendChild(el('h3',null,q.title||'A project'));
+        d.appendChild(el('p','muted','By '+q.creator+(q.category?(' \u00B7 '+q.category):'')+' \u00B7 needs: '+(q.needs||[]).join(', ')));
+        d.appendChild(el('p',null,q.summary));
+        if(q.brief) d.appendChild(el('p','muted',q.brief));
+        if(q.arrangement) d.appendChild(el('p','muted','How they would like to work: '+q.arrangement));
+        if(!q.brief) d.appendChild(el('p','muted','The creator is keeping the rest of the project private until they take someone on.'));
+        var a=el('a','btn secondary', q.mine ? 'This is your project' : (q.already_raised ? 'You already offered' : 'Offer to be their launch partner'));
+        a.href='/partners.html'; a.style.textDecoration='none'; a.style.lineHeight='44px'; a.style.display='inline-block';
+        d.appendChild(a);
+        wrap.appendChild(d);
+      });
+    }catch(e){
+      st.textContent = (e && (e.sessionExpired || e.status===401))
+        ? 'Sign in to see the projects looking for a launch partner.'
+        : 'Could not load these right now.';
+    }
+  }
+})();
+
 const listEl=document.getElementById('listings'), statusEl=document.getElementById('status');
 function money(c){return '$'+(c/100).toFixed(2);}
 function esc(t){const d=document.createElement('div');d.textContent=t==null?'':t;return d.innerHTML;}

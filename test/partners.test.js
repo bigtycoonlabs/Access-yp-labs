@@ -26,7 +26,12 @@ test('your own asks and offers view never selects an email address', () => {
 });
 
 test('raising a hand does not hand the creator your contact details', () => {
-  const interest = block("requests/:id/interest", 45);
+  // Scan the WHOLE handler rather than a fixed number of lines, so adding a step to it (like the
+  // dreamer tag gate) can never quietly move the thing under test out of view.
+  const from = src.indexOf("requests/:id/interest");
+  const to = src.indexOf("router.get('/mine'");
+  assert.ok(from > -1 && to > from, 'could not bound the interest handler');
+  const interest = src.slice(from, to);
   // The creator is emailed a notification, but the volunteer's address is never put in the body.
   assert.ok(/no contact details are exchanged|not shared/i.test(interest),
     'the notification must state that nothing was shared');

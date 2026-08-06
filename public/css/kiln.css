@@ -163,3 +163,11 @@ legend{font-weight:700;padding:0 6px;}
 }
 .hero-doors .door-link:hover, .hero-doors .door-link:focus { text-decoration: underline; }
 .hero-doors .door-link:focus-visible { outline: 3px solid var(--dream2); outline-offset: 3px; }
+
+/* --- Dream Market: two kinds of opportunity ------------------------------
+   Real tabs with real buttons, so a screen reader announces which is selected and both are
+   reachable by keyboard. Nothing here depends on colour alone to show the active tab — the
+   selected state is carried by aria-selected, which is what actually gets announced. */
+.tabs { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 16px; }
+.tabs .btn { min-height: 44px; }
+.tabs .btn[aria-selected="true"] { outline: 2px solid var(--dream2); outline-offset: 2px; }

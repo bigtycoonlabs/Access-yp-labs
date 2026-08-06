@@ -36,8 +36,14 @@ router.get('/needs', (req, res) => res.json({ needs: NEEDS }));
 // GET /api/partners/board — open asks. Public to signed-in people; pen names only, no contact details.
 router.get('/board', authenticate, asyncHandler(async (req, res) => {
   const r = await query(
-    `SELECT pr.id, pr.needs, pr.summary, pr.arrangement, pr.created_at,
+    `SELECT pr.id, pr.needs, pr.visibility, pr.created_at,
+            -- The creator decides how much a browser sees before anyone raises a hand. On 'summary'
+            -- only their own written summary shows; the project's own brief stays private until they
+            -- accept someone. Asking for help should never force you to publish everything.
+            pr.summary,
+            CASE WHEN pr.visibility = 'full' THEN pr.arrangement ELSE NULL END AS arrangement,
             c.title, c.category,
+            CASE WHEN pr.visibility = 'full' THEN c.brief ELSE NULL END AS brief,
             COALESCE(NULLIF(u.display_name,''), 'A creator') AS creator,
             (pr.owner_id = $1) AS mine,
             EXISTS (SELECT 1 FROM partner_interest pi
@@ -67,16 +73,17 @@ router.post('/requests', authenticate, [
 
   const needs = cleanNeeds(req.body.needs);
   if (!needs.length) throw new ApiError(400, 'Choose at least one kind of help you are looking for.');
+  const visibility = req.body.visibility === 'full' ? 'full' : 'summary';
 
   const r = await query(
-    `INSERT INTO partner_requests (concept_id, owner_id, needs, summary, arrangement, status)
-     VALUES ($1,$2,$3,$4,$5,'open')
+    `INSERT INTO partner_requests (concept_id, owner_id, needs, summary, arrangement, visibility, status)
+     VALUES ($1,$2,$3,$4,$5,$6,'open')
      ON CONFLICT (concept_id) DO UPDATE SET
        needs=EXCLUDED.needs, summary=EXCLUDED.summary, arrangement=EXCLUDED.arrangement,
-       status='open', updated_at=now()
-     RETURNING id, status`,
+       visibility=EXCLUDED.visibility, status='open', updated_at=now()
+     RETURNING id, status, visibility`,
     [req.body.concept_id, req.user.id, needs, req.body.summary.trim(),
-     (req.body.arrangement || '').trim() || null]);
+     (req.body.arrangement || '').trim() || null, visibility]);
   res.status(201).json({ request: r.rows[0] });
 }));
 
@@ -104,6 +111,17 @@ router.post('/requests/:id/interest', authenticate, [
   if (!pr.rows.length) throw new ApiError(404, 'That ask is not open.');
   const request = pr.rows[0];
   if (request.owner_id === req.user.id) throw new ApiError(400, 'This is your own project.');
+
+  // You need a dreamer tag first. It is the name the creator will see, and the one that carries
+  // across your listings and your Dream Mover page — so it has to exist before you approach anyone.
+  const me = await query('SELECT display_name FROM users WHERE id=$1', [req.user.id]);
+  const tag = me.rows[0] && (me.rows[0].display_name || '').trim();
+  if (!tag) {
+    throw new ApiError(409,
+      'Choose your dreamer tag before you offer to help. It is the name creators here will know you by — '
+      + 'your real name stays private. You can set it on your dashboard.',
+      { need_dreamer_tag: true });
+  }
 
   let row;
   try {
@@ -207,6 +225,42 @@ router.post('/interest/:id/:decision', authenticate, asyncHandler(async (req, re
   }).catch(() => {});
 
   res.json({ status: 'accepted', note: 'You have both been introduced by email. The terms are yours to agree.' });
+}));
+
+
+// GET/PUT /api/partners/availability — "I would be a launch partner for someone else."
+// This is CONSENT, and Clay treats it as such: without it he never pushes opportunities at you.
+router.get('/availability', authenticate, asyncHandler(async (req, res) => {
+  const r = await query('SELECT open_to_partnering, display_name FROM users WHERE id=$1', [req.user.id]);
+  const row = r.rows[0] || {};
+  res.json({
+    open_to_partnering: !!row.open_to_partnering,
+    dreamer_tag: (row.display_name || '').trim() || null,
+  });
+}));
+
+router.put('/availability', authenticate, [
+  body('open_to_partnering').isBoolean(),
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  const on = !!req.body.open_to_partnering;
+
+  if (on) {
+    const me = await query('SELECT display_name FROM users WHERE id=$1', [req.user.id]);
+    if (!((me.rows[0] && me.rows[0].display_name) || '').trim()) {
+      throw new ApiError(409,
+        'Choose your dreamer tag first — it is the name creators would see when you offer to help.',
+        { need_dreamer_tag: true });
+    }
+  }
+  await query('UPDATE users SET open_to_partnering=$2 WHERE id=$1', [req.user.id, on]);
+  res.json({
+    open_to_partnering: on,
+    note: on
+      ? 'Clay can now point out launch partner opportunities that fit you. Nothing is shared about you until you offer to help on something.'
+      : 'Clay will not suggest launch partner opportunities to you.',
+  });
 }));
 
 module.exports = router;
