@@ -61,6 +61,7 @@ app.use('/api/profiles',      require('./routes/profiles'));
  app.use('/api/preferences',   require('./routes/preferences'));
 app.use('/api/weekly',        require('./routes/weekly'));
 app.use('/api/progress',      require('./routes/progress'));
+app.use('/api/partners',      require('./routes/partners'));
 app.use('/api/subscriptions', require('./routes/subscriptions'));
 app.use('/api/concepts',      require('./routes/concepts'));
 app.use('/api/clay',          require('./routes/clay'));

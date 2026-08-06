@@ -1,0 +1,203 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Launch partners — Access YP Labs</title><link rel="stylesheet" href="/css/kiln.css"/>
+<meta name="description" content="Building something on Access YP Labs? Say what help you need, or offer your skills to someone building. You are not meant to do this alone."/>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs</a>
+  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/dreamhold.html">Dream Market</a><a href="/movers.html">Become a Dream Mover</a></nav>
+</div></header>
+<main id="main" class="wrap">
+  <h1>Launch partners</h1>
+  <p>Almost everyone building something is doing it alone, and being alone is what stops most people — not the idea. This is where you say what help you need, or offer what you are good at to someone who is building.</p>
+  <p class="muted">Two things worth knowing. Your contact details are never shown by browsing — someone offers, you decide, and only then are you introduced. And for a project that is not for sale, you and your partner arrange how you work together yourselves: hours, money, equity, or nothing at all. Access YP Labs introduces you and is not part of that agreement.</p>
+
+  <div id="gate" role="status" aria-live="polite" class="muted">Loading…</div>
+
+  <div id="console" hidden>
+    <section aria-labelledby="ask-h">
+      <h2 id="ask-h">Ask for help on one of your projects</h2>
+      <div id="askbox"></div>
+    </section>
+
+    <section aria-labelledby="mine-h">
+      <h2 id="mine-h">Your asks and offers</h2>
+      <div id="mine" role="status" aria-live="polite"></div>
+    </section>
+
+    <section aria-labelledby="board-h">
+      <h2 id="board-h">People building right now</h2>
+      <p id="boardstatus" role="status" aria-live="polite" class="muted">Loading the board…</p>
+      <div id="board"></div>
+    </section>
+  </div>
+  <div id="result" role="alert" aria-live="assertive"></div>
+</main>
+<script src="/js/a11y.js?v=20260805b"></script><script src="/js/api.js?v=20260805b"></script><script src="/js/nav.js?v=20260805b"></script>
+<script>
+var gate=document.getElementById('gate'), box=document.getElementById('console'), result=document.getElementById('result');
+function el(t,c,x){var n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+function say(m,a){result.textContent=m;announce(m,!!a);}
+function goSignIn(){announce('Please sign in.',true);setTimeout(function(){location.href='/login.html?next=/partners.html';},1200);}
+var NEEDS=[];
+
+function btn(label,cls,fn){var b=el('button','btn'+(cls?' '+cls:''),label);b.type='button';b.addEventListener('click',fn);return b;}
+
+// ---- post an ask ----------------------------------------------------------
+async function renderAsk(){
+  var wrap=document.getElementById('askbox'); wrap.innerHTML='';
+  var projects=[];
+  try{ var r=await Kiln.api('/concepts'); projects=r.concepts||[]; }
+  catch(e){ if(e.sessionExpired) return goSignIn(); }
+  if(!projects.length){
+    wrap.appendChild(el('p','muted','You do not have a project yet. Shape one with Clay first, then you can ask for help with it.'));
+    var a=el('a','btn secondary','Open your Laboratory'); a.href='/app.html'; a.style.textDecoration='none'; a.style.lineHeight='44px';
+    wrap.appendChild(a); return;
+  }
+  var f=el('div','card');
+  var l1=el('label',null,'Which project'); l1.setAttribute('for','proj'); f.appendChild(l1);
+  var sel=document.createElement('select'); sel.id='proj';
+  projects.forEach(function(p){ var o=document.createElement('option'); o.value=p.id; o.textContent=p.title||'Untitled'; sel.appendChild(o); });
+  f.appendChild(sel);
+
+  var fs=document.createElement('fieldset');
+  fs.appendChild(el('legend',null,'What help are you looking for? Choose everything that fits.'));
+  NEEDS.forEach(function(n,i){
+    var id='need-'+i;
+    var lab=el('label'); lab.setAttribute('for',id); lab.style.display='block'; lab.style.minHeight='44px'; lab.style.lineHeight='44px';
+    var cb=document.createElement('input'); cb.type='checkbox'; cb.id=id; cb.value=n; cb.className='need';
+    lab.appendChild(cb); lab.appendChild(document.createTextNode(' '+n));
+    fs.appendChild(lab);
+  });
+  f.appendChild(fs);
+
+  var l2=el('label',null,'What are you building, and what do you actually need? (at least 20 characters)'); l2.setAttribute('for','sum'); f.appendChild(l2);
+  var sum=document.createElement('textarea'); sum.id='sum'; sum.rows=4; sum.maxLength=2000; f.appendChild(sum);
+
+  var l3=el('label',null,'How would you like to work together? Optional — and entirely up to the two of you.'); l3.setAttribute('for','arr'); f.appendChild(l3);
+  var arr=document.createElement('textarea'); arr.id='arr'; arr.rows=2; arr.maxLength=1000; f.appendChild(arr);
+
+  f.appendChild(btn('Post this ask','',async function(){
+    var needs=[].slice.call(document.querySelectorAll('.need:checked')).map(function(c){return c.value;});
+    if(!needs.length) return say('Choose at least one kind of help you are looking for.',true);
+    if((sum.value||'').trim().length<20) return say('Say a little more about what you are building and what you need — at least 20 characters.',true);
+    try{
+      await Kiln.api('/partners/requests',{method:'POST',body:{concept_id:sel.value,needs:needs,summary:sum.value,arrangement:arr.value||undefined}});
+      say('Posted. People building here can see it now, and you will be told if someone offers to help.',true);
+      sum.value=''; arr.value='';
+      loadMine(); loadBoard();
+    }catch(e){ if(e.sessionExpired) return goSignIn(); say(e.message||'Could not post that.',true); }
+  }));
+  wrap.appendChild(f);
+}
+
+// ---- your asks and offers -------------------------------------------------
+async function loadMine(){
+  var wrap=document.getElementById('mine'); wrap.innerHTML='';
+  try{
+    var m=await Kiln.api('/partners/mine');
+    var hands=m.hands||[], asks=m.asks||[], offers=m.offers||[];
+
+    if(hands.length){
+      wrap.appendChild(el('h3',null,'People who offered to help you'));
+      hands.forEach(function(h){
+        var d=el('div','card');
+        d.appendChild(el('p',null,h.from_creator+' offered to help with '+h.title+'.'));
+        d.appendChild(el('p','muted',h.offer));
+        if(h.status==='pending'){
+          var acts=el('p');
+          acts.appendChild(btn('Accept and swap contact details','',async function(){
+            try{ var r=await Kiln.api('/partners/interest/'+h.id+'/accept',{method:'POST'});
+              say(r.note||'Accepted — you have both been introduced by email.',true); loadMine();
+            }catch(e){ if(e.sessionExpired) return goSignIn(); say(e.message||'Could not accept.',true); }
+          }));
+          acts.appendChild(btn('Not this time','secondary',async function(){
+            try{ await Kiln.api('/partners/interest/'+h.id+'/decline',{method:'POST'});
+              say('Declined. Nothing about them was shared with you beyond what they wrote.',true); loadMine();
+            }catch(e){ if(e.sessionExpired) return goSignIn(); say(e.message||'Could not decline.',true); }
+          }));
+          d.appendChild(acts);
+        } else {
+          d.appendChild(el('p','muted','You '+(h.status==='accepted'?'accepted this offer — check your email for their contact details.':'declined this offer.')));
+        }
+        wrap.appendChild(d);
+      });
+    }
+
+    if(asks.length){
+      wrap.appendChild(el('h3',null,'Your asks'));
+      asks.forEach(function(a){
+        var d=el('div','card');
+        d.appendChild(el('p',null,a.title+' — '+a.status+(a.pending?(', '+a.pending+' waiting for your answer'):'')));
+        d.appendChild(el('p','muted',a.summary));
+        if(a.status==='open') d.appendChild(btn('Take this ask down','secondary',async function(){
+          try{ await Kiln.api('/partners/requests/'+a.id+'/close',{method:'POST'}); say('Taken down.',true); loadMine(); loadBoard(); }
+          catch(e){ if(e.sessionExpired) return goSignIn(); say(e.message||'Could not close it.',true); }
+        }));
+        wrap.appendChild(d);
+      });
+    }
+
+    if(offers.length){
+      wrap.appendChild(el('h3',null,'Help you offered'));
+      offers.forEach(function(o){
+        var d=el('div','card');
+        d.appendChild(el('p',null,o.title+' — '+(o.status==='pending'?'waiting on the creator':o.status)));
+        wrap.appendChild(d);
+      });
+    }
+
+    if(!hands.length&&!asks.length&&!offers.length){
+      wrap.appendChild(el('p','muted','Nothing yet. Post an ask above, or offer to help someone on the board below.'));
+    }
+  }catch(e){ if(e.sessionExpired) return goSignIn(); wrap.appendChild(el('p','muted','Could not load your asks.')); }
+}
+
+// ---- the board ------------------------------------------------------------
+async function loadBoard(){
+  var status=document.getElementById('boardstatus'), wrap=document.getElementById('board');
+  wrap.innerHTML='';
+  try{
+    var r=await Kiln.api('/partners/board');
+    var list=r.requests||[];
+    if(!list.length){ status.textContent='Nobody has asked for help yet. If you are building something, you could be the first — it is not a weakness to ask.'; return; }
+    status.textContent=list.length+' project'+(list.length===1?'':'s')+' looking for a partner.';
+    list.forEach(function(q){
+      var d=el('div','card');
+      d.appendChild(el('h3',null,q.title||'A project'));
+      d.appendChild(el('p','muted','By '+q.creator+(q.category?(' · '+q.category):'')+' · needs: '+(q.needs||[]).join(', ')));
+      d.appendChild(el('p',null,q.summary));
+      if(q.arrangement) d.appendChild(el('p','muted','How they would like to work: '+q.arrangement));
+      if(q.mine){ d.appendChild(el('p','muted','This is your project.')); }
+      else if(q.already_raised){ d.appendChild(el('p','muted','You have already offered to help with this one.')); }
+      else {
+        var lab=el('label',null,'What can you offer, and how would you like to work together?');
+        var tid='offer-'+q.id; lab.setAttribute('for',tid); d.appendChild(lab);
+        var ta=document.createElement('textarea'); ta.id=tid; ta.rows=3; ta.maxLength=1500; d.appendChild(ta);
+        d.appendChild(btn('Offer to help','',async function(){
+          if((ta.value||'').trim().length<20) return say('Say a bit more about what you can offer — at least 20 characters.',true);
+          try{
+            var out=await Kiln.api('/partners/requests/'+q.id+'/interest',{method:'POST',body:{offer:ta.value}});
+            say(out.note||'Sent. The creator decides, and your contact details were not shared.',true);
+            loadBoard(); loadMine();
+          }catch(e){ if(e.sessionExpired) return goSignIn(); say(e.message||'Could not send that.',true); }
+        }));
+      }
+      wrap.appendChild(d);
+    });
+  }catch(e){ if(e.sessionExpired) return goSignIn(); status.textContent='Could not load the board.'; }
+}
+
+(async function(){
+  try{
+    var n=await Kiln.api('/partners/needs'); NEEDS=n.needs||[];
+    gate.hidden=true; box.hidden=false;
+    renderAsk(); loadMine(); loadBoard();
+  }catch(e){
+    if(e.sessionExpired||e.status===401) return goSignIn();
+    gate.textContent='Could not load: '+(e.message||'unknown error');
+  }
+})();
+</script>
+</body></html>
