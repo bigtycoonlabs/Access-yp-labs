@@ -204,7 +204,34 @@ function renderConceptContext({ concept, assets, intent }) {
   return lines.join('\n');
 }
 
-async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext = null, memoryContext = null, systemOverride = null, allowTools = null, viewer = null }) {
+// onEvent lets a caller watch Clay work instead of staring at nothing for twenty seconds. It is
+// optional and never required: every existing caller passes nothing and behaves exactly as before.
+// The events describe what is actually happening — a step beginning, a tool running, a tool's real
+// outcome — rather than a fake progress bar. Nothing here is invented to look busy.
+
+// What a tool is doing, said the way a person would say it. Function names in a progress stream are
+// noise to anyone who did not write them — and this is read aloud.
+const TOOL_WORDS = {
+  generate_concept: ['Building the project', 'Project built'],
+  enhance_concept: ['Working on the project', 'Project updated'],
+  build_spec_package: ['Writing the build spec', 'Build spec written'],
+  set_launch_page: ['Working on the site', 'Site updated'],
+  generate_image: ['Making an image', 'Image made'],
+  research: ['Looking things up', 'Research done'],
+  check_systems: ['Checking the systems', 'Systems checked'],
+  set_dreamer_tag: ['Setting your dreamer tag', 'Dreamer tag set'],
+  create_listing: ['Preparing the listing', 'Listing prepared'],
+};
+const prettify = (name) => String(name || '').replace(/_/g, ' ');
+function describeTool(name) { return (TOOL_WORDS[name] && TOOL_WORDS[name][0]) || ('Working on ' + prettify(name)); }
+function describeToolDone(name) { return (TOOL_WORDS[name] && TOOL_WORDS[name][1]) || (prettify(name) + ' done'); }
+
+async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext = null, memoryContext = null, systemOverride = null, allowTools = null, viewer = null, onEvent = null }) {
+  // A broken listener must never take down the work it is only watching.
+  const emit = (type, data) => {
+    if (typeof onEvent !== 'function') return;
+    try { onEvent({ type, ...data }); } catch (e) { console.error('stream listener error:', e && e.message); }
+  };
   if (!provider.available()) {
     return { status: 'unavailable',
       reply: 'Clay could not run right now (generation service is not configured). Nothing was fabricated.' };
@@ -227,6 +254,8 @@ async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext 
   const backedActions = new Set();
 
   for (let step = 0; step < maxSteps; step++) {
+    emit('thinking', { step: step + 1,
+      note: step === 0 ? 'Reading what you said' : 'Working out what to do next' });
     const resp = await provider.chat({ system, messages: convo, tools });
     if (!resp.ok) {
       return { status: 'unavailable',
@@ -304,9 +333,16 @@ async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext 
         };
       } else {
         const exec = executors[tc.name];
+        emit('tool_start', { tool: tc.name, note: describeTool(tc.name) });
         let out;
         try { out = exec ? await exec(tc.input || {}) : { note: 'This action is not available in chat yet.' }; }
         catch (e) { out = { error: e.message }; }
+        // The REAL outcome, including failure. A progress stream that only ever reports success is
+        // worse than none — it teaches someone to trust a signal that cannot say no.
+        const failed = !!(out && (out.error || out.status === 'error' || out.ok === false));
+        emit('tool_done', { tool: tc.name, ok: !failed,
+          note: failed ? ((out && (out.message || out.error)) || 'That step did not work')
+                       : (describeToolDone(tc.name)) });
         // Record the action-class a tool actually completed, so an honest completion
         // claim about it survives the audit below. (Irreversible actions confirm-and-exit
         // and never run here, so they can never back a chat-turn completion claim.)

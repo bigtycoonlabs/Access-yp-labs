@@ -1591,12 +1591,11 @@ router.get('/earning-paths', authenticate, asyncHandler(async (req, res) => {
 }));
 
 // POST /api/clay/chat  { messages: [...] }
-router.post('/chat', authenticate, [
-  body('messages').isArray({ min: 1 }),
-  body('concept_id').optional().isUUID(),
-], asyncHandler(async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+// Everything Clay needs to know before a chat turn: the project he is working inside, what he
+// remembers about this person, where they actually stand, and which tools their role may use.
+// Shared by both the plain and the streaming endpoint ON PURPOSE — two copies of "what Clay knows"
+// would eventually disagree, and then streaming would quietly become a different Clay.
+async function buildChatContext(req) {
   let conceptContext = null;
   if (req.body.concept_id) {
     const c = await query('SELECT id, title, category, stage, risk_summary, movement_state, movement_note FROM concepts WHERE id=$1 AND owner_id=$2',
@@ -1605,8 +1604,6 @@ router.post('/chat', authenticate, [
       const a = await query(
         "SELECT type, title, body FROM assets WHERE concept_id=$1 AND is_current=true ORDER BY created_at",
         [req.body.concept_id]);
-      // Never feed Clay content the user hasn't unlocked — otherwise chat becomes a paywall
-      // bypass ("read me my build path"). Redaction blanks locked bodies and flags them.
       const ent = await conceptEntitlement(req.user, req.body.concept_id);
       const conceptIntent = await intent.getIntent(req.body.concept_id, req.user.id).catch(() => null);
       conceptContext = { concept: c.rows[0], assets: redactLockedAssets(a.rows, !!ent.entitled), intent: conceptIntent };
@@ -1614,17 +1611,22 @@ router.post('/chat', authenticate, [
   }
   const mems = await memory.getMemories(req.user.id).catch(() => []);
   const patterns = await memory.getPatterns(req.user.id).catch(() => null);
-  // Clay's awareness of where this person actually stands — what they've built, what's blocking
-  // them, whether money could even reach them. Joined onto the memory block because it is the same
-  // kind of thing: background he carries, not something he recites.
   const awarenessContext = await awareness.renderAwareness(req.user.id);
   const memoryContext = [memory.renderMemoryContext(mems), memory.renderPatterns(patterns), awarenessContext].filter(Boolean).join('\n\n');
-  // One Clay, gated: every builder gets the full building toolset; staff tools are added ONLY for
-  // the roles that may use them, so a regular creator is never even offered a moderation tool.
-  const allToolNames = agent.toolSchemas().map((t) => t.name);
+  const allToolNames = agent.toolSchemas().map((x) => x.name);
   const baseTools = allToolNames.filter((n) => !staffCapability.ALL_STAFF_TOOLS.includes(n));
   const allowTools = baseTools.concat(staffCapability.staffToolsFor(req.user.role));
-  const out = await agent.runChat({ messages: req.body.messages, executors: buildExecutors(req.user), conceptContext, memoryContext, allowTools, viewer: { role: req.user.role, name: req.user.name } });
+  return { conceptContext, memoryContext, allowTools };
+}
+
+router.post('/chat', authenticate, [
+  body('messages').isArray({ min: 1 }),
+  body('concept_id').optional().isUUID(),
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  const ctx = await buildChatContext(req);
+  const out = await agent.runChat({ messages: req.body.messages, executors: buildExecutors(req.user), conceptContext: ctx.conceptContext, memoryContext: ctx.memoryContext, allowTools: ctx.allowTools, viewer: { role: req.user.role, name: req.user.name } });
   // Tell the client what happened this turn: a background rebuild it can watch, or a
   // synchronous concept change it should refresh (new asset versions have new ids).
   const outcome = chatOutcomeFromTranscript(out.messages);
@@ -1635,6 +1637,68 @@ router.post('/chat', authenticate, [
   // plain answer is treated as serious and kept whole.
   out.bubbles = pacing.bubblesFor(out.reply || '', { serious: out.status !== 'answered' });
   res.json(out);
+}));
+
+// POST /api/clay/chat/stream — the same conversation, but you can watch Clay work.
+//
+// Why this exists: a request that takes twenty seconds and shows nothing looks broken, and for
+// someone who cannot see a spinner it is worse — there is no signal at all that anything is
+// happening. This streams what is ACTUALLY occurring: a step starting, a tool running, that tool's
+// real outcome including failure, then the answer.
+//
+// Two rules it will not break:
+//   * It never invents progress. Every event corresponds to something that really happened. A
+//     progress stream that only ever reports success teaches people to trust a signal that cannot
+//     say no, so tool failures are streamed as failures.
+//   * The final answer is identical to the non-streaming endpoint, including the honesty audit and
+//     the paced bubbles. Streaming is a window onto the work, not a different way of working.
+//
+// Server-Sent Events over POST (rather than EventSource, which cannot send an auth header).
+router.post('/chat/stream', authenticate, [
+  body('messages').isArray({ min: 1 }),
+  body('concept_id').optional().isUUID(),
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',      // stops proxies holding the stream until it completes
+  });
+  const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); } catch (_) {} };
+
+  // If the person navigates away or hits stop, we stop caring about the result rather than writing
+  // into a dead socket.
+  let closed = false;
+  req.on('close', () => { closed = true; });
+
+  try {
+    const ctx = await buildChatContext(req);
+    const out = await agent.runChat({
+      messages: req.body.messages,
+      executors: buildExecutors(req.user),
+      conceptContext: ctx.conceptContext,
+      memoryContext: ctx.memoryContext,
+      allowTools: ctx.allowTools,
+      viewer: { role: req.user.role, name: req.user.name },
+      onEvent: (ev) => { if (!closed) send(ev); },
+    });
+
+    const outcome = chatOutcomeFromTranscript(out.messages);
+    if (outcome.build_id) out.build_id = outcome.build_id;
+    if (outcome.concept_id) { out.concept_updated = true; out.concept_id = outcome.concept_id; }
+    out.bubbles = pacing.bubblesFor(out.reply || '', { serious: out.status !== 'answered' });
+    if (!closed) { send({ type: 'done', result: out }); }
+  } catch (e) {
+    console.error('chat stream error:', e && e.message);
+    // Say so in the stream rather than leaving it hanging: silence is indistinguishable from a
+    // frozen page, and a person waiting deserves to know it stopped.
+    if (!closed) send({ type: 'error', message: 'Clay stopped partway through and did not finish. Nothing was fabricated.' });
+  } finally {
+    try { res.end(); } catch (_) {}
+  }
 }));
 
 // POST /api/clay/chat/confirm  { tool, params }  — run a confirmed action.
