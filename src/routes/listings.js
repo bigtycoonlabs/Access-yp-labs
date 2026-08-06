@@ -235,6 +235,7 @@ router.get('/', asyncHandler(async (req, res) => {
      JOIN concepts c ON c.id=l.concept_id
      JOIN users u ON u.id=l.seller_id
      WHERE l.status='live'
+       AND l.settled_at IS NULL   -- a settled auction has a winner; it is not still on offer
        AND ($1::text IS NULL OR c.category::text=$1)
        AND ($2::text IS NULL OR l.stage_label::text=$2)
      ORDER BY l.created_at DESC`,
@@ -259,6 +260,7 @@ router.get('/leaping', authenticate, asyncHandler(async (req, res) => {
             (SELECT COUNT(*)::int FROM waitlist_signups w WHERE w.concept_id=l.concept_id) AS waiting
      FROM listings l JOIN concepts c ON c.id=l.concept_id JOIN users u ON u.id=l.seller_id
      WHERE l.status='live'
+       AND l.settled_at IS NULL   -- a settled auction has a winner; it is not still on offer
        AND ($1::text[] IS NULL OR array_length($1::text[],1) IS NULL OR c.category::text = ANY($1::text[]))
        AND ($2::int IS NULL OR COALESCE(l.price_cents, l.starting_bid_cents, 0) <= $2)
      ORDER BY l.created_at DESC LIMIT 8`,
@@ -290,6 +292,7 @@ router.get('/today', authenticate, asyncHandler(async (req, res) => {
               (SELECT COUNT(*)::int FROM waitlist_signups w WHERE w.concept_id=l.concept_id) AS waiting
        FROM listings l JOIN concepts c ON c.id=l.concept_id JOIN users u ON u.id=l.seller_id
        WHERE l.status='live'
+         AND l.settled_at IS NULL   -- a settled auction has a winner; it is not still on offer
          AND l.created_at >= now() - ($3::int * interval '1 day')
          AND l.seller_id <> $4
          AND ( $1::text[] IS NULL OR NOT $5::boolean OR c.category::text = ANY($1::text[]) )

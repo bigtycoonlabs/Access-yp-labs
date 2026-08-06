@@ -74,6 +74,9 @@ router.post('/:id/send', authenticate, authorize('master_staff'), asyncHandler(a
     }[out.reason] || 'It could not be sent.';
     return res.status(409).json({ error: why, detail: out });
   }
+  if (!out.ok && out.reason === 'nothing_delivered') {
+    return res.status(409).json({ error: out.message, detail: out });
+  }
   res.json(out);
 }));
 

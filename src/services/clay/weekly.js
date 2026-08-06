@@ -325,8 +325,21 @@ async function sendIssue(id) {
     sent += (out && out.sent) || 0;
   }
 
+  // ZERO DELIVERED IS NOT A SEND. This used to mark the issue as sent regardless, which was doubly
+  // wrong: it reported success for an issue nobody received, AND stamping sent_at meant the
+  // already_sent guard above would refuse to ever try again. A week's issue could be silently lost
+  // with the record insisting it had gone out.
+  if (sent === 0) {
+    return { ok: false, reason: 'nothing_delivered', recipients: 0, attempted: rec.rows.length,
+      message: `Nothing was delivered — all ${rec.rows.length} attempts failed, so no reader has it. `
+        + 'The issue has NOT been marked as sent, so you can try again once the problem is fixed.' };
+  }
   await query('UPDATE weekly_issues SET sent_at=now(), recipients_count=$2 WHERE id=$1', [id, sent]);
-  return { ok: true, recipients: sent, attempted: rec.rows.length };
+  if (sent < rec.rows.length) {
+    return { ok: true, recipients: sent, attempted: rec.rows.length,
+      message: `Sent to ${sent} of ${rec.rows.length}. The rest did not go through — that gap is real.` };
+  }
+  return { ok: true, recipients: sent, attempted: rec.rows.length, message: `Sent to all ${sent} readers.` };
 }
 
 async function unsubscribe(token) {
