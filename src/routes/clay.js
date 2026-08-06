@@ -14,6 +14,7 @@ const launchPage = require('../services/clay/launchPage');
 const siteStore = require('../services/clay/siteStore');
 const store = require('../services/clay/store');
 const similarity = require('../services/clay/similarity');
+const awareness = require('../services/clay/awareness');
 const siteQuota = require('../services/clay/siteQuota');
 const domains = require('../services/clay/domains');
 const domainStore = require('../services/clay/domainStore');
@@ -1581,7 +1582,11 @@ router.post('/chat', authenticate, [
   }
   const mems = await memory.getMemories(req.user.id).catch(() => []);
   const patterns = await memory.getPatterns(req.user.id).catch(() => null);
-  const memoryContext = [memory.renderMemoryContext(mems), memory.renderPatterns(patterns)].filter(Boolean).join('\n\n');
+  // Clay's awareness of where this person actually stands — what they've built, what's blocking
+  // them, whether money could even reach them. Joined onto the memory block because it is the same
+  // kind of thing: background he carries, not something he recites.
+  const awarenessContext = await awareness.renderAwareness(req.user.id);
+  const memoryContext = [memory.renderMemoryContext(mems), memory.renderPatterns(patterns), awarenessContext].filter(Boolean).join('\n\n');
   // One Clay, gated: every builder gets the full building toolset; staff tools are added ONLY for
   // the roles that may use them, so a regular creator is never even offered a moderation tool.
   const allToolNames = agent.toolSchemas().map((t) => t.name);

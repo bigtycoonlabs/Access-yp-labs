@@ -1,7 +1,7 @@
 const express = require('express');
-const { query } = require('../config/db');
 const { asyncHandler } = require('../lib/http');
 const { authenticate } = require('../middleware/auth');
+const awareness = require('../services/clay/awareness');
 
 // YOUR PATH — the visible route from arriving to earning.
 //
@@ -21,28 +21,13 @@ const router = express.Router();
 router.get('/', authenticate, asyncHandler(async (req, res) => {
   const uid = req.user.id;
 
-  const r = await query(
-    `SELECT
-       (SELECT count(*) FROM concepts WHERE owner_id=$1)                                    AS projects,
-       (SELECT count(*) FROM concepts WHERE owner_id=$1
-          -- Real movement states (see the concepts_movement_state_check constraint):
-          -- needs_customer_clarity, needs_proof, ready_to_package. 'ready_to_package' is the one
-          -- that means the creator has taken it somewhere; the earlier two mean work still to do.
-          AND (launch_page IS NOT NULL OR movement_state = 'ready_to_package')) AS moving,
-       (SELECT count(*) FROM listings l JOIN concepts c ON c.id=l.concept_id
-         WHERE c.owner_id=$1 AND l.status='live')                                           AS live_listings,
-       (SELECT count(*) FROM seller_accounts WHERE user_id=$1 AND kyc_status='verified')    AS payouts_ready,
-       (SELECT count(*) FROM dream_movers WHERE user_id=$1 AND status='active')             AS is_mover,
-       (SELECT COALESCE(SUM(amount_cents),0) FROM orders_transfers
-         WHERE seller_id=$1 AND status='released')                                          AS sales_cents,
-       (SELECT COALESCE(SUM(amount_cents),0) FROM orders_transfers
-         WHERE seller_id=$1 AND status IN ('in_escrow','proof_submitted','delivered'))      AS pending_cents,
-       (SELECT COALESCE(SUM(amount_cents),0) FROM mover_earnings WHERE mover_id=$1)         AS mover_cents`,
-    [uid]);
-  const s = r.rows[0] || {};
+  // One source of truth, shared with Clay's awareness. If these ever computed the path separately
+  // they would eventually disagree, and a person would be told two different things about their own
+  // situation by two parts of the same product.
+  const s = await awareness.pathFor(uid);
   const n = (v) => Number(v || 0);
 
-  const earnedCents = n(s.sales_cents) + n(s.mover_cents);
+  const earnedCents = n(s.earned_cents);
   const pendingCents = n(s.pending_cents);
 
   // Two routes to earning, and a person may walk either or both. Nothing here assumes someone must
@@ -78,8 +63,8 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
     {
       key: 'payouts',
       title: 'Set up how you get paid',
-      done: n(s.payouts_ready) > 0,
-      spoken: n(s.payouts_ready) > 0
+      done: s.payouts_ready,
+      spoken: s.payouts_ready
         ? 'Done. Your payout account is verified, so money can reach you.'
         : 'Not yet. Until this is set up, a sale cannot actually pay you.',
       action: { label: 'Set up payouts', href: '/dashboard.html' },
@@ -87,8 +72,8 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
     {
       key: 'mover',
       title: 'Or earn without an idea of your own',
-      done: n(s.is_mover) > 0,
-      spoken: n(s.is_mover) > 0
+      done: s.is_mover,
+      spoken: s.is_mover
         ? 'Done. You are a Dream Mover — share what you believe in and earn on each sale.'
         : 'Optional, and open to anyone. Become a Dream Mover, promote projects you believe in, and earn a commission when one sells.',
       action: { label: 'Become a Dream Mover', href: '/movers.html' },

@@ -11,8 +11,16 @@ function withRow(row, fn) {
     if (p.endsWith('middleware/auth')) return { authenticate: (req, _r, n) => { req.user = { id: 'u1' }; n(); }, authorize: () => (_q, _s, n) => n() };
     return orig.apply(this, arguments);
   };
-  try { delete require.cache[require.resolve('../src/routes/progress')]; return fn(require('../src/routes/progress')); }
-  finally { Module.prototype.require = orig; delete require.cache[require.resolve('../src/routes/progress')]; }
+  // progress shares its path logic with Clay's awareness service now, so BOTH must be reloaded under
+  // the stub — otherwise awareness keeps a handle on the real database and the stub is bypassed.
+  const mods = ['../src/routes/progress', '../src/services/clay/awareness'];
+  try {
+    mods.forEach((m) => delete require.cache[require.resolve(m)]);
+    return fn(require('../src/routes/progress'));
+  } finally {
+    Module.prototype.require = orig;
+    mods.forEach((m) => delete require.cache[require.resolve(m)]);
+  }
 }
 async function call(router) {
   const express = require('express');
