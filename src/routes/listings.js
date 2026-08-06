@@ -8,6 +8,41 @@ const { isAboveFloor, PRICE_FLOOR_CENTS } = require('../lib/money');
 const brief = require('../services/clay/brief');
 const router = express.Router();
 
+// What a seller may offer to stay on and help with. SERVICES ONLY — equity is deliberately absent,
+// because an ownership stake is not something this platform arranges, holds, or records.
+const PARTNER_AREAS = ['marketing', 'development', 'design', 'business advice', 'coaching',
+  'training', 'staffing', 'operations', 'sales'];
+
+// Read a launch partner offer off a request body. Returns a normalised offer, or throws with a
+// reason a person can act on. An offer with no stated scope is refused on purpose: "I'll help" is
+// exactly the vague promise that turns into a dispute after money has changed hands.
+function readPartnerOffer(body) {
+  if (!body || body.partner_offered !== true) {
+    return { offered: false, areas: [], scope: null, sessions: null, weeks: null };
+  }
+  const areas = Array.isArray(body.partner_areas)
+    ? body.partner_areas.map((x) => String(x || '').toLowerCase().trim()).filter((x) => PARTNER_AREAS.includes(x)).slice(0, 6)
+    : [];
+  if (!areas.length) throw new ApiError(400, 'Choose at least one area you will actually help with.');
+
+  const scope = String(body.partner_scope || '').trim();
+  if (scope.length < 30) {
+    throw new ApiError(400, 'Describe what your help includes, in at least 30 characters. A buyer is paying for this, so "I\u2019ll be around" is not enough — say what they actually get.');
+  }
+  const num = (v) => {
+    if (v === undefined || v === null || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 && n <= 200 ? Math.floor(n) : null;
+  };
+  const sessions = num(body.partner_sessions);
+  const weeks = num(body.partner_weeks);
+  if (!sessions && !weeks) {
+    throw new ApiError(400, 'Say how much help is included — a number of sessions, or a number of weeks. Both sides need to know when it is complete.');
+  }
+  return { offered: true, areas, scope, sessions, weeks };
+}
+
+
 const BUILD_PATH_TYPES = ['html_demo', 'website_prompt', 'build_instructions', 'code_file', 'built_site'];
 
 // A creator can list a concept at ANY stage of their work with Clay — early or finished. The
@@ -84,14 +119,19 @@ router.post('/', authenticate, [
     }
   }
 
+  const partner = readPartnerOffer(req.body);
+
   const r = await query(
     `INSERT INTO listings
        (concept_id, seller_id, format, price_cents, starting_bid_cents, auction_close_at,
-        completion_target, stage_label, status, risk_disclosed, ownership_ack)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,COALESCE($8,'concept')::concept_stage,'draft',true,true)
+        completion_target, stage_label, status, risk_disclosed, ownership_ack,
+        partner_offered, partner_areas, partner_scope, partner_sessions, partner_weeks)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,COALESCE($8,'concept')::concept_stage,'draft',true,true,
+             $9,$10,$11,$12,$13)
      RETURNING *`,
     [concept_id, req.user.id, format, price_cents || null, starting_bid_cents || null,
-     auction_close_at || null, completion_target || null, stage_label]);
+     auction_close_at || null, completion_target || null, stage_label,
+     partner.offered, partner.areas, partner.scope, partner.sessions, partner.weeks]);
   res.status(201).json({ listing: r.rows[0] });
 
   // Best-effort: give a fresh listing an opportunity brief if the concept doesn't have one yet,
@@ -296,6 +336,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
             -- lets the listing point at the partner side instead of hiding a second way in.
             (SELECT pr.id FROM partner_requests pr
               WHERE pr.concept_id = l.concept_id AND pr.status='open') AS partner_request_id,
+            l.partner_offered, l.partner_areas, l.partner_scope, l.partner_sessions, l.partner_weeks,
             CASE WHEN c.show_working_since THEN c.working_since ELSE NULL END AS working_since
      FROM listings l JOIN concepts c ON c.id=l.concept_id JOIN users u ON u.id=l.seller_id
      WHERE l.id=$1`, [req.params.id]);

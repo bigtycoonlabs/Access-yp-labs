@@ -197,10 +197,49 @@ router.post('/:id/release', authenticate, asyncHandler(async (req, res) => {
 
 router.get('/', authenticate, asyncHandler(async (req, res) => {
   const r = await query(
-    `SELECT o.*, c.title FROM orders_transfers o
-     JOIN listings l ON l.id=o.listing_id JOIN concepts c ON c.id=l.concept_id
-     WHERE o.buyer_id=$1 OR o.seller_id=$1 ORDER BY o.created_at DESC`, [req.user.id]);
+    `SELECT o.*, c.title,
+            l.partner_offered, l.partner_areas, l.partner_scope, l.partner_sessions, l.partner_weeks
+       FROM orders_transfers o
+       JOIN listings l ON l.id=o.listing_id JOIN concepts c ON c.id=l.concept_id
+      WHERE o.buyer_id=$1 OR o.seller_id=$1 ORDER BY o.created_at DESC`, [req.user.id]);
   res.json({ orders: r.rows });
+}));
+
+
+// POST /api/orders/:id/partner/remove — the BUYER ends the launch partner arrangement.
+//
+// This is the buyer's protection, and it is deliberately unconditional: any reason, no reason, no
+// notice period, no approval from anyone. They keep the project either way — the transfer is not
+// contingent on the partnership, and ending it never claws back what they bought. Money is not
+// touched here: the help was part of the price the seller set, and unwinding payments over a
+// judgement call is exactly the kind of dispute this platform should not be adjudicating.
+router.post('/:id/partner/remove', authenticate, asyncHandler(async (req, res) => {
+  const r = await query(
+    `UPDATE orders_transfers
+        SET partner_active = false, partner_removed_at = now()
+      WHERE id = $1 AND buyer_id = $2 AND partner_active IS DISTINCT FROM false
+      RETURNING id, listing_id`,
+    [req.params.id, req.user.id]);
+  if (!r.rows.length) {
+    throw new ApiError(404, 'That order is not yours, or the launch partner has already been removed.');
+  }
+  res.json({
+    removed: true,
+    message: 'The launch partner has been removed. The project is still entirely yours — nothing about '
+      + 'your ownership changes, and nothing was charged or refunded. If you want help again later, you '
+      + 'can ask on the launch partner board.',
+  });
+}));
+
+// POST /api/orders/:id/partner/restore — the buyer changes their mind.
+router.post('/:id/partner/restore', authenticate, asyncHandler(async (req, res) => {
+  const r = await query(
+    `UPDATE orders_transfers SET partner_active = true, partner_removed_at = NULL
+      WHERE id = $1 AND buyer_id = $2 AND partner_active = false
+      RETURNING id`,
+    [req.params.id, req.user.id]);
+  if (!r.rows.length) throw new ApiError(404, 'That order is not yours, or the partner is already active.');
+  res.json({ restored: true, message: 'The launch partner is active again. Reach out to them directly to pick things back up.' });
 }));
 
 module.exports = router;

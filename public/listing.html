@@ -102,6 +102,23 @@ function clarityBlock(listing){
   if(listing.completion_target) getting+=' The seller expects it can be launch-ready by '+listing.completion_target+'.';
   box.appendChild(part('What you get:',getting));
 
+  // The creator staying on to help is the answer to the buyer's real fear — not "is this idea good"
+  // but "can I actually pull this off". Show the FULL declared scope before anyone pays, and say
+  // plainly what it is not: no ownership stake, and removable at any time.
+  if(listing.partner_offered){
+    const lp=el('div','panel');
+    lp.appendChild(el('h2',null,'The creator will stay on as your launch partner'));
+    const areas=(listing.partner_areas||[]).join(', ');
+    let howMuch='';
+    if(listing.partner_sessions&&listing.partner_weeks) howMuch=listing.partner_sessions+' session'+(listing.partner_sessions===1?'':'s')+' over '+listing.partner_weeks+' week'+(listing.partner_weeks===1?'':'s');
+    else if(listing.partner_sessions) howMuch=listing.partner_sessions+' session'+(listing.partner_sessions===1?'':'s');
+    else if(listing.partner_weeks) howMuch=listing.partner_weeks+' week'+(listing.partner_weeks===1?'':'s')+' of help';
+    lp.appendChild(el('p',null,'Included in the price'+(areas?(' \u2014 help with '+areas):'')+(howMuch?(', '+howMuch):'')+'.'));
+    if(listing.partner_scope) lp.appendChild(el('p',null,listing.partner_scope));
+    lp.appendChild(el('p','muted','What this is not: they do not keep any ownership \u2014 the project transfers to you completely. There is no stake and no share. You can end the arrangement at any time, for any reason, and you keep the project. Access YP Labs takes no extra fee for this and is not a party to how it goes.'));
+    box.appendChild(lp);
+  }
+
   // The same project can also be looking for a launch partner. Point at that side rather than
   // hiding a second way in: some people don't want to BUY it, they want to help build it.
   if(listing.partner_request_id){

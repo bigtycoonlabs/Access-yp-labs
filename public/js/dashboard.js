@@ -485,6 +485,24 @@
         if (!iAmSeller && ['in_escrow', 'proof_submitted', 'delivered'].includes(o.status)) {
           r.actions.appendChild(actionBtn('Release and receive ownership', () => run(Kiln.api('/orders/' + o.id + '/release', { method: 'POST' }), 'Released. Ownership transferred to you.', loadOrders)));
         }
+        // The launch partner arrangement, and the BUYER's unconditional control over it. Ending it
+        // never affects ownership, which is said in the button's own outcome rather than assumed.
+        if (o.partner_offered) {
+          const ended = o.partner_active === false;
+          r.actions.appendChild(el('span', 'muted',
+            ended ? 'Launch partner: ended by you.' : 'Launch partner: active.'));
+          if (!iAmSeller) {
+            if (!ended) {
+              r.actions.appendChild(actionBtn('End the launch partner arrangement', () => run(
+                Kiln.api('/orders/' + o.id + '/partner/remove', { method: 'POST' }),
+                'Launch partner removed. The project is still entirely yours.', loadOrders), true));
+            } else {
+              r.actions.appendChild(actionBtn('Bring the launch partner back', () => run(
+                Kiln.api('/orders/' + o.id + '/partner/restore', { method: 'POST' }),
+                'Launch partner is active again.', loadOrders)));
+            }
+          }
+        }
         c.appendChild(r);
       });
     } catch (e) { fail(c, e); }
