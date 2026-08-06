@@ -22,7 +22,7 @@
   <div id="queue"></div>
   <div id="result" role="alert" aria-live="assertive"></div>
 </main>
-<script src="/js/a11y.js?v=20260806h"></script><script src="/js/api.js?v=20260806h"></script><script src="/js/nav.js?v=20260806h"></script>
+<script src="/js/a11y.js?v=20260806i"></script><script src="/js/api.js?v=20260806i"></script><script src="/js/nav.js?v=20260806i"></script>
 <script>
 const REASONS=[['missing_baseline','Missing baseline package'],['running_business','A business already running (we sell pre-proven projects)'],['fraud','Fraud or misrepresentation'],['missing_risk_disclosure','Risk not disclosed']];
 const gate=document.getElementById('gate'), queueEl=document.getElementById('queue'), result=document.getElementById('result');
@@ -51,7 +51,14 @@ async function load(){
       const h=el('h3',null,l.title);
       if(isClay){ const tag=el('span','seedtag','Seeded by Clay'); h.appendChild(tag); }
       r.appendChild(h);
-      r.appendChild(el('p','muted',nice(l.category)+' · '+nice(l.stage_label)+' · '+money(l.price_cents)+' · by '+l.seller_alias+' (real: '+l.seller_name+')'));
+      // Who submitted it. A creator who has not chosen a dreamer tag rendered as a bare em-dash —
+      // 'by — (real: Clay)' — which reads like a missing value rather than an absent choice. The
+      // real name IS shown here, deliberately and only here: a moderator deciding whether something
+      // goes public has to know who is accountable for it. It is not shown anywhere else.
+      var who = l.seller_alias
+        ? (l.seller_alias + ' (real name: ' + (l.seller_name || 'not given') + ')')
+        : ((l.seller_name || 'someone with no name on file') + ' (no dreamer tag chosen)');
+      r.appendChild(el('p','muted',nice(l.category)+' · '+nice(l.stage_label)+' · '+money(l.price_cents)+' · by '+who));
       if(l.risk_summary){r.appendChild(el('p',null,'Risk noted: '+l.risk_summary));}
 
       // Open to review — loads the full project so you can actually read it before deciding.
