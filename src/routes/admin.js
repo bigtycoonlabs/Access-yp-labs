@@ -17,7 +17,11 @@ router.get('/overview', authenticate, authorize('staff', 'admin', 'master_staff'
     const counts = await query(`
       SELECT
         (SELECT COUNT(*) FROM users)::int AS users,
+        -- Returned as BOTH names on purpose. The UI was renamed to 'projects' and this stayed 'concepts',
+        -- so the staff dashboard rendered the literal word 'undefined' where the number should be.
+        -- Keeping the old key means any other caller still works while the new one reads correctly.
         (SELECT COUNT(*) FROM concepts)::int AS concepts,
+        (SELECT COUNT(*) FROM concepts)::int AS projects,
         (SELECT COUNT(*) FROM listings WHERE status='live')::int AS live_listings,
         (SELECT COUNT(*) FROM waitlist_signups)::int AS waitlist,
         (SELECT COUNT(*) FROM subscriptions WHERE status='active' AND plan='builder')::int AS builder_subs,

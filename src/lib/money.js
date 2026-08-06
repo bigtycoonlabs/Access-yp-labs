@@ -34,6 +34,13 @@ const PLANS = {
 // their access — we do not switch off something a person is paying for because we changed our mind
 // about packaging. New subscriptions can only be the single plan above.
 const LEGACY_PLANS = ['maker', 'sculptor'];
+
+// What the retired plans cost, kept ONLY so an existing subscriber's Stripe events can still be
+// recorded truthfully. Not sellable — planCents() below still refuses to price them for anything
+// new — but a webhook for a live legacy subscription has to know what that person actually pays.
+// Without this, their event inserted a null price into a NOT NULL column, the insert failed, the
+// webhook returned 500, and Stripe retried it forever while the subscription never registered.
+const LEGACY_PLAN_CENTS = { maker: 299, sculptor: 4999 };
 function planCents(plan) { return PLANS[plan] ? PLANS[plan].cents : null; }
 
 function platformFeeCents(amountCents) { return Math.round(amountCents * PLATFORM_RATE); }
@@ -50,10 +57,19 @@ function platformNetAfterMoverCents(amountCents) {
   return platformFeeCents(amountCents) - moverCommissionCents(amountCents);
 }
 
+// The price to RECORD for a plan that already exists, including retired ones. Deliberately separate
+// from planCents: one answers "what may we charge for this?" and the other "what does this person
+// actually pay?". Conflating them is how a retired price gets sold again by accident.
+function recordedPlanCents(plan) {
+  const live = planCents(plan);
+  if (live !== null && live !== undefined) return live;
+  return LEGACY_PLAN_CENTS[plan] !== undefined ? LEGACY_PLAN_CENTS[plan] : 0;
+}
+
 module.exports = {
   PLATFORM_RATE, PRICE_FLOOR_CENTS,
   CONSULT_FEE_CENTS, CONSULT_PLATFORM_CENTS, CONSULT_CONSULTANT_CENTS, CONSULT_WINDOW_HOURS,
-  BUILDER_CENTS, FREE_PROJECTS, LEGACY_PLANS, CONCEPT_ACCESS_DAYS, PLANS, planCents,
+  BUILDER_CENTS, FREE_PROJECTS, LEGACY_PLANS, LEGACY_PLAN_CENTS, recordedPlanCents, CONCEPT_ACCESS_DAYS, PLANS, planCents,
   platformFeeCents, sellerNetCents, isAboveFloor,
   MOVER_RATE, moverCommissionCents, platformNetAfterMoverCents,
 };

@@ -61,7 +61,13 @@ router.get('/:listingId/review', authenticate, authorize('staff', 'admin', 'mast
       is_clay_seed: row.origin === 'clay_seed',
       listing: { id: row.id, status: row.status, stage_label: row.stage_label, format: row.format,
         price_cents: row.price_cents, starting_bid_cents: row.starting_bid_cents, created_at: row.created_at },
+      // Sent under BOTH keys. The moderation page was renamed to read d.project while this still
+      // only sent 'concept', so the review screen — the one used to decide whether something goes
+      // live in the Dream Market — was reading undefined for every field.
       concept: { id: row.concept_id, title: row.title, category: row.category, stage: row.stage,
+        risk_summary: row.risk_summary, origin: row.origin, research_grounded: row.research_grounded,
+        claims_verified: row.claims_verified, source_count: row.source_count, clays_take: row.clays_take },
+      project: { id: row.concept_id, title: row.title, category: row.category, stage: row.stage,
         risk_summary: row.risk_summary, origin: row.origin, research_grounded: row.research_grounded,
         claims_verified: row.claims_verified, source_count: row.source_count, clays_take: row.clays_take },
       seller: { id: row.seller_id, name: row.seller_name, alias: row.seller_alias, role: row.seller_role },

@@ -1,7 +1,7 @@
 const { query } = require('../config/db');
 const stripe = require('../services/stripe');
 const imageBudget = require('../services/clay/imageBudget');
-const { planCents, CONSULT_FEE_CENTS, CONSULT_PLATFORM_CENTS, CONSULT_CONSULTANT_CENTS } = require('../lib/money');
+const { recordedPlanCents, CONSULT_FEE_CENTS, CONSULT_PLATFORM_CENTS, CONSULT_CONSULTANT_CENTS } = require('../lib/money');
 
 // Stripe webhook. Mounted with express.raw BEFORE express.json in server.js.
 // Only a verified, real payment moves an order into escrow — we never mark an
@@ -29,7 +29,12 @@ async function stripeWebhook(req, res) {
     if (event.type === 'checkout.session.completed') {
       const md = event.data.object.metadata || {};
       if (md.kind === 'subscription' && md.user_id && md.plan) {
-        const price = planCents(md.plan);
+        // recordedPlanCents, not planCents: this is recording what a person ALREADY pays, which
+        // includes retired plans a legacy subscriber still holds. planCents refuses to price those
+        // — correctly, since they must never be sold again — but refusing here meant a null price
+        // into a NOT NULL column, a failed insert, a 500, and Stripe retrying forever while the
+        // subscription never registered.
+        const price = recordedPlanCents(md.plan);
         const conceptId = md.concept_id && md.concept_id.length ? md.concept_id : null;
         const stripeSubId = event.data.object.subscription || null;
         // ON CONFLICT keeps this idempotent at the row level: if Stripe delivers the same
