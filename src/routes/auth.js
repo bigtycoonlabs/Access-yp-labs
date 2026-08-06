@@ -6,6 +6,7 @@ const { query, getClient } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { sendEmail } = require('../services/email');
+const { notifyStaff } = require('../services/clay/staffNotify');
 const { welcomeEmail } = require('../services/welcomeEmail');
 const { parseCookies, setCookie } = require('../lib/cookies');
 
@@ -110,6 +111,20 @@ router.post('/register', [
 
   // Carry in the idea this visitor handed Clay before they had an account, if any.
   await carryInSpark(req, user);
+
+  // Tell the owners a real person just arrived. Nothing did this before, so every signup since
+  // launch happened silently — you found out by going and looking. Deduped per user so a retry
+  // can't send twice, and best-effort: a notification failing must never affect the signup itself.
+  try {
+    await notifyStaff({
+      kind: 'signup',
+      dedupeKey: 'signup-' + user.id,
+      subject: `New creator: ${user.name || user.email}`,
+      body: `${user.name || 'Someone'} just created an account (${user.email}).\n\n`
+        + `That is real interest arriving on its own. Worth a look at what they do next — and worth `
+        + `being ready to help if they get stuck early.\n\n— Clay`,
+    });
+  } catch (e) { console.error('signup notice failed:', e && e.message); }
 
   // Best-effort welcome email from Clay — never blocks or fails signup.
   try {

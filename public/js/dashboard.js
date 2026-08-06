@@ -300,7 +300,7 @@
       if (!s.stripe_configured) { empty(c, 'Payouts are not configured on the platform yet. You can still create and list projects; buyers can transact once payouts are enabled.'); return; }
 
       if (s.onboarded && s.kyc_status === 'verified') {
-        c.appendChild(el('p', 'msg ok', 'Payouts are ready. You can receive the money from project sales and from consultant sessions.'));
+        c.appendChild(el('p', 'msg ok', 'Payouts are ready. You can receive the money from project sales and from anything you sell in your store.'));
         return;
       }
 
@@ -316,7 +316,7 @@
         c.appendChild(actionBtn('Refresh payout status', () => run(Kiln.api('/sellers/refresh', { method: 'POST' }), 'Refreshed.', loadPayouts), true));
         c.appendChild(actionBtn('Continue payout setup', () => startOnboard(c).catch(onError(c))));
       } else {
-        c.appendChild(el('p', null, 'Set up payouts so you can receive the money from project sales and consultant sessions. It takes a few minutes with Stripe, our payments provider.'));
+        c.appendChild(el('p', null, 'Set up payouts so you can receive the money from project sales and your store. It takes a few minutes with Stripe, our payments provider.'));
         c.appendChild(actionBtn('Set up payouts', () => startOnboard(c).catch(onError(c))));
       }
     } catch (e) { fail(c, e); }
