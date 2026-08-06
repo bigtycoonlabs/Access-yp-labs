@@ -121,7 +121,7 @@ document.getElementById('export').addEventListener('click',async()=>{
     announce('Demo exported as an HTML file.',true);
   }catch(e){
     if(e.status===402&&e.data&&e.data.options){
-      msg.innerHTML='<div class="msg err">Exporting needs an active plan. Building and previewing stay free. Open the laboratory to choose Maker or Sculptor.</div>';
+      msg.innerHTML='<div class="msg err">Your first project is free to export. Beyond that, exporting is on the plan \u2014 building and previewing always stay free. Open the laboratory to see it.</div>';
     }else{ msg.innerHTML='<div class="msg err">'+e.message+'</div>'; }
     announce('Export needs a plan or could not complete.',true);
   }

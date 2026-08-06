@@ -130,7 +130,7 @@
     if (btn) btn.disabled = false;
   }
 
-  // Unlimited (Sculptor) — offered alongside per-concept Maker at the keep moment.
+  // The plan — offered at the moment someone wants to keep a project beyond their free first one.
   async function goUnlimited(btn) {
     if (btn) btn.disabled = true;
     try {

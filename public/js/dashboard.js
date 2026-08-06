@@ -331,7 +331,7 @@
         return;
       }
       const active = subscriptions.filter((s) => s.status === 'active');
-      const goSculptor = async () => {
+      const goPlan = async () => {
         const r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'builder' } });
         if (r.url) { location.href = r.url; return; }
         announce(r.message || 'Billing is not configured yet.', true);
@@ -369,7 +369,7 @@
         if (sculptor.cancel_at_period_end) {
           c.appendChild(el('p', 'muted', 'Ending at the close of your current period — you keep full access until then.'));
         } else {
-          c.appendChild(cancelSubBtn(sculptor, 'Sculptor'));
+          c.appendChild(cancelSubBtn(sculptor, 'your plan'));
         }
         return;
       }
@@ -383,15 +383,15 @@
           if (m.cancel_at_period_end) {
             line.appendChild(el('p', 'muted', 'Ending at the close of your current period — access continues until then.'));
           } else {
-            line.appendChild(cancelSubBtn(m, 'Maker for ' + name));
+            line.appendChild(cancelSubBtn(m, 'the older plan for ' + name));
           }
           c.appendChild(line);
         });
       } else {
         c.appendChild(el('p', 'muted', 'No plan yet. Build for free — a plan is asked for only when you download, share, or keep a project past 30 days.'));
       }
-      c.appendChild(actionBtn('Unlimited projects — $19/month', goSculptor));
-      c.appendChild(el('p', 'muted', 'The $2.99 Maker plan is per project — you\u2019ll be offered it when you download a specific project.'));
+      c.appendChild(actionBtn('Unlimited projects — $19/month', goPlan));
+      c.appendChild(el('p', 'muted', 'Your first project is free to keep and download. The plan covers every project after it, plus the website builder and landing pages.'));
     } catch (e) { fail(c, e); }
   }
 
@@ -405,7 +405,7 @@
         const claimed = x.origin === 'purchased';
         const prefix = x.is_operating ? 'Your running business · ' : (claimed ? 'Claimed from the Dream Market · ' : '');
         let meta = prefix + nice(x.category) + (x.is_housing ? ' · housing' : '');
-        meta += x.entitled ? ' · kept — yours to download' : ' · free to build · $2.99 to keep';
+        meta += x.entitled ? ' \u00B7 yours to download' : ' \u00B7 free to build \u00B7 on the plan to keep';
         if (x.access_expires_at) {
           const days = Math.ceil((new Date(x.access_expires_at) - new Date()) / 86400000);
           meta += ' · ' + (days > 0 ? ('access ' + days + ' more day' + (days === 1 ? '' : 's') + ' unless subscribed') : 'access expired — subscribe to keep');

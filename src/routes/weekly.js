@@ -3,6 +3,7 @@ const { body, validationResult } = require('express-validator');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { authenticate, authorize } = require('../middleware/auth');
 const weekly = require('../services/clay/weekly');
+const announce = require('../services/clay/announce');
 
 // Staff controls for Clay Weekly. Every step that reaches a real person — asking a creator for
 // permission, publishing an issue, mailing it to everyone — requires a human here. Clay assembles;
@@ -70,6 +71,31 @@ router.post('/:id/send', authenticate, authorize('master_staff'), asyncHandler(a
       not_published: 'Publish the issue first — only a published issue can be mailed.',
       already_sent: 'That issue has already been sent. It will not be sent twice.',
       no_recipients: 'Nobody is currently subscribed to Clay Weekly, so nothing was sent.',
+    }[out.reason] || 'It could not be sent.';
+    return res.status(409).json({ error: why, detail: out });
+  }
+  res.json(out);
+}));
+
+
+// GET /api/weekly/announcement/:key — read the exact message before anyone sends it.
+router.get('/announcement/:key', authenticate, authorize('master_staff'), asyncHandler(async (req, res) => {
+  const a = announce.preview(req.params.key);
+  if (!a) throw new ApiError(404, 'No announcement by that name.');
+  res.json({ announcement: a, already_sent: await announce.alreadySent(req.params.key) });
+}));
+
+// POST /api/weekly/announcement/:key/send — mail it to every account holder, once.
+// An announcement is an ACCOUNT NOTICE (what you pay, what you own), so it goes to everyone —
+// including people who left the magazine. Opting out of a newsletter is not opting out of being
+// told your terms changed. It can never be sent twice.
+router.post('/announcement/:key/send', authenticate, authorize('master_staff'), asyncHandler(async (req, res) => {
+  const out = await announce.send(req.params.key);
+  if (!out.ok) {
+    const why = {
+      unknown_announcement: 'No announcement by that name.',
+      already_sent: 'That announcement has already gone out. It will not be sent twice.',
+      no_recipients: 'There is nobody to send it to.',
     }[out.reason] || 'It could not be sent.';
     return res.status(409).json({ error: why, detail: out });
   }

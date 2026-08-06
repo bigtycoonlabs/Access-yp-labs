@@ -47,7 +47,7 @@
     setTimeout(function () { location.href = '/login.html?session=expired'; }, 1400);
   }
 
-  // Start the Maker keep-checkout for a concept. Shared by the locked-files notice and the
+  // Start the plan checkout from a locked project. Shared by the locked-files notice and the
   // per-file lock, so there's one honest path to unlock everything.
   async function keepConcept(conceptId, btn) {
     if (btn) btn.disabled = true;
@@ -62,7 +62,7 @@
     if (btn) btn.disabled = false;
   }
 
-  // Start unlimited (Sculptor) checkout — offered right alongside per-concept Maker, so at the
+  // Start the plan checkout. One plan now: the first project is free, everything after is covered
   // moment someone decides to pay they can choose to unlock everything, not just this one.
   async function goUnlimited(btn) {
     if (btn) btn.disabled = true;
@@ -270,7 +270,7 @@
     if (prefs && !prefs.onboarded && !(promptEl && promptEl.value)) maybeOfferTuning();
 
     // Gentle, mutable reminder about concepts built but not yet kept. Honest and
-    // easy to silence — never shown to Sculptor/staff (their count is 0).
+    // easy to silence — never shown to subscribers or staff (their count is 0).
     try {
       const u = await Kiln.api('/concepts/unkept-summary');
       if (u && u.count > 0 && !u.muted) {
