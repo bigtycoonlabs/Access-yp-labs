@@ -68,11 +68,17 @@ router.post('/register', [
   body('email').isEmail().normalizeEmail(),
   body('password').isLength({ min: 8 }),
   body('name').trim().notEmpty(),
+  // Required at signup. Kept deliberately permissive on FORMAT — people write numbers in many
+  // shapes and countries, and rejecting a real number because of punctuation is a worse failure
+  // than storing one with a bracket in it. We check there are enough digits to be a real number.
+  body('phone').trim().customSanitizer((v) => String(v || '').trim())
+    .custom((v) => (String(v).replace(/\D/g, '').length >= 7))
+    .withMessage('Please enter a phone number we can reach you on.'),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-  const { email, password, name } = req.body;
+  const { email, password, name, phone } = req.body;
   const existing = await query('SELECT id FROM users WHERE email=$1', [email]);
   if (existing.rows.length) return res.status(409).json({ error: 'Account already exists.' });
 
@@ -85,10 +91,10 @@ router.post('/register', [
   try {
     await client.query('BEGIN');
     const result = await client.query(
-      `INSERT INTO users (email, password_hash, name, role, status, created_at)
-       VALUES ($1,$2,$3,'member','active',NOW())
+      `INSERT INTO users (email, password_hash, name, phone, role, status, created_at)
+       VALUES ($1,$2,$3,$4,'member','active',NOW())
        RETURNING id, email, name, role, status`,
-      [email, passwordHash, name]
+      [email, passwordHash, name, phone]
     );
     user = result.rows[0];
     await client.query('INSERT INTO profiles (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [user.id]);

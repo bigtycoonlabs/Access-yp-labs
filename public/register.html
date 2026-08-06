@@ -31,6 +31,9 @@
         <input id="name" type="text" autocomplete="name" required/></div>
       <div><label for="email">Email address</label>
         <input id="email" type="email" autocomplete="email" required/></div>
+    <div><label for="phone">Phone number</label>
+        <input id="phone" type="tel" autocomplete="tel" required aria-describedby="phone-hint"/>
+        <p id="phone-hint" class="muted">So we can reach you about your account. We do not share it, and we will not text you marketing.</p></div>
       <div><label for="password">Password <span class="muted">(at least 8 characters)</span></label>
         <input id="password" type="password" autocomplete="new-password" minlength="8" required
           aria-describedby="pw-hint"/>
@@ -48,10 +51,11 @@ async function submit(){
   const name = document.getElementById('name').value.trim();
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
+    const phone = document.getElementById('phone').value.trim();
   if(!name || !email || password.length < 8){ return show('Please enter your name, email, and a password of at least 8 characters.'); }
   const btn = document.getElementById('submit'); btn.disabled = true; announce('Creating your account…');
   try{
-    const data = await Kiln.api('/auth/register', { method:'POST', auth:false, body:{ name, email, password } });
+    const data = await Kiln.api('/auth/register', { method:'POST', auth:false, body:{ name, email, password, phone } });
     Kiln.setTokens({ accessToken:data.accessToken, refreshToken:data.refreshToken });
     announce('Account created. Opening your laboratory.'); { const n=new URLSearchParams(location.search).get('next'); location.href = (n && n.charAt(0)==='/' && n.charAt(1)!=='/') ? n : '/app.html'; }
   }catch(e){ show(e.message); btn.disabled = false; }
