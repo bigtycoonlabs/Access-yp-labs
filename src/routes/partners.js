@@ -145,15 +145,27 @@ router.post('/requests/:id/interest', authenticate, [
   }
 
   // Tell the creator someone raised their hand — WITHOUT handing over the volunteer's contact details.
-  await sendEmail({
+  const notice = await sendEmail({
     to: request.owner_email,
     subject: `Someone wants to help with ${request.title}`,
     text: `Hi ${request.owner_name},\n\nSomeone on Access YP Labs read your ask for ${request.title} and `
       + `offered to help. You decide whether to take them up on it — nothing is shared with them, and no `
       + `contact details are exchanged, unless you accept.\n\nRead what they offered: ${SITE()}/partners.html\n\n— Clay`,
-  }).catch((e) => console.error('partner interest notification failed:', e && e.message));
+  }).catch((e) => ({ sent: false, reason: (e && e.message) || 'threw' }));
 
-  res.status(201).json({ interest: row, note: 'The creator has been told. Your contact details were not shared.' });
+  // sendEmail RESOLVES with { sent:false } on failure rather than throwing, so a .catch() alone
+  // catches nothing. Telling someone 'the creator has been told' when the email never left would
+  // leave them waiting on a reply that cannot come — and they would have no way to know.
+  const toldThem = !!(notice && notice.sent);
+  if (!toldThem) console.error('partner interest notice not sent:', (notice && notice.reason) || 'unknown');
+  res.status(201).json({
+    interest: row,
+    told_creator: toldThem,
+    note: toldThem
+      ? 'The creator has been told. Your contact details were not shared.'
+      : 'Your offer is saved and the creator will see it on their board — but the email telling them '
+        + 'did not go through, so they may not know yet. Your contact details were not shared.',
+  });
 }));
 
 // GET /api/partners/mine — your asks with the hands raised, and the offers you have made.
@@ -207,14 +219,21 @@ router.post('/interest/:id/:decision', authenticate, asyncHandler(async (req, re
     [req.params.id, accept ? 'accepted' : 'declined']);
 
   if (!accept) {
-    await sendEmail({
+    const declineNote = await sendEmail({
       to: it.helper_email,
       subject: `About ${it.title}`,
       text: `Hi,\n\nThe creator of ${it.title} has decided not to take up your offer of help this time. `
         + `Nothing was shared about you beyond what you wrote.\n\nThat is not a judgement of you — people `
         + `turn down help for all sorts of reasons. There are other projects looking: ${SITE()}/partners.html\n\n— Clay`,
-    }).catch((e) => console.error('partner decline notice failed:', e && e.message));
-    return res.json({ status: 'declined' });
+    }).catch((e) => ({ sent: false, reason: (e && e.message) || 'threw' }));
+    const told = !!(declineNote && declineNote.sent);
+    if (!told) console.error('partner decline notice not sent:', (declineNote && declineNote.reason) || 'unknown');
+    return res.json({
+      status: 'declined',
+      helper_told: told,
+      note: told ? 'They have been told, kindly.'
+        : 'Declined — but the note telling them did not send, so they may still be waiting to hear.',
+    });
   }
 
   // Accepted: introduce them to each other, and be explicit that the terms are theirs alone.

@@ -21,6 +21,31 @@ const SITE = () => (process.env.CLIENT_URL || 'https://accessyplabs.com').replac
 const money = (c) => '$' + ((Number(c) || 0) / 100).toFixed(2);
 
 // Settle one auction. Returns what happened, or null if another worker got there first.
+// sendEmail does NOT throw on failure — it RESOLVES with { sent:false, reason }. So a .catch() on it
+// catches nothing, and a failed send looks exactly like a successful one. That matters most here:
+// these are the messages telling a winner they won and a seller they sold. If one silently fails,
+// both sides sit waiting for news that already happened.
+async function mailOrShout(what, msg) {
+  let out;
+  try { out = await sendEmail(msg); }
+  catch (e) { out = { sent: false, reason: (e && e.message) || 'threw' }; }
+  if (out && out.sent) return true;
+  const why = (out && out.reason) || 'unknown';
+  console.error(`auction ${what} email NOT sent to ${msg.to}: ${why}`);
+  try {
+    await notifyStaff({
+      kind: 'auction_email_failed',
+      dedupeKey: `auction-mail-${what}-${msg.to}-${new Date().toISOString().slice(0, 13)}`,
+      subject: 'An auction email did not reach someone',
+      body: `The "${what}" email for a settled auction did not send.\n\nTo: ${msg.to}\nReason: ${why}\n\n`
+        + 'The auction IS settled in the database — this is a delivery failure, not a settlement '
+        + 'failure. They are waiting on news they have not been told, so it is worth reaching them '
+        + 'another way.',
+    });
+  } catch (e) { console.error('could not report the failed auction email:', e && e.message); }
+  return false;
+}
+
 async function settleOne(listingId) {
   // The high bid, if there is one. Ties go to whoever bid first — the earlier commitment wins.
   const top = await query(
@@ -52,36 +77,36 @@ async function settleOne(listingId) {
 
   if (!winner) {
     // No bids. Say so plainly rather than leaving the seller to wonder.
-    await sendEmail({
+    await mailOrShout('settlement', {
       to: m.seller_email,
       subject: `Your auction for ${title} has ended`,
       text: `Hi ${m.seller_name},\n\nThe auction for ${title} has ended, and it closed without any bids. `
         + `Nothing was sold and nothing was charged.\n\nThat happens, and it isn't a verdict on the idea — `
         + `it often just means the right buyer hadn't seen it yet. You can relist it, set a different starting `
         + `price, or add more to the listing to raise what it's worth: ${link}\n\n— Clay`,
-    }).catch((e) => console.error('auction settlement email failed:', e && e.message));
+    });
     watchActivity.record(listingId, 'auction_ended', watchActivity.say.auctionEnded(null)).catch((e) => console.error('watch note failed:', e && e.message));
     return { listing_id: listingId, winner: null };
   }
 
   // Tell the winner they won, and how to finish.
-  await sendEmail({
+  await mailOrShout('settlement', {
     to: winner.email,
     subject: `You won the auction for ${title}`,
     text: `Hi ${winner.name},\n\nYou had the winning bid of ${money(winner.amount_cents)} for ${title}.\n\n`
       + `Nothing has been charged yet — you complete the purchase yourself, here: ${link}\n\n`
       + `Take a moment to re-read what's included before you do. Nothing about this is automatic.\n\n— Clay`,
-  }).catch((e) => console.error('auction settlement email failed:', e && e.message));
+  });
 
   // And tell the seller.
-  await sendEmail({
+  await mailOrShout('settlement', {
     to: m.seller_email,
     subject: `Your auction for ${title} ended at ${money(winner.amount_cents)}`,
     text: `Hi ${m.seller_name},\n\nThe auction for ${title} has ended. The winning bid was `
       + `${money(winner.amount_cents)}.\n\nThe buyer completes the purchase on their side — you'll be told when `
       + `they do, and the money moves through the same protected flow as any other sale. Nothing has been `
       + `transferred yet: ${link}\n\n— Clay`,
-  }).catch((e) => console.error('auction settlement email failed:', e && e.message));
+  });
 
   watchActivity.record(listingId, 'auction_ended', watchActivity.say.auctionEnded(winner.amount_cents)).catch((e) => console.error('watch note failed:', e && e.message));
   return { listing_id: listingId, winner: winner.bidder_id, amount_cents: winner.amount_cents };

@@ -15,5 +15,10 @@ test('an accepted introduction never CLAIMS an email that did not send', () => {
 test('email failures are logged, never silently discarded', () => {
   assert.ok(!/\.catch\(\(\) => \{\}\)/.test(partners), 'no swallowed failures left in partners');
   assert.ok(!/\.catch\(\(\) => \{\}\)/.test(auctions), 'no swallowed failures left in auction settlement');
-  assert.match(auctions, /auction settlement email failed/, 'the reason is recorded');
+  // The guarantee got STRONGER: it used to be enough to log a reason when the promise rejected.
+  // But sendEmail resolves with { sent:false } instead of throwing, so logging on reject was
+  // catching nothing. Now the RESULT is checked, the reason is logged, and staff are told — because
+  // these emails tell a winner they won and a seller they sold.
+  assert.match(auctions, /email NOT sent to/, 'the reason is recorded');
+  assert.match(auctions, /notifyStaff/, 'and a person is told, not just the log');
 });
