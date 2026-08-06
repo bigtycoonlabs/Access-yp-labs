@@ -13,6 +13,23 @@ const router = express.Router();
 const PARTNER_AREAS = ['marketing', 'development', 'design', 'business advice', 'coaching',
   'training', 'staffing', 'operations', 'sales'];
 
+// An auction must have a real end. Enforced from ONE place so create and update can never drift:
+// a listing created as flat and later switched to an auction has to clear the same bar, otherwise
+// the requirement is trivially bypassed and an auction with no end date exists again.
+function assertAuctionCloses(format, closeAt) {
+  if (format !== 'auction') return;
+  if (!closeAt) {
+    throw new ApiError(400, 'An auction needs an end date and time, so bidders know when it closes and a winner can be decided.');
+  }
+  const hoursOut = (new Date(closeAt).getTime() - Date.now()) / (1000 * 60 * 60);
+  if (!Number.isFinite(hoursOut) || hoursOut < 1) {
+    throw new ApiError(400, 'Set the auction to end at least an hour from now, so people have a chance to bid.');
+  }
+  if (hoursOut > 24 * 60) {
+    throw new ApiError(400, 'Set the auction to end within 60 days — a listing that runs longer than that stops feeling live.');
+  }
+}
+
 // Read a launch partner offer off a request body. Returns a normalised offer, or throws with a
 // reason a person can act on. An offer with no stated scope is refused on purpose: "I'll help" is
 // exactly the vague promise that turns into a dispute after money has changed hands.
@@ -102,22 +119,7 @@ router.post('/', authenticate, [
   }
   if (format === 'flat' && !isAboveFloor(price_cents)) throw new ApiError(400, 'Flat price must be at least $10.');
   if (format === 'auction' && !isAboveFloor(starting_bid_cents)) throw new ApiError(400, 'Starting bid must be at least $10.');
-  // An auction MUST have an end. Without one it runs forever: bidders never learn whether they won,
-  // the seller never learns whether they sold, and nothing can settle it. It also has to be far
-  // enough out that people can actually see it, and not so far that it stalls.
-  if (format === 'auction') {
-    if (!auction_close_at) {
-      throw new ApiError(400, 'An auction needs an end date and time, so bidders know when it closes and a winner can be decided.');
-    }
-    const close = new Date(auction_close_at);
-    const hoursOut = (close.getTime() - Date.now()) / (1000 * 60 * 60);
-    if (!Number.isFinite(hoursOut) || hoursOut < 1) {
-      throw new ApiError(400, 'Set the auction to end at least an hour from now, so people have a chance to bid.');
-    }
-    if (hoursOut > 24 * 60) {
-      throw new ApiError(400, 'Set the auction to end within 60 days — a listing that runs longer than that stops feeling live.');
-    }
-  }
+  assertAuctionCloses(format, auction_close_at);
 
   const partner = readPartnerOffer(req.body);
 
@@ -191,14 +193,24 @@ router.patch('/:id', authenticate, [
 
   if (format === 'flat' && !isAboveFloor(price)) throw new ApiError(400, 'Flat price must be at least $10.');
   if (format === 'auction' && !isAboveFloor(bid)) throw new ApiError(400, 'Starting bid must be at least $10.');
+  assertAuctionCloses(format, closeAt);
+
+  // The launch partner offer is editable too — a seller who set one at creation could otherwise
+  // never correct it. Omit partner_offered entirely and the existing offer is left untouched.
+  const partner = req.body.partner_offered === undefined
+    ? { offered: l.partner_offered, areas: l.partner_areas, scope: l.partner_scope,
+        sessions: l.partner_sessions, weeks: l.partner_weeks }
+    : readPartnerOffer(req.body);
 
   const r = await query(
     `UPDATE listings SET format=$3, price_cents=$4, starting_bid_cents=$5, stage_label=$6,
-       completion_target=$7, auction_close_at=$8, updated_at=NOW()
+       completion_target=$7, auction_close_at=$8, updated_at=NOW(),
+       partner_offered=$9, partner_areas=$10, partner_scope=$11, partner_sessions=$12, partner_weeks=$13
      WHERE id=$1 AND seller_id=$2 AND status='draft' RETURNING *`,
     [req.params.id, req.user.id, format,
      format === 'flat' ? price : null, format === 'auction' ? bid : null,
-     stage, target || null, closeAt || null]);
+     stage, target || null, closeAt || null,
+     partner.offered, partner.areas || [], partner.scope, partner.sessions, partner.weeks]);
   if (!r.rows.length) throw new ApiError(409, 'Listing could not be updated.');
   res.json({ listing: r.rows[0] });
 }));

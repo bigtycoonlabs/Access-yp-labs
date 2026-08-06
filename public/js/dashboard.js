@@ -30,6 +30,30 @@
     });
     return b;
   }
+  // A two-step confirmation for anything that cannot be undone. The first press only REVEALS the
+  // choice, so a mis-tap can never trigger it, and focus lands on the SAFE option — which matters
+  // most for someone navigating by keyboard or screen reader, where the destructive button might
+  // otherwise be the thing under their finger. Same pattern as deleting a project.
+  function confirmAction(container, question, confirmLabel, fn) {
+    if (container.querySelector('.confirm-row')) return;
+    const row = el('div', 'confirm-row');
+    row.setAttribute('role', 'group');
+    row.setAttribute('aria-label', question);
+    row.appendChild(el('p', null, question));
+    const yes = el('button', 'btn', confirmLabel); yes.type = 'button';
+    const no = el('button', 'btn secondary', 'No, not yet'); no.type = 'button';
+    no.addEventListener('click', () => { row.remove(); announce('Okay — nothing was done.', true); });
+    yes.addEventListener('click', async () => {
+      yes.disabled = true; no.disabled = true;
+      try { await fn(); row.remove(); }
+      catch (e) { announce(e.message || 'That did not go through.', true); yes.disabled = false; no.disabled = false; }
+    });
+    row.appendChild(yes); row.appendChild(no);
+    container.appendChild(row);
+    announce('Confirm required. ' + question, true);
+    if (no.focus) no.focus();
+  }
+
   async function run(promise, okMsg, reloader) {
     await promise; announce(okMsg, true); if (reloader) reloader();
   }
@@ -483,7 +507,13 @@
           }, true));
         }
         if (!iAmSeller && ['in_escrow', 'proof_submitted', 'delivered'].includes(o.status)) {
-          r.actions.appendChild(actionBtn('Release and receive ownership', () => run(Kiln.api('/orders/' + o.id + '/release', { method: 'POST' }), 'Released. Ownership transferred to you.', loadOrders)));
+          // Releasing pays the seller out of escrow and cannot be undone, so it asks first.
+          r.actions.appendChild(actionBtn('Release and receive ownership', () => {
+            confirmAction(r.actions,
+              'Release the money to the seller and take ownership? This pays them out of escrow and cannot be undone.',
+              'Yes, release and take ownership',
+              () => run(Kiln.api('/orders/' + o.id + '/release', { method: 'POST' }), 'Released. Ownership transferred to you.', loadOrders));
+          }));
         }
         // The launch partner arrangement, and the BUYER's unconditional control over it. Ending it
         // never affects ownership, which is said in the button's own outcome rather than assumed.
