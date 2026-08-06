@@ -110,20 +110,40 @@
     /* One column, on purpose. The hero's job is a single act — say what this is, then let you try
        it — so nothing sits beside the demo competing for attention. Measure is capped for reading
        comfort rather than stretched to the viewport. */
-    .hero-grid{display:grid;gap:32px;grid-template-columns:1fr;align-items:start;}
-    #hero-inner{max-width:62ch;}
-    .hero-reassure{margin:10px 0 0;font-size:15px;opacity:.85;}
+    /* One column, CENTRED. Capping the measure at 62ch keeps it readable, but left-aligning that
+       cap inside a wide page left a dead third on the right and made the hero look unfinished.
+       Centring the column puts the weight where the eye lands. */
+    .hero-grid{display:grid;gap:32px;grid-template-columns:1fr;align-items:start;justify-items:center;}
+    #hero-inner{max-width:62ch;width:100%;}
+    .hero-reassure{margin:10px 0 0;font-size:15px;opacity:.8;}
+    /* The line under the headline explains; it should not shout as loudly as the headline itself. */
+    #hero-greeting{font-weight:500;font-size:19px;line-height:1.55;opacity:.92;}
 
     /* Sticky call to action on small screens. Tested guidance is that a sticky bottom CTA carries
        most of the addressable lift on its own, so this is the one place the page pushes. It is a
        real link, it never covers content (the body gets padding to match), and it is hidden once
        the page's own CTA is on screen would require JS — simpler and calmer to just keep it. */
-    .sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:40;padding:10px 14px;
-      background:rgba(12,8,32,.94);border-top:1px solid rgba(255,255,255,.14);
-      display:flex;gap:10px;align-items:center;justify-content:center;}
-    .sticky-cta a{display:inline-block;min-height:44px;line-height:44px;text-decoration:none;font-weight:700;}
+    .sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:40;padding:8px 12px;
+      background:rgba(12,8,32,.96);border-top:1px solid rgba(255,255,255,.14);
+      display:flex;align-items:center;justify-content:center;}
+    /* Compact on purpose: the first version wrapped onto two lines and covered the very demo the
+       hero exists for. One line, a short label, and the page padded to exactly its height. */
+    .sticky-cta a{display:block;width:100%;max-width:420px;text-align:center;
+      min-height:44px;line-height:44px;padding:0 16px;text-decoration:none;font-weight:700;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:16px;}
     @media(min-width:880px){.sticky-cta{display:none;}}
-    @media(max-width:879px){body{padding-bottom:72px;}}
+    @media(max-width:879px){body{padding-bottom:68px;}}
+
+    /* The menu is long now that every destination is in it. On a phone it was taking four rows
+       before the headline, pushing the whole point of the page below the fold. Tighter and smaller
+       so it reads as a menu rather than a wall — still 44px tall targets for tapping. */
+    @media(max-width:879px){
+      /* The touch target comes from PADDING, not line-height: setting a 44px line-height made every
+         row 44px TALL and pushed the headline most of a screen down. Padding gives the same
+         comfortable target while the rows stay compact. */
+      nav.top{gap:2px 16px;font-size:15px;line-height:1.2;}
+      nav.top a{display:inline-block;padding:12px 0;}
+    }
 
     /* Anyone who has asked their system to reduce motion gets none of it. */
     @media (prefers-reduced-motion: reduce){
@@ -534,7 +554,7 @@
   })();
 </script>
 <div class="sticky-cta">
-  <a class="cta solid" href="/register.html">Start free — shape your first idea</a>
+  <a class="cta solid" href="/register.html">Start free</a>
 </div>
 </body>
 </html>

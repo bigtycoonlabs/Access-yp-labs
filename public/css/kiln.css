@@ -150,7 +150,7 @@ legend{font-weight:700;padding:0 6px;}
    Plain, high-contrast, and generously sized: each door is a real list item with a real link, so a
    screen reader announces "list, 3 items" and can jump between them, and every tap target clears
    44px. No hover-only affordances — nothing here depends on seeing a cursor. */
-.hero-h2 { font-size: 1.05rem; margin: 22px 0 8px; opacity: .95; }
+.hero-h2 { font-size: 1.05rem; margin: 34px 0 10px; opacity: .95; }
 .hero-doors { list-style: none; padding: 0; margin: 0 0 20px; display: grid; gap: 10px; }
 .hero-doors li {
   padding: 14px 16px; border-radius: 12px;
