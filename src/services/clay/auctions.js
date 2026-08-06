@@ -57,7 +57,7 @@ async function settleOne(listingId) {
         + `Nothing was sold and nothing was charged.\n\nThat happens, and it isn't a verdict on the idea — `
         + `it often just means the right buyer hadn't seen it yet. You can relist it, set a different starting `
         + `price, or add more to the listing to raise what it's worth: ${link}\n\n— Clay`,
-    }).catch(() => {});
+    }).catch((e) => console.error('auction settlement email failed:', e && e.message));
     return { listing_id: listingId, winner: null };
   }
 
@@ -68,7 +68,7 @@ async function settleOne(listingId) {
     text: `Hi ${winner.name},\n\nYou had the winning bid of ${money(winner.amount_cents)} for ${title}.\n\n`
       + `Nothing has been charged yet — you complete the purchase yourself, here: ${link}\n\n`
       + `Take a moment to re-read what's included before you do. Nothing about this is automatic.\n\n— Clay`,
-  }).catch(() => {});
+  }).catch((e) => console.error('auction settlement email failed:', e && e.message));
 
   // And tell the seller.
   await sendEmail({
@@ -78,7 +78,7 @@ async function settleOne(listingId) {
       + `${money(winner.amount_cents)}.\n\nThe buyer completes the purchase on their side — you'll be told when `
       + `they do, and the money moves through the same protected flow as any other sale. Nothing has been `
       + `transferred yet: ${link}\n\n— Clay`,
-  }).catch(() => {});
+  }).catch((e) => console.error('auction settlement email failed:', e && e.message));
 
   return { listing_id: listingId, winner: winner.bidder_id, amount_cents: winner.amount_cents };
 }

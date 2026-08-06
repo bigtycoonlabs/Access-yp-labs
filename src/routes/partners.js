@@ -151,7 +151,7 @@ router.post('/requests/:id/interest', authenticate, [
     text: `Hi ${request.owner_name},\n\nSomeone on Access YP Labs read your ask for ${request.title} and `
       + `offered to help. You decide whether to take them up on it — nothing is shared with them, and no `
       + `contact details are exchanged, unless you accept.\n\nRead what they offered: ${SITE()}/partners.html\n\n— Clay`,
-  }).catch(() => {});
+  }).catch((e) => console.error('partner interest notification failed:', e && e.message));
 
   res.status(201).json({ interest: row, note: 'The creator has been told. Your contact details were not shared.' });
 }));
@@ -213,7 +213,7 @@ router.post('/interest/:id/:decision', authenticate, asyncHandler(async (req, re
       text: `Hi,\n\nThe creator of ${it.title} has decided not to take up your offer of help this time. `
         + `Nothing was shared about you beyond what you wrote.\n\nThat is not a judgement of you — people `
         + `turn down help for all sorts of reasons. There are other projects looking: ${SITE()}/partners.html\n\n— Clay`,
-    }).catch(() => {});
+    }).catch((e) => console.error('partner decline notice failed:', e && e.message));
     return res.json({ status: 'declined' });
   }
 
@@ -225,20 +225,35 @@ router.post('/interest/:id/:decision', authenticate, asyncHandler(async (req, re
     + `records. If the two of you decide on an ownership stake between yourselves, that is entirely `
     + `off-platform and entirely your own affair — get it in writing, and get your own legal advice. `
     + `Whatever you agree, put it in writing between yourselves.`;
-  await sendEmail({
-    to: it.owner_email,
-    subject: `You accepted help on ${it.title}`,
-    text: `Hi,\n\nYou accepted an offer of help on ${it.title} from ${it.helper_alias}. `
-      + `You can reach them at ${it.helper_email}.\n\n${terms}\n\n— Clay`,
-  }).catch(() => {});
-  await sendEmail({
-    to: it.helper_email,
-    subject: `Your offer to help with ${it.title} was accepted`,
-    text: `Hi,\n\n${it.owner_alias} accepted your offer to help with ${it.title}. `
-      + `You can reach them at ${it.owner_email}.\n\n${terms}\n\n— Clay`,
-  }).catch(() => {});
+  // The introduction IS the product of accepting. If it doesn't send, saying 'you've been
+  // introduced' would be a lie that leaves two people waiting on an email that never arrives — so
+  // the outcome reports what actually happened, and hands the creator the address directly as a
+  // fallback rather than stranding them.
+  const sends = await Promise.all([
+    sendEmail({
+      to: it.owner_email,
+      subject: `You accepted help on ${it.title}`,
+      text: `Hi,\n\nYou accepted an offer of help on ${it.title} from ${it.helper_alias}. `
+        + `You can reach them at ${it.helper_email}.\n\n${terms}\n\n— Clay`,
+    }).catch((e) => { console.error('partner intro email (owner) failed:', e && e.message); return { sent: false }; }),
+    sendEmail({
+      to: it.helper_email,
+      subject: `Your offer to help with ${it.title} was accepted`,
+      text: `Hi,\n\n${it.owner_alias} accepted your offer to help with ${it.title}. `
+        + `You can reach them at ${it.owner_email}.\n\n${terms}\n\n— Clay`,
+    }).catch((e) => { console.error('partner intro email (helper) failed:', e && e.message); return { sent: false }; }),
+  ]);
+  const bothSent = sends.every((s) => s && s.sent !== false);
 
-  res.json({ status: 'accepted', note: 'You have both been introduced by email. The terms are yours to agree.' });
+  res.json({
+    status: 'accepted',
+    introduced_by_email: bothSent,
+    // Given to the creator either way, so an email failure can never leave them unable to act.
+    partner_email: it.helper_email,
+    note: bothSent
+      ? 'You have both been introduced by email. The terms are yours to agree.'
+      : `Accepted — but the introduction email did not go out. Nothing is lost: you can reach them directly at ${it.helper_email}. The terms are yours to agree.`,
+  });
 }));
 
 
