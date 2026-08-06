@@ -180,6 +180,18 @@ if (require.main === module) {
     setTimeout(deskTick, 8 * 60 * 1000);          // a few minutes after boot
     setInterval(deskTick, 12 * 60 * 60 * 1000);   // then twice a day (DB claim gates it to ~3 days)
 
+    // Settling auctions whose clock has run out: record the winner and TELL BOTH SIDES. It takes no
+    // money and transfers nothing — the winner completes the purchase through the normal flow — so
+    // this is a fact being written down, not a transaction being forced. The claim only matches
+    // unsettled rows, so running it often (and on several instances) can't double-settle or
+    // double-email. A failure can't crash boot.
+    const auctions = require('./services/clay/auctions');
+    const auctionTick = () => auctions.settleDue()
+      .then((r) => { if (r && r.ok && r.settled) console.log('auctions settled:', JSON.stringify(r)); })
+      .catch((e) => console.error('auction settle error:', e && e.message));
+    setTimeout(auctionTick, 3 * 60 * 1000);        // shortly after boot
+    setInterval(auctionTick, 10 * 60 * 1000);      // then every 10 minutes — a closed auction shouldn't wait
+
     // Clay Weekly. The tick claims the week by inserting the issue row itself (weekly_issues is
     // unique on week_start), so running it every few hours is safe across restarts and instances —
     // it can only ever draft one issue per week. It drafts and then tells the owners it's waiting;

@@ -67,6 +67,22 @@ router.post('/', authenticate, [
   }
   if (format === 'flat' && !isAboveFloor(price_cents)) throw new ApiError(400, 'Flat price must be at least $10.');
   if (format === 'auction' && !isAboveFloor(starting_bid_cents)) throw new ApiError(400, 'Starting bid must be at least $10.');
+  // An auction MUST have an end. Without one it runs forever: bidders never learn whether they won,
+  // the seller never learns whether they sold, and nothing can settle it. It also has to be far
+  // enough out that people can actually see it, and not so far that it stalls.
+  if (format === 'auction') {
+    if (!auction_close_at) {
+      throw new ApiError(400, 'An auction needs an end date and time, so bidders know when it closes and a winner can be decided.');
+    }
+    const close = new Date(auction_close_at);
+    const hoursOut = (close.getTime() - Date.now()) / (1000 * 60 * 60);
+    if (!Number.isFinite(hoursOut) || hoursOut < 1) {
+      throw new ApiError(400, 'Set the auction to end at least an hour from now, so people have a chance to bid.');
+    }
+    if (hoursOut > 24 * 60) {
+      throw new ApiError(400, 'Set the auction to end within 60 days — a listing that runs longer than that stops feeling live.');
+    }
+  }
 
   const r = await query(
     `INSERT INTO listings
