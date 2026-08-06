@@ -189,6 +189,8 @@ if (require.main === module) {
     const auctions = require('./services/clay/auctions');
     const auctionTick = () => auctions.settleDue()
       .then((r) => { if (r && r.ok && r.settled) console.log('auctions settled:', JSON.stringify(r)); })
+      .then(() => auctions.reportEndlessAuctions())
+      .then((r) => { if (r && r.ok && r.endless) console.log('endless auctions flagged:', r.endless); })
       .catch((e) => console.error('auction settle error:', e && e.message));
     setTimeout(auctionTick, 3 * 60 * 1000);        // shortly after boot
     setInterval(auctionTick, 10 * 60 * 1000);      // then every 10 minutes — a closed auction shouldn't wait

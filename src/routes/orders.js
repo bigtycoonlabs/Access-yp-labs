@@ -75,9 +75,14 @@ router.post('/', authenticate, [
   const r = await query(
     `INSERT INTO orders_transfers
        (listing_id, buyer_id, seller_id, amount_cents, platform_fee_cents,
-        status, agreement_accepted, risk_ack, no_refund_ack, referred_by_mover_id)
-     VALUES ($1,$2,$3,$4,$5,'created',true,true,true,$6) RETURNING *`,
-    [listing_id, req.user.id, listing.seller_id, amount, fee, moverId]);
+        status, agreement_accepted, risk_ack, no_refund_ack, referred_by_mover_id, partner_active)
+     VALUES ($1,$2,$3,$4,$5,'created',true,true,true,$6,$7) RETURNING *`,
+    // partner_active is set EXPLICITLY rather than left null. It reads the same in the interface
+    // either way today, but a null is not true: any later query filtering on partner_active = true
+    // would silently miss every order ever created, which is the kind of bug that only surfaces
+    // once someone relies on it. False when no partner was offered, so the flag always means
+    // exactly what it says.
+    [listing_id, req.user.id, listing.seller_id, amount, fee, moverId, !!listing.partner_offered]);
   const order = r.rows[0];
 
   // Attempt escrow checkout if a verified seller Connect account exists.

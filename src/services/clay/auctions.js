@@ -14,6 +14,7 @@
 
 const { query } = require('../../config/db');
 const { sendEmail } = require('../email');
+const { notifyStaff } = require('./staffNotify');
 
 const SITE = () => (process.env.CLIENT_URL || 'https://accessyplabs.com').replace(/\/+$/, '');
 const money = (c) => '$' + ((Number(c) || 0) / 100).toFixed(2);
@@ -83,6 +84,35 @@ async function settleOne(listingId) {
   return { listing_id: listingId, winner: winner.bidder_id, amount_cents: winner.amount_cents };
 }
 
+
+// A live auction with NO close date can never settle — settlement only picks up auctions whose clock
+// has run out, and one that never started a clock has nothing to run out. Listings created before an
+// end date was required can be in this state. We deliberately do NOT invent a deadline: changing the
+// terms of a live listing on the seller's behalf is not ours to do. We surface it instead, so it
+// can't sit there invisibly forever.
+async function reportEndlessAuctions() {
+  try {
+    const r = await query(
+      `SELECT l.id, c.title FROM listings l JOIN concepts c ON c.id = l.concept_id
+        WHERE l.status='live' AND l.format='auction' AND l.auction_close_at IS NULL
+        LIMIT 20`);
+    if (!r.rows.length) return { ok: true, endless: 0 };
+    await notifyStaff({
+      kind: 'auction',
+      dedupeKey: 'endless-auctions-' + new Date().toISOString().slice(0, 10),
+      subject: `${r.rows.length} live auction${r.rows.length === 1 ? '' : 's'} with no end date`,
+      body: `These auctions are live but have no closing time, so they can never settle and no bidder `
+        + `can ever win them:\n\n${r.rows.map((x) => `- ${x.title}`).join('\n')}\n\n`
+        + `They were listed before an end date was required. Nothing has been changed automatically — `
+        + `setting a deadline on someone's live listing isn't ours to decide. The seller can withdraw `
+        + `the listing, set an end date, and relist it.\n\n— Clay`,
+    });
+    return { ok: true, endless: r.rows.length };
+  } catch (e) {
+    return { ok: false, reason: 'error', error: e && e.message };
+  }
+}
+
 // Settle every auction whose clock has run out. Never throws.
 async function settleDue(limit = 25) {
   try {
@@ -112,4 +142,4 @@ async function settleDue(limit = 25) {
   }
 }
 
-module.exports = { settleDue, settleOne };
+module.exports = { settleDue, settleOne, reportEndlessAuctions };
