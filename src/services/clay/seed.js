@@ -32,7 +32,7 @@ const PRICE_MIN_CENTS = 1000;    // $10
 const PRICE_MAX_CENTS = 60000;   // $600
 const DAILY_CAP = 3;             // at most ~2-3 seeds a day
 const MINORITY_SHARE = 0.5;      // once inventory is real, Clay stays a minority of it
-const MINORITY_FLOOR = 10;       // below this many live listings, allow seeding to bootstrap
+const MINORITY_FLOOR = 10;       // below this many HUMAN live listings, seeding bootstraps freely
 const NOVELTY_MAX_SIM = 0.9;     // cosine similarity above this = too close to an existing idea
 
 async function getClayUser() {
@@ -89,12 +89,23 @@ async function seedsToday(clayId) {
 
 // Clay's share of LIVE inventory. Soft minority guard, skipped while the market is tiny so the
 // shelf can fill; once there are real listings, Clay stays a minority.
+// The cap exists so Clay never dominates a market that real people are using. But it was measuring
+// the floor against ALL live listings INCLUDING Clay's own — so Clay's seeding raised the total,
+// crossed the floor, and then blocked itself. With 10 live listings of which Clay owned 7, seeding
+// stopped dead at exactly the moment bootstrapping mattered most, which is the opposite of what the
+// rule was written to do.
+//
+// The floor now counts HUMAN listings, which is what "once real human inventory exists" always
+// meant. Until ten real people have something live, Clay is free to fill the shelves. After that
+// the share cap applies as intended and he stays a minority.
 async function overMinority(clayId) {
   const r = await query(
-    `SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE seller_id=$1)::int AS clay
-     FROM listings WHERE status='live'`, [clayId]);
-  const { total, clay: clayCount } = r.rows[0];
-  if (total < MINORITY_FLOOR) return false;
+    `SELECT COUNT(*)::int AS total,
+            COUNT(*) FILTER (WHERE seller_id=$1)::int AS clay,
+            COUNT(*) FILTER (WHERE seller_id<>$1)::int AS human
+       FROM listings WHERE status='live'`, [clayId]);
+  const { total, clay: clayCount, human } = r.rows[0];
+  if (human < MINORITY_FLOOR) return false;
   return (clayCount / total) >= MINORITY_SHARE;
 }
 

@@ -67,7 +67,22 @@ async function tick() {
     const out = await seed.runSeed({ source: 'scheduled' });
     console.log('scheduled seed:', JSON.stringify(out));
     if (!out || out.ok === false) {
-      await giveBackSlot((out && (out.reason || out.message)) || 'no result returned');
+      const why = (out && (out.reason || out.message)) || 'no result returned';
+      // A DELIBERATE REFUSAL IS NOT A FAILURE, but it must still be visible. Clay declining because
+      // of the daily cap or the minority rule is the guardrail working — yet reported as nothing at
+      // all it looks exactly like the seeder being broken, which is precisely how this went unnoticed
+      // for a day. Say which it is, in plain words, and do not hand the slot back for a rule that
+      // will still be true in ten minutes.
+      const DECLINED = {
+        daily_cap: 'Clay has already seeded his limit for today. This is the guardrail working, not a fault.',
+        minority_cap: 'Clay is holding back: he already owns too large a share of the live listings. He will seed again once real creators have more of the market.',
+        no_novel_idea: 'Clay could not think of an idea different enough from what is already here, so he wrote nothing rather than repeat himself.',
+      };
+      if (DECLINED[why]) {
+        console.log('seed declined on purpose:', why, '-', DECLINED[why]);
+        return { ok: false, reason: why, declined: true, message: DECLINED[why] };
+      }
+      await giveBackSlot(why);
       return out || { ok: false, reason: 'no_result' };
     }
     return out;
@@ -85,7 +100,37 @@ async function status() {
       (SELECT COUNT(*) FROM concepts WHERE origin='clay_seed' AND created_at >= date_trunc('day', now()))::int AS seeded_today,
       (SELECT COUNT(*) FROM concepts WHERE origin='clay_seed')::int AS seeded_total
     FROM seed_schedule s WHERE s.id = TRUE`);
-  return r.rows[0] || null;
+  const row = r.rows[0] || null;
+  if (!row) return null;
+
+  // Say plainly whether Clay WILL seed, and if not, why. 'Enabled: true' with nothing appearing is
+  // indistinguishable from a broken seeder — which is exactly how a working guardrail got mistaken
+  // for a fault. The status now answers the question a person is actually asking.
+  const share = await query(`
+    SELECT COUNT(*)::int AS live_total,
+           COUNT(*) FILTER (WHERE seller_id = (SELECT id FROM users WHERE email='clay@accessyplabs.com'))::int AS clay_live
+      FROM listings WHERE status='live'`);
+  const s = share.rows[0] || { live_total: 0, clay_live: 0 };
+  const human = s.live_total - s.clay_live;
+  row.clay_live = s.clay_live;
+  row.human_live = human;
+
+  if (!row.enabled) {
+    row.will_seed = false;
+    row.why = 'Seeding is switched off.';
+  } else if (row.seeded_today >= row.daily_target) {
+    row.will_seed = false;
+    row.why = `Clay has seeded ${row.seeded_today} today, which is his limit. He will start again tomorrow.`;
+  } else if (human >= 10 && s.live_total > 0 && (s.clay_live / s.live_total) >= 0.5) {
+    row.will_seed = false;
+    row.why = `Clay is holding back: he owns ${s.clay_live} of the ${s.live_total} live listings. `
+      + 'He seeds again once real creators hold more of the market.';
+  } else {
+    row.will_seed = true;
+    row.why = `Clay will seed. ${row.seeded_today} of ${row.daily_target} done today; `
+      + `${human} live listing(s) belong to real creators.`;
+  }
+  return row;
 }
 
 // Staff update. Clamped to safe ranges; the daily target can never exceed the hard DAILY_CAP.
