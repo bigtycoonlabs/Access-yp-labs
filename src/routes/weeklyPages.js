@@ -1,6 +1,7 @@
 const express = require('express');
 const { asyncHandler } = require('../lib/http');
 const weekly = require('../services/clay/weekly');
+const subscribers = require('../services/clay/weeklySubscribers');
 const jwt = require('jsonwebtoken');
 const { query } = require('../config/db');
 const watchActivity = require('../services/clay/watchActivity');
@@ -231,6 +232,100 @@ async function staffViewer(req) {
     return ['staff', 'admin', 'master_staff'].includes(role) ? payload.id : null;
   } catch (_) { return null; }
 }
+
+// The subscribe page. Server-rendered so a shared link works instantly with nothing to load, and
+// written for one decision only.
+function subscribePage(from) {
+  const body = `
+    <h1>Clay Weekly</h1>
+    <p>A short magazine about people building small businesses out of ideas they never got around to
+    starting. The five pieces worth reading, one business term explained properly, what changed out
+    there for very small operations, and whoever quietly kept turning up that week.</p>
+    <p>One issue a week. No account needed. Leaving takes one click.</p>
+
+    <form id="sub" novalidate>
+      <div><label for="first">First name</label>
+        <input id="first" name="first" type="text" autocomplete="given-name" required/></div>
+      <div><label for="last">Last name</label>
+        <input id="last" name="last" type="text" autocomplete="family-name"/></div>
+      <div><label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="email" required/></div>
+      <p><button type="submit" class="btn">Send me Clay Weekly</button></p>
+    </form>
+    <p id="said" role="status" aria-live="polite"></p>
+    <p class="muted">We will email you once to confirm it was really you. Nothing is sent until you click that.
+    Your details are used for the magazine and nothing else.</p>
+    <p><a href="/weekly">Read the latest issue first</a></p>
+
+    <script>
+    (function(){
+      var f=document.getElementById('sub'), said=document.getElementById('said');
+      f.addEventListener('submit', async function(e){
+        e.preventDefault();
+        var btn=f.querySelector('button'); btn.disabled=true;
+        said.textContent='Sending…';
+        try{
+          var r=await fetch('/weekly/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({ first_name:document.getElementById('first').value,
+              last_name:document.getElementById('last').value,
+              email:document.getElementById('email').value, source:${JSON.stringify(from)} })});
+          var d=await r.json();
+          said.textContent=d.message||(d.ok?'Check your email.':'That did not work.');
+          if(d.ok) f.hidden=true;
+        }catch(err){ said.textContent='Could not reach us just now. Please try again in a moment.'; }
+        btn.disabled=false;
+      });
+    })();
+    </script>`;
+  return shell('Clay Weekly — a magazine for people with unbuilt ideas', body, {
+    description: 'A short weekly magazine about building a small business from an idea you never started. No account needed.',
+  });
+}
+
+// GET /weekly/subscribe — the page a social post points at.
+//
+// A dedicated destination rather than an anchor on the homepage: someone arriving from a link in a
+// post has one thing to decide, and every other choice on the page is a chance to lose them.
+router.get('/weekly/subscribe', asyncHandler(async (req, res) => {
+  const from = String(req.query.from || 'link').slice(0, 60).replace(/[^a-zA-Z0-9_-]/g, '');
+  res.set('Cache-Control', 'public, max-age=600');
+  res.type('html').send(subscribePage(from));
+}));
+
+// POST /weekly/subscribe — no account required. This is the whole point.
+router.post('/weekly/subscribe', asyncHandler(async (req, res) => {
+  const out = await subscribers.subscribe({
+    email: req.body.email, firstName: req.body.first_name, lastName: req.body.last_name,
+    source: req.body.source,
+  });
+  res.status(out.ok ? 200 : 400).json(out);
+}));
+
+// GET /weekly/confirm/:token — the double opt-in click.
+router.get('/weekly/confirm/:token', asyncHandler(async (req, res) => {
+  const out = await subscribers.confirm(req.params.token);
+  const body = out.ok
+    ? `<h1>You are on the list${out.first_name ? ', ' + esc(out.first_name) : ''}</h1>
+       <p>Clay Weekly will arrive once a week. Leaving takes one click, from any issue.</p>
+       <p><a href="/weekly">Read the latest issue</a> · <a href="/">See what Access YP Labs is</a></p>`
+    : `<h1>That link has already been used, or it is not one of ours</h1>
+       <p>If you already confirmed, you are on the list and nothing is wrong.</p>
+       <p><a href="/weekly/subscribe">Try subscribing again</a></p>`;
+  res.type('html').send(shell('Clay Weekly', body, { noindex: true }));
+}));
+
+// GET /weekly/leave/:token — one click, no sign-in, no questions.
+router.get('/weekly/leave/:token', asyncHandler(async (req, res) => {
+  const out = await subscribers.unsubscribe(req.params.token);
+  const body = out.ok
+    ? `<h1>Done — you will not get another one</h1>
+       <p>No hard feelings, and nothing else will be sent. If you change your mind, you can
+       <a href="/weekly/subscribe">sign up again</a> whenever you like.</p>`
+    : `<h1>That link is not one of ours</h1>
+       <p>It may already have been used. If you are still receiving issues, the link at the bottom of
+       the most recent one will work.</p>`;
+  res.type('html').send(shell('Clay Weekly', body, { noindex: true }));
+}));
 
 // GET /weekly/preview/:slug — read an issue BEFORE it is published. Staff only.
 //

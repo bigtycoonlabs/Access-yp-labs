@@ -16,6 +16,7 @@
 
 const { query } = require('../../config/db');
 const sections = require('./weeklySections');
+const subscribers = require('./weeklySubscribers');
 const crypto = require('crypto');
 const agent = require('./agent');
 const provider = require('./provider');
@@ -352,13 +353,22 @@ async function sendIssue(id) {
     `SELECT u.email, COALESCE(NULLIF(u.name,''),'there') AS name, p.token
        FROM users u JOIN user_email_prefs p ON p.user_id=u.id
       WHERE p.weekly = true AND u.email IS NOT NULL`);
-  if (!rec.rows.length) return { ok: false, reason: 'no_recipients' };
+  // Members AND public subscribers. The magazine exists to reach people who are not here yet, so
+  // leaving subscribers out of the send would defeat the point of collecting them.
+  let outsiders = [];
+  try { outsiders = await subscribers.recipients(); } catch (_) { outsiders = []; }
+  const everyone = rec.rows.concat(outsiders.map((s) => ({ email: s.email, name: s.name, token: s.token, outsider: true })));
+  if (!everyone.length) return { ok: false, reason: 'no_recipients' };
 
   const url = `${SITE()}/weekly/${issue.slug}`;
   let sent = 0;
-  for (let i = 0; i < rec.rows.length; i += 100) {
-    const chunk = rec.rows.slice(i, i + 100).map((u) => {
-      const unsub = `${SITE()}/weekly/unsubscribe/${u.token}`;
+  for (let i = 0; i < everyone.length; i += 100) {
+    const chunk = everyone.slice(i, i + 100).map((u) => {
+      // Subscribers unsubscribe through their own link — the member path expects an account and
+      // would fail for someone who has never had one.
+      const unsub = u.outsider
+        ? `${SITE()}/weekly/leave/${u.token}`
+        : `${SITE()}/weekly/unsubscribe/${u.token}`;
       // No sign-off. A magazine is not a letter: it does not end 'love, the editor'. This used to
       // close '— Clay', and the creator lines above it printed real names, so an issue ended with a
       // signature and somebody's actual name underneath. The masthead at the top is the byline.
@@ -383,16 +393,16 @@ async function sendIssue(id) {
   // already_sent guard above would refuse to ever try again. A week's issue could be silently lost
   // with the record insisting it had gone out.
   if (sent === 0) {
-    return { ok: false, reason: 'nothing_delivered', recipients: 0, attempted: rec.rows.length,
-      message: `Nothing was delivered — all ${rec.rows.length} attempts failed, so no reader has it. `
+    return { ok: false, reason: 'nothing_delivered', recipients: 0, attempted: everyone.length,
+      message: `Nothing was delivered — all ${everyone.length} attempts failed, so no reader has it. `
         + 'The issue has NOT been marked as sent, so you can try again once the problem is fixed.' };
   }
   await query('UPDATE weekly_issues SET sent_at=now(), recipients_count=$2 WHERE id=$1', [id, sent]);
   if (sent < rec.rows.length) {
-    return { ok: true, recipients: sent, attempted: rec.rows.length,
-      message: `Sent to ${sent} of ${rec.rows.length}. The rest did not go through — that gap is real.` };
+    return { ok: true, recipients: sent, attempted: everyone.length,
+      message: `Sent to ${sent} of ${everyone.length}. The rest did not go through — that gap is real.` };
   }
-  return { ok: true, recipients: sent, attempted: rec.rows.length, message: `Sent to all ${sent} readers.` };
+  return { ok: true, recipients: sent, attempted: everyone.length, message: `Sent to all ${sent} readers.` };
 }
 
 async function unsubscribe(token) {

@@ -3,6 +3,7 @@ const { body, validationResult } = require('express-validator');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { authenticate, authorize } = require('../middleware/auth');
 const weekly = require('../services/clay/weekly');
+const subscribers = require('../services/clay/weeklySubscribers');
 const announce = require('../services/clay/announce');
 
 // Staff controls for Clay Weekly. Every step that reaches a real person — asking a creator for
@@ -128,6 +129,17 @@ router.delete('/:id', authenticate, authorize('master_staff'), asyncHandler(asyn
   const out = await weekly.remove(req.params.id);
   if (!out.ok) throw new ApiError(out.reason === 'not_found' ? 404 : 409, out.message || 'Could not delete it.');
   res.json(out);
+}));
+
+
+// GET /api/weekly/subscribers — how the list is doing, and the links to share.
+router.get('/subscribers', authenticate, authorize('staff', 'admin', 'master_staff'), asyncHandler(async (req, res) => {
+  const site = (process.env.CLIENT_URL || 'https://accessyplabs.com').replace(/\/+$/, '');
+  // A link per channel, so a share can be judged on whether it actually brought anyone — otherwise
+  // 'we posted it somewhere' is all anyone ever knows.
+  const links = ['instagram', 'facebook', 'linkedin', 'x', 'tiktok', 'youtube', 'email', 'card']
+    .map((c) => ({ channel: c, url: `${site}/weekly/subscribe?from=${c}` }));
+  res.json({ stats: await subscribers.stats(), plain_link: `${site}/weekly/subscribe`, links });
 }));
 
 module.exports = router;

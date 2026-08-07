@@ -349,6 +349,28 @@
       </div>
     </section>
 
+    <!-- CLAY WEEKLY, ON THE HOMEPAGE. Reaching a stranger used to require them to register first,
+         which put the one thing capable of bringing people in behind the door it was meant to open.
+         No account, no password — a name and an email, and they get the magazine. -->
+    <section aria-labelledby="weekly-h">
+      <h2 id="weekly-h">Get Clay Weekly</h2>
+      <p>A short magazine about people building small businesses out of ideas they never got around to
+        starting. The five pieces worth reading, one business term explained properly, what changed out
+        there for very small operations, and whoever quietly kept turning up that week.</p>
+      <p>One issue a week. No account needed. Leaving takes one click.</p>
+      <form id="weekly-form" novalidate>
+        <div><label for="wk-first">First name</label>
+          <input id="wk-first" type="text" autocomplete="given-name" required/></div>
+        <div><label for="wk-last">Last name</label>
+          <input id="wk-last" type="text" autocomplete="family-name"/></div>
+        <div><label for="wk-email">Email</label>
+          <input id="wk-email" type="email" autocomplete="email" required/></div>
+        <p><button type="button" class="btn" id="wk-go">Send me Clay Weekly</button></p>
+      </form>
+      <p id="wk-said" role="status" aria-live="polite"></p>
+      <p class="muted">We will email once to confirm it was really you. Nothing is sent until you click that.</p>
+    </section>
+
     <section aria-labelledby="price-h">
       <h2 id="price-h">Pricing</h2>
       <p class="lead">Your first project is free — properly free, not a trial. One plan covers everything after that.</p>
@@ -379,7 +401,7 @@
         <a href="/risk.html" style="display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Risk Disclosure</a>
       </nav>
     </footer>
-<script src="/js/a11y.js?v=20260806q"></script><script src="/js/api.js?v=20260806q"></script><script src="/js/nav.js?v=20260806q"></script>
+<script src="/js/a11y.js?v=20260806r"></script><script src="/js/api.js?v=20260806r"></script><script src="/js/nav.js?v=20260806r"></script>
 <script>
 (function(){
   const inner=document.getElementById('hero-inner');
@@ -570,6 +592,27 @@
       e.setAttribute('aria-label','Clay is on version '+d.version+', the current live release.');
     }).catch(function(){});
   })();
+
+// Clay Weekly signup. Deliberately its own small handler rather than going through Kiln.api: this
+// runs for people with no account and no token, and must never redirect anyone to sign in.
+(function(){
+  var go=document.getElementById('wk-go'); if(!go) return;
+  var said=document.getElementById('wk-said');
+  go.addEventListener('click', async function(){
+    go.disabled=true; said.textContent='Sending…';
+    try{
+      var r=await fetch('/weekly/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({first_name:document.getElementById('wk-first').value,
+          last_name:document.getElementById('wk-last').value,
+          email:document.getElementById('wk-email').value, source:'homepage'})});
+      var d=await r.json();
+      said.textContent=d.message||(d.ok?'Check your email.':'That did not work.');
+      if(typeof announce==='function') announce(said.textContent, true);
+      if(d.ok) document.getElementById('weekly-form').hidden=true;
+    }catch(e){ said.textContent='Could not reach us just now. Please try again in a moment.'; }
+    go.disabled=false;
+  });
+})();
 </script>
 <div class="sticky-cta">
   <a class="cta solid" href="/register.html">Start free</a>

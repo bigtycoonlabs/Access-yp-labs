@@ -26,7 +26,15 @@
 
   <div id="console" hidden>
 
-    <section aria-labelledby="step1-h">
+    <!-- SHARE LINKS. A link per channel so a post can be judged on whether it actually brought
+       anyone in; without that, all anyone knows is that it was posted somewhere. -->
+  <section aria-labelledby="share-h">
+    <h2 id="share-h">Grow the list</h2>
+    <p id="sub-stats" role="status" aria-live="polite" class="muted">Loading subscriber numbers…</p>
+    <div id="share-links"></div>
+  </section>
+
+  <section aria-labelledby="step1-h">
       <h2 id="step1-h">Step one — assemble this week's draft</h2>
       <p class="step">Clay gathers what actually happened this week — the pieces he wrote, who listed a project, who earned as a Dream Mover — and writes the opening and his Note. Safe to run more than once: it rebuilds the same week's draft rather than making a second one, and it will not touch an issue you already approved.</p>
       <p class="acts"><button type="button" class="btn" id="compose">Assemble this week's draft</button></p>
@@ -50,7 +58,7 @@
   </div>
   <div id="result" role="alert" aria-live="assertive"></div>
 </main>
-<script src="/js/a11y.js?v=20260806q"></script><script src="/js/api.js?v=20260806q"></script><script src="/js/nav.js?v=20260806q"></script>
+<script src="/js/a11y.js?v=20260806r"></script><script src="/js/api.js?v=20260806r"></script><script src="/js/nav.js?v=20260806r"></script>
 <script>
 var gate=document.getElementById('gate'), box=document.getElementById('console'), result=document.getElementById('result');
 function el(t,c,x){var n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
@@ -316,6 +324,33 @@ async function loadIssues(){
       ? 'This newsroom is for platform owners. Nothing is wrong with your account.'
       : ('Could not load: '+(e.message||'unknown error'));
   }
+})();
+
+// Share links and subscriber numbers.
+(async function(){
+  var host=document.getElementById('share-links'), stat=document.getElementById('sub-stats');
+  if(!host) return;
+  try{
+    var d=await Kiln.api('/weekly/subscribers');
+    var s=d.stats||{};
+    stat.textContent = s.confirmed+' subscribed'
+      + (s.awaiting_confirmation? (', '+s.awaiting_confirmation+' yet to confirm'):'')
+      + (s.left_us? (', '+s.left_us+' left'):'')
+      + '. '+(s.this_week||0)+' joined in the last seven days.';
+    function row(label, url){
+      var wrap=el('p','acts');
+      var code=el('code',null,url); code.style.marginRight='8px';
+      var b=el('button','btn secondary','Copy the '+label+' link'); b.type='button';
+      b.addEventListener('click', async function(){
+        try{ await navigator.clipboard.writeText(url); announce('Copied the '+label+' link.', true); b.textContent='Copied';
+          setTimeout(function(){ b.textContent='Copy the '+label+' link'; }, 2000); }
+        catch(e){ announce('Could not copy automatically. The link is '+url, true); }
+      });
+      wrap.appendChild(code); wrap.appendChild(b); return wrap;
+    }
+    host.appendChild(row('main', d.plain_link));
+    (d.links||[]).forEach(function(l){ host.appendChild(row(l.channel, l.url)); });
+  }catch(e){ stat.textContent='Could not load subscriber numbers: '+(e.message||'unknown'); }
 })();
 </script>
 </body></html>
