@@ -106,4 +106,28 @@ router.post('/announcement/:key/send', authenticate, authorize('master_staff'), 
   res.json(out);
 }));
 
+
+// POST /api/weekly/:id/reject — send an issue back to draft, with a reason.
+router.post('/:id/reject', authenticate, authorize('master_staff'), [
+  body('reason').optional().isString().isLength({ max: 1000 }),
+], asyncHandler(async (req, res) => {
+  const out = await weekly.reject(req.params.id, req.body.reason || null);
+  if (!out.ok) throw new ApiError(out.reason === 'not_found' ? 404 : 409, out.message || 'Could not send it back.');
+  res.json(out);
+}));
+
+// POST /api/weekly/:id/recompose — throw the draft away and have Clay write the week again.
+router.post('/:id/recompose', authenticate, authorize('master_staff'), asyncHandler(async (req, res) => {
+  const out = await weekly.recompose(req.params.id);
+  if (!out.ok) throw new ApiError(out.reason === 'not_found' ? 404 : 409, out.message || 'Could not rewrite it.');
+  res.json(out);
+}));
+
+// DELETE /api/weekly/:id — remove an issue that was never sent.
+router.delete('/:id', authenticate, authorize('master_staff'), asyncHandler(async (req, res) => {
+  const out = await weekly.remove(req.params.id);
+  if (!out.ok) throw new ApiError(out.reason === 'not_found' ? 404 : 409, out.message || 'Could not delete it.');
+  res.json(out);
+}));
+
 module.exports = router;

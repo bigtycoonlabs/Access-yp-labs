@@ -359,13 +359,16 @@ async function sendIssue(id) {
   for (let i = 0; i < rec.rows.length; i += 100) {
     const chunk = rec.rows.slice(i, i + 100).map((u) => {
       const unsub = `${SITE()}/weekly/unsubscribe/${u.token}`;
-      const text = `${issue.intro || ''}\n\nRead this week's issue: ${url}\n\n— Clay\n\nStop receiving Clay Weekly: ${unsub}`;
+      // No sign-off. A magazine is not a letter: it does not end 'love, the editor'. This used to
+      // close '— Clay', and the creator lines above it printed real names, so an issue ended with a
+      // signature and somebody's actual name underneath. The masthead at the top is the byline.
+      const text = `${issue.intro || ''}\n\nRead this week's issue: ${url}\n\nStop receiving Clay Weekly: ${unsub}`;
       return {
         to: u.email,
         subject: issue.title,
         text,
         html: `<p>${String(issue.intro || '').replace(/\n/g, '<br>')}</p>`
-          + `<p><a href="${url}">Read this week's issue of Clay Weekly</a></p><p>— Clay</p>`
+          + `<p><a href="${url}">Read this week's issue of Clay Weekly</a></p>`
           + `<p style="font-size:12px;color:#666">You are getting this because you have an Access YP Labs account. `
           + `<a href="${unsub}">Stop receiving Clay Weekly</a>.</p>`,
         headers: { 'List-Unsubscribe': `<${unsub}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' },
@@ -493,7 +496,67 @@ async function tick() {
   }
 }
 
+
+// ---- taking an issue back ------------------------------------------------------------------------
+//
+// The workflow was one-way: compose, approve, publish, send. There was no way to reject a draft you
+// did not like, no way to have Clay write it again, and no way to delete one — so a bad issue sat
+// there permanently and the only path forward was publishing it.
+
+// Send an approved or published issue back to draft. Refused once it has actually been emailed,
+// because you cannot unsend a magazine and pretending otherwise would be worse than saying no.
+async function reject(id, reason = null) {
+  const r = await query('SELECT status, sent_at FROM weekly_issues WHERE id=$1', [id]);
+  if (!r.rows.length) return { ok: false, reason: 'not_found' };
+  if (r.rows[0].sent_at) {
+    return { ok: false, reason: 'already_sent',
+      message: 'This issue has already been emailed to readers. It cannot be pulled back — they have it. '
+        + 'You can edit it for the archive, but anyone who opened the email has already read what was sent.' };
+  }
+  const u = await query(
+    `UPDATE weekly_issues SET status='draft', published_at=NULL
+      WHERE id=$1 RETURNING id, slug, status`, [id]);
+  if (reason) {
+    await query('UPDATE weekly_issues SET rejection_note=$2 WHERE id=$1', [id, String(reason).slice(0, 1000)])
+      .catch(() => {});
+  }
+  return { ok: true, issue: u.rows[0],
+    message: 'Back to draft. Nothing is public and nobody has been emailed. Have Clay write it again, or edit it yourself.' };
+}
+
+// Throw the draft away and have Clay write the week from scratch. Refused for a sent issue.
+async function recompose(id) {
+  const r = await query('SELECT week_start, sent_at FROM weekly_issues WHERE id=$1', [id]);
+  if (!r.rows.length) return { ok: false, reason: 'not_found' };
+  if (r.rows[0].sent_at) {
+    return { ok: false, reason: 'already_sent',
+      message: 'This issue has been emailed already, so rewriting it would not reach anyone who read it.' };
+  }
+  const week = r.rows[0].week_start;
+  // composeIssue upserts on week_start, so this genuinely replaces the draft rather than making a
+  // second issue for the same week. Any accepted sponsorship attached to it survives, which is what
+  // you want: the creator already agreed to be featured.
+  await query('DELETE FROM weekly_issues WHERE id=$1', [id]);
+  return composeIssue({ weekStart: week });
+}
+
+// Delete an issue outright. Permanent, and refused once it has been sent — a sent issue is a record
+// of something real that people received, and erasing it would leave the archive lying.
+async function remove(id) {
+  const r = await query('SELECT status, sent_at, title FROM weekly_issues WHERE id=$1', [id]);
+  if (!r.rows.length) return { ok: false, reason: 'not_found' };
+  if (r.rows[0].sent_at) {
+    return { ok: false, reason: 'already_sent',
+      message: 'This issue was emailed to readers, so it stays in the archive. Deleting it would leave the '
+        + 'record showing something different from what people actually received.' };
+  }
+  await query('UPDATE weekly_sponsorships SET issue_id=NULL WHERE issue_id=$1', [id]).catch(() => {});
+  await query('DELETE FROM weekly_issues WHERE id=$1', [id]);
+  return { ok: true, message: `"${r.rows[0].title}" is gone. Nothing was public and nobody was emailed.` };
+}
+
 module.exports = {
+  reject, recompose, remove,
   getBySlug, getForPreview,
   tick, weekStartOf, slugForWeek, composeIssue, offerSponsorship, respondToSponsorship,
   approve, publish, sendIssue, unsubscribe, getPublished, listPublished, listForStaff,

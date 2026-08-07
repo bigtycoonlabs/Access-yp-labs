@@ -50,7 +50,7 @@
   </div>
   <div id="result" role="alert" aria-live="assertive"></div>
 </main>
-<script src="/js/a11y.js?v=20260806p"></script><script src="/js/api.js?v=20260806p"></script><script src="/js/nav.js?v=20260806p"></script>
+<script src="/js/a11y.js?v=20260806q"></script><script src="/js/api.js?v=20260806q"></script><script src="/js/nav.js?v=20260806q"></script>
 <script>
 var gate=document.getElementById('gate'), box=document.getElementById('console'), result=document.getElementById('result');
 function el(t,c,x){var n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
@@ -111,6 +111,29 @@ async function loadCands(){
       var ta=document.createElement('textarea'); ta.id='why-'+c.concept_id; ta.rows=2; ta.maxLength=1000; d.appendChild(ta);
       var acts=el('p','acts');
       if(i.status!=='draft') acts.appendChild(previewLink(i));
+
+      // TAKING AN ISSUE BACK. The workflow only went forwards — compose, approve, publish, send —
+      // so a draft you disliked sat there permanently and the only way onward was publishing it.
+      // Everything here is refused once an issue has actually been emailed, because a magazine
+      // cannot be unsent and pretending otherwise would be worse than saying no.
+      if(!i.sent_at){
+        if(i.status!=='draft'){
+          acts.appendChild(act('Send it back to draft', function(){
+            confirmRow(d, 'Send this back to draft? Nothing is public and nobody has been emailed.',
+              'Yes, send it back', function(){ return call('/weekly/'+i.id+'/reject', 'POST'); });
+          }));
+        }
+        acts.appendChild(act('Have Clay write it again', function(){
+          confirmRow(d, 'Throw this draft away and have Clay write the week from scratch? The current draft is lost.',
+            'Yes, write it again', function(){ return call('/weekly/'+i.id+'/recompose', 'POST'); });
+        }));
+        acts.appendChild(act('Delete this issue', function(){
+          confirmRow(d, 'Delete this issue permanently? It was never sent, so nobody has seen it. This cannot be undone.',
+            'Yes, delete it', function(){ return call('/weekly/'+i.id, 'DELETE'); });
+        }));
+      } else {
+        acts.appendChild(el('span','muted','Emailed to readers — it stays in the archive.'));
+      }
       var ask=el('button','btn','Ask this creator'); ask.type='button';
       ask.addEventListener('click', async function(){
         ask.disabled=true;
@@ -145,6 +168,33 @@ async function loadIssues(){
   // A link that opens the issue exactly as a reader would see it, at any stage. The token rides in
   // the URL because this opens in a new tab, where our Authorization header cannot follow; the
   // route still verifies it is a real staff token before showing anything.
+  function act(label, fn){ var b=el('button','btn secondary',label); b.type='button'; b.addEventListener('click',fn); return b; }
+  async function call(path, method){
+    var out = await Kiln.api(path, { method: method });
+    announce(out.message || 'Done.', true);
+    loadIssues();
+    return out;
+  }
+  // Two-step confirm, focus on the safe option, focus returned when dismissed — same as everywhere.
+  function confirmRow(host, question, yesLabel, fn){
+    if(host.querySelector('.confirm-row')) return;
+    var opener=document.activeElement;
+    var restore=function(){ try{ if(opener&&opener.focus&&document.contains(opener)) opener.focus(); }catch(e){} };
+    var row=el('div','confirm-row'); row.setAttribute('role','group'); row.setAttribute('aria-label',question);
+    row.appendChild(el('p',null,question));
+    var yes=el('button','btn',yesLabel); yes.type='button';
+    var no=el('button','btn secondary','No, leave it'); no.type='button';
+    yes.addEventListener('click', async function(){
+      yes.disabled=true; no.disabled=true;
+      try{ await fn(); row.remove(); restore(); }
+      catch(e){ announce(e.message||'That did not go through.',true); yes.disabled=false; no.disabled=false; }
+    });
+    no.addEventListener('click', function(){ row.remove(); restore(); announce('Left as it is.',true); });
+    row.appendChild(yes); row.appendChild(no); host.appendChild(row);
+    announce('Confirm required. '+question, true);
+    if(no.focus) no.focus();
+  }
+
   function previewLink(i){
     var tok=''; try{ tok=(Kiln.getTokens&&Kiln.getTokens().accessToken)||''; }catch(e){}
     var a=el('a','btn secondary', i.status==='draft' ? 'Read the draft' : 'Read it');

@@ -53,3 +53,37 @@ test('what a reader sees is what was approved', () => {
   assert.match(pages, /Array\.isArray\(h\.best_reads\)/);
   assert.match(pages, /Five worth your time/);
 });
+
+test('an issue can be sent back, rewritten, or deleted', () => {
+  // The workflow only went forwards — compose, approve, publish, send — so a draft you disliked sat
+  // there permanently and the only way onward was publishing it.
+  assert.match(weekly, /async function reject/);
+  assert.match(weekly, /async function recompose/);
+  assert.match(weekly, /async function remove/);
+  const routes = fs.readFileSync(require.resolve('../src/routes/weekly.js'), 'utf8');
+  assert.match(routes, /router\.post\('\/:id\/reject'/);
+  assert.match(routes, /router\.post\('\/:id\/recompose'/);
+  assert.match(routes, /router\.delete\('\/:id'/);
+});
+
+test('a SENT issue cannot be unsent, rewritten away, or deleted', () => {
+  // You cannot unsend a magazine, and erasing one people received would leave the archive lying.
+  // Each of the three functions must carry its own guard. Counting occurrences file-wide would also
+  // catch the pre-existing send guard, so check inside each function body instead.
+  ['reject', 'recompose', 'remove'].forEach((fn) => {
+    const start = weekly.indexOf('async function ' + fn + '(');
+    assert.ok(start > -1, fn + ' exists');
+    const body = weekly.slice(start, start + 1400);
+    assert.match(body, /already_sent/, fn + ' must refuse a sent issue');
+  });
+  assert.match(weekly, /they have it/i);
+  assert.match(flat(weekly), /erasing it would leave the archive lying/i);
+});
+
+test('the magazine does not sign off with anyone name', () => {
+  // It closed '— Clay', and the lines above printed real names, so an issue ended with a signature
+  // and somebody's actual name under it. A magazine is not a letter.
+  const issueEmail = weekly.slice(weekly.indexOf('Read this week\'s issue: ${url}'), weekly.indexOf('List-Unsubscribe'));
+  assert.ok(!/— Clay/.test(issueEmail), 'no sign-off in the issue email');
+  assert.match(flat(weekly), /A magazine is not a letter/i);
+});
