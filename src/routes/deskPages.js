@@ -124,13 +124,17 @@ router.get('/desk/:slug', asyncHandler(async (req, res) => {
 
 // A plain page in the Desk's own styling. Written here rather than borrowed from another router,
 // because a shared helper that only exists in one file is exactly how a page 500s in production.
-function deskPage(title, description, bodyHtml, { noindex = false } = {}) {
+// canonical MUST be the page's own address. I first wrote this with every page declaring /desk as
+// its canonical, which tells a search engine these subject pages are duplicates of the Desk and
+// should be dropped from the index — the exact opposite of why they were built. A canonical pointing
+// somewhere else is not a small mistake: it is an instruction to ignore the page.
+function deskPage(title, description, bodyHtml, { noindex = false, canonical = null } = {}) {
   const site = SITE();
   return `<!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description || '')}"/>
-${noindex ? '<meta name="robots" content="noindex, nofollow"/>' : `<link rel="canonical" href="${esc(site)}/desk"/>`}
+${noindex ? '<meta name="robots" content="noindex, nofollow"/>' : (canonical ? `<link rel="canonical" href="${esc(canonical)}"/>` : '')}
 <link rel="stylesheet" href="/css/kiln.css"/>
 </head><body>
 <a class="skip" href="#main">Skip to main content</a>
@@ -171,7 +175,7 @@ router.get('/desk/topic/:category', asyncHandler(async (req, res) => {
     <ul>${items}</ul>
     <p><a href="/desk">All of the Desk</a></p>`;
   res.set('Cache-Control', 'public, max-age=300');
-  res.type('html').send(deskPage(`${meta.label} — Clay's Desk`, meta.blurb, body));
+  res.type('html').send(deskPage(`${meta.label} — Clay's Desk`, meta.blurb, body, { canonical: `${SITE()}/desk/topic/${cat}` }));
 }));
 
 // GET /sitemap.xml — generated, so every article Clay publishes is discoverable. Falls back to the

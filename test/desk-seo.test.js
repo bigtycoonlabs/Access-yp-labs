@@ -46,3 +46,23 @@ test('trust proxy is one hop, so per-IP limits cannot be spoofed away', () => {
   assert.match(server, /app\.set\('trust proxy', 1\)/);
   assert.ok(!/app\.set\('trust proxy', true\)/.test(server));
 });
+
+test('a subject page is canonical to ITSELF, not to the Desk', () => {
+  // I first wrote every page declaring /desk as its canonical, which tells a search engine these
+  // pages are duplicates and should be dropped — the exact opposite of why they exist. A canonical
+  // pointing elsewhere is not a small mistake; it is an instruction to ignore the page.
+  assert.match(pages, /canonical: `\$\{SITE\(\)\}\/desk\/topic\/\$\{cat\}`/);
+  assert.match(flat(pages), /canonical MUST be the page's own address/i);
+  assert.ok(!/`<link rel="canonical" href="\$\{esc\(site\)\}\/desk"\/>`/.test(pages));
+});
+
+test('every indexable public page declares a canonical', () => {
+  const glob = require('fs').readdirSync('public').filter((f) => f.endsWith('.html'));
+  const missing = glob.filter((f) => {
+    const s = require('fs').readFileSync('public/' + f, 'utf8');
+    if (s.includes('noindex')) return false;                 // deliberately not indexed
+    if (['launch.html', 'mover.html'].includes(f)) return false;  // templates: a fixed canonical would be wrong
+    return !s.includes('rel="canonical"');
+  });
+  assert.deepStrictEqual(missing, [], 'these pages have no canonical: ' + missing.join(', '));
+});
