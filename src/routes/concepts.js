@@ -22,8 +22,11 @@ const launchPage = require('../services/clay/launchPage');
 const store = require('../services/clay/store');
 const crypto = require('crypto');
 
+// Every type generation can actually produce. This list had drifted behind the generator, so a
+// creator could not add or replace several kinds of material that Clay routinely writes for them.
 const ASSET_TYPES = ['business_plan', 'marketing_strategy', 'customer_research', 'competitor_research',
-  'regulatory_risk', 'html_demo', 'example_image', 'website_prompt', 'build_instructions', 'code_file', 'built_site'];
+  'regulatory_risk', 'html_demo', 'example_image', 'website_prompt', 'build_instructions', 'code_file',
+  'built_site', 'tech_spec', 'tech_requirements', 'money_flow', 'growth_plan', 'operations_staffing', 'presell_kit'];
 const router = express.Router();
 
 const STAGES = ['concept', 'in_build', 'prepared_to_start'];

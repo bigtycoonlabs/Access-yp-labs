@@ -9,7 +9,12 @@ const FLOOR_CENTS = 1000; // the platform's $10 listing minimum.
 
 // A build path is any route to building it; a "launchable" artifact is a working thing a buyer
 // could actually run or ship — that's the jump that earns the top prices.
-const BUILD_PATH_TYPES = ['html_demo', 'website_prompt', 'build_instructions', 'code_file', 'built_site'];
+// 'tech_spec' is the CURRENT build-path asset — generation was consolidated to produce one complete
+// spec instead of the older website_prompt / build_instructions pair. Leaving it out of this list
+// meant every project built since that change was valued as a bare idea with no route to building
+// it, which is both wrong and expensive: it is the difference between the lowest tier and the
+// highest. The older names stay so nothing built before the change loses value.
+const BUILD_PATH_TYPES = ['tech_spec', 'html_demo', 'website_prompt', 'build_instructions', 'code_file', 'built_site'];
 const LAUNCHABLE_TYPES = ['built_site', 'code_file', 'html_demo'];
 
 const TIERS = {

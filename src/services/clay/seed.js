@@ -205,7 +205,14 @@ async function hasBaseline(conceptId) {
   const types = (r.rows[0] && r.rows[0].types) || [];
   const plan = types.includes('business_plan');
   const marketing = types.includes('marketing_strategy');
-  const buildPath = types.some((t) => ['build_instructions', 'tech_requirements', 'website_prompt', 'html_demo'].includes(t));
+  // A seed is listable once it has a plan, a marketing strategy, and SOME route to actually building
+  // the thing. The set of names below matters more than it looks: generation was changed to produce
+  // one consolidated 'tech_spec' instead of the older build_instructions / tech_requirements /
+  // website_prompt trio, and this list was not updated with it. So every new seed passed generation,
+  // saved 11 real materials, and then failed the listability check — the project existed, nothing
+  // was listed, nothing reached the review queue, and it looked exactly like Clay had stopped
+  // seeding. 'tech_spec' is included now, and this is the one place that decides it.
+  const buildPath = types.some((t) => ['tech_spec', 'build_instructions', 'tech_requirements', 'website_prompt', 'html_demo'].includes(t));
   return plan && marketing && buildPath;
 }
 
