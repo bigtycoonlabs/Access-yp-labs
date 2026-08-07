@@ -177,6 +177,14 @@ async function composeIssue({ weekStart } = {}) {
   ]);
   const term = sections.termForWeek(week);
 
+  // THE WHITE PAPER RIDES WITH THE FIRST ISSUE ONLY. Nobody reading the very first Clay Weekly knows
+  // what this place is, so the issue that introduces the magazine should also introduce the platform
+  // — why it exists, what it costs, and how everyone involved makes money. Checked against whether
+  // any issue has EVER been sent rather than a flag someone has to remember to clear, so it can be
+  // rebuilt or rejected and rewritten without losing it, and can never reappear in issue two.
+  const priorSends = await query('SELECT COUNT(*)::int AS n FROM weekly_issues WHERE sent_at IS NOT NULL');
+  const isFirstIssue = (priorSends.rows[0].n || 0) === 0;
+
   // An accepted sponsorship to feature. It must not already belong to a DIFFERENT issue: once a
   // project has run as Project of the Week it is spent, otherwise the same creator would be
   // featured every week forever. Re-running compose for the same week keeps its own sponsorship,
@@ -195,6 +203,7 @@ async function composeIssue({ weekStart } = {}) {
     `the term explained this week is ${term.term} — ${term.short}`,
     dreamer ? `the dreamer who kept turning up is ${dreamer.tag}, here on ${dreamer.days_here} days` : null,
     (news && news.ok && news.items.length) ? `outside news worth noting: ${news.items.map((i) => i.title).join('; ')}` : null,
+    isFirstIssue ? 'this is the FIRST issue ever, and it carries the white paper explaining why this place exists — mention that this one comes with the whole argument attached' : null,
     `${articles.length} new piece${articles.length === 1 ? '' : 's'} on the Desk`,
     `${creators.length} creator${creators.length === 1 ? '' : 's'} put work into the Dream Market`,
     `${movers.length} Dream Mover${movers.length === 1 ? '' : 's'} earned from a sale`,
@@ -220,6 +229,13 @@ async function composeIssue({ weekStart } = {}) {
     term,
     dreamer,
     world_news: (news && news.ok) ? news.items : [],
+    white_paper: isFirstIssue ? {
+      title: 'Why we built this place',
+      blurb: 'Since this is the first issue: the whole argument, in full. What Access YP Labs is, '
+        + 'what it costs, how everyone involved makes money, the uncomfortable part about how often '
+        + 'things actually sell, and the one line we never cross.',
+      url: '/white-paper',
+    } : null,
   };
 
   const title = `Clay Weekly — week of ${week}`;

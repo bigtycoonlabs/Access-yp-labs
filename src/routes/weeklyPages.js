@@ -64,6 +64,7 @@ function issueHtml(issue) {
   const term = h.term || null;
   const dreamer = h.dreamer || null;
   const news = Array.isArray(h.world_news) ? h.world_news : [];
+  const paper = h.white_paper || null;
   const when = issue.published_at ? new Date(issue.published_at) : null;
 
   const jsonLd = {
@@ -88,6 +89,13 @@ function issueHtml(issue) {
         <h2 id="sponsored-h">Project of the Week</h2>
         <p><strong>${esc(issue.sponsored_title)}</strong> — featured with the creator's permission.</p>
         ${paras(issue.sponsored_blurb || issue.sponsored_brief)}
+      </section>` : ''}
+
+      ${paper ? `
+      <section aria-labelledby="paper-h">
+        <h2 id="paper-h">${esc(paper.title)}</h2>
+        <p>${esc(paper.blurb)}</p>
+        <p><a href="${esc(paper.url)}">Read the white paper</a></p>
       </section>` : ''}
 
       ${best.length ? `

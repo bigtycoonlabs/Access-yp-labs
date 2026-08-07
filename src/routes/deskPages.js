@@ -148,6 +148,61 @@ ${noindex ? '<meta name="robots" content="noindex, nofollow"/>' : (canonical ? `
 </body></html>`;
 }
 
+// GET /white-paper — why this platform exists, in full.
+//
+// Served from the markdown in docs/ rather than a second copy pasted into a page, so there is ONE
+// white paper. A duplicate would drift, and the version a reader saw would eventually stop matching
+// the version we edit.
+let WHITE_PAPER_CACHE = null;
+function whitePaperHtml() {
+  if (WHITE_PAPER_CACHE) return WHITE_PAPER_CACHE;
+  const fsMod = require('fs');
+  const pathMod = require('path');
+  let md = '';
+  try {
+    md = fsMod.readFileSync(pathMod.join(__dirname, '..', '..', 'docs', 'WHITEPAPER-YP-Labs.md'), 'utf8');
+  } catch (_) { return null; }
+
+  // A deliberately small markdown reader: headings, bullets, bold, italics, paragraphs. Enough for
+  // this document and nothing more — a full parser would be a dependency and an attack surface for
+  // one file we write ourselves.
+  const lines = md.split('\n');
+  const out = [];
+  let inList = false;
+  const inline = (s) => esc(s)
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (/^---+$/.test(line.trim())) { if (inList) { out.push('</ul>'); inList = false; } continue; }
+    if (/^- /.test(line)) {
+      if (!inList) { out.push('<ul>'); inList = true; }
+      out.push(`<li>${inline(line.slice(2))}</li>`);
+      continue;
+    }
+    if (inList) { out.push('</ul>'); inList = false; }
+    if (/^### /.test(line)) { out.push(`<p class="muted">${inline(line.slice(4))}</p>`); continue; }
+    if (/^## /.test(line))  { out.push(`<h2>${inline(line.slice(3))}</h2>`); continue; }
+    if (/^# /.test(line))   { out.push(`<h1>${inline(line.slice(2))}</h1>`); continue; }
+    if (line.trim()) out.push(`<p>${inline(line)}</p>`);
+  }
+  if (inList) out.push('</ul>');
+  WHITE_PAPER_CACHE = out.join('\n      ');
+  return WHITE_PAPER_CACHE;
+}
+
+router.get('/white-paper', asyncHandler(async (req, res) => {
+  const html = whitePaperHtml();
+  if (!html) {
+    return res.status(404).type('html').send(deskPage('Not found', '', '<h1>Not found</h1>', { noindex: true }));
+  }
+  res.set('Cache-Control', 'public, max-age=1800');
+  res.type('html').send(deskPage(
+    'Why we built Access YP Labs — a white paper',
+    'Why Access YP Labs exists, what it costs, how everyone involved makes money, and the one line we never cross.',
+    html, { canonical: `${SITE()}/white-paper` }));
+}));
+
 // GET /desk/topic/:category — browse the Desk by subject.
 //
 // The Desk had 32 pieces and no way through them but reverse-chronological. Someone who arrives on
