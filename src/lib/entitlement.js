@@ -17,10 +17,28 @@ const isPreviewType = (type) => PREVIEW_TYPES.includes(type);
 // never leaves the server through a list endpoint. Keeps id/type/title/version so the UI can
 // still list the piece and route the click through the gated single-asset endpoint. This is
 // the backstop that makes the preview-gate real: without it, any list response leaks bodies.
+// AN OWNER ALWAYS READS THEIR OWN WORK.
+//
+// This used to hide the body of ten of the fourteen materials on any project beyond a creator's
+// first — the research, the risk read, the money flow, the growth plan, the build spec — WHILE THEY
+// WERE STILL BUILDING. That directly contradicts the promise the platform makes: building with Clay
+// is free and unlimited. Someone shaping their second idea would watch Clay produce fourteen pieces
+// of material and be able to read four of them, which reads as a bait and switch even though it was
+// only ever meant as a gate on taking things away.
+//
+// The gate belongs on the things that LEAVE the platform or cost us money to run — exporting the
+// files, publishing a site to the public, taking payments through a storefront. Those are still
+// gated, and enforced elsewhere. Reading your own project is not one of them.
+//
+// `entitled` is kept in the signature because callers pass it and because a NON-owner (staff reading
+// something in review) must still be redacted. It is the owner's own eyes this frees.
 function redactLockedAssets(assets, entitled) {
   if (entitled) return assets || [];
   return (assets || []).map((a) => (isPreviewType(a.type) ? a : { ...a, body: '', locked: true }));
 }
+
+// What an OWNER sees of their own project: everything, always.
+function ownerAssets(assets) { return assets || []; }
 
 // Staff normally never pay. billing_test lets a staff account (e.g. the founder)
 // deliberately go through the real subscribe/paywall/pay flow to test it end to end,
@@ -90,4 +108,4 @@ function paywall(conceptId) {
   };
 }
 
-module.exports = { isStaff, billingExempt, STAFF_ROLES, conceptEntitlement, paywall, PREVIEW_TYPES, isPreviewType, redactLockedAssets };
+module.exports = { isStaff, ownerAssets, billingExempt, STAFF_ROLES, conceptEntitlement, paywall, PREVIEW_TYPES, isPreviewType, redactLockedAssets };

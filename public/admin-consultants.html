@@ -1,61 +1,19 @@
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Consultant applications — Access YP Labs</title><link rel="stylesheet" href="/css/kiln.css"/>
-<style>.row{border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:16px;margin:12px 0;}</style>
-  <meta name="robots" content="noindex, nofollow"/>
+<title>This has moved — Access YP Labs</title><link rel="stylesheet" href="/css/kiln.css"/>
+<meta name="robots" content="noindex, nofollow"/>
 </head><body>
 <a class="skip" href="#main">Skip to main content</a>
-<header class="site"><div class="wrap bar">
-  <a class="brand" href="/">Access YP Labs</a>
-  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/moderation.html">Review queue</a></nav>
-</div></header>
+<header class="site"><div class="wrap bar"><a class="brand" href="/">Access YP Labs</a>
+<nav class="top" aria-label="Primary"></nav></div></header>
 <main id="main" class="wrap">
-  <h1>Consultant applications</h1>
-  <div id="gate" role="status" aria-live="polite" class="muted">Checking access…</div>
-  <div id="list"></div>
-  <div id="result" role="alert" aria-live="assertive"></div>
+  <h1>Consultant applications are retired</h1>
+  <!-- Kept as a page rather than deleted: this was linked from the staff dashboard for a long time,
+       and a 404 tells whoever lands here nothing about where the work went. -->
+  <p>Paid consultant sessions no longer exist on the platform. Launch partners replaced them: people
+    find each other on the partner board, agree their own terms directly, and we take no cut and are
+    not party to the arrangement. There is nothing here to approve.</p>
+  <p><a class="btn" href="/admin-overview.html">Back to the staff panel</a></p>
 </main>
-<script src="/js/a11y.js?v=20260806s"></script><script src="/js/api.js?v=20260806s"></script><script src="/js/nav.js?v=20260806s"></script>
-<script>
-const gate=document.getElementById('gate'),listEl=document.getElementById('list'),result=document.getElementById('result');
-function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
-async function init(){
-  if(!Kiln.isLoggedIn()){location.replace('/login.html');return;}
-  let me;try{me=(await Kiln.api('/auth/me')).user;}catch(_){location.replace('/login.html');return;}
-  if(!['admin','master_staff'].includes(me.role)){gate.textContent='This area is for administrators only.';announce('This area is for administrators only.',true);return;}
-  gate.textContent='';load();
-}
-async function load(){
-  listEl.innerHTML='';
-  try{
-    const {applications}=await Kiln.api('/consultants/applications');
-    if(!applications.length){listEl.appendChild(el('p','muted','No applications awaiting review.'));return;}
-    applications.forEach(a=>{
-      const r=el('div','row');
-      r.appendChild(el('h3',null,a.name));
-      r.appendChild(el('p','muted',a.email));
-      r.appendChild(el('p',null,'History: '+(a.entrepreneur_history||'—')));
-      if(a.marketplace_track)r.appendChild(el('p',null,'Track record: '+a.marketplace_track));
-      if(a.concepts_to_market)r.appendChild(el('p',null,'To market: '+a.concepts_to_market));
-      if(a.prior_businesses)r.appendChild(el('p',null,'Prior: '+a.prior_businesses));
-      const b=el('button','btn','Approve as consultant');b.type='button';
-      b.addEventListener('click',async()=>{b.disabled=true;
-        try{await Kiln.api('/consultants/applications/'+a.id+'/approve',{method:'POST'});
-          result.innerHTML='';result.appendChild(el('p','msg ok','Approved '+a.name+' as a consultant.'));
-          announce('Approved '+a.name+'.',true);load();
-        }catch(e){result.innerHTML='';result.appendChild(el('p','msg err',e.message));announce(e.message,true);b.disabled=false;}
-      });
-      r.appendChild(b);listEl.appendChild(r);
-    });
-  }catch(e){listEl.appendChild(el('p','msg err',e.message));}
-}
-init();
-</script>
-  <footer style="border-top:1px solid var(--line);color:var(--muted);font-size:15px;padding:22px 24px;text-align:center;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
-    <nav aria-label="Legal">
-      <a href="/terms.html" style="color:var(--clay-dark);display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Terms of Service</a> ·
-      <a href="/privacy.html" style="color:var(--clay-dark);display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Privacy Policy</a> ·
-      <a href="/risk.html" style="color:var(--clay-dark);display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Risk Disclosure</a>
-    </nav>
-  </footer>
+<script src="/js/a11y.js?v=20260806t"></script><script src="/js/api.js?v=20260806t"></script><script src="/js/nav.js?v=20260806t"></script>
 </body></html>

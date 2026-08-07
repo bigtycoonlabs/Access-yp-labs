@@ -605,53 +605,10 @@
     } catch (e) { fail(c, e); }
   }
 
-  // ---------- Consultant engagements ----------
-  // Booking a consultant is a real Stripe charge: /pay returns a hosted checkout URL, and we
-  // send the client there. If the consultant hasn't set up payouts (or Stripe isn't configured),
-  // the server says so honestly and we surface that instead of charging anything.
-  async function payForSession(id) {
-    const res = await Kiln.api('/consultants/engagements/' + id + '/pay', { method: 'POST' });
-    if (res && res.ok && res.checkout_url) {
-      announce('Taking you to secure checkout.', true);
-      window.location.href = res.checkout_url;
-      return;
-    }
-    throw new Error((res && res.message) || 'Payment could not be started right now.');
-  }
-
-  async function loadEngagements() {
-    const c = document.getElementById('engagements'); c.innerHTML = '';
-    // Paid consultant sessions have been retired in favour of launch partners. Anyone who already
-    // has a session still sees and can finish it — but a creator who never had one should not be
-    // shown an empty section for an offer that no longer exists, wondering what they missed.
-    const section = document.getElementById('eng-sec') || (c.closest && c.closest('section'));
-    try {
-      const { engagements } = await Kiln.api('/consultants/engagements');
-      if (!engagements.length) { if (section) section.hidden = true; return; }
-      if (section) section.hidden = false;
-      engagements.forEach((e) => {
-        const iAmConsultant = e.consultant_id === me.id;
-        const r = row(iAmConsultant ? 'Session you are delivering' : 'Session you requested',
-          '$' + (e.fee_cents / 100).toFixed(2) + ' session', e.state);
-        const A = r.actions;
-        if (iAmConsultant) {
-          if (e.state === 'requested') A.appendChild(actionBtn('Accept', () => run(Kiln.api('/consultants/engagements/' + e.id + '/accept', { method: 'POST' }), 'Accepted.', loadEngagements)));
-          if (e.state === 'accepted') A.appendChild(actionBtn('Sign NDA (required before project is shared)', () => run(Kiln.api('/consultants/engagements/' + e.id + '/nda', { method: 'POST' }), 'NDA signed.', loadEngagements)));
-          if (e.state === 'paid') A.appendChild(actionBtn('Mark session delivered', () => run(Kiln.api('/consultants/engagements/' + e.id + '/deliver', { method: 'POST' }), 'Session delivered.', loadEngagements)));
-        } else {
-          if (e.state === 'nda_signed') A.appendChild(actionBtn('Pay $150 for this session', () => payForSession(e.id)));
-          if (e.state === 'session_delivered') {
-            A.appendChild(actionBtn('Continue (free, within 12 hours)', () => run(Kiln.api('/consultants/engagements/' + e.id + '/continue', { method: 'POST' }), 'Continuing with your consultant.', loadEngagements), true));
-            A.appendChild(actionBtn('Confirm a launch resulted', () => run(Kiln.api('/consultants/engagements/' + e.id + '/confirm-launch', { method: 'POST' }), 'Launch confirmed.', loadEngagements), true));
-          }
-        }
-        c.appendChild(r);
-      });
-    } catch (e) {
-      // A retired feature failing is not something a creator needs to read about; stay quiet.
-      if (section) section.hidden = true;
-    }
-  }
+  // Consultant engagements used to live here. Paid consultant sessions are retired — launch
+  // partners replaced them, and people agree their own terms directly with no cut and no session
+  // fee. The markup was removed too, so leaving the loader would have looked up an element that no
+  // longer exists and thrown on every dashboard load.
 
   // ---------- Watchlist ----------
   async function loadWatches() {
@@ -765,7 +722,7 @@
       setTimeout(() => loadSubs(), 8000);
     }
     if (q.get('sub') === 'canceled') announce('Checkout canceled — you were not charged.', true);
-    loadPath(); loadTodaysDreams(); loadProofStep(); loadPayouts(); loadPenName(); loadSubs(); loadConcepts(); loadBoard(); loadListings(); loadOrders(); loadEngagements(); loadWatches(); loadTuning();
+    loadPath(); loadTodaysDreams(); loadProofStep(); loadPayouts(); loadPenName(); loadSubs(); loadConcepts(); loadBoard(); loadListings(); loadOrders(); loadWatches(); loadTuning();
     document.getElementById('signout').addEventListener('click', (e) => { e.preventDefault(); Kiln.clearTokens(); location.href = '/'; });
   })();
 })();

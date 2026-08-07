@@ -37,7 +37,7 @@
       <div id="images-cfg" style="margin-top:16px"></div></section>
   </div>
 </main>
-<script src="/js/a11y.js?v=20260806s"></script><script src="/js/api.js?v=20260806s"></script><script src="/js/nav.js?v=20260806s"></script>
+<script src="/js/a11y.js?v=20260806t"></script><script src="/js/api.js?v=20260806t"></script><script src="/js/nav.js?v=20260806t"></script>
 <script>
 const gate=document.getElementById('gate');
 function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
@@ -123,7 +123,7 @@ async function load(){
     stat(clay, sd.enabled?'ON':'OFF', 'Auto-seeding');
   }
 
-  // Image economy — usage this month and real Extras pack revenue.
+  // Images — usage this month, and any bought balance still outstanding from the retired packs.
   const im = d.images || {};
   const ihost = document.getElementById('images'); ihost.innerHTML='';
   stat(ihost, im.generated_this_month||0, 'Images this month');

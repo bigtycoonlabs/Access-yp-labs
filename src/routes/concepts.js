@@ -5,7 +5,7 @@ const { authenticate } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
 const watchActivity = require('../services/clay/watchActivity');
 const { CATEGORIES, MODES } = require('../services/clay/tools');
-const { conceptEntitlement, paywall, isStaff, billingExempt, redactLockedAssets } = require('../lib/entitlement');
+const { conceptEntitlement, paywall, isStaff, billingExempt, redactLockedAssets, ownerAssets } = require('../lib/entitlement');
 const protect = require('../lib/protect');
 const retrieval = require('../services/clay/retrieval');
 const movement = require('../services/clay/movement');
@@ -182,7 +182,11 @@ router.get('/:id', authenticate, asyncHandler(async (req, res) => {
   // un-hides it if it had faded (only reachable here when the owner is entitled).
   await query('UPDATE concepts SET last_opened_at=now(), expiry_reminded_at=NULL, expired_at=NULL WHERE id=$1', [req.params.id]);
   const a = await query('SELECT * FROM assets WHERE concept_id=$1 ORDER BY created_at', [req.params.id]);
-  res.json({ concept: { ...c.rows[0], expired_at: null }, assets: redactLockedAssets(a.rows, !!ent.entitled), entitled: !!ent.entitled });
+  // This endpoint is already owner-only — the lookup above is WHERE id=$1 AND owner_id=$2 — so
+  // everyone reaching this line is reading their own work, and reads all of it. Building is free and
+  // unlimited, and that has to be true of what you can SEE while building, not only of how many
+  // projects you are allowed to start.
+  res.json({ concept: { ...c.rows[0], expired_at: null }, assets: ownerAssets(a.rows), entitled: !!ent.entitled });
 }));
 
 router.patch('/:id', authenticate, [

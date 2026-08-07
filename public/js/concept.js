@@ -224,7 +224,7 @@
     actionsEl.appendChild(box);
   }
 
-  // ---- Extras: per-project image budget, packs, and manual generation ----
+  // ---- Images: the account's monthly allowance, and making one on demand ----
   function extrasSummary(b) {
     var s = b.used_this_month + ' of ' + b.monthly_included + ' monthly image'
       + (b.monthly_included === 1 ? '' : 's') + ' used — ' + b.free_remaining + ' left this month.';
@@ -279,8 +279,8 @@
     try {
       var r = await Kiln.api('/clay/concept/' + conceptId + '/images');
       if (!r || !r.ok) return;   // owner/staff only — skip quietly for anyone else
-      var sect = el('section', 'extras'); sect.setAttribute('aria-label', 'Extras — images');
-      sect.appendChild(el('h2', null, 'Extras — images'));
+      var sect = el('section', 'extras'); sect.setAttribute('aria-label', 'Images');
+      sect.appendChild(el('h2', null, 'Images'));
       sect.appendChild(el('p', 'extras-summary', extrasSummary(r.budget || {})));
       var acts = el('div', 'actions');
       var mk = el('button', 'btn secondary', 'Make an image'); mk.type = 'button';
