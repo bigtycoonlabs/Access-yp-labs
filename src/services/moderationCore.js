@@ -25,8 +25,14 @@ async function decideListing(user, listingId, { decision, reason, notes }) {
   const newStatus = decision === 'approved' ? 'live' : 'rejected';
   const upd = await query("UPDATE listings SET status=$2, updated_at=NOW() WHERE id=$1 AND status='in_review'", [listing.id, newStatus]);
   if (!upd.rowCount) return { ok: false, http: 409, error: 'This listing was just decided by another moderator.' };
+  // An owner MAY decide on their own listing — somebody has to seed the market — but it is never
+  // silent. It is written into the audit note whether or not they added one of their own, so the
+  // log shows plainly who approved what and that they were both sides of it.
   const selfReview = listing.seller_id === user.id;
-  const auditNotes = notes || (selfReview ? 'operator self-review during marketplace seeding' : null);
+  const selfNote = 'SELF-REVIEW: the platform owner approved their own listing.';
+  const auditNotes = selfReview
+    ? (notes ? selfNote + ' ' + notes : selfNote)
+    : (notes || null);
   const act = await query(
     'INSERT INTO moderation_actions (listing_id, moderator_id, decision, reason, notes) VALUES ($1,$2,$3,$4,$5) RETURNING *',
     [listing.id, user.id, decision, reason || null, auditNotes]);
