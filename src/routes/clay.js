@@ -17,6 +17,7 @@ const similarity = require('../services/clay/similarity');
 const awareness = require('../services/clay/awareness');
 const siteAccess = require('../services/clay/siteAccess');
 const buildSpec = require('../services/clay/buildSpec');
+const conversations = require('../services/clay/conversations');
 const siteQuota = require('../services/clay/siteQuota');
 const domains = require('../services/clay/domains');
 const domainStore = require('../services/clay/domainStore');
@@ -1646,6 +1647,35 @@ async function buildChatContext(req) {
   return { conceptContext, memoryContext, allowTools };
 }
 
+// Shared by both chat endpoints so the record is identical whether or not someone streamed.
+async function recordConversation(req, out) {
+  const msgs = Array.isArray(req.body.messages) ? req.body.messages : [];
+  const lastUser = [...msgs].reverse().find((m) => m && m.role === 'user');
+  const sessionId = await conversations.openSession({
+    userId: req.user.id,
+    conceptId: req.body.concept_id || null,
+    surface: req.body.concept_id ? 'project' : 'laboratory',
+  });
+  // What tools ran this turn, and whether any of them failed — the difference between "they stopped
+  // because they were done" and "they stopped because it broke".
+  const tools = [];
+  let failed = false;
+  for (const m of (out.messages || [])) {
+    for (const c of (Array.isArray(m.content) ? m.content : [])) {
+      if (c && c.type === 'tool_use' && c.name) tools.push(c.name);
+      if (c && c.type === 'tool_result' && typeof c.content === 'string' && /"ok"\s*:\s*false|"error"/.test(c.content)) failed = true;
+    }
+  }
+  await conversations.recordTurn({
+    sessionId,
+    userText: lastUser && typeof lastUser.content === 'string' ? lastUser.content : null,
+    clayText: out.reply,
+    status: out.status,
+    tools,
+    toolFailed: failed,
+  });
+}
+
 router.post('/chat', authenticate, [
   body('messages').isArray({ min: 1 }),
   body('concept_id').optional().isUUID(),
@@ -1654,6 +1684,9 @@ router.post('/chat', authenticate, [
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   const ctx = await buildChatContext(req);
   const out = await agent.runChat({ messages: req.body.messages, executors: buildExecutors(req.user), conceptContext: ctx.conceptContext, memoryContext: ctx.memoryContext, allowTools: ctx.allowTools, viewer: { role: req.user.role, name: req.user.name } });
+  // Record it. Never awaited into the response path in a way that could delay or break the answer —
+  // recordTurn swallows its own errors, because analytics must not cost someone the thing they came for.
+  recordConversation(req, out).catch(() => {});
   // Tell the client what happened this turn: a background rebuild it can watch, or a
   // synchronous concept change it should refresh (new asset versions have new ids).
   const outcome = chatOutcomeFromTranscript(out.messages);
@@ -1751,6 +1784,7 @@ router.post('/chat/stream', authenticate, [
       }
     }
 
+    recordConversation(req, out).catch(() => {});
     if (!closed) { send({ type: 'done', result: out }); }
   } catch (e) {
     console.error('chat stream error:', e && e.message);
@@ -2013,6 +2047,15 @@ router.post('/weekly-prompt/done', authenticate, asyncHandler(async (req, res) =
   if (!id) throw new ApiError(400, 'Which prompt? Include its id.');
   const ok = await proofPrompt.markDone(req.user.id, id);
   res.json({ ok });
+}));
+
+
+// DELETE /api/clay/history — a creator erasing their own conversations. Theirs to delete.
+router.delete('/history', authenticate, asyncHandler(async (req, res) => {
+  const out = await conversations.forgetMine(req.user.id);
+  if (!out.ok) throw new ApiError(500, 'Could not clear your history just now. Nothing was deleted.');
+  res.json({ ok: true, sessions_deleted: out.sessions_deleted,
+    message: `Deleted ${out.sessions_deleted} conversation${out.sessions_deleted === 1 ? '' : 's'}. They are gone, not hidden.` });
 }));
 
 module.exports = router;

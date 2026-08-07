@@ -195,6 +195,23 @@ if (require.main === module) {
   // Daily concept-expiry sweep: warn owners of quiet free concepts, then soft-expire the
   // ones that lapsed after being warned. Skipped in tests; a sweep error can't crash boot.
   if (process.env.NODE_ENV !== 'test') {
+    // The one useful message before the fade warning. Ordering matters: a person should hear
+    // "here is your next step" days before they ever hear "your dream is about to fade", or the
+    // only thing this platform has ever said to them is that their work is dying.
+    try {
+      const { runNudges } = require('./services/clay/nextStep');
+      setTimeout(() => {
+        runNudges({ quietDays: 3, limit: 25 })
+          .then((r) => console.log('next-step nudges:', JSON.stringify(r)))
+          .catch((e) => console.error('next-step nudges failed:', e && e.message));
+      }, 45000);
+      setInterval(() => {
+        runNudges({ quietDays: 3, limit: 25 })
+          .then((r) => console.log('next-step nudges:', JSON.stringify(r)))
+          .catch((e) => console.error('next-step nudges failed:', e && e.message));
+      }, 24 * 60 * 60 * 1000).unref();
+    } catch (e) { console.error('could not schedule next-step nudges:', e && e.message); }
+
     const { runExpirySweep } = require('./services/expiry');
     const DAY_MS = 24 * 60 * 60 * 1000;
     const sweep = () => runExpirySweep()

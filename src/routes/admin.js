@@ -116,4 +116,26 @@ router.post('/testing-mode', authenticate, authorize('staff', 'admin', 'master_s
     res.json({ billing_test: !!r.rows[0].billing_test });
   }));
 
+
+// GET /api/admin/where-people-stop — the question the platform could not answer.
+router.get('/where-people-stop', authenticate, authorize('staff', 'admin', 'master_staff'),
+  asyncHandler(async (req, res) => {
+    const conversations = require('../services/clay/conversations');
+    const nextStep = require('../services/clay/nextStep');
+    const [shape, waiting] = await Promise.all([
+      conversations.stopPoints({ days: Number(req.query.days) || 30 }),
+      nextStep.findStalled({ quietDays: 3, limit: 100 }),
+    ]);
+    // Deliberately NO message content. Staff see shape — how far in, what failed, which lane a
+    // project stalled in — never what somebody actually wrote.
+    res.json({
+      conversations: shape,
+      stalled_awaiting_nudge: waiting.length,
+      stalled_by_lane: waiting.reduce((acc, r) => {
+        const k = r.movement_state || 'needs_customer_clarity';
+        acc[k] = (acc[k] || 0) + 1; return acc;
+      }, {}),
+    });
+  }));
+
 module.exports = router;
