@@ -1,6 +1,7 @@
 const express = require('express');
 const { asyncHandler } = require('../lib/http');
 const deskCompose = require('../services/clay/deskCompose');
+const deskSeo = require('../services/clay/deskSeo');
 
 // Server-rendered PAGES for Clay's Desk pieces.
 //
@@ -121,6 +122,58 @@ router.get('/desk/:slug', asyncHandler(async (req, res) => {
   return res.type('html').send(articleHtml(a));
 }));
 
+// A plain page in the Desk's own styling. Written here rather than borrowed from another router,
+// because a shared helper that only exists in one file is exactly how a page 500s in production.
+function deskPage(title, description, bodyHtml, { noindex = false } = {}) {
+  const site = SITE();
+  return `<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>${esc(title)}</title>
+<meta name="description" content="${esc(description || '')}"/>
+${noindex ? '<meta name="robots" content="noindex, nofollow"/>' : `<link rel="canonical" href="${esc(site)}/desk"/>`}
+<link rel="stylesheet" href="/css/kiln.css"/>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar"><a class="brand" href="/">Access YP Labs</a>
+<nav class="top" aria-label="Primary"><a href="/desk">The Desk</a><a href="/weekly">Clay Weekly</a><a href="/marketplace.html">The Dream Market</a></nav>
+</div></header>
+<main id="main" class="wrap">${bodyHtml}</main>
+<footer class="site"><div class="wrap"><nav aria-label="Legal">
+<a href="/terms.html">Terms of Service</a> · <a href="/privacy.html">Privacy Policy</a> · <a href="/risk.html">Risk Disclosure</a>
+</nav></div></footer>
+</body></html>`;
+}
+
+// GET /desk/topic/:category — browse the Desk by subject.
+//
+// The Desk had 32 pieces and no way through them but reverse-chronological. Someone who arrives on
+// a pricing article from a search has no way to find the other pricing pieces, which is the moment
+// they are most likely to stay.
+router.get('/desk/topic/:category', asyncHandler(async (req, res) => {
+  const cat = String(req.params.category || '');
+  if (!deskSeo.isCategory(cat)) {
+    return res.status(404).type('html').send(deskPage('No such subject', '', `
+      <h1>No such subject</h1>
+      <p>That is not one of the Desk's subjects.</p>
+      <p><a href="/desk">Back to the Desk</a></p>`, { noindex: true }));
+  }
+  const meta = deskSeo.CATEGORIES.find((c) => c.slug === cat);
+  let list = [];
+  try { list = await deskSeo.byCategory(cat, 40); } catch (_) { list = []; }
+  const items = list.length
+    ? list.map((a) => `<li><a href="/desk/${a.slug}">${esc(a.title)}</a>${a.dek ? ' — ' + esc(a.dek) : ''}</li>`).join('\n')
+    : '<li>Nothing here yet. Clay is still writing on this one.</li>';
+  const body = `<h1>${esc(meta.label)}</h1>
+    <p>${esc(meta.blurb)}</p>
+    <nav aria-label="Desk subjects"><p>${deskSeo.CATEGORIES.map((c) =>
+      c.slug === cat ? `<strong>${esc(c.label)}</strong>` : `<a href="/desk/topic/${c.slug}">${esc(c.label)}</a>`
+    ).join(' · ')}</p></nav>
+    <ul>${items}</ul>
+    <p><a href="/desk">All of the Desk</a></p>`;
+  res.set('Cache-Control', 'public, max-age=300');
+  res.type('html').send(deskPage(`${meta.label} — Clay's Desk`, meta.blurb, body));
+}));
+
 // GET /sitemap.xml — generated, so every article Clay publishes is discoverable. Falls back to the
 // static core pages if the database is unreachable; never throws.
 router.get('/sitemap.xml', asyncHandler(async (req, res) => {
@@ -139,7 +192,13 @@ router.get('/sitemap.xml', asyncHandler(async (req, res) => {
   let issues = [];
   try { issues = await require('../services/clay/weekly').listPublished(200); } catch (_) { issues = []; }
 
-  const urls = core.concat([{ loc: `${site}/weekly`, priority: '0.8' }])
+  // Subject pages belong here too: they are real destinations, and they are what a search engine
+  // uses to understand that the Desk is about something rather than being a pile of posts. Nothing
+  // here is cached — the sitemap is generated on request, so anything Clay publishes, and every
+  // Clay Weekly issue that goes live, appears the moment it does.
+  const topics = deskSeo.CATEGORIES.map((c) => ({ loc: `${site}/desk/topic/${c.slug}`, priority: '0.7' }));
+
+  const urls = core.concat([{ loc: `${site}/weekly`, priority: '0.8' }]).concat(topics)
     .map((c) => `  <url><loc>${esc(c.loc)}</loc><priority>${c.priority}</priority></url>`)
     .concat(issues.map((i) => {
       const lastmod = i.published_at ? new Date(i.published_at).toISOString().slice(0, 10) : null;

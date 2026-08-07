@@ -20,6 +20,7 @@ const { query } = require('../config/db');
 const { asyncHandler } = require('../lib/http');
 const { authenticate, authorize } = require('../middleware/auth');
 const deskCompose = require('../services/clay/deskCompose');
+const deskSeo = require('../services/clay/deskSeo');
 
 // Friendly labels for the category enum tokens. Only ever shown for PUBLIC live listings.
 const CATEGORY_LABELS = {
@@ -118,6 +119,24 @@ router.post('/:id/archive', authenticate, authorize('master_staff'), asyncHandle
   const row = await deskCompose.archive(req.params.id);
   if (!row) return res.status(404).json({ error: 'No such piece.' });
   res.json({ ok: true, archived: row });
+}));
+
+
+// GET /api/desk/seo — what the Desk looks like to a search engine, and what is still uncovered.
+router.get('/seo', authenticate, authorize('staff', 'admin', 'master_staff'), asyncHandler(async (req, res) => {
+  const [categories, open] = await Promise.all([deskSeo.categoriesWithCounts(), deskSeo.openTargets(12)]);
+  const gaps = await query(
+    `SELECT COUNT(*) FILTER (WHERE image_url IS NULL)::int AS no_image,
+            COUNT(*) FILTER (WHERE meta_desc IS NULL OR meta_desc='')::int AS no_description,
+            COUNT(*)::int AS published
+       FROM desk_articles WHERE status='published'`);
+  res.json({ categories, uncovered_searches: open, gaps: gaps.rows[0] });
+}));
+
+// POST /api/desk/backfill — give older pieces a category, a description and a picture.
+router.post('/backfill', authenticate, authorize('master_staff'), asyncHandler(async (req, res) => {
+  const out = await deskSeo.backfill({ images: req.body.images !== false, limit: req.body.limit || 10 });
+  res.json(out);
 }));
 
 module.exports = router;

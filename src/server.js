@@ -7,7 +7,11 @@ const path = require('path');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
-app.set('trust proxy', true);
+// Railway puts exactly one proxy in front of us. 'true' trusts the WHOLE X-Forwarded-For chain,
+// which means anyone can append a fake address and appear to be a different client — trivially
+// defeating the per-IP rate limits, including the brute-force protection on sign-in. Trusting one
+// hop takes the address Railway actually set and ignores anything the caller added themselves.
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 const requiredConfig = ['DATABASE_URL', 'JWT_SECRET', 'REFRESH_TOKEN_SECRET', 'CLIENT_URL'];

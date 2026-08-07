@@ -10,6 +10,7 @@ const agent = require('./agent');
 const image = require('../image');
 const storage = require('../storage');
 const provider = require('./provider');
+const deskSeo = require('./deskSeo');
 
 // On-brand topic pools, so auto-drafted pieces vary instead of repeating. These are coaching
 // topics: real business and marketing strategy for two kinds of creator — someone shaping a new
@@ -95,25 +96,51 @@ function parsePiece(text) {
 }
 
 // Draft one Desk piece and file it for approval. Never publishes. Returns a plain result.
-async function composePiece({ kind = 'help', topic = null, source = 'manual' } = {}) {
+async function composePiece({ kind = 'help', topic = null, source = 'manual', category = null, keyword = null } = {}) {
   try {
     let up = true;
     try { up = provider.available(); } catch (_) { up = false; }
     if (!up) return { ok: false, reason: 'provider_down' };
 
     const k = kind === 'story' ? 'story' : 'help';
-    const t = topic || pickTopic(k);
-    const out = await agent.runChat({ messages: [{ role: 'user', content: buildComposePrompt(k, t) }], allowTools: [] });
+
+    // WRITE TOWARD SOMETHING PEOPLE ACTUALLY SEARCH. If no topic was handed in, take the next
+    // uncovered keyword target — the least-covered category first, so the Desk fills out evenly
+    // instead of going deep on one shelf. The keyword chooses the SUBJECT, never the content: Clay
+    // writes the true piece and is told not to repeat the phrase for its own sake.
+    let cat = category, kw = keyword, t = topic;
+    if (!t) {
+      if (!kw) {
+        try {
+          const open = await deskSeo.openTargets(1);
+          if (open.length) { kw = open[0].keyword; cat = cat || open[0].category; }
+        } catch (_) { /* targeting is a bonus; a piece without one is still worth writing */ }
+      }
+      t = kw
+        ? `${kw} — write the genuinely useful piece someone searching this needs, from what actually happens on Access YP Labs`
+        : pickTopic(k);
+    }
+    const kwLine = kw
+      ? `\n\nSomeone will find this by searching: "${kw}". Answer THAT question properly and early. `
+        + 'Use the words naturally where they belong and nowhere else — never repeat the phrase to game anything, '
+        + 'and never write something you do not believe in order to be found. A piece that earns a reader and then '
+        + 'wastes them is worse than one nobody finds.'
+      : '';
+    const out = await agent.runChat({ messages: [{ role: 'user', content: buildComposePrompt(k, t) + kwLine }], allowTools: [] });
     if (!out || out.status !== 'answered' || !out.reply) return { ok: false, reason: out && out.status ? out.status : 'no_reply' };
 
     const piece = parsePiece(out.reply);
     if (!piece) return { ok: false, reason: 'unparseable' };
 
     const r = await query(
-      `INSERT INTO desk_articles (kind, title, dek, body, topic, status, source, slug, meta_desc)
-       VALUES ($1,$2,$3,$4,$5,'draft','clay',$6,$7) RETURNING id`,
+      `INSERT INTO desk_articles (kind, title, dek, body, topic, status, source, slug, meta_desc, category, keywords)
+       VALUES ($1,$2,$3,$4,$5,'draft','clay',$6,$7,$8,$9) RETURNING id`,
       [k, piece.title.slice(0, 200), piece.dek.slice(0, 300), piece.body.slice(0, 20000), String(t).slice(0, 120),
-       await uniqueSlug(piece.title), metaDescription(piece.dek, piece.body)]);
+       await uniqueSlug(piece.title), metaDescription(piece.dek, piece.body),
+       // Always a real category, so nothing lands unbrowsable. 'starting-out' is the honest default
+       // for this Desk rather than a vague 'other' that tells a reader nothing.
+       deskSeo.isCategory(cat) ? cat : 'starting-out',
+       kw ? [kw] : []]);
     return { ok: true, id: r.rows[0].id, kind: k, title: piece.title, source };
   } catch (e) {
     return { ok: false, reason: 'error', error: e && e.message };
