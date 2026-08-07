@@ -15,6 +15,7 @@
 //      the facts, and a quiet week is reported as a quiet week.
 
 const { query } = require('../../config/db');
+const sections = require('./weeklySections');
 const crypto = require('crypto');
 const agent = require('./agent');
 const provider = require('./provider');
@@ -49,12 +50,16 @@ async function weekArticles(weekStart) {
 // Creators who put work into the Dream Market this week — the people to shout out.
 async function topCreators(weekStart) {
   const r = await query(
-    `SELECT u.id, COALESCE(NULLIF(u.name,''), 'A creator') AS name, count(*)::int AS listings
+    // THE DREAMER TAG, NEVER THE REAL NAME. This read u.name, so the magazine — which goes to every
+    // account and is posted publicly — was printing people's actual first and last names. The whole
+    // point of a dreamer tag is that it is the only name shown anywhere; a publication leaking real
+    // names is the single worst place for that rule to break.
+    `SELECT u.id, COALESCE(NULLIF(u.display_name,''), 'A creator') AS name, count(*)::int AS listings
        FROM listings l
        JOIN concepts c ON c.id = l.concept_id
        JOIN users u    ON u.id = c.owner_id
       WHERE l.created_at >= $1::date AND l.created_at < $1::date + interval '7 days'
-      GROUP BY u.id, u.name
+      GROUP BY u.id, u.display_name
       ORDER BY listings DESC, name ASC
       LIMIT 5`, [weekStart]);
   return r.rows;
@@ -64,7 +69,7 @@ async function topCreators(weekStart) {
 // percentage, and only what the ledger says.
 async function topMovers(weekStart) {
   const r = await query(
-    `SELECT COALESCE(NULLIF(u.name,''), 'A Dream Mover') AS name,
+    `SELECT COALESCE(NULLIF(u.display_name,''), 'A Dream Mover') AS name,
             m.slug,
             COALESCE(SUM(e.amount_cents),0)::int AS earned_cents,
             count(*)::int AS sales
@@ -72,7 +77,7 @@ async function topMovers(weekStart) {
        JOIN dream_movers m ON m.user_id = e.mover_id
        JOIN users u        ON u.id = e.mover_id
       WHERE e.created_at >= $1::date AND e.created_at < $1::date + interval '7 days'
-      GROUP BY u.name, m.slug
+      GROUP BY u.display_name, m.slug
       ORDER BY earned_cents DESC
       LIMIT 5`, [weekStart]);
   return r.rows;
@@ -122,6 +127,14 @@ ${facts}
 
 Two or three sentences that make someone want to read on. Confident, warm, with a little edge. If the week was quiet, say so honestly and make it charming rather than pretending it was busy. Plain prose, read aloud by screen readers: no markdown, no bullets, no emoji.
 
+WHAT THIS MAGAZINE BELIEVES, and you may say it in your own words whenever it fits:
+
+An idea nobody has built is treated by the rest of the world as worth precisely nothing. It is a daydream, a someday, the thing you mention at a party and then apologise for. Every serious institution has agreed on this without ever examining it: banks will not lend against it, investors will not look until it already works, and the entire business press writes about companies that made it — as if the interesting part were the end rather than the beginning.
+
+That is not a judgement about ideas. It is a failure of imagination, and a gap in the market so obvious it is almost funny that it was left sitting there. An unbuilt business that has been researched properly, costed honestly, and shaped into something someone else could pick up and run is an ASSET. It has value the moment it exists, not the moment it succeeds. We are simply the first people to treat it that way and write the price on the tag.
+
+You are allowed to be pointed and dry about the world's blind spot. You are NOT allowed to be smug, to sneer at any individual person or named company, or to exaggerate how busy this place is in order to land a joke. Mocking an absent institution is funny; mockery that needs our own numbers inflated is just a lie with a joke on top. When the week is thin, the honest version — 'small week, and here is what it is worth anyway' — is better than any boast.
+
 Return ONLY the paragraph.`;
 }
 
@@ -153,9 +166,15 @@ async function claySays(prompt, fallback) {
 // Build (or rebuild) this week's DRAFT issue. Never publishes, never emails.
 async function composeIssue({ weekStart } = {}) {
   const week = weekStart || weekStartOf(Date.now());
-  const [articles, creators, movers] = await Promise.all([
+  const [articles, creators, movers, best, dreamer, news] = await Promise.all([
     weekArticles(week), topCreators(week), topMovers(week),
+    // The recurring sections that make this a publication rather than a digest. Each fails soft:
+    // a section with nothing real behind it is left out, never filled with something invented.
+    sections.topArticles(week, 5).catch(() => []),
+    sections.topDreamer(week).catch(() => null),
+    sections.worldNews({ limit: 3 }).catch(() => ({ ok: false, items: [] })),
   ]);
+  const term = sections.termForWeek(week);
 
   // An accepted sponsorship to feature. It must not already belong to a DIFFERENT issue: once a
   // project has run as Project of the Week it is spent, otherwise the same creator would be
@@ -171,11 +190,15 @@ async function composeIssue({ weekStart } = {}) {
   const sponsored = acc.rows[0] || null;
 
   const facts = [
+    best.length ? `the five pieces worth reading are ${best.slice(0, 5).map((a) => a.title).join('; ')}` : null,
+    `the term explained this week is ${term.term} — ${term.short}`,
+    dreamer ? `the dreamer who kept turning up is ${dreamer.tag}, here on ${dreamer.days_here} days` : null,
+    (news && news.ok && news.items.length) ? `outside news worth noting: ${news.items.map((i) => i.title).join('; ')}` : null,
     `${articles.length} new piece${articles.length === 1 ? '' : 's'} on the Desk`,
     `${creators.length} creator${creators.length === 1 ? '' : 's'} put work into the Dream Market`,
     `${movers.length} Dream Mover${movers.length === 1 ? '' : 's'} earned from a sale`,
     sponsored ? `the sponsored project of the week is ${sponsored.title}` : 'no sponsored project this week',
-  ].join('; ');
+  ].filter(Boolean).join('; ');
 
   const intro = await claySays(issueIntroPrompt(facts),
     'Here is what moved this week at Access YP Labs.');
@@ -189,6 +212,13 @@ async function composeIssue({ weekStart } = {}) {
     article_ids: articles.map((a) => a.id),
     creators: creators.map((c) => ({ name: c.name, listings: c.listings })),
     movers: movers.map((m) => ({ name: m.name, slug: m.slug, earned_cents: m.earned_cents, sales: m.sales })),
+    // The publication sections, stored with the issue so what a reader sees is exactly what was
+    // approved — not re-computed at render time, when the week's numbers would already have moved.
+    best_reads: best.map((a) => ({ title: a.title, dek: a.dek, slug: a.slug, category: a.category,
+      from_earlier: !!a.from_earlier })),
+    term,
+    dreamer,
+    world_news: (news && news.ok) ? news.items : [],
   };
 
   const title = `Clay Weekly — week of ${week}`;

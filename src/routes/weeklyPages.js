@@ -57,6 +57,12 @@ function issueHtml(issue) {
   const h = issue.highlights || {};
   const creators = Array.isArray(h.creators) ? h.creators : [];
   const movers = Array.isArray(h.movers) ? h.movers : [];
+  // The publication sections, read from what was stored WITH the issue — so a reader sees exactly
+  // what was approved, not numbers recomputed after the week has moved on.
+  const best = Array.isArray(h.best_reads) ? h.best_reads : [];
+  const term = h.term || null;
+  const dreamer = h.dreamer || null;
+  const news = Array.isArray(h.world_news) ? h.world_news : [];
   const when = issue.published_at ? new Date(issue.published_at) : null;
 
   const jsonLd = {
@@ -81,6 +87,37 @@ function issueHtml(issue) {
         <h2 id="sponsored-h">Project of the Week</h2>
         <p><strong>${esc(issue.sponsored_title)}</strong> — featured with the creator's permission.</p>
         ${paras(issue.sponsored_blurb || issue.sponsored_brief)}
+      </section>` : ''}
+
+      ${best.length ? `
+      <section aria-labelledby="best-h">
+        <h2 id="best-h">Five worth your time</h2>
+        ${best.some((a) => a.from_earlier) ? '<p class="muted">A quiet week for new writing, so these are the best of what is already here.</p>' : ''}
+        <ol>
+          ${best.map((a) => `<li><a href="/desk/${encodeURIComponent(a.slug)}">${esc(a.title)}</a>${a.dek ? ' — ' + esc(a.dek) : ''}</li>`).join('\n          ')}
+        </ol>
+      </section>` : ''}
+
+      ${term ? `
+      <section aria-labelledby="term-h">
+        <h2 id="term-h">The term this week: ${esc(term.term)}</h2>
+        <p><strong>${esc(term.short)}</strong></p>
+        <p>${esc(term.long)}</p>
+      </section>` : ''}
+
+      ${dreamer ? `
+      <section aria-labelledby="dreamer-h">
+        <h2 id="dreamer-h">The dreamer who kept turning up</h2>
+        <p>${esc(dreamer.note)}</p>
+      </section>` : ''}
+
+      ${news.length ? `
+      <section aria-labelledby="news-h">
+        <h2 id="news-h">What changed out there</h2>
+        <p class="muted">Worth knowing if you run something very small. Every item links to where it came from.</p>
+        <ul>
+          ${news.map((n) => `<li><a href="${esc(n.url)}" rel="nofollow noopener" target="_blank">${esc(n.title)}</a>${n.note ? ' — ' + esc(n.note) : ''}</li>`).join('\n          ')}
+        </ul>
       </section>` : ''}
 
       ${(issue.articles && issue.articles.length) ? `
