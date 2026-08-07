@@ -70,7 +70,7 @@ async function persistResult(ownerId, result, { conceptId = null, mode, category
     let concept;
     if (conceptId) {
       const c = await client.query('SELECT * FROM concepts WHERE id=$1 AND owner_id=$2', [conceptId, ownerId]);
-      if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
+      if (!c.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
       concept = c.rows[0];
       // Refining is returning to the concept: reset its expiry clock and clear any warning.
       await client.query('UPDATE concepts SET last_opened_at=NOW(), expiry_reminded_at=NULL WHERE id=$1', [concept.id]);
@@ -556,7 +556,7 @@ router.post('/uploads', authenticate, [
   // If attaching to an existing concept, it must belong to the caller.
   if (conceptId) {
     const own = await query('SELECT 1 FROM concepts WHERE id=$1 AND owner_id=$2', [conceptId, req.user.id]);
-    if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+    if (!own.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   }
 
   const PER_FILE_BYTES = 6 * 1024 * 1024;   // 6 MB per file
@@ -799,7 +799,7 @@ router.get('/staff-notes', authenticate, authorize('staff', 'admin', 'master_sta
 // money_flow section with the computed numbers. Owner or staff. Additive: never touches the build.
 router.post('/concept/:id/economics', authenticate, asyncHandler(async (req, res) => {
   const c = await query('SELECT owner_id FROM concepts WHERE id=$1', [req.params.id]);
-  if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!c.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const isOwner = c.rows[0].owner_id === req.user.id;
   const isStaff = ['staff', 'admin', 'master_staff'].includes(req.user.role);
   if (!isOwner && !isStaff) throw new ApiError(403, 'This isn’t your concept.');
@@ -823,7 +823,7 @@ router.post('/concept/:id/economics', authenticate, asyncHandler(async (req, res
 // key is configured AND the OpenAI org is verified, it reports 'unavailable' and nothing is charged.
 router.post('/concept/:id/image', authenticate, asyncHandler(async (req, res) => {
   const c = await query('SELECT id, owner_id, title, category FROM concepts WHERE id=$1', [req.params.id]);
-  if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!c.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const concept = c.rows[0];
   const isOwner = concept.owner_id === req.user.id;
   const isStaff = ['staff', 'admin', 'master_staff'].includes(req.user.role);
@@ -848,7 +848,7 @@ router.post('/concept/:id/image', authenticate, asyncHandler(async (req, res) =>
 // remaining, purchased balance) plus the Extras packs on offer. Owner or staff.
 router.get('/concept/:id/images', authenticate, asyncHandler(async (req, res) => {
   const c = await query('SELECT id, owner_id FROM concepts WHERE id=$1', [req.params.id]);
-  if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!c.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const concept = c.rows[0];
   const isStaff = ['staff', 'admin', 'master_staff'].includes(req.user.role);
   if (concept.owner_id !== req.user.id && !isStaff) throw new ApiError(403, 'This isn’t your concept.');
@@ -862,7 +862,7 @@ router.post('/concept/:id/image-pack', authenticate, asyncHandler(async (req, re
   const pack = imageCredits.packById(String(req.body.pack_id || ''));
   if (!pack) throw new ApiError(400, 'Choose one of the Extras packs.');
   const c = await query('SELECT id, owner_id, title FROM concepts WHERE id=$1', [req.params.id]);
-  if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!c.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const concept = c.rows[0];
   const isStaff = ['staff', 'admin', 'master_staff'].includes(req.user.role);
   if (concept.owner_id !== req.user.id && !isStaff) throw new ApiError(403, 'This isn’t your concept.');
@@ -925,7 +925,7 @@ router.post('/social', authenticate, [
 
   const c = await query('SELECT id, title, category, risk_summary FROM concepts WHERE id=$1 AND owner_id=$2',
     [concept_id, req.user.id]);
-  if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!c.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const concept = c.rows[0];
 
   const t0 = Date.now();
@@ -968,7 +968,7 @@ router.post('/render-image', authenticate, [
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   const { concept_id, prompt } = req.body;
   const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, req.user.id]);
-  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!own.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
 
   const rendered = await image.renderImage({ prompt });
   if (rendered.status !== 'answered') {
@@ -1025,7 +1025,7 @@ function buildExecutors(user) {
     },
     get_concept: async ({ concept_id }) => {
       const c = await query('SELECT id, title, category, stage, risk_summary FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
-      if (!c.rows.length) return { error: 'Concept not found.' };
+      if (!c.rows.length) return { error: 'That project could not be found — it may have been removed, or it may not be yours.' };
       const a = await query("SELECT type, title, body FROM assets WHERE concept_id=$1 AND is_current=true ORDER BY created_at", [concept_id]);
       const ent = await conceptEntitlement(user, concept_id);
       const materials = redactLockedAssets(a.rows, !!ent.entitled).map((m) => ({
@@ -1228,7 +1228,7 @@ function buildExecutors(user) {
     },
     enhance_concept: async ({ concept_id, prompt }) => {
       const own = await query('SELECT id, title, category FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
-      if (!own.rows.length) return { status: 'error', message: 'Concept not found.' };
+      if (!own.rows.length) return { status: 'error', message: 'That project could not be found — it may have been removed, or it may not be yours.' };
       const a = await query("SELECT type, title, body FROM assets WHERE concept_id=$1 AND is_current=true ORDER BY created_at", [concept_id]);
       // Ground the refinement in the concept's OWN current content so Clay builds on what
       // already exists. Without this, enhance rebuilt from the bare instruction and
@@ -1247,14 +1247,14 @@ function buildExecutors(user) {
     },
     build_demo: async ({ concept_id }) => {
       const own = await query('SELECT id, title, category, risk_summary, owner_id FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
-      if (!own.rows.length) return { status: 'error', message: 'Concept not found.' };
+      if (!own.rows.length) return { status: 'error', message: 'That project could not be found — it may have been removed, or it may not be yours.' };
       const buildId = await createBuild(user.id, buildOpener(own.rows[0].title || 'your concept', 'On it — building a demo of'));
       runDemoBuild({ user, concept: own.rows[0], buildId })
         .catch(() => {});
       return { status: 'building', build_id: buildId, message: 'Building your interactive demo now — this takes a minute or two, and you can watch it happen.' };
     },
     add_product: async ({ concept_id, name, price, description, image_url, currency, kind, fulfillment_url }) => {
-      if (!(await query('SELECT 1 FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id])).rows.length) return { status: 'error', message: 'Concept not found.' };
+      if (!(await query('SELECT 1 FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id])).rows.length) return { status: 'error', message: 'That project could not be found — it may have been removed, or it may not be yours.' };
       const norm = store.normalizeProduct({ name, price, description, image_url, currency, kind, fulfillment_url });
       if (!norm.ok) return { status: 'error', message: norm.error };
       const p = norm.product;
@@ -1268,13 +1268,13 @@ function buildExecutors(user) {
         note: 'Added “' + row.name + '” (' + row.kind + ') at ' + priced + ' to the store. It shows as a Shop on the concept’s site once the site is published.' };
     },
     list_products: async ({ concept_id }) => {
-      if (!(await query('SELECT 1 FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id])).rows.length) return { status: 'error', message: 'Concept not found.' };
+      if (!(await query('SELECT 1 FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id])).rows.length) return { status: 'error', message: 'That project could not be found — it may have been removed, or it may not be yours.' };
       const r = await query('SELECT id, name, price_cents, currency, active, image_url FROM store_products WHERE concept_id=$1 ORDER BY sort_order, created_at', [concept_id]);
       return { count: r.rows.length,
         products: r.rows.map((p) => ({ product_id: p.id, name: p.name, price: store.formatPrice(p.price_cents, p.currency), active: p.active, has_image: !!p.image_url })) };
     },
     list_sales: async ({ concept_id }) => {
-      if (!(await query('SELECT 1 FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id])).rows.length) return { status: 'error', message: 'Concept not found.' };
+      if (!(await query('SELECT 1 FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id])).rows.length) return { status: 'error', message: 'That project could not be found — it may have been removed, or it may not be yours.' };
       const rows = (await query(
         `SELECT product_name, amount_cents, currency, status, buyer_email, paid_at, created_at
            FROM store_orders WHERE concept_id=$1 ORDER BY created_at DESC LIMIT 50`, [concept_id])).rows;
@@ -1336,7 +1336,7 @@ function buildExecutors(user) {
     },
     generate_social_content: async ({ concept_id, platforms, goal, count }) => {
       const c = await query('SELECT id,title,category,risk_summary FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
-      if (!c.rows.length) return { status: 'error', message: 'Concept not found.' };
+      if (!c.rows.length) return { status: 'error', message: 'That project could not be found — it may have been removed, or it may not be yours.' };
       const result = await clay.generateSocial({ concept: c.rows[0], platforms, goal, count: count || 6 });
       if (result.result_status !== 'answered') return { status: result.result_status, message: result.message };
       await persistResult(user.id, result, { conceptId: concept_id, mode: 'enhance', category: null, prompt: 'social:' + goal });
@@ -1354,7 +1354,7 @@ function buildExecutors(user) {
     },
     set_concept_path: async ({ concept_id, path, note }) => {
       const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
-      if (!own.rows.length) return { status: 'error', message: 'Concept not found.' };
+      if (!own.rows.length) return { status: 'error', message: 'That project could not be found — it may have been removed, or it may not be yours.' };
       const r = await intent.setIntent(concept_id, user.id, path, note, 'clay');
       if (!r.ok) return { status: 'error', message: r.reason === 'invalid_path' ? 'That isn\'t a valid path.' : 'Could not record the path.' };
       return { status: 'path_set', path: r.intent.path, label: r.intent.label, note: r.intent.note,
@@ -1364,7 +1364,7 @@ function buildExecutors(user) {
       const c = await query(
         'SELECT id, title, research_grounded, claims_verified, movement_state FROM concepts WHERE id=$1 AND owner_id=$2',
         [concept_id, user.id]);
-      if (!c.rows.length) return { status: 'error', message: 'Concept not found.' };
+      if (!c.rows.length) return { status: 'error', message: 'That project could not be found — it may have been removed, or it may not be yours.' };
       const a = await query('SELECT type, is_current, exclusive_locked FROM assets WHERE concept_id=$1', [concept_id]);
       const w = await query('SELECT COUNT(*)::int AS n FROM waitlist_signups WHERE concept_id=$1', [concept_id]);
       const val = valuation.assessValue({ concept: c.rows[0], assets: a.rows, waiting: w.rows[0].n });
@@ -1380,7 +1380,7 @@ function buildExecutors(user) {
     set_movement_state: async ({ concept_id, state, note }) => {
       if (!movement.isLane(state)) return { status: 'error', message: 'That isn\'t a valid movement lane.' };
       const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
-      if (!own.rows.length) return { status: 'error', message: 'Concept not found.' };
+      if (!own.rows.length) return { status: 'error', message: 'That project could not be found — it may have been removed, or it may not be yours.' };
       const noteVal = (typeof note === 'string' && note.trim()) ? note.trim().slice(0, 500) : null;
       await query(
         'UPDATE concepts SET movement_state=$3, movement_note=$4, movement_updated_at=NOW(), updated_at=NOW() WHERE id=$1 AND owner_id=$2',
@@ -1391,7 +1391,7 @@ function buildExecutors(user) {
     },
     set_launch_page: async ({ concept_id, headline, subhead, blurb, cta_label, theme, hero_image, publish }) => {
       const own = await query('SELECT id, title, launch_page FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
-      if (!own.rows.length) return { status: 'error', message: 'Concept not found.' };
+      if (!own.rows.length) return { status: 'error', message: 'That project could not be found — it may have been removed, or it may not be yours.' };
       const cur = own.rows[0].launch_page || {};
       const copy = launchPage.parseConfig({ ...cur, headline, subhead, blurb, cta_label, theme, hero_image });
       let enabled = !!cur.enabled;
@@ -1560,7 +1560,7 @@ function buildExecutors(user) {
 // the UI can present the choice. Owner (or staff) only.
 router.get('/concept/:id/path', authenticate, asyncHandler(async (req, res) => {
   const c = await query('SELECT owner_id FROM concepts WHERE id=$1', [req.params.id]);
-  if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!c.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const isOwner = c.rows[0].owner_id === req.user.id;
   const isStaff = ['staff', 'admin', 'master_staff'].includes(req.user.role);
   if (!isOwner && !isStaff) throw new ApiError(403, 'This isn’t your concept.');
@@ -1577,7 +1577,7 @@ router.post('/concept/:id/path', authenticate, [
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   const c = await query('SELECT owner_id FROM concepts WHERE id=$1', [req.params.id]);
-  if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!c.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   if (c.rows[0].owner_id !== req.user.id) throw new ApiError(403, 'This isn’t your concept.');
   const r = await intent.setIntent(req.params.id, req.user.id, req.body.path, req.body.note, 'user');
   if (!r.ok) throw new ApiError(400, r.reason === 'invalid_path' ? 'Choose one of the offered paths.' : 'Could not save your plan.');
@@ -1784,7 +1784,7 @@ router.post('/chat/confirm', authenticate, [
   }
   if (tool === 'remove_concept') {
     const r = await query('DELETE FROM concepts WHERE id=$1 AND owner_id=$2 RETURNING id', [params.concept_id, req.user.id]);
-    if (!r.rows.length) throw new ApiError(404, 'Concept not found.');
+    if (!r.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
     return res.json({ status: 'done', message: 'Concept deleted.' });
   }
   if (tool === 'clear_memory') {
@@ -1802,7 +1802,7 @@ router.post('/fix-demo', authenticate, [body('concept_id').isUUID()], asyncHandl
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   const { concept_id } = req.body;
   const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, req.user.id]);
-  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!own.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const d = await query(
     `SELECT id, type, title, body FROM assets WHERE concept_id=$1 AND is_current=true
      AND type IN ('html_demo','built_site') ORDER BY created_at DESC LIMIT 1`, [concept_id]);
@@ -1837,7 +1837,7 @@ router.post('/render-video', authenticate, [
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   const { concept_id, prompt } = req.body;
   const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, req.user.id]);
-  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!own.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const rendered = await video.renderVideo({ prompt });
   if (rendered.status !== 'answered') return res.status(200).json({ status: rendered.status, message: rendered.message });
   res.status(200).json({ status: 'answered', url: rendered.url, message: 'Video rendered.' });

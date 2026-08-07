@@ -1106,8 +1106,14 @@
   async function renderMyConcepts(container, prefetched) {
     let projects = prefetched;
     if (!projects) {
-      try { const r = await Kiln.api('/concepts'); concepts = (r && r.concepts) || []; } catch (_) { return; }
+      // The rename left this fetching into a variable called 'concepts' while everything below
+      // reads 'projects' — so whenever this ran WITHOUT a prefetched list it assigned to a stray
+      // global and then threw on projects.length. It only ever worked because the caller happened
+      // to pass the list in.
+      try { const r = await Kiln.api('/concepts'); projects = (r && (r.projects || r.concepts)) || []; }
+      catch (_) { return; }
     }
+    tuneIntro(projects.length);
     if (!projects.length) return;
     const panel = el('div', 'my-projects');
     panel.setAttribute('role', 'region');

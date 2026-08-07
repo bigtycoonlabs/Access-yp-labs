@@ -13,7 +13,7 @@ const router = express.Router();
 router.get('/concept/:conceptId', authenticate, asyncHandler(async (req, res) => {
   const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2',
     [req.params.conceptId, req.user.id]);
-  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!own.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const r = await query(
     'SELECT * FROM assets WHERE concept_id=$1 AND is_current=true ORDER BY created_at', [req.params.conceptId]);
   const ent = await conceptEntitlement(req.user, req.params.conceptId);
@@ -24,7 +24,7 @@ router.get('/concept/:conceptId', authenticate, asyncHandler(async (req, res) =>
 router.get('/concept/:conceptId/history', authenticate, asyncHandler(async (req, res) => {
   const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2',
     [req.params.conceptId, req.user.id]);
-  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!own.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const r = await query(
     `SELECT id, type, title, version, is_current, created_at FROM assets
      WHERE concept_id=$1 ORDER BY type, version DESC`, [req.params.conceptId]);
@@ -37,7 +37,7 @@ router.get('/concept/:conceptId/history', authenticate, asyncHandler(async (req,
 router.get('/concept/:conceptId/demo', authenticate, asyncHandler(async (req, res) => {
   const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2',
     [req.params.conceptId, req.user.id]);
-  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!own.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const r = await query(
     `SELECT id, title, body FROM assets WHERE concept_id=$1 AND is_current=true
      AND type IN ('html_demo','built_site') ORDER BY created_at DESC LIMIT 1`, [req.params.conceptId]);

@@ -87,7 +87,7 @@ router.post('/engagements', authenticate, [
   // someone else's concept, so a future "share concept with consultant" step can't leak it.
   if (concept_id) {
     const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, req.user.id]);
-    if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+    if (!own.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   }
   const r = await query(
     `INSERT INTO consultant_engagements (client_id, consultant_id, concept_id, state)

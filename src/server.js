@@ -165,6 +165,18 @@ app.get('*', (req, res) => {
 });
 
 app.use((err, req, res, next) => {
+  // A MALFORMED ID IS NOT A SERVER FAULT. Postgres rejects a bad uuid with 22P02, which surfaced
+  // as a 500 carrying the raw database message — 'invalid input syntax for type uuid: "not-a-uuid"'.
+  // Three things wrong with that: it blames us for a bad link, it tells a stranger what our database
+  // is made of, and it fires the 500 alarms for something entirely routine. A wrong id means the
+  // thing is not there, which is a 404, said in words a person can read.
+  if (err && err.code === '22P02') {
+    return res.status(404).json({ error: 'That link doesn’t point to anything here. It may be mistyped, or the thing it pointed to is gone.' });
+  }
+  // Likewise a value too long for its column: that is the person's input being too big, not a fault.
+  if (err && err.code === '22001') {
+    return res.status(400).json({ error: 'That was too long to save. Try something shorter.' });
+  }
   if (!err.status || err.status >= 500) console.error(err.stack || err);
   res.status(err.status || 500).json({
     error: (err.status && err.status < 500)

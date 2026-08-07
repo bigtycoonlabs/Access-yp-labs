@@ -100,7 +100,7 @@ router.post('/', authenticate, [
           completion_target, risk_disclosed, ownership_ack, auction_close_at } = req.body;
 
   const own = await query('SELECT id, is_operating, brief FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, req.user.id]);
-  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!own.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   if (own.rows[0].is_operating) {
     throw new ApiError(409, 'The Dream Market sells unlaunched ideas, not running businesses. This is marked as a business you already operate, so it can\u2019t be listed. Clay can still help you enhance it — or find a complementary dream to add to it.');
   }

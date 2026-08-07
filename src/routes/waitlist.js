@@ -83,7 +83,7 @@ router.get('/:conceptId/count', asyncHandler(async (req, res) => {
 router.get('/:conceptId', authenticate, asyncHandler(async (req, res) => {
   const conceptId = req.params.conceptId;
   const own = await query('SELECT 1 FROM concepts WHERE id=$1 AND owner_id=$2', [conceptId, req.user.id]);
-  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!own.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const rows = await query(
     `SELECT email, name, referred_by, created_at
      FROM waitlist_signups WHERE concept_id=$1 ORDER BY created_at DESC`, [conceptId]);
@@ -102,7 +102,7 @@ router.post('/:conceptId/launch', authenticate, asyncHandler(async (req, res) =>
   if (url && !/^https?:\/\//i.test(url)) throw new ApiError(400, 'The link must start with http:// or https://.');
 
   const own = await query('SELECT title FROM concepts WHERE id=$1 AND owner_id=$2', [conceptId, req.user.id]);
-  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!own.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
 
   // Claim the one-launch-per-concept slot atomically — a double-click or retry
   // can never blast the same list twice.

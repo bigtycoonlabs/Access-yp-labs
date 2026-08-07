@@ -156,7 +156,7 @@ router.post('/listings/:id/takedown', authenticate, authorize('staff', 'admin', 
 router.post('/concepts/:id/remove', authenticate, authorize('admin', 'master_staff'),
   asyncHandler(async (req, res) => {
     const r = await query('DELETE FROM concepts WHERE id=$1 RETURNING id', [req.params.id]);
-    if (!r.rows.length) throw new ApiError(404, 'Concept not found.');
+    if (!r.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
     await logEvent(req.user.id, 'concept', req.params.id, 'remove_concept', req.body.reason, req.body.notes);
     res.json({ ok: true });
   }));

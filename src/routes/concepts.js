@@ -75,7 +75,7 @@ router.post('/:id/assets', authenticate, [
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
-  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!own.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const { type, title } = req.body;
   const assetBody = req.body.body;
 
@@ -151,7 +151,7 @@ router.get('/unkept-summary', authenticate, asyncHandler(async (req, res) => {
 router.get('/:id/export', authenticate, asyncHandler(async (req, res) => {
   const ent = await conceptEntitlement(req.user, req.params.id);
   if (!ent.entitled) {
-    if (ent.reason === 'not_found') throw new ApiError(404, 'Concept not found.');
+    if (ent.reason === 'not_found') throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
     if (ent.reason === 'not_owner') throw new ApiError(403, 'This is not your concept.');
     return res.status(402).json(paywall(req.params.id));
   }
@@ -167,7 +167,7 @@ router.get('/:id/export', authenticate, asyncHandler(async (req, res) => {
 
 router.get('/:id', authenticate, asyncHandler(async (req, res) => {
   const c = await query('SELECT * FROM concepts WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
-  if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!c.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const ent = await conceptEntitlement(req.user, req.params.id);
   // A faded concept stays blocked ONLY for someone who hasn't kept it. An entitled owner can
   // always reach their own work — and opening it restores it (clears the faded flag), so
@@ -203,7 +203,7 @@ router.patch('/:id', authenticate, [
      WHERE id=$1 AND owner_id=$2 RETURNING *`,
     [req.params.id, req.user.id, title, stage, category, risk_summary,
      working_since || null, typeof show_working_since === 'boolean' ? show_working_since : null]);
-  if (!r.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!r.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   res.json({ concept: r.rows[0] });
 }));
 
@@ -213,7 +213,7 @@ router.get('/:id/value', authenticate, asyncHandler(async (req, res) => {
   const c = await query(
     'SELECT id, research_grounded, claims_verified, movement_state FROM concepts WHERE id=$1 AND owner_id=$2',
     [req.params.id, req.user.id]);
-  if (!c.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!c.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const a = await query('SELECT type, is_current, exclusive_locked FROM assets WHERE concept_id=$1', [req.params.id]);
   const w = await query('SELECT COUNT(*)::int AS n FROM waitlist_signups WHERE concept_id=$1', [req.params.id]);
   const val = valuation.assessValue({ concept: c.rows[0], assets: a.rows, waiting: w.rows[0].n });
@@ -230,7 +230,7 @@ router.get('/:id/value', authenticate, asyncHandler(async (req, res) => {
 // existing concept, not just new ones.
 router.post('/:id/brief', authenticate, asyncHandler(async (req, res) => {
   const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
-  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!own.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const b = await brief.ensureBriefFor(req.params.id);
   if (!b) {
     return res.json({ ok: false,
@@ -245,7 +245,7 @@ router.post('/:id/brief', authenticate, asyncHandler(async (req, res) => {
 // unpublishes without losing the copy.
 router.put('/:id/launch-page', authenticate, asyncHandler(async (req, res) => {
   const own = await query('SELECT id, title, launch_page FROM concepts WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
-  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!own.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const cur = own.rows[0].launch_page || {};
   const copy = launchPage.parseConfig({ ...cur, ...(req.body || {}) });
 
@@ -297,12 +297,12 @@ async function pageUrl(conceptId, page) {
 }
 
 router.get('/:id/pages', authenticate, asyncHandler(async (req, res) => {
-  if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'Concept not found.');
+  if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   res.json({ pages: await siteStore.listPages(req.params.id) });
 }));
 
 router.get('/:id/pages/:pageId', authenticate, asyncHandler(async (req, res) => {
-  if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'Concept not found.');
+  if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const r = await query(
     'SELECT id, slug, title, body, kind, nav_order, published, updated_at FROM site_pages WHERE concept_id=$1 AND id=$2 LIMIT 1',
     [req.params.id, req.params.pageId]);
@@ -313,7 +313,7 @@ router.get('/:id/pages/:pageId', authenticate, asyncHandler(async (req, res) => 
 // Export the whole site as one self-contained HTML file the owner can host anywhere — they own it.
 router.get('/:id/site/export', authenticate, asyncHandler(async (req, res) => {
   const own = await query('SELECT id, title, launch_page FROM concepts WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
-  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!own.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
 
   // Taking the site file away is part of the plan, alongside going live and taking payments.
   // Building it and previewing it are free — this is the door out, not the workshop.
@@ -334,7 +334,7 @@ router.get('/:id/site/export', authenticate, asyncHandler(async (req, res) => {
 // A creator can get an instant free address on our platform (a subdomain) or connect their own
 // domain via Cloudflare. All owner-scoped.
 router.get('/:id/domains', authenticate, asyncHandler(async (req, res) => {
-  if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'Concept not found.');
+  if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const lp = await query("SELECT launch_page->>'slug' AS slug, (launch_page->>'enabled') AS enabled FROM concepts WHERE id=$1", [req.params.id]);
   const published = !!(lp.rows[0] && lp.rows[0].enabled === 'true');
   const shareUrl = published && lp.rows[0].slug ? `${siteBase()}/p/${lp.rows[0].slug}` : null;
@@ -352,7 +352,7 @@ router.get('/:id/domains', authenticate, asyncHandler(async (req, res) => {
 // Reserve an instant subdomain — <label>.accessyplabs.com. The name is claimed at once; whether
 // the address actually resolves depends on web addresses being switched on. The /p/ link always works.
 router.post('/:id/domains/subdomain', authenticate, asyncHandler(async (req, res) => {
-  if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'Concept not found.');
+  if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const label = domains.normalizeLabel((req.body || {}).label);
   if (!domains.validLabel(label)) throw new ApiError(400, 'Pick a web address using letters, numbers, and hyphens — and not a reserved word.');
   const hostname = domains.subdomainHost(label);
@@ -370,7 +370,7 @@ router.post('/:id/domains/subdomain', authenticate, asyncHandler(async (req, res
 
 // Connect a creator's own domain via Cloudflare for SaaS.
 router.post('/:id/domains/custom', authenticate, asyncHandler(async (req, res) => {
-  if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'Concept not found.');
+  if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const hostname = domains.normalizeCustomHost((req.body || {}).hostname);
   if (!domains.validCustomHost(hostname)) throw new ApiError(400, 'Enter a domain like yourbusiness.com (no http, no path).');
   if (await domainStore.hostnameTaken(hostname)) throw new ApiError(409, 'That domain is already connected.');
@@ -406,7 +406,7 @@ router.delete('/:id/domains/:domainId', authenticate, asyncHandler(async (req, r
 }));
 
 router.post('/:id/pages', authenticate, asyncHandler(async (req, res) => {
-  if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'Concept not found.');
+  if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const b = req.body || {};
   if (!b.title || !String(b.title).trim()) throw new ApiError(400, 'A page title is required.');
   const page = await siteStore.addPage(req.params.id, req.user.id, { title: b.title, body: b.body, kind: b.kind, publish: b.publish === true });
@@ -414,7 +414,7 @@ router.post('/:id/pages', authenticate, asyncHandler(async (req, res) => {
 }));
 
 router.put('/:id/pages/:pageId', authenticate, asyncHandler(async (req, res) => {
-  if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'Concept not found.');
+  if (!(await siteStore.ownsConcept(req.params.id, req.user.id))) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const b = req.body || {};
   const page = await siteStore.editPage(req.params.id, req.params.pageId, {
     title: b.title, body: b.body,
@@ -432,13 +432,13 @@ router.put('/:id/movement', authenticate, asyncHandler(async (req, res) => {
     `UPDATE concepts SET movement_state=$3, movement_updated_at=NOW(), updated_at=NOW()
      WHERE id=$1 AND owner_id=$2 RETURNING id, movement_state, movement_updated_at`,
     [req.params.id, req.user.id, state]);
-  if (!r.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!r.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   res.json({ concept: r.rows[0] });
 }));
 
 router.delete('/:id', authenticate, asyncHandler(async (req, res) => {
   const r = await query('DELETE FROM concepts WHERE id=$1 AND owner_id=$2 RETURNING id', [req.params.id, req.user.id]);
-  if (!r.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!r.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   res.json({ ok: true });
 }));
 
@@ -447,7 +447,7 @@ router.delete('/:id', authenticate, asyncHandler(async (req, res) => {
 // address is collected at checkout). Prices are validated the same way Clay's tools validate them.
 router.get('/:id/products', authenticate, asyncHandler(async (req, res) => {
   const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
-  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!own.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const r = await query(
     'SELECT id, name, price_cents, currency, description, image_url, kind, fulfillment_url, active FROM store_products WHERE concept_id=$1 ORDER BY sort_order, created_at',
     [req.params.id]);
@@ -461,7 +461,7 @@ router.get('/:id/products', authenticate, asyncHandler(async (req, res) => {
 
 router.post('/:id/products', authenticate, asyncHandler(async (req, res) => {
   const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
-  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!own.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const norm = store.normalizeProduct(req.body || {});
   if (!norm.ok) throw new ApiError(400, norm.error);
   const p = norm.product;
@@ -503,7 +503,7 @@ router.delete('/:id/products/:productId', authenticate, asyncHandler(async (req,
 // pending/failed are shown but never counted as revenue).
 router.get('/:id/orders', authenticate, asyncHandler(async (req, res) => {
   const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
-  if (!own.rows.length) throw new ApiError(404, 'Concept not found.');
+  if (!own.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   const rows = (await query(
     `SELECT product_name, amount_cents, currency, status, buyer_email, created_at, paid_at
        FROM store_orders WHERE concept_id=$1 ORDER BY created_at DESC LIMIT 200`, [req.params.id])).rows;

@@ -26,7 +26,7 @@ router.post('/', authenticate, [
   if (plan === 'maker') {
     if (!conceptId) return res.status(400).json({ error: 'Maker is a per-concept plan — a concept is required.' });
     const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [conceptId, req.user.id]);
-    if (!own.rows.length) return res.status(404).json({ error: 'Concept not found.' });
+    if (!own.rows.length) return res.status(404).json({ error: 'That project could not be found — it may have been removed, or it may not be yours.' });
   } else {
     conceptId = null; // Sculptor covers everything.
   }
