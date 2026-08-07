@@ -50,7 +50,7 @@
   </div>
   <div id="result" role="alert" aria-live="assertive"></div>
 </main>
-<script src="/js/a11y.js?v=20260806l"></script><script src="/js/api.js?v=20260806l"></script><script src="/js/nav.js?v=20260806l"></script>
+<script src="/js/a11y.js?v=20260806m"></script><script src="/js/api.js?v=20260806m"></script><script src="/js/nav.js?v=20260806m"></script>
 <script>
 var gate=document.getElementById('gate'), box=document.getElementById('console'), result=document.getElementById('result');
 function el(t,c,x){var n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
@@ -110,6 +110,7 @@ async function loadCands(){
       lab.setAttribute('for','why-'+c.concept_id); d.appendChild(lab);
       var ta=document.createElement('textarea'); ta.id='why-'+c.concept_id; ta.rows=2; ta.maxLength=1000; d.appendChild(ta);
       var acts=el('p','acts');
+      if(i.status!=='draft') acts.appendChild(previewLink(i));
       var ask=el('button','btn','Ask this creator'); ask.type='button';
       ask.addEventListener('click', async function(){
         ask.disabled=true;
@@ -117,7 +118,9 @@ async function loadCands(){
           var out=await Kiln.api('/weekly/sponsor',{method:'POST',body:{concept_id:c.concept_id, reason:ta.value||undefined}});
           var m=out.sent
             ? 'Asked. Clay emailed the creator of '+(out.project||'that project')+'. They decide — nothing is featured until they say yes.'
-            : 'The offer was recorded, but the email did not send. Nobody has been told yet.';
+            : (out.self_owned
+                ? out.message
+                : 'The offer was recorded, but the email did not send. Nobody has been told yet.');
           d.appendChild(el('p','muted',m)); say(m,true);
           ask.remove();
         }catch(e){
@@ -139,6 +142,18 @@ async function loadCands(){
 function actBtn(label, cls, fn){ var b=el('button','btn'+(cls?' '+cls:''),label); b.type='button'; b.addEventListener('click',fn); return b; }
 
 async function loadIssues(){
+  // A link that opens the issue exactly as a reader would see it, at any stage. The token rides in
+  // the URL because this opens in a new tab, where our Authorization header cannot follow; the
+  // route still verifies it is a real staff token before showing anything.
+  function previewLink(i){
+    var tok=''; try{ tok=(Kiln.getTokens&&Kiln.getTokens().accessToken)||''; }catch(e){}
+    var a=el('a','btn secondary', i.status==='draft' ? 'Read the draft' : 'Read it');
+    a.href='/weekly/preview/'+encodeURIComponent(i.slug)+(tok?('?token='+encodeURIComponent(tok)):'');
+    a.target='_blank'; a.rel='noopener';
+    a.setAttribute('role','button');
+    return a;
+  }
+
   var status=document.getElementById('issuestatus'), wrap=document.getElementById('issues');
   wrap.innerHTML='';
   try{
@@ -159,8 +174,11 @@ async function loadIssues(){
       var acts=el('p','acts');
 
       if(i.status==='draft'){
-        // A draft has no public page yet, so say so rather than offering a link that 404s.
-        acts.appendChild(el('span','muted','Approve it to see the page.'));
+        // READ IT BEFORE YOU APPROVE IT. This used to say 'Approve it to see the page', which asked
+        // somebody to sign off on something they had no way of reading — the only reader was the
+        // published one, so approving was the only route to finding out what it said. The preview
+        // renders the issue exactly as a reader will get it, and emails nobody.
+        acts.appendChild(previewLink(i));
         acts.appendChild(actBtn('Approve this issue','',async function(){
           try{ await Kiln.api('/weekly/'+i.id+'/approve',{method:'POST'});
             say('Approved. It is not public yet — publishing is the next step.',true); loadIssues();

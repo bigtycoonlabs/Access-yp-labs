@@ -227,6 +227,26 @@ async function offerSponsorship({ conceptId, reason }) {
   if (!c.rows.length) return { ok: false, reason: 'not_found' };
   const row = c.rows[0];
 
+  // CLAY'S OWN PROJECTS NEED NOBODY'S PERMISSION. Consent exists to protect a real creator from
+  // being written about without agreeing to it. A project the platform seeded has no such creator —
+  // asking means emailing Clay to ask Clay, and then waiting for a reply that has to be clicked by
+  // hand before the issue can move. That is not a safeguard, it is a dead end in the workflow.
+  const isPlatformOwned = await query(
+    `SELECT 1 FROM concepts c JOIN users u ON u.id = c.owner_id
+      WHERE c.id = $1 AND (c.origin = 'clay_seed' OR u.email = 'clay@accessyplabs.com') LIMIT 1`,
+    [conceptId]);
+  if (isPlatformOwned.rows.length) {
+    const selfToken = crypto.randomBytes(24).toString('hex');
+    await query(
+      `INSERT INTO weekly_sponsorships (concept_id, user_id, token, reason, status, responded_at)
+       VALUES ($1,$2,$3,$4,'accepted',now())`,
+      [row.id, row.owner_id, selfToken, (reason || '').slice(0, 1000)]);
+    return {
+      ok: true, status: 'accepted', self_owned: true,
+      message: `${row.title} is one of Clay's own projects, so there is nobody to ask — it is featured straight away.`,
+    };
+  }
+
   const token = crypto.randomBytes(24).toString('hex');
   await query(
     `INSERT INTO weekly_sponsorships (concept_id, user_id, token, reason) VALUES ($1,$2,$3,$4)`,
@@ -351,24 +371,38 @@ async function unsubscribe(token) {
 
 // ---- reading ---------------------------------------------------------------------------------
 
-async function getPublished(slug) {
+// Read an issue by slug. `includeDrafts` is for STAFF PREVIEW only, and it is the whole reason this
+// parameter exists: without it the only way to read an issue was to publish it first, which meant
+// the one person who is supposed to approve it could not see what they were approving. Approving
+// something you cannot read is not approval.
+async function getBySlug(slug, { includeDrafts = false } = {}) {
   const r = await query(
     `SELECT w.*, c.title AS sponsored_title, c.brief AS sponsored_brief
        FROM weekly_issues w
        LEFT JOIN concepts c ON c.id = w.sponsored_concept_id
-      WHERE w.slug=$1 AND w.status='published'`, [String(slug || '').slice(0, 120)]);
+      WHERE w.slug=$1 AND ($2 = true OR w.status='published')`,
+    [String(slug || '').slice(0, 120), includeDrafts]);
   if (!r.rows.length) return null;
   const issue = r.rows[0];
   const ids = (issue.highlights && issue.highlights.article_ids) || [];
   issue.articles = [];
   if (ids.length) {
+    // A draft issue may reference Desk articles that are themselves still drafts. In preview we
+    // want to see them, so the person approving sees the real issue rather than a version with
+    // holes in it.
     const a = await query(
-      `SELECT id, title, dek, slug, image_url, image_alt FROM desk_articles
-        WHERE id = ANY($1::uuid[]) AND status='published'`, [ids]);
+      `SELECT id, title, dek, slug, image_url, image_alt, status FROM desk_articles
+        WHERE id = ANY($1::uuid[]) AND ($2 = true OR status='published')`, [ids, includeDrafts]);
     issue.articles = a.rows;
   }
   return issue;
 }
+
+// The public reader: published only, always.
+async function getPublished(slug) { return getBySlug(slug, { includeDrafts: false }); }
+
+// The staff preview: read an issue at any stage, exactly as a reader would see it.
+async function getForPreview(slug) { return getBySlug(slug, { includeDrafts: true }); }
 
 async function listPublished(limit = 20) {
   const r = await query(
@@ -430,6 +464,7 @@ async function tick() {
 }
 
 module.exports = {
+  getBySlug, getForPreview,
   tick, weekStartOf, slugForWeek, composeIssue, offerSponsorship, respondToSponsorship,
   approve, publish, sendIssue, unsubscribe, getPublished, listPublished, listForStaff,
   sponsorCandidates, weekArticles, topCreators, topMovers,

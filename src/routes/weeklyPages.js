@@ -1,6 +1,8 @@
 const express = require('express');
 const { asyncHandler } = require('../lib/http');
 const weekly = require('../services/clay/weekly');
+const jwt = require('jsonwebtoken');
+const { query } = require('../config/db');
 const watchActivity = require('../services/clay/watchActivity');
 
 // PUBLIC pages for Clay Weekly, rendered on the SERVER so search engines and link previews get real
@@ -175,6 +177,52 @@ router.get('/weekly/unsubscribe/:token', asyncHandler(async (req, res) => {
 router.post('/weekly/unsubscribe/:token', asyncHandler(async (req, res) => {
   await weekly.unsubscribe(req.params.token);
   res.status(200).send('unsubscribed');
+}));
+
+// Who is asking, and are they staff? These pages are public, so this reads a token only when one is
+// present and returns nothing otherwise. Never throws.
+async function staffViewer(req) {
+  try {
+    const h = req.headers.authorization || '';
+    let token = h.startsWith('Bearer ') ? h.slice(7) : null;
+    if (!token && req.query && req.query.token) token = String(req.query.token);
+    if (!token) return null;
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    if (!payload || !payload.id) return null;
+    const u = await query('SELECT role FROM users WHERE id=$1', [payload.id]);
+    const role = u.rows[0] && u.rows[0].role;
+    return ['staff', 'admin', 'master_staff'].includes(role) ? payload.id : null;
+  } catch (_) { return null; }
+}
+
+// GET /weekly/preview/:slug — read an issue BEFORE it is published. Staff only.
+//
+// This is the piece that was missing. The only reader was the published one, so the only way to see
+// an issue was to publish it — meaning the person whose job is to approve it had to make it public
+// first. Nobody should have to publish something in order to find out what it says.
+//
+// It renders through exactly the same function as the public page, so what you approve is what a
+// reader gets — not a summary of it, and not a different layout that might hide a problem.
+router.get('/weekly/preview/:slug', asyncHandler(async (req, res) => {
+  const viewer = await staffViewer(req);
+  if (!viewer) {
+    return res.status(404).type('html').send(shell('Not found', '<h1>Not found</h1>', { noindex: true }));
+  }
+  let issue = null;
+  try { issue = await weekly.getForPreview(req.params.slug); } catch (_) { issue = null; }
+  if (!issue) {
+    return res.status(404).type('html').send(shell("That issue isn't here", `
+      <h1>That issue isn't here</h1>
+      <p>No issue has that address. It may have been renamed.</p>
+      <p><a href="/weekly-admin.html">Back to the newsroom</a></p>`, { noindex: true }));
+  }
+  const banner = `<div style="background:rgba(184,166,255,.16);border:1px solid rgba(184,166,255,.4);
+      border-radius:10px;padding:14px 18px;margin:0 0 18px;">
+      <strong>Preview — ${issue.status}.</strong> This is exactly what a reader would see. Nobody has
+      been emailed. <a href="/weekly-admin.html">Back to the newsroom</a></div>`;
+  const html = issueHtml(issue).replace('<main', banner + '<main');
+  res.set('Cache-Control', 'no-store');
+  res.type('html').send(html);
 }));
 
 // GET /weekly/:slug — one issue.
