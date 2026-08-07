@@ -185,6 +185,10 @@
 
     start.addEventListener('click', function () {
       if (box.querySelector('.confirm-row')) return;
+      // Focus returns to the control that opened this. Removing it otherwise drops the user at
+      // the top of the document, losing their place.
+      var opener = document.activeElement;
+      var restore = function () { try { if (opener && opener.focus && document.contains(opener)) opener.focus(); } catch (e) {} };
       var row = el('div', 'confirm-row');
       row.setAttribute('role', 'group');
       row.setAttribute('aria-label', 'Confirm deleting this project');
@@ -197,7 +201,7 @@
       if (no.focus) no.focus();
 
       no.addEventListener('click', function () {
-        row.remove();
+        row.remove(); restore();
         announce('Okay \u2014 nothing was deleted.', true);
         if (start.focus) start.focus();
       });

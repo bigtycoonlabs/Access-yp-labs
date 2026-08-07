@@ -19,10 +19,11 @@
   <h1>Review queue</h1>
   <p class="muted">One queue for everyone — creators' submissions and Clay's seeded projects land here together, and Clay's are labelled so you know. Open a project to read everything it contains before you decide. Moderate on policy grounds only: a listing may never be rejected because it competes with another. You cannot rule on your own listing; the system recuses you automatically.</p>
   <div id="gate" role="status" aria-live="polite" class="muted">Checking your access…</div>
-  <div id="queue"></div>
+  <h2 id="queue-h">Waiting for review</h2>
+  <div id="queue" role="list" aria-labelledby="queue-h"></div>
   <div id="result" role="alert" aria-live="assertive"></div>
 </main>
-<script src="/js/a11y.js?v=20260806j"></script><script src="/js/api.js?v=20260806j"></script><script src="/js/nav.js?v=20260806j"></script>
+<script src="/js/a11y.js?v=20260806k"></script><script src="/js/api.js?v=20260806k"></script><script src="/js/nav.js?v=20260806k"></script>
 <script>
 const REASONS=[['missing_baseline','Missing baseline package'],['running_business','A business already running (we sell pre-proven projects)'],['fraud','Fraud or misrepresentation'],['missing_risk_disclosure','Risk not disclosed']];
 const gate=document.getElementById('gate'), queueEl=document.getElementById('queue'), result=document.getElementById('result');

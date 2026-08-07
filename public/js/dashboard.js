@@ -475,6 +475,24 @@
   // a person cares about.
   function confirmIn(row, question, yesLabel, fn) {
     if (row.querySelector('.confirm-row')) return;
+    // Put focus BACK when this closes, or dismissing it drops the user at the top of the document
+    // and they lose their place entirely.
+    //
+    // Remembering the button NODE is not enough here: the list re-renders, so that node is detached
+    // by the time we try to focus it and the attempt silently does nothing. Remember its LABEL and
+    // find whatever button now carries it; fall back to making the row itself focusable, so the
+    // person lands on the right listing either way.
+    const openerLabel = (document.activeElement && document.activeElement.textContent || '').trim();
+    const restore = () => {
+      try {
+        const again = openerLabel
+          ? [...row.querySelectorAll('button')].find((x) => (x.textContent || '').trim() === openerLabel)
+          : null;
+        if (again) { again.focus(); return; }
+        if (!row.hasAttribute('tabindex')) row.setAttribute('tabindex', '-1');
+        row.focus();
+      } catch (e) {}
+    };
     const box = el('div', 'confirm-row');
     box.setAttribute('role', 'group'); box.setAttribute('aria-label', question);
     box.appendChild(el('p', null, question));
@@ -482,10 +500,10 @@
     const no = el('button', 'btn secondary', 'No, leave it as it is'); no.type = 'button';
     yes.addEventListener('click', async () => {
       yes.disabled = true; no.disabled = true;
-      try { await fn(); box.remove(); }
+      try { await fn(); box.remove(); restore(); }
       catch (e) { announce(e.message || 'That did not go through.', true); yes.disabled = false; no.disabled = false; }
     });
-    no.addEventListener('click', () => { box.remove(); announce('Left as it is.', true); });
+    no.addEventListener('click', () => { box.remove(); restore(); announce('Left as it is.', true); });
     box.appendChild(yes); box.appendChild(no); row.appendChild(box);
     announce('Confirm required. ' + question, true);
     if (no.focus) no.focus();

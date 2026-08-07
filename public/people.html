@@ -33,12 +33,16 @@
       <p><button type="button" class="btn" id="search">Search</button>
       <button type="button" class="btn secondary" id="clear">Show everyone</button></p>
     </div>
+    <!-- The list needs a heading of its own. Without it, each person's h3 sits directly under the
+         h1 and someone navigating by heading hears a level jump with nothing explaining what the
+         list is. -->
+    <h2 id="list-h">Accounts</h2>
     <p id="count" role="status" aria-live="polite" class="muted">Loading…</p>
-    <div id="people"></div>
+    <div id="people" role="list" aria-labelledby="list-h"></div>
   </div>
   <div id="result" role="alert" aria-live="assertive"></div>
 </main>
-<script src="/js/a11y.js?v=20260806j"></script><script src="/js/api.js?v=20260806j"></script><script src="/js/nav.js?v=20260806j"></script>
+<script src="/js/a11y.js?v=20260806k"></script><script src="/js/api.js?v=20260806k"></script><script src="/js/nav.js?v=20260806k"></script>
 <script>
 var gate=document.getElementById('gate'), box=document.getElementById('console'), result=document.getElementById('result');
 function el(t,c,x){var n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
@@ -54,9 +58,14 @@ function confirmThen(host, question, confirmLabel, fn){
   if(host.querySelector('.confirm-row')) return;
   var row=el('div','confirm-row'); row.setAttribute('role','group'); row.setAttribute('aria-label',question);
   row.appendChild(el('p',null,question));
-  var yes=btn(confirmLabel,'',async function(){ yes.disabled=true; no.disabled=true; try{ await fn(); row.remove(); }
+  var yes=btn(confirmLabel,'',async function(){ yes.disabled=true; no.disabled=true; try{ await fn(); row.remove(); restore(); }
     catch(e){ say(e.message||'That did not go through.',true); yes.disabled=false; no.disabled=false; } });
-  var no=btn('No, leave it alone','secondary',function(){ row.remove(); say('Okay — nothing was changed.',true); });
+  var opener=document.activeElement;
+  var restore=function(){ try{ if(opener && opener.focus && document.contains(opener)) opener.focus(); }catch(e){} };
+  // Put focus BACK where it came from. Removing the confirmation without doing this drops the user
+  // at the top of the document — for a keyboard or screen reader user that means losing their place
+  // entirely and having to find the row again.
+  var no=btn('No, leave it alone','secondary',function(){ row.remove(); restore(); say('Okay — nothing was changed.',true); });
   row.appendChild(yes); row.appendChild(no); host.appendChild(row);
   announce('Confirm required. '+question, true);
   if(no.focus) no.focus();
@@ -70,7 +79,7 @@ async function load(q){
     var list=r.users||[];
     count.textContent = list.length + (list.length===1?' person':' people') + (q?(' matching “'+q+'”'):'') + '.';
     list.forEach(function(u){
-      var d=el('div','person');
+      var d=el('div','person'); d.setAttribute('role','listitem');
       d.appendChild(el('h3',null,(u.name||'(no name)')+(u.display_name?(' · '+u.display_name):'')));
 
       var flags=el('p');
