@@ -20,9 +20,21 @@
     <label class="check"><input type="checkbox" id="show_completed"/> Show my completed work publicly</label>
     <label class="check"><input type="checkbox" id="show_listings"/> Show my live listings publicly</label>
     <button type="button" class="btn" id="save">Save profile</button>
+
+  <!-- CONVERSATION HISTORY. The platform records what people say to Clay so we can see where the
+       product loses them, and it promises in writing that a creator can erase their own. That
+       promise had no button behind it — the endpoint existed and nothing called it, which is the
+       same shape as a refund nobody can trigger. -->
+  <section aria-labelledby="hist-h">
+    <h2 id="hist-h">Your conversations with Clay</h2>
+    <p>We keep your conversations so Clay remembers what you are working on, and so we can see where
+      the product is confusing. Staff cannot read them. You can delete them whenever you like.</p>
+    <p><button type="button" class="btn secondary" id="wipe">Delete my conversation history</button></p>
+    <p id="wipe-said" role="status" aria-live="polite" class="muted"></p>
+  </section>
   </div></div>
 </main>
-<script src="/js/a11y.js?v=20260807b"></script><script src="/js/api.js?v=20260807b"></script><script src="/js/nav.js?v=20260807b"></script>
+<script src="/js/a11y.js?v=20260807e"></script><script src="/js/api.js?v=20260807e"></script><script src="/js/nav.js?v=20260807e"></script>
 <script>
 if(!Kiln.isLoggedIn())location.replace('/login.html');
 const fb=document.getElementById('feedback');
@@ -50,6 +62,52 @@ document.getElementById('save').addEventListener('click',async()=>{
   }catch(e){show(e.message);}finally{btn.disabled=false;}
 });
 load();
+
+// Deleting your own conversations. Two steps, focus on the safe option, and focus returned when
+// dismissed — the same shape as every other irreversible action here.
+(function(){
+  var btn=document.getElementById('wipe'); if(!btn) return;
+  var said=document.getElementById('wipe-said');
+  btn.addEventListener('click', function(){
+    if(document.getElementById('wipe-confirm')) return;
+    var opener=document.activeElement;
+    var row=document.createElement('p'); row.id='wipe-confirm';
+    row.setAttribute('role','group');
+    row.setAttribute('aria-label','Delete your conversation history?');
+    var q=document.createElement('span');
+    q.textContent='Delete every conversation you have had with Clay? This cannot be undone. Your projects are not affected. ';
+    var yes=document.createElement('button'); yes.type='button'; yes.className='btn'; yes.textContent='Yes, delete them';
+    var no=document.createElement('button'); no.type='button'; no.className='btn secondary'; no.textContent='No, keep them';
+    // Return focus to the button that opened this. `opener` was document.activeElement at click
+    // time, which in a browser is reliable — but if anything has replaced that node since, fall
+    // back to the delete button itself rather than dropping the person at the top of the page,
+    // which is silent and disorienting for somebody listening.
+    function restore(){
+      try {
+        // document.activeElement is BODY when someone clicks with a mouse, and body.focus() does
+        // nothing — so trusting `opener` blindly drops the person at the top of the page, exactly
+        // the silent jump this is meant to prevent. Only honour it if it is genuinely focusable.
+        var ok = opener && opener.focus && document.contains(opener)
+          && /^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(opener.tagName || '');
+        var back = ok ? opener : document.getElementById('wipe');
+        if (back && back.focus) back.focus();
+      } catch(e) {}
+    }
+    yes.addEventListener('click', async function(){
+      yes.disabled=true; no.disabled=true; said.textContent='Deleting…';
+      try{
+        var d=await Kiln.api('/clay/history',{method:'DELETE'});
+        said.textContent=d.message||'Deleted.';
+      }catch(e){ said.textContent=(e&&e.message)||'That did not go through. Nothing was deleted.'; }
+      announce(said.textContent,true); row.remove(); restore();
+    });
+    no.addEventListener('click', function(){ row.remove(); restore(); said.textContent='Left as they are.'; announce(said.textContent,true); });
+    row.appendChild(q); row.appendChild(yes); row.appendChild(no);
+    btn.parentNode.parentNode.insertBefore(row, said);
+    announce('Confirm required. Delete every conversation you have had with Clay? This cannot be undone.', true);
+    no.focus();
+  });
+})();
 </script>
   <footer style="border-top:1px solid var(--line);color:var(--muted);font-size:15px;padding:22px 24px;text-align:center;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
     <nav aria-label="Legal">

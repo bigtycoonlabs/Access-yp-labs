@@ -7,6 +7,29 @@ const { CONSULT_FEE_CENTS, CONSULT_PLATFORM_CENTS, CONSULT_CONSULTANT_CENTS, CON
 const stripe = require('../services/stripe');
 const router = express.Router();
 
+
+// ---------------------------------------------------------------------------------------------
+// CONSULTANTS ARE RETIRED. LAUNCH PARTNERS REPLACED THEM.
+//
+// The pages were retired and the dashboard section removed, but these THIRTEEN endpoints stayed
+// live and reachable by anyone with an account — including POST /engagements/:id/pay, which opens a
+// real Stripe checkout for $150. A retired product with a working payment link is not a leftover,
+// it is a way to take somebody's money for something we no longer do and cannot deliver.
+//
+// Closed here at the router rather than by deleting each handler, so there is ONE place stating the
+// rule and no chance of missing one. The code below is left intact and unreachable: it documents an
+// arrangement real people were once part of, and consultant_engagements still holds their history.
+//
+// 410 Gone rather than 404, because these endpoints DID exist — a client that still calls one
+// deserves to be told it was withdrawn, not that it never was.
+const RETIRED = 'Paid consultant sessions are retired. Launch partners replaced them: people find '
+  + 'each other on the partner board, agree their own terms directly, and we take no fee and are not '
+  + 'party to the arrangement. Nothing has been charged.';
+
+router.use((req, res) => {
+  res.status(410).json({ ok: false, error: RETIRED, retired: true, replaced_by: '/partners.html' });
+});
+
 // Apply to become a consultant (application-gated; staff auto-enroll separately).
 router.post('/apply', authenticate, [
   body('entrepreneur_history').isString().notEmpty(),
