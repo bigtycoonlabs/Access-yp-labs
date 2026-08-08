@@ -45,7 +45,7 @@ test('BOTH ways of deleting a project use the same path', () => {
   assert.match(clay, /deleteProject\(req\.user\.id, params\.concept_id\)/);
   assert.ok(!/DELETE FROM concepts WHERE id=\$1 AND owner_id=\$2/.test(clay),
     'Clay no longer deletes directly');
-  assert.match(flat(lib), /A second copy is how the two paths quietly stop agreeing/i);
+  assert.match(flat(lib), /only one of them would ever have been fixed otherwise/i);
 });
 
 test('you still cannot delete a project that is not yours', () => {
