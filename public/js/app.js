@@ -618,7 +618,16 @@
   // ---- open an existing project to keep refining it ----
   async function loadConceptIntoWorkspace(id) {
     try {
-      const { concept, assets, entitled } = await Kiln.api('/concepts/' + id);
+      // THE SAME RENAME BUG AS renderMyConcepts, one function away. The API returns { concept },
+      // this destructured it as `concept`, and then every line below reads `project` — so the very
+      // next statement threw on an undefined variable and the project never opened. Clicking
+      // "Continue" on your own work did nothing at all, silently: no navigation, no error on
+      // screen, no materials. The projects panel I just restored led straight into this.
+      const res = await Kiln.api('/concepts/' + id);
+      const project = res.concept || res.project;
+      const assets = res.assets;
+      const entitled = res.entitled;
+      if (!project) throw new Error('That project could not be loaded.');
       currentConceptId = project.id;
       chatHistory = [];
       setEditingConcept(true); // refining an existing project — hide the create/enhance toggles

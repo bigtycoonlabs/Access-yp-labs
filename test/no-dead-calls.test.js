@@ -28,3 +28,22 @@ test('a returning creator still gets their project list rendered', () => {
   const beforeReturn = fn.slice(0, fn.indexOf('if (!projects.length) return;'));
   assert.ok(!/\btuneIntro\b/.test(beforeReturn.replace(/\/\/.*$/gm, '')), 'no dead call before the render');
 });
+
+test('clicking Continue actually opens the project', () => {
+  // The API returns { concept }; this destructured it as `concept` and then every line below read
+  // `project`, so the very next statement threw on an undefined variable. Clicking "Continue" on
+  // your own work did nothing at all — no navigation, no materials, and an error message saying the
+  // project could not be opened when nothing was wrong with it.
+  const fn = app.slice(app.indexOf('async function loadConceptIntoWorkspace'));
+  const head = fn.slice(0, fn.indexOf('renderConceptName'));
+  assert.match(head, /const project = res\.concept \|\| res\.project/);
+  assert.ok(!/const \{ concept, assets, entitled \}/.test(head), 'no mismatched destructure');
+  assert.match(head, /if \(!project\) throw new Error/);
+});
+
+test('the rename that caused it is gone from both places', () => {
+  // renderMyConcepts and loadConceptIntoWorkspace are one function apart and had the same bug: the
+  // panel I restored led straight into the broken loader.
+  const render = app.slice(app.indexOf('async function renderMyConcepts'), app.indexOf('function renderClaysTake'));
+  assert.ok(!/\bconcepts\.length\b/.test(render), 'render reads the same name it assigns');
+});
