@@ -1113,7 +1113,14 @@
       try { const r = await Kiln.api('/concepts'); projects = (r && (r.projects || r.concepts)) || []; }
       catch (_) { return; }
     }
-    tuneIntro(projects.length);
+    // tuneIntro() was called here and DEFINED NOWHERE. Because an undefined call throws, every line
+    // below it stopped executing — so the whole "Your projects — pick up where you left off" panel
+    // never rendered, and a returning creator opened the Laboratory to no sign of the work they had
+    // already done. Their projects were safe in the database and simply invisible on the one screen
+    // built to bring them back to it.
+    //
+    // Removed rather than reconstructed: nothing in the repo or its history defines it, so there is
+    // no behaviour to restore, and inventing one to satisfy a dead call would be guessing.
     if (!projects.length) return;
     const panel = el('div', 'my-projects');
     panel.setAttribute('role', 'region');
