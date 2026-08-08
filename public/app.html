@@ -66,15 +66,16 @@
       <button type="button" class="btn" id="send">Send to Clay</button>
     </div>
     <details class="composer-options">
-      <summary>More options — type of work, category, and files</summary>
-      <div class="modes" id="modes" role="group" aria-label="What would you like to do?">
-        <button type="button" class="btn mode-btn" id="mode-create" aria-pressed="true">Create a new project</button>
-        <button type="button" class="btn mode-btn" id="mode-enhance" aria-pressed="false">Enhance an idea or business</button>
-      </div>
-      <div id="operating-wrap" hidden style="margin:8px 0;">
+      <summary>More options — category, existing business, and files</summary>
+      <!-- The create/enhance toggle is gone. Clay reads which one you mean from what you write, and
+           he confirms before building anything either way — so choosing first was a step that
+           decided nothing. The one thing it carried that Clay cannot infer is whether the business
+           ALREADY EXISTS and you run it, because that changes whether it can be listed for sale. So
+           that stays, as a single checkbox that no longer depends on picking a mode first. -->
+      <div style="margin:8px 0;">
         <label style="display:flex;gap:10px;align-items:flex-start;">
           <input type="checkbox" id="operating" style="min-width:22px;min-height:22px;margin-top:2px;">
-          <span>This business already exists — I run it. Enhance my operation (it won’t be listed for sale in the Dream Market).</span>
+          <span>This business already exists and I run it — improve my operation rather than shaping something new. It won’t be listed for sale in the Dream Market.</span>
         </label>
       </div>
       <label for="category">Category <span class="muted">(optional — Clay can decide)</span></label>
@@ -106,5 +107,5 @@
       </nav>
     </footer>
 
-<script src="/js/a11y.js?v=20260806y"></script><script src="/js/api.js?v=20260806y"></script><script src="/js/clay-stream.js?v=20260806y"></script><script src="/js/nav.js?v=20260806y"></script><script src="/js/app.js?v=20260806y"></script>
+<script src="/js/a11y.js?v=20260806z"></script><script src="/js/api.js?v=20260806z"></script><script src="/js/clay-stream.js?v=20260806z"></script><script src="/js/nav.js?v=20260806z"></script><script src="/js/app.js?v=20260806z"></script>
 </body></html>

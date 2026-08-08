@@ -18,7 +18,7 @@
   const attachEl = document.getElementById('attach');
   const attachedEl = document.getElementById('attached');
   let pendingUploadIds = [];
-  let mode = 'create';
+  // mode is no longer a stored choice — currentMode() derives it when a build is sent.
   // The project we're actively working on. Once a project exists, the next message
   // refines THAT project (a new version) instead of spawning a fresh one. Cleared
   // by choosing "Create" or "Start a fresh project".
@@ -33,13 +33,14 @@
   const PREVIEW_TYPES = ['business_plan', 'marketing_strategy', 'html_demo', 'built_site'];
 
   // When you're refining an existing project there's no decision to make — hide the
-  // create/enhance toggles (and the "already running" checkbox). They come back when you
-  // start fresh, where the choice actually matters.
+  // the "already running" checkbox, which is meaningless once a project is open — you are refining
+  // that project, and whether some other business exists does not apply. It returns when you start
+  // fresh. The create/enhance toggles this also used to hide no longer exist; mode is inferred.
   function setEditingConcept(editing) {
-    const modes = document.getElementById('modes');
-    const opWrap = document.getElementById('operating-wrap');
-    if (modes) modes.hidden = !!editing;
-    if (editing && opWrap) opWrap.hidden = true;
+    const op = document.getElementById('operating');
+    const wrap = op && op.closest ? op.closest('div') : null;
+    if (wrap) wrap.hidden = !!editing;
+    if (editing && op) op.checked = false;
   }
 
   function goSignIn() {
@@ -307,21 +308,21 @@
     } catch (_) {}
   })();
 
-  // ---- mode toggle ----
-  function setMode(next) {
-    mode = next;
-    if (next === 'create' && currentConceptId) { currentConceptId = null; chatHistory = []; }
-    document.getElementById('mode-create').setAttribute('aria-pressed', String(next === 'create'));
-    document.getElementById('mode-enhance').setAttribute('aria-pressed', String(next === 'enhance'));
-    const opWrap = document.getElementById('operating-wrap');
-    if (opWrap) {
-      opWrap.hidden = next !== 'enhance';
-      if (next !== 'enhance') { const ob = document.getElementById('operating'); if (ob) ob.checked = false; }
-    }
-    announce(next === 'create' ? 'Create a new project selected.' : 'Enhance selected. You can mark this as a business you already run.');
+  // ---- mode, inferred rather than asked ----
+  //
+  // There used to be a Create / Enhance pair of buttons here. Clay already works out which one you
+  // mean from what you write, and he confirms before building anything either way — so picking one
+  // first was a step that decided nothing and made the person do his reading for him.
+  //
+  // What actually determines it: refining a project already open in the workspace is an enhance;
+  // saying you run the business already is an enhance; anything else is a create. All three are
+  // things we can see without asking.
+  function currentMode() {
+    if (currentConceptId) return 'enhance';
+    const op = document.getElementById('operating');
+    if (op && op.checked) return 'enhance';
+    return 'create';
   }
-  document.getElementById('mode-create').addEventListener('click', () => setMode('create'));
-  document.getElementById('mode-enhance').addEventListener('click', () => setMode('enhance'));
 
   // Let the person see and change the project's NAME — there was no way to rename a built
   // concept before. Uses the existing PATCH /concepts/:id endpoint.
@@ -811,10 +812,10 @@
       }
 
       const operatingEl = document.getElementById('operating');
-      const operating = mode === 'enhance' && !!(operatingEl && operatingEl.checked);
+      const operating = !!(operatingEl && operatingEl.checked);
       // confirmed: attaching files and pressing send IS the person's explicit go-ahead to build
       // from them. The server refuses any build that doesn't carry this, so nothing starts by surprise.
-      const body = { mode, category, prompt, operating, confirmed: true, concept_id: currentConceptId || undefined };
+      const body = { mode: currentMode(), category, prompt, operating, confirmed: true, concept_id: currentConceptId || undefined };
       if (pendingUploadIds.length) body.upload_ids = pendingUploadIds.slice();
       const data = await Kiln.api('/clay/generate', { method: 'POST', body });
       // Files were handed to this build; clear them so they aren't attached again. (They're
