@@ -20,6 +20,7 @@ const valuation = require('../services/clay/valuation');
 const brief = require('../services/clay/brief');
 const launchPage = require('../services/clay/launchPage');
 const store = require('../services/clay/store');
+const { deleteProject, CANCEL_FAILED_MESSAGE } = require('../lib/deleteProject');
 const crypto = require('crypto');
 
 // Every type generation can actually produce. This list had drifted behind the generator, so a
@@ -444,9 +445,13 @@ router.put('/:id/movement', authenticate, asyncHandler(async (req, res) => {
 }));
 
 router.delete('/:id', authenticate, asyncHandler(async (req, res) => {
-  const r = await query('DELETE FROM concepts WHERE id=$1 AND owner_id=$2 RETURNING id', [req.params.id, req.user.id]);
-  if (!r.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
-  res.json({ ok: true });
+  const out = await deleteProject(req.user.id, req.params.id);
+  if (!out.ok && out.reason === 'cancel_failed') throw new ApiError(502, CANCEL_FAILED_MESSAGE);
+  if (!out.ok) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
+  res.json({ ok: true, subscriptions_cancelled: out.cancelled,
+    message: out.cancelled
+      ? 'Project deleted, and the subscription attached to it has been cancelled — you will not be charged again for it.'
+      : 'Project deleted.' });
 }));
 
 // ---- Manual store management — a creator builds their own catalog, with or without Clay ----

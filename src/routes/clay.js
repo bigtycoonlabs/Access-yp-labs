@@ -18,6 +18,7 @@ const awareness = require('../services/clay/awareness');
 const siteAccess = require('../services/clay/siteAccess');
 const buildSpec = require('../services/clay/buildSpec');
 const conversations = require('../services/clay/conversations');
+const { deleteProject, CANCEL_FAILED_MESSAGE } = require('../lib/deleteProject');
 const siteQuota = require('../services/clay/siteQuota');
 const domains = require('../services/clay/domains');
 const domainStore = require('../services/clay/domainStore');
@@ -1817,9 +1818,15 @@ router.post('/chat/confirm', authenticate, [
       message: 'Opening the listing so you can complete the purchase.' });
   }
   if (tool === 'remove_concept') {
-    const r = await query('DELETE FROM concepts WHERE id=$1 AND owner_id=$2 RETURNING id', [params.concept_id, req.user.id]);
-    if (!r.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
-    return res.json({ status: 'done', message: 'Concept deleted.' });
+    // The same path the API uses, so Clay deleting a project cancels its billing too. Two copies of
+    // this is how one of them silently keeps charging people.
+    const out = await deleteProject(req.user.id, params.concept_id);
+    if (!out.ok && out.reason === 'cancel_failed') throw new ApiError(502, CANCEL_FAILED_MESSAGE);
+    if (!out.ok) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
+    return res.json({ status: 'done',
+      message: out.cancelled
+        ? 'Project deleted, and the subscription attached to it has been cancelled — you will not be charged again for it.'
+        : 'Project deleted.' });
   }
   if (tool === 'clear_memory') {
     const n = await memory.clearMemory(req.user.id);
