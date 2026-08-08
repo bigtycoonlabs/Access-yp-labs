@@ -31,6 +31,16 @@
       <div><label for="password">Password</label>
         <input id="password" type="password" autocomplete="current-password" required/></div>
       <button class="btn" id="submit" type="button">Sign in</button>
+
+      <!-- A locked-out person previously had no route back in, and this page did not even
+           acknowledge it was possible. Forgetting a password meant losing every project. -->
+      <p><a href="#" id="forgot-link">I have forgotten my password</a></p>
+      <div id="forgot" hidden>
+        <label for="forgot-email">Your email</label>
+        <input id="forgot-email" type="email" autocomplete="email"/>
+        <p><button type="button" class="btn secondary" id="forgot-go">Send me a reset link</button></p>
+        <p id="forgot-said" role="status" aria-live="polite" class="muted"></p>
+      </div>
     </div>
   </div>
   <p class="muted">New here? <a href="/register.html">Create an account</a>.</p>
@@ -53,6 +63,30 @@ async function submit(){
 document.getElementById('submit').addEventListener('click', submit);
 document.getElementById('password').addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
 if(new URLSearchParams(location.search).get('session')==='expired'){ show('Your session timed out. Please sign in again \u2014 your account and your work are safe.','ok'); }
+
+// Forgetting a password. The answer is deliberately identical whether or not the address has an
+// account — "no account found" would turn this into a way to discover who is registered here.
+(function(){
+  var link=document.getElementById('forgot-link'); if(!link) return;
+  var box=document.getElementById('forgot'), said=document.getElementById('forgot-said');
+  link.addEventListener('click', function(e){
+    e.preventDefault(); box.hidden=false; link.hidden=true;
+    var f=document.getElementById('forgot-email'), typed=document.getElementById('email');
+    if(typed && typed.value) f.value=typed.value;
+    if(f.focus) f.focus();
+    announce('Enter your email and we will send a reset link.', true);
+  });
+  document.getElementById('forgot-go').addEventListener('click', async function(){
+    var b=document.getElementById('forgot-go'); b.disabled=true; said.textContent='Sending…';
+    try{
+      var r=await fetch('/api/auth/forgot-password',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({email:document.getElementById('forgot-email').value})});
+      var d=await r.json();
+      said.textContent=d.message||'If there is an account for that address, a reset link is on its way.';
+    }catch(e){ said.textContent='Could not reach us just now. Please try again in a moment.'; }
+    announce(said.textContent, true); b.disabled=false;
+  });
+})();
 </script>
   <footer style="border-top:1px solid var(--line);color:var(--muted);font-size:15px;padding:22px 24px;text-align:center;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
     <nav aria-label="Legal">

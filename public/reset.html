@@ -1,0 +1,47 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Choose a new password — Access YP Labs</title>
+<link rel="stylesheet" href="/css/kiln.css"/>
+<meta name="robots" content="noindex, nofollow"/>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar"><a class="brand" href="/">Access YP Labs</a>
+<nav class="top" aria-label="Primary"></nav></div></header>
+<main id="main" class="wrap">
+  <h1>Choose a new password</h1>
+  <p class="muted">Eight characters or more. Using this link signs out any other sessions.</p>
+  <div>
+    <label for="pw">New password</label>
+    <input id="pw" type="password" autocomplete="new-password" required aria-describedby="pw-hint"/>
+    <p id="pw-hint" class="muted">At least eight characters.</p>
+  </div>
+  <p><button type="button" class="btn" id="go">Save my new password</button></p>
+  <p id="said" role="status" aria-live="polite"></p>
+  <p><a href="/login.html">Back to sign in</a></p>
+</main>
+<script src="/js/a11y.js?v=20260806t"></script><script src="/js/api.js?v=20260806t"></script><script src="/js/nav.js?v=20260806t"></script>
+<script>
+(function(){
+  var said=document.getElementById('said'), go=document.getElementById('go');
+  var token=new URLSearchParams(location.search).get('token')||'';
+  if(!token){
+    said.textContent='This page needs the link from your email. Ask for a new one from the sign-in page.';
+    go.disabled=true; return;
+  }
+  go.addEventListener('click', async function(){
+    var pw=document.getElementById('pw').value;
+    if(pw.length<8){ said.textContent='Passwords need at least eight characters.'; announce(said.textContent,true); return; }
+    go.disabled=true; said.textContent='Saving…';
+    try{
+      var r=await fetch('/api/auth/reset-password',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({token:token,password:pw})});
+      var d=await r.json();
+      said.textContent=d.message||d.error||'That did not work.';
+      announce(said.textContent,true);
+      if(d.ok) setTimeout(function(){ location.href='/login.html'; }, 2200);
+    }catch(e){ said.textContent='Could not reach us just now. Please try again in a moment.'; }
+    go.disabled=false;
+  });
+})();
+</script>
+</body></html>
