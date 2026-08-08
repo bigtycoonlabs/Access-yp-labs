@@ -6,6 +6,7 @@ const { asyncHandler, ApiError } = require('../lib/http');
 const { platformFeeCents, moverCommissionCents } = require('../lib/money');
 const { normalizeSlug } = require('../lib/movers');
 const stripe = require('../services/stripe');
+const { notifyStaff } = require('../services/clay/staffNotify');
 const watchActivity = require('../services/clay/watchActivity');
 const router = express.Router();
 
@@ -230,14 +231,34 @@ router.post('/:id/release', authenticate, asyncHandler(async (req, res) => {
     // Stop the seller's real Stripe billing for the concept they just sold. Post-commit and
     // best-effort: never hold a DB lock across an external call, and a Stripe hiccup here must
     // not undo a completed, paid transfer — it's logged for follow-up instead.
+    // "Logged for follow-up" is only true if somebody is actually told. A console line in a server
+    // log is not follow-up — nobody reads it, and the person affected is a SELLER who would keep
+    // being charged every month for a project they no longer own. They have no way to notice except
+    // their card statement, and no reason to suspect us.
     for (const s of sellerSub.rows) {
       if (!s.stripe_subscription_id) continue;
+      let failure = null;
       try {
         const c = await stripe.cancelSubscription(s.stripe_subscription_id);
-        if (!c.ok && c.reason !== 'stripe_not_configured') {
-          console.error('release: could not cancel seller Stripe sub', s.stripe_subscription_id, '-', c.reason);
-        }
-      } catch (e) { console.error('release: seller Stripe cancel error', s.stripe_subscription_id, '-', e && e.message); }
+        if (!c.ok && c.reason !== 'stripe_not_configured') failure = c.reason || 'unknown';
+      } catch (e) { failure = (e && e.message) || 'threw'; }
+
+      if (failure) {
+        console.error('release: could not cancel seller Stripe sub', s.stripe_subscription_id, '-', failure);
+        try {
+          await notifyStaff({
+            kind: 'seller_billing_not_stopped',
+            dedupeKey: 'seller-sub-' + s.stripe_subscription_id,
+            subject: 'A seller is still being billed for a project they sold',
+            body: `A project transferred to its buyer, but the seller's subscription for it could not `
+              + `be cancelled, so Stripe will keep charging them.\n\n`
+              + `Stripe subscription: ${s.stripe_subscription_id}\nReason: ${failure}\n\n`
+              + 'The sale itself completed correctly and the buyer owns the project — this is only the '
+              + 'billing. It needs cancelling by hand in Stripe, and the seller may be owed a refund '
+              + 'for anything charged since. They have no way to spot this except their card statement.',
+          });
+        } catch (e) { console.error('could not report the uncancelled seller sub:', e && e.message); }
+      }
     }
     res.json({ order: done.rows[0], transferred_concept: conceptId });
   } catch (e) {

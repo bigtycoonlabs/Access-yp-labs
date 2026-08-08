@@ -1,4 +1,5 @@
 const { query } = require('../config/db');
+const { notifyStaff } = require('../services/clay/staffNotify');
 const stripe = require('../services/stripe');
 const imageBudget = require('../services/clay/imageBudget');
 const { recordedPlanCents, CONSULT_FEE_CENTS, CONSULT_PLATFORM_CENTS, CONSULT_CONSULTANT_CENTS } = require('../lib/money');
@@ -23,7 +24,22 @@ async function stripeWebhook(req, res) {
   try {
     const dup = await query('SELECT id FROM stripe_events WHERE id=$1', [event.id]);
     if (dup.rows.length) return res.status(200).json({ received: true, duplicate: true });
-  } catch (e) { console.error('stripe_events check failed:', e.message); }
+  } catch (e) {
+    // The de-duplication READ failed, so we cannot tell whether this event was already handled.
+    // Processing continues, because refusing would drop a real payment — but a retry of something
+    // already processed is now possible, and that is worth a person knowing about.
+    console.error('stripe_events check failed:', e.message);
+    notifyStaff({
+      kind: 'webhook_dedupe_unavailable',
+      dedupeKey: 'webhook-dedupe-read-' + new Date().toISOString().slice(0, 13),
+      subject: 'Payment de-duplication could not be checked',
+      body: `A Stripe webhook arrived and we could not read the de-duplication table, so we cannot `
+        + `tell whether it had already been handled.\n\nEvent: ${event.id} (${event.type})\n`
+        + `Reason: ${e.message}\n\nIt was processed anyway, because refusing would drop a real `
+        + 'payment. If Stripe retries it, the same event could be processed twice — worth checking '
+        + 'this order or subscription by hand.',
+    }).catch(() => {});
+  }
 
   try {
     if (event.type === 'checkout.session.completed') {
@@ -102,7 +118,24 @@ async function stripeWebhook(req, res) {
   // Mark handled only after successful processing, so a failed handler is safely retried.
   try {
     await query('INSERT INTO stripe_events (id, event_type) VALUES ($1,$2) ON CONFLICT (id) DO NOTHING', [event.id, event.type]);
-  } catch (e) { console.error('stripe_events insert failed:', e.message); }
+  } catch (e) {
+    // WORSE THAN IT LOOKS. The event was processed successfully but NOT recorded, so Stripe's retry
+    // will find no duplicate and run the whole handler again — recording a subscription twice, or
+    // moving an order into escrow twice, for one real payment. Nothing downstream would notice,
+    // because each run looks correct on its own.
+    console.error('stripe_events insert failed:', e.message);
+    notifyStaff({
+      kind: 'webhook_not_recorded',
+      dedupeKey: 'webhook-insert-' + event.id,
+      subject: 'A payment event was handled but not recorded — it may be processed twice',
+      body: `A Stripe webhook was processed successfully, but writing it to the de-duplication table `
+        + `failed. Stripe retries unacknowledged events, and the retry will NOT be recognised as a `
+        + `duplicate.\n\nEvent: ${event.id} (${event.type})\nReason: ${e.message}\n\n`
+        + 'Nothing is wrong with the payment itself. The risk is that it gets applied a second time, '
+        + 'which nothing downstream would notice because each run looks correct on its own. Worth '
+        + 'checking the affected order or subscription for a duplicate.',
+    }).catch(() => {});
+  }
 
   res.json({ received: true });
 }
