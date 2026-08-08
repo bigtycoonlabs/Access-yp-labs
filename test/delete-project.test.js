@@ -7,9 +7,19 @@ const lib = fs.readFileSync(require.resolve('../src/lib/deleteProject.js'), 'utf
 const concepts = fs.readFileSync(require.resolve('../src/routes/concepts.js'), 'utf8');
 const clay = fs.readFileSync(require.resolve('../src/routes/clay.js'), 'utf8');
 
-test('deleting a project stops its billing', () => {
-  // subscriptions.concept_id has no foreign key, so a deleted project used to leave an ACTIVE
-  // subscription pointing at nothing while Stripe carried on charging for it.
+test('the $19 ACCOUNT plan is never cancelled by deleting a project', () => {
+  // The plan belongs to the account, not to a project. Someone can have twenty projects and delete
+  // nineteen; their subscription is untouched. `concept_id = $1` already excludes account-wide rows
+  // because NULL never equals a uuid — but relying on that is relying on a SQL subtlety to protect
+  // somebody's subscription, so the conditions say what is meant.
+  assert.match(lib, /AND concept_id IS NOT NULL/);
+  assert.match(lib, /AND plan <> 'builder'/);
+  assert.match(flat(lib), /the \$19 plan belongs to the ACCOUNT, not to a project/i);
+});
+
+test('a RETIRED per-project subscription still stops when its project goes', () => {
+  // The old $2.99 plan really did belong to one project. None are active in production, but if one
+  // is ever found, deleting its project must stop the charge rather than billing for nothing.
   assert.match(lib, /cancelSubscription/);
   assert.match(lib, /UPDATE subscriptions SET status='canceled'/);
 });

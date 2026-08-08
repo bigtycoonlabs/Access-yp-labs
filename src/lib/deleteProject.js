@@ -1,25 +1,42 @@
-// DELETING A PROJECT, INCLUDING THE MONEY ATTACHED TO IT.
+// DELETING A PROJECT.
 //
-// subscriptions.concept_id has no foreign key, so removing a project used to leave any per-project
-// subscription behind — still marked active, pointing at something that no longer exists — while
-// Stripe carried on charging for it. Someone deleting a project they had paid for would keep paying
-// monthly for nothing, with nothing on screen to explain it.
+// FIRST, THE THING THAT MATTERS MOST: the $19 plan belongs to the ACCOUNT, not to a project. Someone
+// on it can have twenty projects and delete nineteen; their subscription is untouched, because it
+// was never attached to any of them. Deleting a project must never cancel a person's plan, and the
+// query below is written so it structurally cannot.
+//
+// The only subscriptions this touches are the RETIRED per-project ones — the old $2.99 plan, where a
+// subscription really did belong to a single project. Those were grandfathered and cancelled, and
+// production currently has none active. This exists so that IF one is ever found, deleting its
+// project stops the charge rather than leaving Stripe billing for something that no longer exists.
+//
+// The guard is explicit rather than incidental. `concept_id = $1` already excludes account-wide rows,
+// because NULL never equals a uuid — but relying on that is relying on a SQL subtlety to protect
+// somebody's subscription. The conditions below say what is meant, so a future reader cannot
+// mistake this for per-project billing and neither can a future edit.
 //
 // This lives in one place because there are TWO ways to delete a project — the API and Clay's own
-// remove_concept tool — and only one of them would ever have been fixed otherwise. A second copy is
-// how the two paths quietly stop agreeing.
+// remove_concept tool — and only one of them would ever have been fixed otherwise.
 
 const { query } = require('../config/db');
 const stripe = require('../services/stripe');
 
 // Returns { ok, deleted, cancelled } or { ok:false, reason } — never throws for an expected case.
 async function deleteProject(userId, conceptId) {
+  // concept_id IS NOT NULL  ->  never an account-wide plan.
+  // plan <> 'builder'       ->  never the plan we actually sell.
   const subs = await query(
     `SELECT id, stripe_subscription_id FROM subscriptions
-      WHERE concept_id = $1 AND user_id = $2 AND status = 'active'`, [conceptId, userId]);
+      WHERE user_id = $2
+        AND status = 'active'
+        AND concept_id = $1
+        AND concept_id IS NOT NULL
+        AND plan <> 'builder'`,
+    [conceptId, userId]);
 
-  // Stop the billing BEFORE removing anything. Ordered this way on purpose: refusing the deletion
-  // and saying why is far better than removing someone's work and leaving the charge running.
+  // Stop a LEGACY per-project charge before removing anything. Ordered this way on purpose: refusing
+  // the deletion and saying why is far better than removing someone's work and leaving a charge
+  // running. In the normal case this loop does nothing at all, which is correct.
   for (const s of subs.rows) {
     if (s.stripe_subscription_id) {
       const out = await stripe.cancelSubscription(s.stripe_subscription_id);
