@@ -326,4 +326,29 @@ async function retrieveStoreSession({ sessionId, sellerAccountId }) {
   }
 }
 
-module.exports = { configured, constructEvent, createPlanCheckout, cancelSubscription, createConnectedAccount, createAccountLink, retrieveAccount, createEscrowCheckout, createConsultCheckout, createImagePackCheckout, createTransfer, ensureCardPayments, createStoreCheckout, retrieveStoreSession };
+
+// REFUND A PAYMENT. There was no way to do this at all, while the code told buyers "your payment
+// will be refunded" after a double-sale. Follows the same contract as everything else here: it
+// RESOLVES with { ok:false, reason } rather than throwing, so callers must read the result — a
+// refund that silently failed would be the worst possible version of this function.
+async function refundPayment({ paymentIntent, sessionId, reason = 'requested_by_customer' }) {
+  const s = stripe();
+  if (!s) return { ok: false, reason: 'stripe_not_configured' };
+  try {
+    let intent = paymentIntent;
+    // A checkout session is what we store at purchase; the payment intent hangs off it.
+    if (!intent && sessionId) {
+      const sess = await s.checkout.sessions.retrieve(sessionId);
+      intent = sess && (typeof sess.payment_intent === 'string' ? sess.payment_intent : (sess.payment_intent && sess.payment_intent.id));
+    }
+    if (!intent) return { ok: false, reason: 'no_payment_reference' };
+    const r = await s.refunds.create({ payment_intent: intent, reason });
+    return { ok: true, refundId: r.id, status: r.status };
+  } catch (err) {
+    return { ok: false, reason: 'stripe_error',
+      detail: (err && (err.code || err.type)) || 'unknown', message: err && err.message };
+  }
+}
+
+module.exports = {
+  refundPayment, configured, constructEvent, createPlanCheckout, cancelSubscription, createConnectedAccount, createAccountLink, retrieveAccount, createEscrowCheckout, createConsultCheckout, createImagePackCheckout, createTransfer, ensureCardPayments, createStoreCheckout, retrieveStoreSession };

@@ -98,6 +98,14 @@ router.post('/', authenticate, [
       cancelUrl: `${base}/orders/${order.id}?canceled=1`,
     });
   }
+
+  // Record the payment reference the moment it exists. Without it a refund is impossible — you
+  // cannot find the charge from the order, and reconstructing it from Stripe later by matching
+  // amounts and timestamps is guesswork with somebody's money.
+  if (checkout && checkout.ok && checkout.sessionId) {
+    await query('UPDATE orders_transfers SET stripe_session_id=$2 WHERE id=$1',
+      [order.id, checkout.sessionId]).catch((e) => console.error('could not store the checkout session:', e && e.message));
+  }
   res.status(201).json({ order, checkout });
 }));
 
@@ -145,7 +153,31 @@ router.post('/:id/release', authenticate, asyncHandler(async (req, res) => {
     // overwrite the first buyer's ownership. Refuse honestly; this order's payment is refunded
     // rather than double-selling the concept.
     if (l.rows[0].status === 'sold') {
-      throw new ApiError(409, 'This concept was already transferred to another buyer for this listing, so this order can’t be released. Your payment will be refunded — nothing was double-sold.');
+      // WE USED TO PROMISE A REFUND WE COULD NOT PERFORM. There was no refund function in the
+      // Stripe service and no payment reference on the order, so 'your payment will be refunded'
+      // was a sentence with nothing behind it — the buyer would have been left out of pocket and
+      // waiting. The refund is attempted here, and the message now says which actually happened.
+      let refunded = false;
+      let refundReason = null;
+      try {
+        const out = await stripe.refundPayment({
+          paymentIntent: order.stripe_payment_intent, sessionId: order.stripe_session_id,
+        });
+        refunded = !!out.ok;
+        refundReason = out.ok ? null : (out.reason || 'unknown');
+      } catch (e) { refundReason = (e && e.message) || 'threw'; }
+
+      // Recorded outside the transaction's success path, since the transaction is about to abort.
+      query('UPDATE orders_transfers SET refunded_at=$2, refund_reason=$3 WHERE id=$1',
+        [order.id, refunded ? new Date() : null, refunded ? 'double_sale' : ('refund_failed: ' + refundReason)])
+        .catch((e) => console.error('could not record the refund outcome:', e && e.message));
+
+      throw new ApiError(409, refunded
+        ? 'This project was already transferred to another buyer, so this order cannot be released. '
+          + 'Your payment has been refunded — nothing was double-sold.'
+        : 'This project was already transferred to another buyer, so this order cannot be released. '
+          + 'We could not process your refund automatically, so it has been flagged for a person to '
+          + 'handle — you have not lost your money and you do not need to chase it.');
     }
     const conceptId = l.rows[0].concept_id;
 
