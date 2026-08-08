@@ -48,6 +48,7 @@ test('a reset email that fails to send is reported', () => {
   // The person is told the same thing either way — revealing a send failure would reveal the account
   // exists — but a failure that leaves somebody locked out must not be invisible to us.
   assert.match(auth, /kind: 'password_reset_not_sent'/);
-  // The sentence wraps in the source, so flatten before matching it.
-  assert.match(flat(auth), /they are still locked out and have no way to know why/i);
+  // The sentence is split across a string concatenation, which no flattening will rejoin — assert
+  // on a contiguous fragment instead of a phrase that only exists once the code runs.
+  assert.match(auth, /so they are still locked/i);
 });
