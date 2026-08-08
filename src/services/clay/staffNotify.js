@@ -11,8 +11,30 @@
 const { query } = require('../../config/db');
 const { sendEmail } = require('../email');
 
-const DAILY_CAP = 6;      // Most team notes Clay can send in one day.
+const DAILY_CAP = 6;      // Most DISCRETIONARY team notes Clay can send in one day.
 const DEDUPE_HOURS = 20;  // Same dedupe_key won't resend within this window.
+
+// OPERATIONAL ALERTS ARE NOT SUBJECT TO THE DAILY CAP.
+//
+// The cap exists so Clay's own observations can never flood an inbox, and for that it is right. But
+// it was applied to EVERYTHING, so six chatty notes in a morning would silently swallow an alert
+// saying a seller is still being charged for a project they sold, or that a payment may have been
+// processed twice. Worse, a capped note was not even RECORDED — so the one thing that must never be
+// lost was the one thing that vanished without trace.
+//
+// These kinds are raised by the platform when something has actually gone wrong, not by Clay
+// deciding he has something to say. They are always delivered and always logged. There is no volume
+// of them that would be better suppressed: if fifty arrive in a day, fifty things are broken and
+// somebody needs to know that.
+const ALWAYS_DELIVER = new Set([
+  'seller_billing_not_stopped',   // someone is being charged for what they no longer own
+  'webhook_not_recorded',         // a payment may be applied twice
+  'webhook_dedupe_unavailable',   // we cannot tell whether a payment is a repeat
+  'auction_email_failed',         // a winner and a seller are waiting on news that already happened
+  'watch_delivery_failed',        // people who asked to be told are not being told
+  'seed_failed',                  // the platform stopped producing supply
+  'refund_failed',                // money owed to somebody has not gone back
+]);
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -30,9 +52,18 @@ async function notifyStaff({ kind = 'note', subject, body, dedupeKey = null } = 
         [dedupeKey, String(DEDUPE_HOURS)]);
       if (dup.rows.length) { out.skipped = 'deduped'; return out; }
     }
-    const today = await query(
-      "SELECT count(*)::int AS n FROM clay_staff_notes WHERE created_at >= date_trunc('day', now())");
-    if (today.rows[0].n >= DAILY_CAP) { out.skipped = 'daily_cap'; return out; }
+    // The cap counts and limits DISCRETIONARY notes only. An operational alert is never counted
+    // against it and never blocked by it — a broken payment does not become less broken because
+    // Clay had a talkative morning.
+    const urgent = ALWAYS_DELIVER.has(kind);
+    if (!urgent) {
+      const today = await query(
+        `SELECT count(*)::int AS n FROM clay_staff_notes
+          WHERE created_at >= date_trunc('day', now()) AND kind NOT IN (${
+            [...ALWAYS_DELIVER].map((_, i) => '$' + (i + 1)).join(',')})`,
+        [...ALWAYS_DELIVER]);
+      if (today.rows[0].n >= DAILY_CAP) { out.skipped = 'daily_cap'; return out; }
+    }
 
     const staff = (await query(
       "SELECT email FROM users WHERE role IN ('staff','admin','master_staff') AND status='active' AND email IS NOT NULL"))
