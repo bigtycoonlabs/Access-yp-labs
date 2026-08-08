@@ -66,7 +66,7 @@
       <button type="button" class="btn" id="send">Send to Clay</button>
     </div>
     <details class="composer-options">
-      <summary>More options — category, existing business, and files</summary>
+      <summary>More options — existing business and files</summary>
       <!-- The create/enhance toggle is gone. Clay reads which one you mean from what you write, and
            he confirms before building anything either way — so choosing first was a step that
            decided nothing. The one thing it carried that Clay cannot infer is whether the business
@@ -78,17 +78,13 @@
           <span>This business already exists and I run it — improve my operation rather than shaping something new. It won’t be listed for sale in the Dream Market.</span>
         </label>
       </div>
-      <label for="category">Category <span class="muted">(optional — Clay can decide)</span></label>
-      <select id="category">
-        <option value="">Let Clay decide</option>
-        <option value="digital_product_saas">Digital product / SaaS</option>
-        <option value="online_service_agency">Online service / agency</option>
-        <option value="content_creator">Content / creator</option>
-        <option value="ecommerce_pod">E-commerce / print-on-demand</option>
-        <option value="ai_product_service">AI product / service</option>
-        <option value="remote_hybrid_physical">Remote-operated hybrid</option>
-        <option value="micro_solo">Micro / solo</option>
-      </select>
+      <!-- Category is gone from the composer. It was already labelled "optional — Clay can decide",
+           and he does decide it, from the same sentence he reads everything else from. A control
+           whose own label admits it is unnecessary is a control that should not be occupying a
+           menu. Anyone who wants a different category can say so, or change it on the project.
+           The hidden input keeps the send path unchanged: it submits empty, which is exactly what
+           "Let Clay decide" always sent. -->
+      <input type="hidden" id="category" value=""/>
       <div class="attach-row" style="margin:8px 0;">
         <label for="attach">Attach files <span class="muted">(optional — code, images, graphics, or documents for Clay to use)</span></label>
         <input type="file" id="attach" multiple aria-describedby="attach-hint" style="min-height:44px;">
@@ -107,5 +103,5 @@
       </nav>
     </footer>
 
-<script src="/js/a11y.js?v=20260806z"></script><script src="/js/api.js?v=20260806z"></script><script src="/js/clay-stream.js?v=20260806z"></script><script src="/js/nav.js?v=20260806z"></script><script src="/js/app.js?v=20260806z"></script>
+<script src="/js/a11y.js?v=20260807b"></script><script src="/js/api.js?v=20260807b"></script><script src="/js/clay-stream.js?v=20260807b"></script><script src="/js/nav.js?v=20260807b"></script><script src="/js/app.js?v=20260807b"></script>
 </body></html>

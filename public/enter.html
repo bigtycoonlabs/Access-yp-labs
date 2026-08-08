@@ -53,10 +53,17 @@ button:focus-visible{outline:3px solid var(--glow);outline-offset:3px;}
   <button id="go">Drift into the Dream Market</button>
 </main>
 <div class="sr-only" role="status" aria-live="assertive" id="narr"></div>
-<script src="/js/api.js?v=20260806z"></script>
+<script src="/js/api.js?v=20260807b"></script>
 <script>
 // Account required before entering.
-try{ if(!localStorage.getItem('dreamhold_onboarded')){ location.replace('/dreamhold.html'); } }catch(e){}
+// THE TUNING GATE IS GONE. Reaching a listing used to mean marketplace -> enter -> dreamhold, with
+// seven category buttons and two Continues to get through before a single project was visible. The
+// lab already offers that same tuning, optionally, as one quiet line somebody can ignore — and the
+// code there says plainly that the door "made everyone answer these before they could go in" and
+// was replaced. It was not replaced; it was still standing here, first in the chain.
+//
+// Anyone who wants to tune the market can still do it from the lab or from their profile. Nobody
+// has to answer questions to look at what is for sale.
 
 var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 var go=document.getElementById('go'), line=document.getElementById('line'), narr=document.getElementById('narr');
