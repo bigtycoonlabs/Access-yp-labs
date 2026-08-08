@@ -52,3 +52,20 @@ test('you still cannot delete a project that is not yours', () => {
   assert.match(lib, /DELETE FROM concepts WHERE id=\$1 AND owner_id=\$2/);
   assert.match(lib, /reason: 'not_found'/);
 });
+
+test('a purchased project carries no expiry stamp', () => {
+  // Release used to set access_expires_at 30 days out on the same row it marked free_forever. Two
+  // rules disagreeing about one project is how somebody loses a thing they paid for.
+  const orders = fs.readFileSync(require.resolve('../src/routes/orders.js'), 'utf8');
+  assert.match(orders, /access_expires_at = NULL, expired_at = NULL/);
+  assert.ok(!/access_expires_at = now\(\) \+ interval '30 days'/.test(orders));
+  assert.match(orders, /UPDATE concepts SET free_forever = true/);
+});
+
+test('a project can only ever transfer to one buyer', () => {
+  // Two people CAN start checkout at once — deliberately, so a lapsed checkout cannot lock a
+  // listing forever. The race is settled at release, where the listing row is locked.
+  const orders = fs.readFileSync(require.resolve('../src/routes/orders.js'), 'utf8');
+  assert.match(orders, /SELECT concept_id, status FROM listings WHERE id=\$1 FOR UPDATE/);
+  assert.match(orders, /already transferred to another buyer/);
+});

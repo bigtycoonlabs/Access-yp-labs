@@ -151,9 +151,15 @@ router.post('/:id/release', authenticate, asyncHandler(async (req, res) => {
 
     // Clean transfer: buyer owns it, with the first month included; assets lock
     // as exclusive (they can't be resold without new work); listing marks sold.
+    // access_expires_at is cleared, not set. It used to stamp 30 days from purchase, which
+    // contradicts the line below marking the project free_forever — a buyer owns what they paid for
+    // permanently. Nothing fades it today, because the expiry sweep skips purchased and free_forever
+    // projects, so the stamp was harmless AND wrong: a landmine that only detonates if either of
+    // those two guards is ever reordered or removed. Two rules disagreeing about the same project is
+    // how someone loses a thing they paid for.
     await client.query(
       `UPDATE concepts SET owner_id=$2, origin='purchased',
-         access_expires_at = now() + interval '30 days', updated_at=NOW() WHERE id=$1`,
+         access_expires_at = NULL, expired_at = NULL, updated_at=NOW() WHERE id=$1`,
       [conceptId, order.buyer_id]);
     await client.query('UPDATE assets SET exclusive_locked=true, locked_at=now() WHERE concept_id=$1', [conceptId]);
     await client.query(`UPDATE listings SET status='sold', updated_at=NOW() WHERE id=$1`, [order.listing_id]);
