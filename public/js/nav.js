@@ -30,6 +30,22 @@
     if (here === href) a.setAttribute('aria-current', 'page');
     return a;
   }
+  // A LIST, NOT A RUN-ON SENTENCE. The links were appended with nothing between them, so a screen
+  // reader announced "LaboratoryDashboardThe Dream MarketDream MoverProfileSign out" as a single
+  // unbroken string — the first thing heard on every page of the platform. Marking the nav up as a
+  // real list makes each item a separate stop with a countable position, which is how someone
+  // listening navigates rather than guesses.
+  function asList(items) {
+    var ul = document.createElement('ul');
+    ul.className = 'nav-list';
+    items.forEach(function (node) {
+      var li = document.createElement('li');
+      li.appendChild(node);
+      ul.appendChild(li);
+    });
+    return ul;
+  }
+
   function tokens() {
     try { return JSON.parse(localStorage.getItem('kiln.tokens')) || {}; } catch (_) { return {}; }
   }
@@ -37,12 +53,6 @@
   nav.textContent = '';
 
   if (tokens().accessToken) {
-    nav.appendChild(link('/app.html', 'Laboratory'));
-    nav.appendChild(link('/dashboard.html', 'Dashboard'));
-    nav.appendChild(link('/marketplace.html', 'The Dream Market'));
-    nav.appendChild(link('/movers.html', 'Dream Mover'));
-    nav.appendChild(link('/profile.html', 'Profile'));
-
     var so = document.createElement('a');
     so.href = '#';
     so.id = 'signout';
@@ -52,23 +62,41 @@
       try { if (window.Kiln && Kiln.clearTokens) Kiln.clearTokens(); else localStorage.removeItem('kiln.tokens'); } catch (_) {}
       location.href = '/';
     });
-    nav.appendChild(so);
+    nav.appendChild(asList([
+      link('/app.html', 'Laboratory'),
+      link('/dashboard.html', 'Dashboard'),
+      link('/marketplace.html', 'The Dream Market'),
+      link('/movers.html', 'Dream Mover'),
+      link('/profile.html', 'Profile'),
+      so,
+    ]));
 
     // Reveal Staff for staff accounts — async, never blocks the menu rendering.
     if (window.Kiln && Kiln.api) {
       Kiln.api('/auth/me').then(function (r) {
         var role = r && r.user && r.user.role;
         if (['staff', 'admin', 'master_staff'].indexOf(role) !== -1) {
-          nav.insertBefore(link('/admin-overview.html', 'Staff'), document.getElementById('signout'));
+          // Insert into the LIST, wrapped in its own item — the links are list items now, so
+          // inserting into `nav` would put a bare anchor outside the list where a screen reader
+          // would not count it among the menu items.
+          var out = document.getElementById('signout');
+          var host = out && out.parentNode ? out.parentNode.parentNode : nav;
+          var li = document.createElement('li');
+          li.appendChild(link('/admin-overview.html', 'Staff'));
+          if (host && out && out.parentNode) host.insertBefore(li, out.parentNode);
+          else nav.appendChild(li);
         }
       }).catch(function () {});
     }
   } else {
-    nav.appendChild(link('/', 'Home'));
-    nav.appendChild(link('/marketplace.html', 'The Dream Market'));
-    nav.appendChild(link('/movers.html', 'Become a Dream Mover'));
-    nav.appendChild(link('/desk', 'The Desk'));
-    nav.appendChild(link('/login.html', 'Sign in'));
-    nav.appendChild(link('/register.html', 'Sign up'));
+    var out = [
+      link('/', 'Home'),
+      link('/marketplace.html', 'The Dream Market'),
+      link('/movers.html', 'Become a Dream Mover'),
+      link('/desk', 'The Desk'),
+      link('/login.html', 'Sign in'),
+      link('/register.html', 'Sign up'),
+    ];
+    nav.appendChild(asList(out));
   }
 })();

@@ -265,9 +265,19 @@
     // inside Clay's opening message. Render them into the dedicated area beneath the composer;
     // fall back to the message only if that container somehow isn't present.
     await renderMyConcepts(document.getElementById('my-projects-area') || m, myConcepts);
-    // Offer to tune the Dream Market from the lab — opt-in, never a gate. Skipped if they're
-    // already tuned, or arrived mid-flow with an idea already sitting in the box.
-    if (prefs && !prefs.onboarded && !(promptEl && promptEl.value)) maybeOfferTuning();
+    // TUNING IS NO LONGER AN INTERRUPTION ON ARRIVAL. It used to open a second Clay message with a
+    // paragraph and two buttons — a decision standing between somebody and the message box, before
+    // they had said a word. Opt-in was never the problem; being asked first was. It is now one quiet
+    // line inside the welcome that costs nothing to ignore, and the full thing opens on request.
+    if (prefs && !prefs.onboarded && !(promptEl && promptEl.value)) {
+      const offer = el('p', 'muted');
+      offer.appendChild(document.createTextNode('Whenever you like, I can tune the Dream Market to what you lean toward. '));
+      const a = el('button', 'linkish', 'Tune it to me');
+      a.type = 'button';
+      a.addEventListener('click', function () { offer.remove(); maybeOfferTuning(); });
+      offer.appendChild(a);
+      m.appendChild(offer);
+    }
 
     // Gentle, mutable reminder about projects built but not yet kept. Honest and
     // easy to silence — never shown to subscribers or staff (their count is 0).

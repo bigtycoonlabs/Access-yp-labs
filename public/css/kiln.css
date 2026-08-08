@@ -223,3 +223,14 @@ legend{font-weight:700;padding:0 6px;}
 /* The answer as it arrives. Hidden from screen readers on purpose: it is announced once, whole,
    when it is finished. Reserved min-height so the page does not jump with every group of words. */
 .clay-answer-stream{margin:8px 0;font-size:17px;line-height:1.6;min-height:1.6em;}
+
+/* The menu is a real list for screen readers; visually it stays a horizontal row of links, so
+   nothing about the look changes — only what someone listening hears. */
+nav.top .nav-list { list-style: none; display: flex; flex-wrap: wrap; gap: 1rem; margin: 0; padding: 0; }
+nav.top .nav-list > li { margin: 0; padding: 0; }
+
+/* A button that reads as a link: used where an offer should cost nothing to ignore. It is a real
+   button, not an anchor, because it performs an action rather than going somewhere. */
+.linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--link, #9db4ff);
+  text-decoration: underline; cursor: pointer; min-height: 44px; }
+.linkish:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
