@@ -114,9 +114,9 @@
   </section>
 </main>
 
-<script src="/js/a11y.js?v=20260807n"></script>
-<script src="/js/api.js?v=20260807n"></script>
-<script src="/js/nav.js?v=20260807n"></script>
+<script src="/js/a11y.js?v=20260807p"></script>
+<script src="/js/api.js?v=20260807p"></script>
+<script src="/js/nav.js?v=20260807p"></script>
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
@@ -380,13 +380,37 @@
 
       var save=el('button','btn','Save the listing'); save.type='button';
       save.addEventListener('click', async function(){
+        // An empty price box sends 0 and a non-numeric one sends NaN, and both come back as a
+        // validation error that reads like the title was wrong. Say what is actually wrong, here,
+        // before anything is sent.
+        var raw = String(pi.value || '').trim();
+        if (raw === '' || !isFinite(Number(raw))) {
+          said.textContent = 'Put a number in the price box — it is empty or not a number, so nothing was sent.';
+          announce(said.textContent, true); return;
+        }
+        if (Number(raw) < 10) {
+          said.textContent = 'The lowest a listing can be is $10. Nothing was sent.';
+          announce(said.textContent, true); return;
+        }
+        if (String(ti.value || '').trim().length < 3) {
+          said.textContent = 'A title needs at least three characters. Nothing was sent.';
+          announce(said.textContent, true); return;
+        }
+
         save.disabled=true; said.textContent='Saving…';
         try{
           var r=await Kiln.api('/seed-listings/'+l.id, { method:'PATCH', body:{
-            title: ti.value, price_cents: Math.round(Number(pi.value||0)*100),
+            title: String(ti.value).trim(), price_cents: Math.round(Number(raw)*100),
             risk_summary: si.value } });
           said.textContent=r.message||'Saved.';
-          sm.textContent=ti.value + ' — ' + l.status + ', $' + (Number(pi.value||0)).toFixed(2);
+          // Update what we hold, or a second save compares against stale values and reports
+          // "nothing was different" about a change that did happen.
+          if (r.changed) {
+            l.title = String(ti.value).trim();
+            l.price_cents = Math.round(Number(raw)*100);
+            l.risk_summary = si.value;
+          }
+          sm.textContent=l.title + ' — ' + l.status + ', $' + (l.price_cents/100).toFixed(2);
         }catch(e){ said.textContent=(e&&e.message)||'That did not save. Nothing changed.'; }
         announce(said.textContent, true); save.disabled=false;
       });

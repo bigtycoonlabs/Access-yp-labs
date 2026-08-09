@@ -94,3 +94,43 @@ test('the presentation builder uses the real provider interface', () => {
   assert.match(pres, /provider\.complete\(\{ system, user, json: true/);
   assert.match(pres, /!out\.ok/);
 });
+
+test('a refusal to save says what it compared', () => {
+  // "Nothing was different" is true but useless: it does not say WHAT was compared, so somebody who
+  // just typed a new title cannot tell whether the box was not read, the request never arrived, or
+  // the value genuinely matched. For a screen reader user that is the difference between "it
+  // ignored me" and "it saw the same words I did".
+  assert.match(routeSrc, /you sent "\$\{req\.body\.title\}", stored is/);
+  assert.match(routeSrc, /you sent \$\$\{\(req\.body\.price_cents \/ 100\)/);
+  assert.match(routeSrc, /no fields were sent at all/);
+});
+
+test('an empty or non-numeric price never leaves the page', () => {
+  // An empty price box sends 0 and a non-numeric one sends NaN, and both came back as a validation
+  // error that read like the TITLE was wrong.
+  const page = fs.readFileSync('public/console.html', 'utf8');
+  assert.match(page, /raw === '' \|\| !isFinite\(Number\(raw\)\)/);
+  assert.match(page, /it is empty or not a number, so nothing was sent/);
+  assert.match(page, /The lowest a listing can be is \$10/);
+});
+
+test('a saved listing updates what the page holds', () => {
+  // Otherwise a second edit compares against stale values and reports "nothing was different" about
+  // a change that did happen.
+  const page = fs.readFileSync('public/console.html', 'utf8');
+  assert.match(page, /if \(r\.changed\) \{/);
+  assert.match(page, /l\.price_cents = Math\.round\(Number\(raw\)\*100\)/);
+});
+
+test('staff can see and edit the landing page Clay wrote', () => {
+  // A landing page is only ever SERVED by hostname, and web addresses are not switched on — so Clay
+  // could report building one and nobody could ever look at it.
+  assert.match(routeSrc, /router\.get\('\/:id\/page'/);
+  assert.match(routeSrc, /router\.patch\('\/:id\/page'/);
+  assert.match(flat(routeSrc), /with no way to see it is exactly the kind of claim this platform is supposed not to make/i);
+});
+
+test('editing a page marks it as no longer Clay\'s', () => {
+  // So the rebuild button asks before replacing somebody's words instead of overwriting them.
+  assert.match(routeSrc, /page\.generated_by = 'edited_by_staff'/);
+});

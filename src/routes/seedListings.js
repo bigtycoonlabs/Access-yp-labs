@@ -27,7 +27,7 @@ const staffOnly = [authenticate, authorize('staff', 'admin', 'master_staff')];
 // Confirm the listing belongs to Clay before ANY change is considered.
 async function clayListing(id) {
   const r = await query(
-    `SELECT l.id, l.status, l.price_cents, l.format, l.concept_id,
+    `SELECT l.id, l.status, l.price_cents, l.format, l.stage_label, l.concept_id,
             c.title, c.origin, c.owner_id, u.email AS owner_email
        FROM listings l
        JOIN concepts c ON c.id = l.concept_id
@@ -113,7 +113,28 @@ router.patch('/:id', staffOnly, [
     changes.push(`stage: ${req.body.stage_label}`);
   }
 
-  if (!changes.length) return res.json({ ok: true, changed: false, message: 'Nothing was different, so nothing changed.' });
+  if (!changes.length) {
+    // "Nothing was different" is true but useless: it does not say WHAT was compared, so somebody
+    // who just typed a new title has no way to tell whether the box was not read, the request did
+    // not arrive, or the value genuinely matched. This reports both sides, which turns an
+    // unhelpful message into something diagnosable — and for somebody using a screen reader it is
+    // the difference between "it ignored me" and "it saw the same words I did".
+    const compared = [];
+    if (req.body.title !== undefined) compared.push(`title — you sent "${req.body.title}", stored is "${l.title}"`);
+    if (req.body.price_cents !== undefined) compared.push(`price — you sent $${(req.body.price_cents / 100).toFixed(2)}, stored is $${(l.price_cents / 100).toFixed(2)}`);
+    if (req.body.risk_summary !== undefined) compared.push('summary — what you sent matches what is stored');
+    if (req.body.stage_label !== undefined) compared.push(`stage — you sent ${req.body.stage_label}, stored is ${l.stage_label}`);
+
+    return res.json({
+      ok: true,
+      changed: false,
+      compared,
+      message: compared.length
+        ? 'Nothing saved because nothing was different. ' + compared.join('. ') + '.'
+        : 'Nothing saved because no fields were sent at all — the form did not reach us. Reload the '
+          + 'page and try once more; if it happens again that is a bug worth reporting.',
+    });
+  }
 
   // Recorded with a name on it. Platform-owned inventory being edited by the platform is fine and
   // normal — it being untraceable afterwards is not.

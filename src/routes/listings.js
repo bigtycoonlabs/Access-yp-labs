@@ -202,7 +202,18 @@ router.patch('/:id/story', authenticate, [
     await query('UPDATE concepts SET risk_summary=$2, updated_at=now() WHERE id=$1', [row.concept_id, req.body.summary]);
     changed.push('summary');
   }
-  if (!changed.length) return res.json({ ok: true, changed: false, message: 'Nothing was different, so nothing changed.' });
+  if (!changed.length) {
+    // Same reasoning as the staff route: say what was compared, so "nothing changed" can be told
+    // apart from "the form never reached us".
+    const sent = Object.keys(req.body || {}).filter((k) => ['title', 'summary'].includes(k));
+    return res.json({
+      ok: true, changed: false,
+      message: sent.length
+        ? 'Nothing saved because what you sent matches what is already stored (' + sent.join(' and ') + ').'
+        : 'Nothing saved because no fields arrived at all. Reload and try once more; if it happens '
+          + 'again that is a bug worth reporting.',
+    });
+  }
 
   res.json({ ok: true, changed: true, fields: changed,
     message: 'Updated. The change is live on your listing now — it does not need approving again.' });
