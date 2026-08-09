@@ -143,6 +143,73 @@
 
   // Compute REAL unit economics for this project (the platform does the math; Clay only estimates
   // the inputs). Shows the computed figures right here and upgrades the money section for next time.
+
+  // ---- What this is worth, and what would raise it ----------------------------------------------
+  //
+  // The platform tells people their idea has value. Until now it never told them HOW MUCH, or what
+  // adding one more piece would do to it — so "add a marketing strategy" was a chore with no visible
+  // payoff, and listing it for sale was a decision nobody had the information to make.
+  //
+  // Two rules this holds to, because a number attached to somebody's hopes is easy to abuse:
+  //   * It is a RANGE and it is called an asking range, never a valuation or an appraisal. We are
+  //     not appraising anything; we are describing what comparable packages list at.
+  //   * It never implies the thing will sell. Most listed things do not, and a platform that lets
+  //     somebody read a number as a promise has mis-sold them.
+  async function renderValue(conceptId){
+    const panel = document.getElementById('value-panel');
+    const body = document.getElementById('value-body');
+    if (!panel || !body) return;
+    let v;
+    try { v = await Kiln.api('/concepts/' + conceptId + '/value'); }
+    catch (e) {
+      // Silent rather than an error box: this is a helpful extra, and a project page that shouts
+      // about a failed sidebar is worse than one that quietly does without it.
+      return;
+    }
+    panel.hidden = false;
+    body.innerHTML = '';
+
+    body.appendChild(el('p', null, v.tier_label + '.'));
+
+    const range = el('p');
+    range.appendChild(el('strong', null, 'Asking range: $' + v.range_usd.low.toLocaleString()
+      + ' to $' + v.range_usd.high.toLocaleString()));
+    body.appendChild(range);
+    body.appendChild(el('p', 'muted',
+      'That is what packages at this stage list for — not a valuation, and not a promise that it '
+      + 'sells. Most listed projects do not.'));
+
+    if (v.drivers && v.drivers.length){
+      body.appendChild(el('h3', null, 'What it is built on'));
+      const ul = el('ul');
+      v.drivers.forEach(function(d){ ul.appendChild(el('li', null, d)); });
+      body.appendChild(ul);
+    }
+
+    if (v.to_raise && v.to_raise.length){
+      // The whole point of the panel. Somebody will not add a piece they do not know is worth
+      // adding, so the next step is named rather than left to be inferred from a low number.
+      body.appendChild(el('h3', null, 'What would raise it'));
+      const ul2 = el('ul');
+      v.to_raise.forEach(function(r){ ul2.appendChild(el('li', null, r)); });
+      body.appendChild(ul2);
+      const ask = el('p');
+      const a = el('button', 'btn secondary', 'Ask Clay to do the next one');
+      a.type = 'button';
+      a.addEventListener('click', function(){
+        // Hand Clay the specific next step rather than dropping somebody into an empty box.
+        location.href = '/app.html?project=' + encodeURIComponent(conceptId)
+          + '&ask=' + encodeURIComponent(v.to_raise[0]);
+      });
+      ask.appendChild(a);
+      body.appendChild(ask);
+    } else {
+      body.appendChild(el('p', null,
+        'This has everything that raises an asking range. The next move is a decision rather than '
+        + 'another piece: launch it yourself, or list it.'));
+    }
+  }
+
   async function computeEconomics(conceptId, btn) {
     if (btn) { btn.disabled = true; btn.textContent = 'Computing the real numbers…'; }
     announce('Computing the real unit economics. This can take a moment.');
@@ -616,6 +683,10 @@
         keepBox.appendChild(unlim);
         actionsEl.appendChild(keepBox);
       }
+
+      // Show what it is worth and what would raise it. Not awaited into the render path: a slow or
+      // failed valuation must never delay somebody seeing their own work.
+      renderValue(project.id).catch(function(){});
 
       announce('Your vault for ' + (project.title || 'your project') + '. ' + assets.length + ' section' + (assets.length === 1 ? '' : 's') + ' listed, each with View, Download, and Request an edit.', true);
       focusEl(titleEl);

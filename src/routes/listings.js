@@ -166,6 +166,48 @@ router.post('/:id/withdraw', authenticate, asyncHandler(async (req, res) => {
 // bids, so changing price/terms is safe. To change a live listing, the seller
 // withdraws it (back out of public) and relists; we never rewrite the terms of a
 // listing buyers may already be acting on.
+// PATCH /api/listings/:id/story — a creator editing what their listing SAYS.
+//
+// The existing edit route changes terms — price, format, stage — and touches the listings table
+// only. The words a buyer actually reads live on the project: the title, and the summary. So a
+// creator could change their price but not fix a typo in their own title, and the only way to
+// reword a listing was to withdraw it and start again.
+//
+// Separate from the terms route on purpose. Changing what something costs and changing what it says
+// are different acts with different consequences, and a buyer watching a listing should be able to
+// tell which happened.
+router.patch('/:id/story', authenticate, [
+  body('title').optional().isString().trim().isLength({ min: 3, max: 120 }),
+  body('summary').optional().isString().trim().isLength({ max: 2000 }),
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new ApiError(400, 'A title needs between 3 and 120 characters, and a summary can be up to 2000.');
+  }
+  const r = await query(
+    `SELECT l.id, l.concept_id, c.title, c.risk_summary
+       FROM listings l JOIN concepts c ON c.id = l.concept_id
+      WHERE l.id = $1 AND l.seller_id = $2`, [req.params.id, req.user.id]);
+  if (!r.rows.length) {
+    throw new ApiError(404, 'That listing could not be found, or it is not yours.');
+  }
+  const row = r.rows[0];
+
+  const changed = [];
+  if (req.body.title !== undefined && req.body.title !== row.title) {
+    await query('UPDATE concepts SET title=$2, updated_at=now() WHERE id=$1', [row.concept_id, req.body.title]);
+    changed.push('title');
+  }
+  if (req.body.summary !== undefined && req.body.summary !== row.risk_summary) {
+    await query('UPDATE concepts SET risk_summary=$2, updated_at=now() WHERE id=$1', [row.concept_id, req.body.summary]);
+    changed.push('summary');
+  }
+  if (!changed.length) return res.json({ ok: true, changed: false, message: 'Nothing was different, so nothing changed.' });
+
+  res.json({ ok: true, changed: true, fields: changed,
+    message: 'Updated. The change is live on your listing now — it does not need approving again.' });
+}));
+
 router.patch('/:id', authenticate, [
   body('format').optional().isIn(['flat', 'auction']),
   body('price_cents').optional().isInt({ min: PRICE_FLOOR_CENTS }).toInt(),
