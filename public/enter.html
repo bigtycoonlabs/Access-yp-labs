@@ -48,12 +48,15 @@ button:focus-visible{outline:3px solid var(--glow);outline-offset:3px;}
 <div class="bloom" aria-hidden="true"></div>
 <div class="motes" id="motes" aria-hidden="true"></div>
 <main class="stage" role="main">
-  <p class="kicker">Access YP Labs</p>
+  <!-- This was a paragraph styled to look like a title, so the page had NO heading — somebody
+       navigating by headings landed here and found nothing to orient by, on the one page standing
+       between them and the whole market. Visually identical; it is now a real heading. -->
+  <h1 class="kicker">Access YP Labs</h1>
   <p class="line show" id="line" aria-hidden="true">Below every waking marketplace, a sleeping one dreams.</p>
   <button id="go">Drift into the Dream Market</button>
 </main>
 <div class="sr-only" role="status" aria-live="assertive" id="narr"></div>
-<script src="/js/api.js?v=20260807i"></script>
+<script src="/js/api.js?v=20260807j"></script>
 <script>
 // Account required before entering.
 // THE TUNING GATE IS GONE. Reaching a listing used to mean marketplace -> enter -> dreamhold, with
