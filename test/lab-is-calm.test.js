@@ -18,10 +18,11 @@ test('the menu is a list, not one run-on word', () => {
   assert.ok(!/nav\.appendChild\(link\(/.test(nav), 'no bare link appended straight to the nav');
 });
 
-test('the Staff link joins the list rather than sitting outside it', () => {
+test('the staff link joins the list rather than sitting outside it', () => {
   // Inserting into `nav` would put a bare anchor outside the list, where a screen reader would not
-  // count it among the menu items.
-  assert.match(app.length ? nav : nav, /li\.appendChild\(link\('\/admin-overview\.html', 'Staff'\)\)/);
+  // count it among the menu items. The link now points at the Operations console rather than the
+  // old overview page, which was one of eight staff pages with no front door.
+  assert.match(nav, /li\.appendChild\(link\('\/console\.html', 'Operations'\)\)/);
 });
 
 test('nothing asks for a decision before the person has spoken', () => {

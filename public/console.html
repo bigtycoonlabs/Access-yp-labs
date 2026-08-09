@@ -1,0 +1,324 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Operations — Access YP Labs</title>
+<link rel="stylesheet" href="/css/kiln.css"/>
+<meta name="robots" content="noindex, nofollow"/>
+<style>
+  /* The console is dense by nature, so the styling does one job: make the hierarchy audible and
+     visible without adding decoration. Nothing here carries meaning by colour alone — every state
+     that matters is also stated in words, because both owners use a screen reader. */
+  .console-nav ul { list-style:none; display:flex; flex-wrap:wrap; gap:.75rem; margin:0 0 1.25rem; padding:0; }
+  .console-nav li { margin:0; }
+  .stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1rem; margin:0 0 1rem; }
+  .stat { border:1px solid var(--line,#2a2f45); border-radius:10px; padding:1rem; }
+  .stat .n { display:block; font-size:1.7rem; font-weight:700; line-height:1.2; }
+  .stat .lbl { display:block; font-size:.9rem; opacity:.85; margin-top:.25rem; }
+  .row { border:1px solid var(--line,#2a2f45); border-radius:10px; padding:.85rem 1rem; margin:0 0 .6rem; }
+  .row .top { display:flex; flex-wrap:wrap; gap:.6rem; align-items:baseline; justify-content:space-between; }
+  .waited { font-weight:700; }
+  .waited.long { text-decoration:underline; }
+  .section-fail { border:1px solid var(--warn,#a05a00); border-radius:10px; padding:1rem; margin:0 0 1rem; }
+</style>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs</a>
+  <nav class="top" aria-label="Primary"></nav>
+</div></header>
+
+<main id="main" class="wrap">
+  <h1>Operations</h1>
+  <p class="muted" id="asof">Loading the business…</p>
+
+  <!-- Jump links rather than tabs. Tabs hide things, and the whole point of this page is that
+       nothing about the business is hidden behind a click you have to know to make. -->
+  <nav class="console-nav" aria-label="Sections">
+    <ul>
+      <li><a href="#now">What needs me</a></li>
+      <li><a href="#business">The business</a></li>
+      <li><a href="#growth">Growth</a></li>
+      <li><a href="#people">People</a></li>
+      <li><a href="#clay">Clay</a></li>
+      <li><a href="#listings">Clay's listings</a></li>
+    </ul>
+  </nav>
+
+  <div id="live" role="status" aria-live="polite" class="muted"></div>
+
+  <section aria-labelledby="now-h" id="now">
+    <h2 id="now-h">What needs me right now</h2>
+    <div id="now-body"><p class="muted">Loading…</p></div>
+  </section>
+
+  <section aria-labelledby="business-h" id="business">
+    <h2 id="business-h">The business</h2>
+    <div id="business-body"><p class="muted">Loading…</p></div>
+  </section>
+
+  <section aria-labelledby="growth-h" id="growth">
+    <h2 id="growth-h">Growth — is anyone arriving?</h2>
+    <div id="growth-body"><p class="muted">Loading…</p></div>
+  </section>
+
+  <section aria-labelledby="people-h" id="people">
+    <h2 id="people-h">People</h2>
+    <div id="people-body"><p class="muted">Loading…</p></div>
+  </section>
+
+  <section aria-labelledby="clay-h" id="clay">
+    <h2 id="clay-h">Clay — is he working?</h2>
+    <div id="clay-body"><p class="muted">Loading…</p></div>
+  </section>
+
+  <section aria-labelledby="listings-h" id="listings">
+    <h2 id="listings-h">Clay's listings</h2>
+    <p class="muted">These are the platform's own seeded projects. You can edit their title, price and
+      stage, and have Clay build a landing page and prototype. A creator's listing is their work — you
+      can approve, reject or take it down, but not rewrite it.</p>
+    <div id="listings-body"><p class="muted">Loading…</p></div>
+  </section>
+</main>
+
+<script src="/js/a11y.js?v=20260807f"></script>
+<script src="/js/api.js?v=20260807f"></script>
+<script src="/js/nav.js?v=20260807f"></script>
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  function el(tag, cls, text){ var e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
+  function money(cents){ return '$' + (Number(cents||0)/100).toFixed(2); }
+
+  // A section that could not be read says so, in place, rather than rendering as empty. An operator
+  // seeing nothing must be able to tell "the business is quiet" from "this query broke".
+  function failed(host, section, what){
+    host.innerHTML='';
+    var box=el('div','section-fail');
+    box.appendChild(el('p', null, 'This could not be read, so what you see is missing rather than zero.'));
+    box.appendChild(el('p','muted', section.error || 'No reason given.'));
+    host.appendChild(box);
+  }
+
+  function stat(n, label){
+    var d=el('div','stat');
+    d.appendChild(el('span','n', String(n)));
+    d.appendChild(el('span','lbl', label));
+    return d;
+  }
+
+  function renderNow(s){
+    var host=$('now-body'); if(!s.ok) return failed(host, s);
+    host.innerHTML='';
+
+    if (s.alerts && s.alerts.length){
+      var ah=el('h3',null,'The platform raised these itself');
+      host.appendChild(ah);
+      host.appendChild(el('p','muted','These outrank every queue below. A queue means somebody is waiting; an alert means something already went wrong and nobody has been told.'));
+      var al=el('ul'); al.setAttribute('role','list');
+      s.alerts.forEach(function(a){
+        var li=el('li');
+        li.appendChild(el('strong', null, a.subject || a.kind));
+        li.appendChild(document.createTextNode(' — ' + new Date(a.created_at).toLocaleString()));
+        al.appendChild(li);
+      });
+      host.appendChild(al);
+    }
+
+    if (!s.queues.length){
+      host.appendChild(el('p', null, 'Nothing is waiting on a person. Every queue is empty.'));
+      return;
+    }
+    host.appendChild(el('p', null, s.total_waiting + ' thing' + (s.total_waiting===1?'':'s') + ' waiting, longest first.'));
+    var list=el('div'); list.setAttribute('role','list');
+    s.queues.forEach(function(q){
+      var r=el('div','row'); r.setAttribute('role','listitem');
+      var top=el('div','top');
+      var a=el('a',null,q.queue + ' — ' + q.n);
+      a.href='/'+q.page;
+      top.appendChild(a);
+      if (q.oldest_hours != null){
+        var days = Math.floor(q.oldest_hours/24);
+        var txt = days >= 1 ? ('waiting ' + days + ' day' + (days===1?'':'s')) : ('waiting ' + q.oldest_hours + ' hour' + (q.oldest_hours===1?'':'s'));
+        var w=el('span','waited' + (q.oldest_hours >= 24 ? ' long' : ''), txt);
+        top.appendChild(w);
+      }
+      r.appendChild(top);
+      list.appendChild(r);
+    });
+    host.appendChild(list);
+  }
+
+  function renderBusiness(s){
+    var host=$('business-body'); if(!s.ok) return failed(host, s);
+    host.innerHTML='';
+    // The verdict first, in words. This is the number the whole business rests on and it should be
+    // impossible to misread as anything else.
+    var v=el('p'); v.appendChild(el('strong', null, s.verdict)); host.appendChild(v);
+    var g=el('div','stat-grid');
+    g.appendChild(stat(s.creators, 'creators (' + s.creators_this_week + ' this week)'));
+    g.appendChild(stat(s.projects, 'projects built'));
+    g.appendChild(stat(s.listings_live, 'listings live'));
+    g.appendChild(stat(s.sales_completed, 'sales completed'));
+    g.appendChild(stat(money(s.our_cut_cents), 'our share of sales'));
+    g.appendChild(stat(money(s.mrr_cents), 'monthly subscriptions'));
+    host.appendChild(g);
+    if (s.held_in_escrow_cents > 0){
+      host.appendChild(el('p', null, money(s.held_in_escrow_cents) + ' is held in escrow — money paid by a buyer that has not yet reached a seller.'));
+    }
+  }
+
+  function renderGrowth(s){
+    var host=$('growth-body'); if(!s.ok) return failed(host, s);
+    host.innerHTML='';
+    var w=s.weekly||{};
+    var g=el('div','stat-grid');
+    g.appendChild(stat(w.confirmed||0, 'Clay Weekly subscribers'));
+    g.appendChild(stat(w.this_week||0, 'joined this week'));
+    g.appendChild(stat(s.desk ? s.desk.published : 0, 'Desk pieces published'));
+    g.appendChild(stat(s.active_movers||0, 'Dream Movers'));
+    host.appendChild(g);
+
+    if (w.awaiting) host.appendChild(el('p','muted', w.awaiting + ' subscriber' + (w.awaiting===1?'':'s') + ' have not confirmed yet, so they receive nothing.'));
+
+    if (s.weekly_by_source && s.weekly_by_source.length){
+      host.appendChild(el('h3',null,'Where subscribers came from'));
+      var ul=el('ul'); ul.setAttribute('role','list');
+      s.weekly_by_source.forEach(function(x){ ul.appendChild(el('li', null, x.source + ' — ' + x.n)); });
+      host.appendChild(ul);
+    }
+
+    host.appendChild(el('h3',null,'Live listings never promoted'));
+    if (!s.never_promoted.length){
+      host.appendChild(el('p', null, 'Every live listing has been promoted at least once.'));
+    } else {
+      host.appendChild(el('p','muted','This is the marketing worklist. Without it, the easy ones get posted about repeatedly while somebody\u2019s project sits untouched.'));
+      var ul2=el('ul'); ul2.setAttribute('role','list');
+      s.never_promoted.forEach(function(l){
+        var li=el('li');
+        var a=el('a',null,l.title||'Untitled'); a.href='/listing.html?id='+encodeURIComponent(l.id);
+        li.appendChild(a); ul2.appendChild(li);
+      });
+      host.appendChild(ul2);
+    }
+  }
+
+  function renderPeople(s){
+    var host=$('people-body'); if(!s.ok) return failed(host, s);
+    host.innerHTML='';
+    host.appendChild(el('h3',null,'Newest here'));
+    if(!s.recent_signups.length){ host.appendChild(el('p',null,'Nobody has signed up yet.')); }
+    else {
+      var ul=el('ul'); ul.setAttribute('role','list');
+      s.recent_signups.forEach(function(u){
+        ul.appendChild(el('li', null, u.tag + ' — ' + u.projects + ' project' + (u.projects===1?'':'s') + ', joined ' + new Date(u.created_at).toLocaleDateString()));
+      });
+      host.appendChild(ul);
+    }
+
+    host.appendChild(el('h3',null,'Built something, then stopped'));
+    if(!s.stalled.length){ host.appendChild(el('p',null,'Nobody has gone quiet on a project.')); }
+    else {
+      host.appendChild(el('p','muted','The most actionable list here. Each of these is a person who did the work and then stopped.'));
+      var ul2=el('ul'); ul2.setAttribute('role','list');
+      s.stalled.forEach(function(c){
+        ul2.appendChild(el('li', null,
+          (c.title||'Untitled') + ' — quiet ' + c.days_quiet + ' day' + (c.days_quiet===1?'':'s') +
+          ', lane: ' + (c.movement_state||'unset') +
+          (c.already_nudged ? ', already nudged' : ', not yet nudged')));
+      });
+      host.appendChild(ul2);
+    }
+  }
+
+  function renderClay(s){
+    var host=$('clay-body'); if(!s.ok) return failed(host, s);
+    host.innerHTML='';
+    var g=el('div','stat-grid');
+    g.appendChild(stat(s.runs_this_week, 'builds this week'));
+    // A rate, not a count: 3 failures out of 5 and 3 out of 500 are different problems entirely.
+    g.appendChild(stat(s.failure_rate == null ? 'n/a' : (s.failure_rate + '%'), 'of them failed'));
+    g.appendChild(stat(s.seeding ? s.seeding.seeded_this_week : 0, 'projects seeded this week'));
+    g.appendChild(stat(s.conversations ? s.conversations.sessions : 0, 'conversations this week'));
+    host.appendChild(g);
+
+    if (s.failure_rate != null && s.failure_rate > 20){
+      host.appendChild(el('p', null, 'More than one build in five is failing. That is worth looking at before anything else on this page.'));
+    }
+    var c=s.conversations||{};
+    if (c.sessions){
+      host.appendChild(el('p','muted', c.single_turn + ' of ' + c.sessions + ' conversations were a single message — somebody said one thing and did not come back. ' + (c.ended_badly||0) + ' ended on a failure.'));
+    }
+  }
+
+  function renderListings(items){
+    var host=$('listings-body'); host.innerHTML='';
+    if(!items.length){ host.appendChild(el('p',null,'Clay has not seeded any listings yet.')); return; }
+    items.forEach(function(l){
+      var r=el('div','row'); r.setAttribute('role','group'); r.setAttribute('aria-label', l.title||'Untitled listing');
+      r.appendChild(el('h3', null, l.title || 'Untitled'));
+      r.appendChild(el('p','muted',
+        l.status + ' · ' + money(l.price_cents) + ' · ' + l.materials + ' materials · ' +
+        (l.has_landing_page ? 'has a landing page' : 'no landing page') + ' · ' +
+        (l.has_demo ? 'has a prototype' : 'no prototype')));
+
+      var tw=el('div');
+      var tl=el('label'); tl.setAttribute('for','t-'+l.id); tl.textContent='Title';
+      var ti=el('input'); ti.id='t-'+l.id; ti.type='text'; ti.value=l.title||'';
+      var pl=el('label'); pl.setAttribute('for','p-'+l.id); pl.textContent='Price in dollars';
+      var pi=el('input'); pi.id='p-'+l.id; pi.type='number'; pi.min='10'; pi.step='1';
+      pi.value=String(Math.round((l.price_cents||0)/100));
+      tw.appendChild(tl); tw.appendChild(ti); tw.appendChild(pl); tw.appendChild(pi);
+      r.appendChild(tw);
+
+      var said=el('p','muted'); said.setAttribute('role','status'); said.setAttribute('aria-live','polite');
+
+      var save=el('button','btn','Save changes'); save.type='button';
+      save.addEventListener('click', async function(){
+        save.disabled=true; said.textContent='Saving…';
+        try{
+          var d=await Kiln.api('/seed-listings/'+l.id, { method:'PATCH', body:{
+            title: ti.value, price_cents: Math.round(Number(pi.value||0)*100) } });
+          said.textContent=d.message||'Saved.';
+        }catch(e){ said.textContent=(e&&e.message)||'That did not save. Nothing changed.'; }
+        announce(said.textContent, true); save.disabled=false;
+      });
+
+      var build=el('button','btn secondary', l.has_landing_page ? 'Rebuild the page and prototype' : 'Build a landing page and prototype');
+      build.type='button';
+      build.addEventListener('click', async function(){
+        build.disabled=true; said.textContent='Clay is building. This takes a moment…';
+        announce(said.textContent, true);
+        try{
+          var d=await Kiln.api('/seed-listings/'+l.id+'/presentation', { method:'POST', body:{ replace: !!l.has_landing_page } });
+          said.textContent=d.message||'Done.';
+        }catch(e){ said.textContent=(e&&e.message)||'That did not go through.'; }
+        announce(said.textContent, true); build.disabled=false;
+      });
+
+      var acts=el('p'); acts.appendChild(save); acts.appendChild(build);
+      r.appendChild(acts); r.appendChild(said);
+      host.appendChild(r);
+    });
+  }
+
+  (async function load(){
+    try{
+      var d=await Kiln.api('/console');
+      $('asof').textContent='Read from the live platform at ' + new Date(d.generated_at).toLocaleString() + '.';
+      renderNow(d.now); renderBusiness(d.business); renderGrowth(d.growth);
+      renderPeople(d.people); renderClay(d.clay);
+      var waiting = d.now && d.now.ok ? d.now.total_waiting : null;
+      if (waiting != null) announce(waiting === 0 ? 'Nothing is waiting on a person.' : waiting + ' things are waiting on a person.', true);
+    }catch(e){
+      $('asof').textContent='Could not load the console: ' + ((e&&e.message)||'unknown reason') + '. Nothing here is zero — it is unread.';
+    }
+    try{
+      var s=await Kiln.api('/seed-listings');
+      renderListings(s.listings||[]);
+    }catch(e){
+      $('listings-body').innerHTML='';
+      $('listings-body').appendChild(el('p','muted','Could not load Clay\u2019s listings: ' + ((e&&e.message)||'unknown reason')));
+    }
+  })();
+})();
+</script>
+</body></html>

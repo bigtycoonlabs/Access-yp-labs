@@ -120,6 +120,7 @@ app.use('/api/sellers',       require('./routes/sellers'));
 app.use('/api/store',         require('./routes/store'));
 app.use('/api/admin',         require('./routes/admin'));
 app.use('/api/maintenance',   require('./routes/maintenance'));
+app.use('/api/console', require('./routes/console'));
 app.use('/api/seed-listings', require('./routes/seedListings'));
  app.use('/api/listings',      require('./routes/listings'));
 app.use('/api/waitlist',      require('./routes/waitlist'));
