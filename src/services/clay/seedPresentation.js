@@ -18,6 +18,7 @@
 // landing page could not be written.
 
 const { query } = require('../../config/db');
+const provider = require('./provider');
 
 // The six themes the launch page builder already supports. Chosen by category so the market does
 // not look like one template repeated — a page that matches the kind of business it describes reads
@@ -42,7 +43,7 @@ function wantsDemo(category, assetTypes) {
 // Write the landing page from what the project actually says, never from invention. If the
 // materials do not contain a real line about who it is for, the page says less rather than making
 // something up — the same rule Clay works under everywhere else.
-async function buildLandingPage(clayClient, concept) {
+async function buildLandingPage(concept) {
   const assets = await query(
     `SELECT type::text AS type, title, body FROM assets
       WHERE concept_id=$1 AND is_current ORDER BY created_at LIMIT 6`, [concept.id]);
@@ -52,8 +53,10 @@ async function buildLandingPage(clayClient, concept) {
     .map((a) => `## ${a.title || a.type}\n${String(a.body || '').slice(0, 1800)}`)
     .join('\n\n');
 
-  const prompt = `You are writing the home page for a business project listed in a marketplace of
-unbuilt businesses. Below are the project's own materials. Write the page ONLY from what they say.
+  const system = `You write home pages for business projects listed in a marketplace of unbuilt
+businesses. You write ONLY from the materials you are given and never invent a fact about a business.`;
+
+  const user = `Below are a project's own materials. Write its home page using only what they say.
 
 ${source}
 
@@ -71,8 +74,10 @@ Rules that matter more than polish:
 - No exclamation marks, no "revolutionary", no "game-changing".
 - Write like somebody explaining it to a friend who asked what it is.`;
 
-  const out = await clayClient.complete(prompt, { maxTokens: 700 });
-  if (!out || !out.text) return { ok: false, reason: 'no_response' };
+  // json:true asks the provider for structured output; the parse below still guards it, because a
+  // request for JSON is not a guarantee of JSON.
+  const out = await provider.complete({ system, user, json: true, maxTokens: 700 });
+  if (!out || !out.ok || !out.text) return { ok: false, reason: (out && out.reason) || 'no_response' };
 
   let page;
   try {
@@ -103,7 +108,7 @@ Rules that matter more than polish:
 // Attach a clickable prototype. build_demo already produces a real, tab-navigable, screen-reader
 // usable HTML page — the point of reusing it rather than writing something new is that a demo a
 // blind creator cannot operate is not a demo, and that work is already done.
-async function buildDemo(clayClient, concept) {
+async function buildDemo(concept) {
   const types = await query(
     `SELECT array_agg(DISTINCT type::text) AS types FROM assets WHERE concept_id=$1 AND is_current`,
     [concept.id]);
@@ -116,7 +121,10 @@ async function buildDemo(clayClient, concept) {
       AND type IN ('business_plan','tech_spec') ORDER BY created_at LIMIT 1`, [concept.id]);
   if (!plan.rows.length) return { ok: false, reason: 'no_plan' };
 
-  const prompt = `Build a single self-contained HTML page that demonstrates what this product would
+  const demoSystem = `You build small, self-contained, fully accessible HTML prototypes. You never
+include payment forms, checkout flows, or anything that looks purchasable.`;
+
+  const demoUser = `Build a single self-contained HTML page that demonstrates what this product would
 look like to its user. This is a PROTOTYPE for a marketplace listing, not a working product.
 
 ${String(plan.rows[0].body || '').slice(0, 4000)}
@@ -133,8 +141,8 @@ Requirements:
 
 Return only the HTML.`;
 
-  const out = await clayClient.complete(prompt, { maxTokens: 4000 });
-  if (!out || !out.text) return { ok: false, reason: 'no_response' };
+  const out = await provider.complete({ system: demoSystem, user: demoUser, maxTokens: 4000 });
+  if (!out || !out.ok || !out.text) return { ok: false, reason: (out && out.reason) || 'no_response' };
   const html = String(out.text).replace(/```html|```/g, '').trim();
   if (!/<html|<body|<main/i.test(html)) return { ok: false, reason: 'not_html' };
 
@@ -152,11 +160,11 @@ Return only the HTML.`;
 }
 
 // Called by the seeder after the materials are saved. Never throws into the seed run.
-async function enrich(clayClient, concept) {
+async function enrich(concept) {
   const result = { landing_page: null, demo: null };
-  try { result.landing_page = await buildLandingPage(clayClient, concept); }
+  try { result.landing_page = await buildLandingPage(concept); }
   catch (e) { result.landing_page = { ok: false, reason: (e && e.message) || 'threw' }; }
-  try { result.demo = await buildDemo(clayClient, concept); }
+  try { result.demo = await buildDemo(concept); }
   catch (e) { result.demo = { ok: false, reason: (e && e.message) || 'threw' }; }
   return result;
 }

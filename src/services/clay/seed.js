@@ -311,7 +311,7 @@ async function runSeedCore() {
     // Best-effort — a good seed must never fail because a headline could not be written.
     try {
       const presentation = require('./seedPresentation');
-      const out = await presentation.enrich(clay, { id: concept.id, category: idea.category });
+      const out = await presentation.enrich({ id: concept.id, category: idea.category });
       const made = [];
       if (out.landing_page && out.landing_page.ok) made.push('landing page');
       if (out.demo && out.demo.ok) made.push('prototype');

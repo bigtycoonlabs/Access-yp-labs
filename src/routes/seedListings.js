@@ -131,5 +131,63 @@ router.patch('/:id', staffOnly, [
   });
 }));
 
+
+// POST /api/seed-listings/:id/presentation — build the page and prototype for an EXISTING seed.
+//
+// The presentation step runs automatically on new seeds, which does nothing for the ones already in
+// the market — and those are exactly the listings anybody would be promoting first. One at a time
+// and on request rather than a bulk sweep: each of these costs a model call, and a button somebody
+// presses while looking at the listing is easier to judge than a batch job that rewrites ten pages
+// at once.
+router.post('/:id/presentation', staffOnly, asyncHandler(async (req, res) => {
+  const found = await clayListing(req.params.id);
+  if (!found.ok) {
+    if (found.reason === 'not_found') throw new ApiError(404, 'That listing could not be found.');
+    throw new ApiError(403, NOT_YOURS_TO_EDIT);
+  }
+  const l = found.listing;
+
+  const c = await query('SELECT id, category, launch_page FROM concepts WHERE id=$1', [l.concept_id]);
+  const concept = c.rows[0];
+
+  // Refuse to silently overwrite a page somebody edited by hand. `generated_by` is stamped on
+  // anything Clay wrote, so a page without it was written by a person and is not ours to replace.
+  if (concept.launch_page && !req.body.replace) {
+    let existing = null;
+    try { existing = typeof concept.launch_page === 'string' ? JSON.parse(concept.launch_page) : concept.launch_page; } catch (_) {}
+    const humanWritten = existing && existing.generated_by !== 'clay_seed';
+    if (humanWritten) {
+      return res.status(409).json({
+        ok: false,
+        reason: 'human_written',
+        message: 'This listing already has a landing page that somebody wrote by hand. Rebuilding it '
+          + 'would throw that away. Send replace: true if you are sure.',
+      });
+    }
+  }
+
+  const presentation = require('../services/clay/seedPresentation');
+  const out = await presentation.enrich({ id: concept.id, category: concept.category });
+
+  const made = [];
+  const skipped = [];
+  if (out.landing_page && out.landing_page.ok) made.push('landing page'); else skipped.push('landing page (' + ((out.landing_page && out.landing_page.reason) || 'unknown') + ')');
+  if (out.demo && out.demo.ok && !out.demo.already) made.push('prototype');
+  else if (out.demo && out.demo.already) skipped.push('prototype (already had one)');
+  else skipped.push('prototype (' + ((out.demo && out.demo.reason) || 'unknown') + ')');
+
+  // Honest either way. "Built nothing" is a real outcome for a project whose materials are too thin
+  // to write a page from, and reporting it as success would be the defect this platform is built
+  // against.
+  res.json({
+    ok: made.length > 0,
+    built: made,
+    not_built: skipped,
+    message: made.length
+      ? 'Built: ' + made.join(' and ') + '.' + (skipped.length ? ' Not built: ' + skipped.join('; ') + '.' : '')
+      : 'Nothing was built. ' + skipped.join('; ') + '.',
+  });
+}));
+
 module.exports = router;
 module.exports.clayListing = clayListing;

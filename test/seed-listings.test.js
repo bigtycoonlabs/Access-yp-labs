@@ -64,3 +64,33 @@ test('presentation never breaks a seed', () => {
   const seed = fs.readFileSync(require.resolve('../src/services/clay/seed.js'), 'utf8');
   assert.match(seed, /seed presentation failed \(seed is unaffected\)/);
 });
+
+test('an existing seed can be given a page and prototype on request', () => {
+  // Presentation runs automatically on NEW seeds, which does nothing for the ten already in the
+  // market — and those are exactly the listings anybody would promote first.
+  assert.match(routeSrc, /router\.post\('\/:id\/presentation'/);
+  assert.match(routeSrc, /presentation\.enrich\(/);
+});
+
+test('a hand-written landing page is never silently overwritten', () => {
+  // generated_by is stamped on anything Clay wrote, so a page without it was written by a person
+  // and is not ours to replace.
+  assert.match(routeSrc, /existing\.generated_by !== 'clay_seed'/);
+  assert.match(routeSrc, /reason: 'human_written'/);
+  assert.match(routeSrc, /Send replace: true if you are sure/);
+});
+
+test('building nothing is reported as building nothing', () => {
+  // A project whose materials are too thin to write a page from is a real outcome. Reporting it as
+  // success would be the exact defect this platform is built against.
+  assert.match(routeSrc, /ok: made\.length > 0/);
+  assert.match(routeSrc, /'Nothing was built\. '/);
+  assert.match(routeSrc, /not_built: skipped/);
+});
+
+test('the presentation builder uses the real provider interface', () => {
+  // It was written against a complete(prompt, opts) signature that does not exist; the provider
+  // takes { system, user, json }. Caught by calling it rather than by reading it.
+  assert.match(pres, /provider\.complete\(\{ system, user, json: true/);
+  assert.match(pres, /!out\.ok/);
+});
