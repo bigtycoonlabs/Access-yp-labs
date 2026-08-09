@@ -89,9 +89,9 @@
   </section>
 </main>
 
-<script src="/js/a11y.js?v=20260807g"></script>
-<script src="/js/api.js?v=20260807g"></script>
-<script src="/js/nav.js?v=20260807g"></script>
+<script src="/js/a11y.js?v=20260807h"></script>
+<script src="/js/api.js?v=20260807h"></script>
+<script src="/js/nav.js?v=20260807h"></script>
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
@@ -120,17 +120,77 @@
     host.innerHTML='';
 
     if (s.alerts && s.alerts.length){
-      var ah=el('h3',null,'The platform raised these itself');
-      host.appendChild(ah);
-      host.appendChild(el('p','muted','These outrank every queue below. A queue means somebody is waiting; an alert means something already went wrong and nobody has been told.'));
-      var al=el('ul'); al.setAttribute('role','list');
+      host.appendChild(el('h3',null,'The platform raised these itself'));
+      var lead = s.urgent_alerts
+        ? (s.urgent_alerts + ' of these mean something already went wrong and somebody is affected who does not know it. Those come first.')
+        : 'Nothing urgent — these are things worth knowing rather than things that are broken.';
+      host.appendChild(el('p','muted', lead));
+
       s.alerts.forEach(function(a){
-        var li=el('li');
-        li.appendChild(el('strong', null, a.subject || a.kind));
-        li.appendChild(document.createTextNode(' — ' + new Date(a.created_at).toLocaleString()));
-        al.appendChild(li);
+        var r=el('div','row'); r.setAttribute('role','group'); r.setAttribute('aria-label', a.subject || a.kind);
+        var head=el('p');
+        // Urgency is stated in words, never carried by colour alone.
+        if (a.urgent) head.appendChild(el('strong', null, 'Needs action — '));
+        head.appendChild(el('strong', null, a.subject || a.kind));
+        r.appendChild(head);
+        r.appendChild(el('p','muted', new Date(a.created_at).toLocaleString() +
+          (a.acknowledged_at ? ' · somebody is on this' : '')));
+        if (a.body) {
+          var d=document.createElement('details');
+          var sm=document.createElement('summary'); sm.textContent='What happened';
+          d.appendChild(sm);
+          d.appendChild(el('p', null, a.body));
+          r.appendChild(d);
+        }
+
+        var said=el('p','muted'); said.setAttribute('role','status'); said.setAttribute('aria-live','polite');
+        var acts=el('p');
+
+        if (!a.acknowledged_at) {
+          var ack=el('button','btn secondary','I am on this'); ack.type='button';
+          ack.addEventListener('click', async function(){
+            ack.disabled=true;
+            try { var d2=await Kiln.api('/console/alerts/'+a.id+'/ack',{method:'POST'});
+                  said.textContent=d2.message||'Marked.'; }
+            catch(e){ said.textContent=(e&&e.message)||'That did not go through.'; ack.disabled=false; }
+            announce(said.textContent, true);
+          });
+          acts.appendChild(ack);
+        }
+
+        var res=el('button','btn','Resolve it'); res.type='button';
+        res.addEventListener('click', function(){
+          if (r.querySelector('.resolve-box')) return;
+          var opener=res;
+          var box=el('div','resolve-box'); box.setAttribute('role','group');
+          box.setAttribute('aria-label','Resolve this alert');
+          var lab=el('label'); lab.setAttribute('for','rn-'+a.id);
+          lab.textContent='What was done about it?';
+          var inp=el('input'); inp.id='rn-'+a.id; inp.type='text';
+          inp.placeholder='e.g. cancelled the subscription in Stripe by hand';
+          var go=el('button','btn','Save and resolve'); go.type='button';
+          var no=el('button','btn secondary','Cancel'); no.type='button';
+          function restore(){ try{ if(opener && opener.focus && document.contains(opener)) opener.focus(); }catch(e){} }
+          go.addEventListener('click', async function(){
+            go.disabled=true;
+            try{
+              var d3=await Kiln.api('/console/alerts/'+a.id+'/resolve',{method:'POST',body:{note:inp.value}});
+              said.textContent=d3.message||'Resolved.'; box.remove(); acts.remove(); restore();
+            }catch(e){ said.textContent=(e&&e.message)||'That did not save.'; go.disabled=false; }
+            announce(said.textContent, true);
+          });
+          no.addEventListener('click', function(){ box.remove(); restore(); });
+          box.appendChild(lab); box.appendChild(inp); box.appendChild(go); box.appendChild(no);
+          r.appendChild(box);
+          announce('Say what was done about it, then save.', true);
+          inp.focus();
+        });
+        acts.appendChild(res);
+        r.appendChild(acts); r.appendChild(said);
+        host.appendChild(r);
       });
-      host.appendChild(al);
+    } else {
+      host.appendChild(el('p', null, 'No open alerts. Nothing has gone wrong that you have not already dealt with.'));
     }
 
     if (!s.queues.length){

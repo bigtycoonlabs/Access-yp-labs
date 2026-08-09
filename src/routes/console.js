@@ -27,6 +27,15 @@ const { asyncHandler } = require('../lib/http');
 const router = express.Router();
 const staffOnly = [authenticate, authorize('staff', 'admin', 'master_staff')];
 
+// The alarms the platform raises when something has gone wrong that nobody would otherwise notice.
+// Kept in step with the ALWAYS_DELIVER list in staffNotify: anything that bypasses the daily cap
+// because it matters should also sort to the top of the list somebody reads.
+const URGENT_KINDS = [
+  'seller_billing_not_stopped', 'webhook_not_recorded', 'webhook_dedupe_unavailable',
+  'auction_email_failed', 'watch_delivery_failed', 'seed_failed', 'refund_failed',
+  'password_reset_not_sent',
+];
+
 // Run a query and never let one broken section blank the whole console. A section that fails says so
 // and the rest still renders — the alternative is an operator seeing an empty page and not knowing
 // whether the business is quiet or the console is broken.
@@ -76,11 +85,23 @@ async function nowSection() {
     .filter((r) => r.n > 0)
     .sort((a, b) => (b.oldest_hours || 0) - (a.oldest_hours || 0));
 
+  // OPEN alerts only, and the urgent ones first.
+  //
+  // This used to show everything raised in the last seven days regardless of whether anybody had
+  // dealt with it, so within a week it was nine items — mostly noise — with the genuinely urgent
+  // ones buried among them. An alert list that only grows is one people scroll past, which is how
+  // an alerting system dies: not switched off, just ignored.
+  //
+  // Operational alarms sort above routine notes because they mean something already went wrong and
+  // somebody is affected who does not know it. A new creator signing up is worth telling you; it is
+  // not worth telling you FIRST.
   const alerts = await query(`
-    SELECT kind, subject, created_at
+    SELECT id, kind, subject, body, created_at, acknowledged_at,
+           (kind = ANY($1::text[])) AS urgent
       FROM clay_staff_notes
-     WHERE created_at > now() - interval '7 days'
-     ORDER BY created_at DESC LIMIT 10`);
+     WHERE resolved_at IS NULL
+     ORDER BY (kind = ANY($1::text[])) DESC, created_at DESC
+     LIMIT 25`, [URGENT_KINDS]);
 
   return {
     queues,
@@ -88,6 +109,7 @@ async function nowSection() {
     // Anything the platform raised itself. These outrank every queue: a queue means somebody is
     // waiting, an alert means something already went wrong and nobody has been told.
     alerts: alerts.rows,
+    urgent_alerts: alerts.rows.filter((a) => a.urgent).length,
   };
 }
 
@@ -245,6 +267,60 @@ router.post('/listing/:id/promoted', staffOnly, asyncHandler(async (req, res) =>
   });
   if (!out.ok) return res.status(400).json(out);
   res.json({ ok: true, message: 'Logged. It moves to the back of the rotation.' });
+}));
+
+
+// POST /api/console/alerts/:id/ack — somebody is on it.
+//
+// Separate from resolving on purpose. SEEN is not FIXED, and without the middle state an alert
+// somebody is actively working on looks identical to one nobody has touched.
+router.post('/alerts/:id/ack', staffOnly, asyncHandler(async (req, res) => {
+  const r = await query(
+    `UPDATE clay_staff_notes SET acknowledged_at = now(), acknowledged_by = $2
+      WHERE id = $1 AND resolved_at IS NULL RETURNING id, subject`,
+    [req.params.id, req.user.id]);
+  if (!r.rows.length) {
+    return res.status(404).json({ ok: false, message: 'That alert is not open — it may already be resolved.' });
+  }
+  res.json({ ok: true, message: 'Marked as being handled. It stays on the list until it is resolved.' });
+}));
+
+// POST /api/console/alerts/:id/resolve — it is done, and here is what was done.
+router.post('/alerts/:id/resolve', staffOnly, asyncHandler(async (req, res) => {
+  const note = String(req.body.note || '').trim();
+  if (!note) {
+    // Required rather than optional. An alert resolved with "restarted the worker" teaches the next
+    // person something; one resolved silently teaches nothing, and six months later nobody can tell
+    // whether it was fixed or dismissed.
+    return res.status(400).json({
+      ok: false,
+      message: 'Say what was done about it, even briefly. An alert resolved with no note cannot be '
+        + 'told apart later from one that was simply dismissed.',
+    });
+  }
+  const r = await query(
+    `UPDATE clay_staff_notes
+        SET resolved_at = now(), resolved_by = $2, resolution_note = $3,
+            acknowledged_at = COALESCE(acknowledged_at, now()),
+            acknowledged_by = COALESCE(acknowledged_by, $2)
+      WHERE id = $1 AND resolved_at IS NULL RETURNING id`,
+    [req.params.id, req.user.id, note.slice(0, 1000)]);
+  if (!r.rows.length) {
+    return res.status(404).json({ ok: false, message: 'That alert is not open — it may already be resolved.' });
+  }
+  res.json({ ok: true, message: 'Resolved, with your note kept against it.' });
+}));
+
+// GET /api/console/alerts/history — what has been dealt with, and what was done.
+router.get('/alerts/history', staffOnly, asyncHandler(async (req, res) => {
+  const r = await query(
+    `SELECT n.kind, n.subject, n.created_at, n.resolved_at, n.resolution_note,
+            COALESCE(u.display_name, u.name, 'someone') AS resolved_by
+       FROM clay_staff_notes n
+       LEFT JOIN users u ON u.id = n.resolved_by
+      WHERE n.resolved_at IS NOT NULL
+      ORDER BY n.resolved_at DESC LIMIT 50`);
+  res.json({ ok: true, resolved: r.rows });
 }));
 
 module.exports = router;
