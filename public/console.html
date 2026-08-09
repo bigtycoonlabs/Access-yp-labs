@@ -37,6 +37,7 @@
       <li><a href="#now">What needs me</a></li>
       <li><a href="#business">The business</a></li>
       <li><a href="#growth">Growth</a></li>
+      <li><a href="#marketing">Promotion</a></li>
       <li><a href="#people">People</a></li>
       <li><a href="#clay">Clay</a></li>
       <li><a href="#listings">Clay's listings</a></li>
@@ -60,6 +61,15 @@
     <div id="growth-body"><p class="muted">Loading…</p></div>
   </section>
 
+  <section aria-labelledby="mkt-h" id="marketing">
+    <h2 id="mkt-h">Promotion — what to post next, and what it did</h2>
+    <p class="muted">Ordered by how long since each listing was last promoted, never-promoted first.
+      Work down from the top and no creator's project gets left untouched while the easy ones get
+      posted about repeatedly.</p>
+    <div id="mkt-channels"></div>
+    <div id="mkt-rotation"><p class="muted">Loading…</p></div>
+  </section>
+
   <section aria-labelledby="people-h" id="people">
     <h2 id="people-h">People</h2>
     <div id="people-body"><p class="muted">Loading…</p></div>
@@ -79,9 +89,9 @@
   </section>
 </main>
 
-<script src="/js/a11y.js?v=20260807f"></script>
-<script src="/js/api.js?v=20260807f"></script>
-<script src="/js/nav.js?v=20260807f"></script>
+<script src="/js/a11y.js?v=20260807g"></script>
+<script src="/js/api.js?v=20260807g"></script>
+<script src="/js/nav.js?v=20260807g"></script>
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
@@ -300,6 +310,119 @@
     });
   }
 
+
+  // ---- Promotion -------------------------------------------------------------------------------
+  //
+  // The daily marketing loop, on one screen: what to post next, the link to post, and a way to say
+  // you posted it. The order is the point — a listing that has never been promoted sits above one
+  // promoted last week, so working from the top IS the rotation rather than something to remember.
+
+  function copyBtn(label, url, said){
+    var b=el('button','btn secondary', label); b.type='button';
+    b.addEventListener('click', async function(){
+      try{
+        await navigator.clipboard.writeText(url);
+        b.textContent='Copied'; said.textContent='Copied the ' + label.replace('Copy the ','').replace(' link','') + ' link.';
+        setTimeout(function(){ b.textContent=label; }, 2000);
+      }catch(e){
+        // Never leave somebody stuck because the clipboard was refused — show the link so it can be
+        // selected by hand.
+        said.textContent='Could not copy automatically. The link is ' + url;
+      }
+      announce(said.textContent, true);
+    });
+    return b;
+  }
+
+  function renderChannels(c){
+    var host=$('mkt-channels'); host.innerHTML='';
+    if(!c || !c.channels || !c.channels.length){
+      host.appendChild(el('p','muted','Nothing has been posted yet, so there is nothing to compare. Once you log a promotion below, this shows what each channel actually produced.'));
+      if(c && c.unattributed_visits) host.appendChild(el('p','muted', c.unattributed_visits + ' visit' + (c.unattributed_visits===1?'':'s') + ' arrived with no source — people who found a listing without following a tracked link.'));
+      return;
+    }
+    host.appendChild(el('h3',null,'Last ' + c.window_days + ' days, by channel'));
+    var ul=el('ul'); ul.setAttribute('role','list');
+    c.channels.forEach(function(x){
+      // Posts AND visits together: 20 posts with 2 visits and 1 post with 2 visits say opposite
+      // things, and a visit count alone hides which you are looking at.
+      ul.appendChild(el('li', null,
+        x.channel + ' — ' + x.posts + ' post' + (x.posts===1?'':'s') + ', ' +
+        x.visits + ' visit' + (x.visits===1?'':'s') + ' from ' + x.people + ' ' + (x.people===1?'person':'people')));
+    });
+    host.appendChild(ul);
+    if(c.unattributed_visits){
+      host.appendChild(el('p','muted', 'Plus ' + c.unattributed_visits + ' visit' + (c.unattributed_visits===1?'':'s') + ' with no source. Counted here rather than dropped, because a report that only showed tracked visits would make the platform look quieter than it is.'));
+    }
+  }
+
+  function renderRotation(rows){
+    var host=$('mkt-rotation'); host.innerHTML='';
+    if(!rows.length){ host.appendChild(el('p',null,'No live listings to promote yet.')); return; }
+    rows.forEach(function(l){
+      var r=el('div','row'); r.setAttribute('role','group'); r.setAttribute('aria-label', l.title||'Untitled listing');
+      r.appendChild(el('h3', null, l.title || 'Untitled'));
+
+      var state = l.never_promoted
+        ? 'Never promoted'
+        : ('Last promoted ' + (l.days_since === 0 ? 'today' : l.days_since + ' day' + (l.days_since===1?'':'s') + ' ago') +
+           ' · ' + l.times_promoted + ' time' + (l.times_promoted===1?'':'s') + ' in total');
+      r.appendChild(el('p','muted', state + ' · ' + l.visits + ' visit' + (l.visits===1?'':'s') + ' recorded'));
+
+      var said=el('p','muted'); said.setAttribute('role','status'); said.setAttribute('aria-live','polite');
+
+      // Pick a channel, copy the link for it, then say you posted it. Three steps in the order
+      // somebody actually does them.
+      var pickLabel=el('label'); pickLabel.setAttribute('for','ch-'+l.id); pickLabel.textContent='Channel';
+      var pick=el('select'); pick.id='ch-'+l.id;
+      ['instagram','facebook','linkedin','x','tiktok','youtube','reddit','email','newsletter','forum','card']
+        .forEach(function(c){ var o=el('option',null,c); o.value=c; pick.appendChild(o); });
+
+      var copy=el('button','btn secondary','Copy the link for this channel'); copy.type='button';
+      copy.addEventListener('click', async function(){
+        var url=location.origin + '/listing.html?id=' + encodeURIComponent(l.id) + '&from=' + pick.value;
+        try{
+          await navigator.clipboard.writeText(url);
+          said.textContent='Copied the ' + pick.value + ' link. Anyone arriving through it is counted against ' + pick.value + '.';
+        }catch(e){ said.textContent='Could not copy automatically. The link is ' + url; }
+        announce(said.textContent, true);
+      });
+
+      var done=el('button','btn','I posted it'); done.type='button';
+      done.addEventListener('click', async function(){
+        done.disabled=true; said.textContent='Logging…';
+        try{
+          var d=await Kiln.api('/console/listing/'+l.id+'/promoted', { method:'POST', body:{ channel: pick.value } });
+          said.textContent=d.message||'Logged.';
+          // Reload so it drops to the back of the rotation immediately — otherwise the next thing to
+          // post is still showing as the thing you just posted.
+          loadMarketing();
+        }catch(e){ said.textContent=(e&&e.message)||'That did not log. Nothing was recorded.'; done.disabled=false; }
+        announce(said.textContent, true);
+      });
+
+      var controls=el('p');
+      controls.appendChild(pickLabel); controls.appendChild(pick);
+      controls.appendChild(copy); controls.appendChild(done);
+      r.appendChild(controls); r.appendChild(said);
+      host.appendChild(r);
+    });
+  }
+
+  async function loadMarketing(){
+    try{
+      var d=await Kiln.api('/console/marketing');
+      renderChannels(d.channels);
+      renderRotation(d.rotation||[]);
+    }catch(e){
+      $('mkt-rotation').innerHTML='';
+      var box=el('div','section-fail');
+      box.appendChild(el('p',null,'The promotion list could not be read, so this is missing rather than empty.'));
+      box.appendChild(el('p','muted',(e&&e.message)||'No reason given.'));
+      $('mkt-rotation').appendChild(box);
+    }
+  }
+
   (async function load(){
     try{
       var d=await Kiln.api('/console');
@@ -318,6 +441,7 @@
       $('listings-body').innerHTML='';
       $('listings-body').appendChild(el('p','muted','Could not load Clay\u2019s listings: ' + ((e&&e.message)||'unknown reason')));
     }
+    loadMarketing();
   })();
 })();
 </script>

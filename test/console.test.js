@@ -53,3 +53,29 @@ test('staff can edit and build from the console itself', () => {
   assert.match(page, /'\/presentation'/);
   assert.match(page, /A creator's listing is their work/);
 });
+
+test('the console shows what to promote next and lets you log it', () => {
+  // The daily marketing loop on one screen: what to post, the link to post, and a way to say you
+  // posted it. The API existed with no surface, which is a promise with no button behind it.
+  assert.match(page, /id="marketing"/);
+  assert.match(page, /'\/console\/marketing'/);
+  assert.match(page, /'\/console\/listing\/'\+l\.id\+'\/promoted'/);
+  assert.match(page, /I posted it/);
+});
+
+test('logging a promotion moves it to the back of the rotation immediately', () => {
+  // Otherwise the next thing to post still shows as the thing you just posted.
+  const fn = page.slice(page.indexOf("var done=el('button','btn','I posted it')"));
+  assert.match(fn.slice(0, 900), /loadMarketing\(\)/);
+});
+
+test('a copy that is refused shows the link instead of failing silently', () => {
+  // Never leave somebody stuck because the clipboard was refused.
+  assert.match(page, /Could not copy automatically\. The link is/);
+});
+
+test('channels report posts alongside visits', () => {
+  assert.match(page, /x\.posts \+ ' post'/);
+  assert.match(page, /x\.visits \+ ' visit'/);
+  assert.match(page, /with no source/);
+});
