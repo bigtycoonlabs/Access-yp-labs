@@ -41,6 +41,7 @@
       <li><a href="#people">People</a></li>
       <li><a href="#clay">Clay</a></li>
       <li><a href="#listings">Clay's listings</a></li>
+      <li><a href="#handover">Handover</a></li>
     </ul>
   </nav>
 
@@ -87,11 +88,35 @@
       can approve, reject or take it down, but not rewrite it.</p>
     <div id="listings-body"><p class="muted">Loading…</p></div>
   </section>
+  <section aria-labelledby="ho-h" id="handover">
+    <h2 id="ho-h">End of shift</h2>
+    <p class="muted">Written by whoever worked the shift, read by owners who were asleep while it
+      happened. Saving again the same day updates it rather than adding a second one.</p>
+    <div id="ho-gaps"></div>
+
+    <div id="ho-form">
+      <div><label for="ho-cleared">What I cleared</label>
+        <textarea id="ho-cleared" rows="2"></textarea></div>
+      <div><label for="ho-escalated">What I escalated, and why</label>
+        <textarea id="ho-escalated" rows="2"></textarea></div>
+      <div><label for="ho-promoted">What I posted, and where</label>
+        <textarea id="ho-promoted" rows="2"></textarea></div>
+      <div><label for="ho-odd">Anything that looked odd but was not clearly wrong</label>
+        <textarea id="ho-odd" rows="2"></textarea></div>
+      <div><label for="ho-waiting">Anyone still waiting on us</label>
+        <textarea id="ho-waiting" rows="2"></textarea></div>
+      <p><button type="button" class="btn" id="ho-save">Save the handover</button></p>
+      <p id="ho-said" role="status" aria-live="polite" class="muted"></p>
+    </div>
+
+    <h3>Recent shifts</h3>
+    <div id="ho-recent"><p class="muted">Loading…</p></div>
+  </section>
 </main>
 
-<script src="/js/a11y.js?v=20260807h"></script>
-<script src="/js/api.js?v=20260807h"></script>
-<script src="/js/nav.js?v=20260807h"></script>
+<script src="/js/a11y.js?v=20260807i"></script>
+<script src="/js/api.js?v=20260807i"></script>
+<script src="/js/nav.js?v=20260807i"></script>
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
@@ -483,6 +508,69 @@
     }
   }
 
+
+  // ---- Handover --------------------------------------------------------------------------------
+  function renderHandover(d){
+    // A missed note is a real signal rather than an administrative slip — it usually means the shift
+    // was rushed or did not happen — so it is surfaced instead of left to be noticed by scrolling.
+    var gaps=$('ho-gaps'); gaps.innerHTML='';
+    if (d.days_with_no_note && d.days_with_no_note.length){
+      var p=el('p', null, 'No handover was written on ' +
+        d.days_with_no_note.map(function(x){ return new Date(x).toLocaleDateString(); }).join(', ') + '.');
+      gaps.appendChild(p);
+    }
+
+    var t=d.today;
+    if (t){
+      ['cleared','escalated','promoted','odd'].forEach(function(k){
+        var f=$('ho-'+k); if(f) f.value = t[k] || '';
+      });
+      var w=$('ho-waiting'); if(w) w.value = t.still_waiting || '';
+      $('ho-said').textContent = 'You already wrote today\u2019s. Editing it updates the same note.';
+    }
+
+    var host=$('ho-recent'); host.innerHTML='';
+    if (!d.recent.length){ host.appendChild(el('p','muted','No handovers written yet.')); return; }
+    d.recent.forEach(function(n){
+      var r=el('div','row');
+      r.appendChild(el('h4', null, new Date(n.shift_date).toLocaleDateString() + ' — ' + n.who));
+      [['Cleared', n.cleared], ['Escalated', n.escalated], ['Posted', n.promoted],
+       ['Looked odd', n.odd], ['Still waiting', n.still_waiting]].forEach(function(pair){
+        if (!pair[1]) return;
+        var p2=el('p');
+        p2.appendChild(el('strong', null, pair[0] + ': '));
+        p2.appendChild(document.createTextNode(pair[1]));
+        r.appendChild(p2);
+      });
+      host.appendChild(r);
+    });
+  }
+
+  async function loadHandover(){
+    try{
+      var d=await Kiln.api('/console/handover');
+      renderHandover(d);
+    }catch(e){
+      $('ho-recent').innerHTML='';
+      $('ho-recent').appendChild(el('p','muted','Could not read the handovers: ' + ((e&&e.message)||'unknown reason')));
+    }
+  }
+
+  document.getElementById('ho-save').addEventListener('click', async function(){
+    var b=this, said=$('ho-said');
+    b.disabled=true; said.textContent='Saving\u2026';
+    try{
+      var d=await Kiln.api('/console/handover', { method:'POST', body:{
+        cleared: $('ho-cleared').value, escalated: $('ho-escalated').value,
+        promoted: $('ho-promoted').value, odd: $('ho-odd').value,
+        still_waiting: $('ho-waiting').value } });
+      said.textContent=d.message||'Saved.';
+      loadHandover();
+    }catch(e){ said.textContent=(e&&e.message)||'That did not save. Nothing was recorded.'; }
+    announce(said.textContent, true);
+    b.disabled=false;
+  });
+
   (async function load(){
     try{
       var d=await Kiln.api('/console');
@@ -502,6 +590,7 @@
       $('listings-body').appendChild(el('p','muted','Could not load Clay\u2019s listings: ' + ((e&&e.message)||'unknown reason')));
     }
     loadMarketing();
+    loadHandover();
   })();
 })();
 </script>

@@ -323,4 +323,71 @@ router.get('/alerts/history', staffOnly, asyncHandler(async (req, res) => {
   res.json({ ok: true, resolved: r.rows });
 }));
 
+
+// ---- The end-of-shift handover ------------------------------------------------------------------
+//
+// Written by whoever worked the shift, read by owners who were asleep while it happened. It is the
+// cheapest thing in the operations plan and the one that does the most: it makes the work visible
+// without anybody having to check, and it is what makes a second hire take a week rather than a
+// month.
+
+// GET /api/console/handover — today's note (yours to edit) and the last two weeks (everyone's).
+router.get('/handover', staffOnly, asyncHandler(async (req, res) => {
+  const mine = await query(
+    `SELECT * FROM handover_notes
+      WHERE staff_id = $1 AND shift_date = (now() AT TIME ZONE 'UTC')::date`, [req.user.id]);
+  const recent = await query(
+    `SELECT h.shift_date, h.cleared, h.escalated, h.promoted, h.odd, h.still_waiting, h.created_at,
+            COALESCE(u.display_name, u.name, 'someone') AS who
+       FROM handover_notes h
+       LEFT JOIN users u ON u.id = h.staff_id
+      ORDER BY h.shift_date DESC, h.created_at DESC LIMIT 14`);
+
+  // Which of the last seven days has no note at all. A missed handover is a real signal rather than
+  // an administrative slip — it usually means the shift was rushed or did not happen — so it is
+  // surfaced rather than left for somebody to notice by scrolling.
+  const gaps = await query(
+    `SELECT d::date AS day
+       FROM generate_series((now() AT TIME ZONE 'UTC')::date - 6, (now() AT TIME ZONE 'UTC')::date - 1, interval '1 day') d
+      WHERE NOT EXISTS (SELECT 1 FROM handover_notes h WHERE h.shift_date = d::date)
+      ORDER BY day DESC`);
+
+  res.json({
+    ok: true,
+    today: mine.rows[0] || null,
+    recent: recent.rows,
+    days_with_no_note: gaps.rows.map((r) => r.day),
+  });
+}));
+
+// POST /api/console/handover — save today's note. Saving again updates rather than duplicating.
+router.post('/handover', staffOnly, asyncHandler(async (req, res) => {
+  const f = ['cleared', 'escalated', 'promoted', 'odd', 'still_waiting'];
+  const vals = f.map((k) => {
+    const v = String(req.body[k] == null ? '' : req.body[k]).trim();
+    return v ? v.slice(0, 4000) : null;
+  });
+
+  // An entirely empty note is refused. A note that says nothing is worse than no note, because it
+  // makes the record look kept while telling the next person nothing — and "all good" every day is
+  // exactly what this format exists to prevent.
+  if (!vals.some(Boolean)) {
+    return res.status(400).json({
+      ok: false,
+      message: 'Fill in at least one part. An empty note makes the record look kept while telling '
+        + 'the next person nothing — if the shift really was quiet, say that in "what I cleared".',
+    });
+  }
+
+  await query(
+    `INSERT INTO handover_notes (staff_id, shift_date, cleared, escalated, promoted, odd, still_waiting)
+     VALUES ($1, (now() AT TIME ZONE 'UTC')::date, $2,$3,$4,$5,$6)
+     ON CONFLICT (staff_id, shift_date) DO UPDATE
+       SET cleared=EXCLUDED.cleared, escalated=EXCLUDED.escalated, promoted=EXCLUDED.promoted,
+           odd=EXCLUDED.odd, still_waiting=EXCLUDED.still_waiting`,
+    [req.user.id, ...vals]);
+
+  res.json({ ok: true, message: 'Handover saved. The owners can read it whenever they wake up.' });
+}));
+
 module.exports = router;
