@@ -228,7 +228,7 @@ router.get('/:id/value', authenticate, asyncHandler(async (req, res) => {
   res.json({
     tier: val.tier, tier_label: val.tierLabel,
     range_usd: { low: Math.round(val.range.low_cents / 100), high: Math.round(val.range.high_cents / 100) },
-    has: val.has, drivers: val.drivers, to_raise: val.toRaise,
+    has: val.has, drivers: val.drivers, to_raise: val.toRaise, depth: val.depth,
   });
 }));
 

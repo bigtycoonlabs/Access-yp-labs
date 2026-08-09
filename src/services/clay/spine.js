@@ -184,7 +184,7 @@ const TOOLS = {
   value_breakdown: {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id'], enums: {},
-    summary: "Break down what THIS project is honestly worth as a listing, and why — based on how launch-ready it is. Returns the value drivers it already carries (a business plan, a marketing strategy, a working build a buyer could actually launch, real proof of demand), a suggested starting price range, and the specific things that would raise its value. Use it when a creator asks what to charge, what their project is worth, or how to make it worth more. The range is a COMPLETENESS-based starting guide, never a market appraisal or a promise — say so plainly: the creator sets the price and the marketplace decides.",
+    summary: "Break down what THIS project is honestly worth as a listing, and why — based on how launch-ready it is. Returns the value drivers it already carries (a business plan, a marketing strategy, a working build a buyer could actually launch, real proof of demand), an EXAMPLE range, and the specific things that would raise its value. Use it when a creator asks what to charge, what their project is worth, or how to make it worth more. Always call it an EXAMPLE — never a recommendation, a suggestion, a valuation or advice. We are describing what packages carrying this much have listed at, not telling anybody what to charge: the creator sets the price and the marketplace decides. The ceiling rises with every distinct kind of material a project carries, so it is worth telling somebody what adding the next one would move.",
   },
   set_movement_state: {
     irreversible: false, requires_confirmation: false,

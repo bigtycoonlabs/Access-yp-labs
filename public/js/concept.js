@@ -151,8 +151,11 @@
   // payoff, and listing it for sale was a decision nobody had the information to make.
   //
   // Two rules this holds to, because a number attached to somebody's hopes is easy to abuse:
-  //   * It is a RANGE and it is called an asking range, never a valuation or an appraisal. We are
-  //     not appraising anything; we are describing what comparable packages list at.
+  //   * It is called an EXAMPLE range. Never recommended, suggested, advised, or a valuation —
+  //     those words turn a description of what comparable packages have listed at into a number the
+  //     platform is telling somebody to charge, and we are not in a position to tell anybody that.
+  //   * The ceiling RISES with what has been built. A number that cannot respond to somebody's work
+  //     gives them no reason to keep working, which is the opposite of the point.
   //   * It never implies the thing will sell. Most listed things do not, and a platform that lets
   //     somebody read a number as a promise has mis-sold them.
   async function renderValue(conceptId){
@@ -172,12 +175,27 @@
     body.appendChild(el('p', null, v.tier_label + '.'));
 
     const range = el('p');
-    range.appendChild(el('strong', null, 'Asking range: $' + v.range_usd.low.toLocaleString()
+    // EXAMPLE, always. Not recommended, suggested or advised — those words turn a description of
+    // what other packages have listed at into a number the platform is telling somebody to charge,
+    // and we are not in a position to tell anybody that.
+    range.appendChild(el('strong', null, 'Example range: $' + v.range_usd.low.toLocaleString()
       + ' to $' + v.range_usd.high.toLocaleString()));
     body.appendChild(range);
     body.appendChild(el('p', 'muted',
-      'That is what packages at this stage list for — not a valuation, and not a promise that it '
-      + 'sells. Most listed projects do not.'));
+      'An example of what packages carrying this much have listed at. Not a valuation, not a '
+      + 'recommendation, and not a promise that it sells — most listed projects do not. You set '
+      + 'your own price.'));
+
+    // The ceiling moves with depth, so say so plainly. Somebody who cannot see that the number
+    // responds to their work has no reason to keep working.
+    if (v.depth) {
+      body.appendChild(el('p', 'muted',
+        v.depth.kinds + ' different kinds of material so far'
+        + (v.depth.beyond_baseline > 0
+            ? (', ' + v.depth.beyond_baseline + ' of them beyond a first build — which is why the top of that range is where it is.')
+            : '. Each further kind you add moves the top of that range.')
+        + (v.depth.uncapped ? ' At this stage there is no ceiling on it.' : '')));
+    }
 
     if (v.drivers && v.drivers.length){
       body.appendChild(el('h3', null, 'What it is built on'));
@@ -205,7 +223,7 @@
       body.appendChild(ask);
     } else {
       body.appendChild(el('p', null,
-        'This has everything that raises an asking range. The next move is a decision rather than '
+        'This carries everything that moves the example range. The next move is a decision rather than '
         + 'another piece: launch it yourself, or list it.'));
     }
   }

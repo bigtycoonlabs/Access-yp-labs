@@ -17,12 +17,32 @@ const FLOOR_CENTS = 1000; // the platform's $10 listing minimum.
 const BUILD_PATH_TYPES = ['tech_spec', 'html_demo', 'website_prompt', 'build_instructions', 'code_file', 'built_site'];
 const LAUNCHABLE_TYPES = ['built_site', 'code_file', 'html_demo'];
 
+// The tier sets where a range STARTS. It does not cap it.
+//
+// The top tier used to end at $800 flat, which said that a project with four materials and one with
+// twenty were worth the same the moment both cleared the same bar. That is plainly untrue, and it is
+// the opposite of what this platform is trying to encourage: if adding the eighth piece cannot move
+// the number, nobody adds it.
+//
+// So the ceiling grows with what has actually been built, and the top tier has no fixed ceiling at
+// all — someone who keeps adding keeps seeing it move.
 const TIERS = {
   bare_concept: { label: 'A shaped idea', low: 1000, high: 4000 },
   shaped:       { label: 'A shaped idea with a head start', low: 2500, high: 9000 },
   full_package: { label: 'A full package to build from', low: 7500, high: 25000 },
-  launch_ready: { label: 'Ready for someone to launch', low: 20000, high: 80000 },
+  // No `high`. The ceiling for a launch-ready project is worked out from its depth below, because
+  // this is the tier where the difference between projects is largest.
+  launch_ready: { label: 'Ready for someone to launch', low: 20000, high: null },
 };
+
+// How much each additional piece of substance moves the ceiling.
+//
+// Counted as DISTINCT KINDS of material, not files. Ten versions of a business plan is one plan; a
+// plan plus research plus a risk read plus a spec plus a demo is five different things a buyer is
+// getting, and that is what actually makes a package worth more.
+const DEPTH_STEP = 0.18;          // each distinct kind beyond the baseline adds 18% to the ceiling
+const BASELINE_KINDS = 3;         // roughly what a first build produces
+const LAUNCH_READY_STEP = 0.30;   // depth counts for more once it is genuinely launchable
 
 function assessValue({ concept = {}, assets = [], waiting = 0 } = {}) {
   const fresh = (Array.isArray(assets) ? assets : []).filter((a) => a.is_current && !a.exclusive_locked);
@@ -44,8 +64,21 @@ function assessValue({ concept = {}, assets = [], waiting = 0 } = {}) {
 
   const t = TIERS[tier];
   let low = Math.max(t.low, FLOOR_CENTS);
+
+  // DEPTH: how many distinct kinds of material this project carries beyond a first build. This is
+  // what makes the ladder a ladder — every genuine addition moves the top of the range, so somebody
+  // can see that adding the next piece is worth doing before they do it.
+  const kinds = types.size;
+  const extra = Math.max(0, kinds - BASELINE_KINDS);
+  const step = tier === 'launch_ready' ? LAUNCH_READY_STEP : DEPTH_STEP;
+
+  // A launch-ready project has no fixed ceiling. Its base is the tier floor times four — the same
+  // 4x spread the other tiers have — and then it grows with depth, with nothing capping it.
+  const base = t.high == null ? t.low * 4 : t.high;
+  let high = Math.round(base * (1 + extra * step));
+
   // Real proof of demand justifies the top of the range — and a bit above it.
-  let high = has.proof ? Math.round(t.high * 1.35) : t.high;
+  if (has.proof) high = Math.round(high * 1.35);
   if (high < low) high = low;
 
   const drivers = [];
@@ -66,7 +99,13 @@ function assessValue({ concept = {}, assets = [], waiting = 0 } = {}) {
   }
   if (!has.proof) toRaise.push('get one real proof of demand — a booked paid call, a preorder, a landing page that converts');
 
-  return { tier, tierLabel: t.label, has, range: { low_cents: low, high_cents: high }, drivers, toRaise };
+  return {
+    tier, tierLabel: t.label, has,
+    range: { low_cents: low, high_cents: high },
+    drivers, toRaise,
+    // Surfaced so a creator can see WHY the ceiling is where it is, and that it moves.
+    depth: { kinds, beyond_baseline: extra, uncapped: t.high == null },
+  };
 }
 
 module.exports = { assessValue, TIERS, FLOOR_CENTS, BUILD_PATH_TYPES, LAUNCHABLE_TYPES };
