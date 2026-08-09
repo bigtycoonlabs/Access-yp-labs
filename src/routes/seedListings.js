@@ -189,5 +189,78 @@ router.post('/:id/presentation', staffOnly, asyncHandler(async (req, res) => {
   });
 }));
 
+
+// GET /api/seed-listings/:id/page — read what Clay actually wrote.
+//
+// A landing page is only ever SERVED by hostname, and web addresses are not switched on — so a page
+// Clay built could be reported as built and then never looked at by anybody. "Clay made you a
+// landing page" with no way to see it is exactly the kind of claim this platform is supposed not to
+// make.
+router.get('/:id/page', staffOnly, asyncHandler(async (req, res) => {
+  const found = await clayListing(req.params.id);
+  if (!found.ok) {
+    if (found.reason === 'not_found') throw new ApiError(404, 'That listing could not be found.');
+    throw new ApiError(403, NOT_YOURS_TO_EDIT);
+  }
+  const r = await query(
+    `SELECT c.launch_page,
+            (SELECT body FROM assets a WHERE a.concept_id=c.id AND a.type='html_demo' AND a.is_current LIMIT 1) AS demo_html
+       FROM concepts c WHERE c.id=$1`, [found.listing.concept_id]);
+  const row = r.rows[0] || {};
+  let page = row.launch_page || null;
+  if (typeof page === 'string') { try { page = JSON.parse(page); } catch (_) { page = null; } }
+  res.json({
+    ok: true,
+    page,
+    has_demo: !!row.demo_html,
+    demo_bytes: row.demo_html ? row.demo_html.length : 0,
+  });
+}));
+
+// PATCH /api/seed-listings/:id/page — edit the words on it.
+router.patch('/:id/page', staffOnly, [
+  body('headline').optional().isString().trim().isLength({ max: 120 }),
+  body('subhead').optional().isString().trim().isLength({ max: 200 }),
+  body('blurb').optional().isString().trim().isLength({ max: 1200 }),
+  body('cta').optional().isString().trim().isLength({ max: 40 }),
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) throw new ApiError(400, 'A headline is up to 120 characters and a blurb up to 1200.');
+
+  const found = await clayListing(req.params.id);
+  if (!found.ok) {
+    if (found.reason === 'not_found') throw new ApiError(404, 'That listing could not be found.');
+    throw new ApiError(403, NOT_YOURS_TO_EDIT);
+  }
+  const r = await query('SELECT launch_page FROM concepts WHERE id=$1', [found.listing.concept_id]);
+  let page = (r.rows[0] && r.rows[0].launch_page) || {};
+  if (typeof page === 'string') { try { page = JSON.parse(page); } catch (_) { page = {}; } }
+
+  const changed = [];
+  ['headline', 'subhead', 'blurb', 'cta'].forEach((k) => {
+    if (req.body[k] !== undefined && String(req.body[k]) !== String(page[k] || '')) {
+      page[k] = String(req.body[k]);
+      changed.push(k);
+    }
+  });
+  if (!changed.length) return res.json({ ok: true, changed: false, message: 'Nothing was different, so nothing changed.' });
+
+  // Once a person has edited it, it is no longer Clay's — so the rebuild button stops silently
+  // overwriting it and asks first. That guard already reads this field.
+  page.generated_by = 'edited_by_staff';
+  page.enabled = page.enabled || 'true';
+
+  await query('UPDATE concepts SET launch_page=$2, updated_at=now() WHERE id=$1',
+    [found.listing.concept_id, JSON.stringify(page)]);
+  await query(
+    `INSERT INTO moderation_events (actor_id, target_type, target_id, action, note)
+     VALUES ($1,'listing',$2,'note',$3)`,
+    [req.user.id, found.listing.id, 'STAFF EDIT of a Clay landing page — ' + changed.join(', ')]
+  ).catch(() => {});
+
+  res.json({ ok: true, changed: true, fields: changed,
+    message: 'Landing page updated. It is yours now, so rebuilding will ask before replacing it.' });
+}));
+
 module.exports = router;
 module.exports.clayListing = clayListing;

@@ -114,9 +114,9 @@
   </section>
 </main>
 
-<script src="/js/a11y.js?v=20260807l"></script>
-<script src="/js/api.js?v=20260807l"></script>
-<script src="/js/nav.js?v=20260807l"></script>
+<script src="/js/a11y.js?v=20260807n"></script>
+<script src="/js/api.js?v=20260807n"></script>
+<script src="/js/nav.js?v=20260807n"></script>
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
@@ -347,54 +347,110 @@
   function renderListings(items){
     var host=$('listings-body'); host.innerHTML='';
     if(!items.length){ host.appendChild(el('p',null,'Clay has not seeded any listings yet.')); return; }
+
+    host.appendChild(el('p','muted', items.length + ' listing' + (items.length===1?'':'s') + '. Each one is collapsed — open the one you want to work on.'));
+
     items.forEach(function(l){
-      var r=el('div','row'); r.setAttribute('role','group'); r.setAttribute('aria-label', l.title||'Untitled listing');
-      r.appendChild(el('h3', null, l.title || 'Untitled'));
-      r.appendChild(el('p','muted',
-        l.status + ' · ' + money(l.price_cents) + ' · ' + l.materials + ' materials · ' +
+      // COLLAPSED BY DEFAULT. Sixteen listings each with four form controls meant a screen reader
+      // user had to tab through roughly seventy things to reach the last one, and the section read
+      // as an undifferentiated wall. A details element makes each listing one stop until it is
+      // opened, which is the difference between navigable and technically-accessible.
+      var d=document.createElement('details'); d.className='row';
+      var sm=document.createElement('summary');
+      sm.textContent=(l.title || 'Untitled') + ' — ' + l.status + ', ' + money(l.price_cents);
+      d.appendChild(sm);
+
+      d.appendChild(el('p','muted',
+        l.materials + ' materials · ' +
         (l.has_landing_page ? 'has a landing page' : 'no landing page') + ' · ' +
         (l.has_demo ? 'has a prototype' : 'no prototype')));
 
-      var tw=el('div');
+      var said=el('p','muted'); said.setAttribute('role','status'); said.setAttribute('aria-live','polite');
+
+      // ---- the listing itself
       var tl=el('label'); tl.setAttribute('for','t-'+l.id); tl.textContent='Title';
       var ti=el('input'); ti.id='t-'+l.id; ti.type='text'; ti.value=l.title||'';
       var pl=el('label'); pl.setAttribute('for','p-'+l.id); pl.textContent='Price in dollars';
       var pi=el('input'); pi.id='p-'+l.id; pi.type='number'; pi.min='10'; pi.step='1';
       pi.value=String(Math.round((l.price_cents||0)/100));
-      tw.appendChild(tl); tw.appendChild(ti); tw.appendChild(pl); tw.appendChild(pi);
-      r.appendChild(tw);
+      var sl=el('label'); sl.setAttribute('for','s-'+l.id); sl.textContent='Summary a buyer reads';
+      var si=document.createElement('textarea'); si.id='s-'+l.id; si.rows=3; si.value=l.risk_summary||'';
+      d.appendChild(tl); d.appendChild(ti); d.appendChild(pl); d.appendChild(pi);
+      d.appendChild(sl); d.appendChild(si);
 
-      var said=el('p','muted'); said.setAttribute('role','status'); said.setAttribute('aria-live','polite');
-
-      var save=el('button','btn','Save changes'); save.type='button';
+      var save=el('button','btn','Save the listing'); save.type='button';
       save.addEventListener('click', async function(){
         save.disabled=true; said.textContent='Saving…';
         try{
-          var d=await Kiln.api('/seed-listings/'+l.id, { method:'PATCH', body:{
-            title: ti.value, price_cents: Math.round(Number(pi.value||0)*100) } });
-          said.textContent=d.message||'Saved.';
+          var r=await Kiln.api('/seed-listings/'+l.id, { method:'PATCH', body:{
+            title: ti.value, price_cents: Math.round(Number(pi.value||0)*100),
+            risk_summary: si.value } });
+          said.textContent=r.message||'Saved.';
+          sm.textContent=ti.value + ' — ' + l.status + ', $' + (Number(pi.value||0)).toFixed(2);
         }catch(e){ said.textContent=(e&&e.message)||'That did not save. Nothing changed.'; }
         announce(said.textContent, true); save.disabled=false;
       });
+      d.appendChild(el('p')).appendChild(save);
 
-      var build=el('button','btn secondary', l.has_landing_page ? 'Rebuild the page and prototype' : 'Build a landing page and prototype');
+      // ---- the landing page Clay wrote
+      var pageWrap=el('div');
+      var openPage=el('button','btn secondary', l.has_landing_page ? 'Show the landing page' : 'No landing page yet');
+      openPage.type='button'; openPage.disabled=!l.has_landing_page;
+      openPage.addEventListener('click', async function(){
+        if (pageWrap.querySelector('.page-fields')) { pageWrap.innerHTML=''; openPage.textContent='Show the landing page'; return; }
+        openPage.disabled=true; said.textContent='Loading the page…';
+        try{
+          var g=await Kiln.api('/seed-listings/'+l.id+'/page');
+          pageWrap.innerHTML='';
+          var box=el('div','page-fields');
+          var pg=g.page||{};
+          [['headline','Headline'],['subhead','Subhead'],['blurb','Blurb'],['cta','Button label']]
+            .forEach(function(f){
+              var lb=el('label'); lb.setAttribute('for',f[0]+'-'+l.id); lb.textContent=f[1];
+              var inp = f[0]==='blurb' ? document.createElement('textarea') : el('input');
+              inp.id=f[0]+'-'+l.id; if(inp.tagName==='TEXTAREA') inp.rows=4; else inp.type='text';
+              inp.value=pg[f[0]]||'';
+              box.appendChild(lb); box.appendChild(inp);
+            });
+          var savePage=el('button','btn','Save the landing page'); savePage.type='button';
+          savePage.addEventListener('click', async function(){
+            savePage.disabled=true; said.textContent='Saving the page…';
+            try{
+              var r2=await Kiln.api('/seed-listings/'+l.id+'/page', { method:'PATCH', body:{
+                headline: document.getElementById('headline-'+l.id).value,
+                subhead: document.getElementById('subhead-'+l.id).value,
+                blurb: document.getElementById('blurb-'+l.id).value,
+                cta: document.getElementById('cta-'+l.id).value } });
+              said.textContent=r2.message||'Saved.';
+            }catch(e){ said.textContent=(e&&e.message)||'That did not save.'; }
+            announce(said.textContent, true); savePage.disabled=false;
+          });
+          box.appendChild(el('p')).appendChild(savePage);
+          if (g.has_demo) box.appendChild(el('p','muted','A clickable prototype is attached (' + Math.round(g.demo_bytes/1024) + ' KB).'));
+          pageWrap.appendChild(box);
+          openPage.textContent='Hide the landing page';
+          said.textContent='Landing page loaded. Edit any part and save.';
+        }catch(e){ said.textContent=(e&&e.message)||'Could not load the page.'; }
+        announce(said.textContent, true); openPage.disabled=false;
+      });
+
+      var build=el('button','btn secondary', l.has_landing_page ? 'Have Clay rebuild it' : 'Have Clay build a landing page and prototype');
       build.type='button';
       build.addEventListener('click', async function(){
         build.disabled=true; said.textContent='Clay is building. This takes a moment…';
         announce(said.textContent, true);
         try{
-          var d=await Kiln.api('/seed-listings/'+l.id+'/presentation', { method:'POST', body:{ replace: !!l.has_landing_page } });
-          said.textContent=d.message||'Done.';
+          var r3=await Kiln.api('/seed-listings/'+l.id+'/presentation', { method:'POST', body:{ replace: !!l.has_landing_page } });
+          said.textContent=r3.message||'Done.';
         }catch(e){ said.textContent=(e&&e.message)||'That did not go through.'; }
         announce(said.textContent, true); build.disabled=false;
       });
 
-      var acts=el('p'); acts.appendChild(save); acts.appendChild(build);
-      r.appendChild(acts); r.appendChild(said);
-      host.appendChild(r);
+      var acts=el('p'); acts.appendChild(openPage); acts.appendChild(build);
+      d.appendChild(acts); d.appendChild(pageWrap); d.appendChild(said);
+      host.appendChild(d);
     });
   }
-
 
   // ---- Promotion -------------------------------------------------------------------------------
   //
