@@ -217,4 +217,34 @@ router.get('/', staffOnly, asyncHandler(async (req, res) => {
   res.json({ ok: true, generated_at: new Date().toISOString(), now, business, growth, people, clay });
 }));
 
+
+// GET /api/console/marketing — the promotion rotation and what each channel produced.
+router.get('/marketing', staffOnly, asyncHandler(async (req, res) => {
+  const attribution = require('../services/clay/attribution');
+  const [channels, rot] = await Promise.all([
+    attribution.channelReport({ days: Number(req.query.days) || 30 }),
+    attribution.rotation({ limit: 25 }),
+  ]);
+  res.json({ ok: true, channels, rotation: rot });
+}));
+
+// GET /api/console/listing/:id/marketing — one listing: what we posted, what arrived, share links.
+router.get('/listing/:id/marketing', staffOnly, asyncHandler(async (req, res) => {
+  const attribution = require('../services/clay/attribution');
+  res.json({ ok: true, ...(await attribution.listingReport(req.params.id)) });
+}));
+
+// POST /api/console/listing/:id/promoted — log a post after making it.
+//
+// Written by a person rather than detected, because nothing here can see a post go out, and a log
+// that guesses is worse than one somebody keeps.
+router.post('/listing/:id/promoted', staffOnly, asyncHandler(async (req, res) => {
+  const attribution = require('../services/clay/attribution');
+  const out = await attribution.recordPromotion({
+    listingId: req.params.id, channel: req.body.channel, note: req.body.note, staffId: req.user.id,
+  });
+  if (!out.ok) return res.status(400).json(out);
+  res.json({ ok: true, message: 'Logged. It moves to the back of the rotation.' });
+}));
+
 module.exports = router;

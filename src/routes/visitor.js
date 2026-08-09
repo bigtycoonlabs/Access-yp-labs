@@ -202,4 +202,9 @@ router.get('/liveness', asyncHandler(async (req, res) => {
 }));
 
 module.exports = router;
+// Shared so anywhere else that needs to tell a returning visitor from a new one issues the SAME
+// token rather than inventing a second scheme. A listing page is often the FIRST page somebody
+// lands on — straight from a shared link — so if only the homepage issued this, every visit from a
+// post would be uncountable, which is exactly the thing attribution exists to fix.
+module.exports.ensureToken = ensureToken;
 module.exports.shapeTeaser = shapeTeaser;

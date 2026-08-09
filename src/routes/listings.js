@@ -367,6 +367,26 @@ router.get('/:id', asyncHandler(async (req, res) => {
   // Never expose the seller's user id publicly — the alias is the public identity,
   // and a raw seller_id could be cross-referenced to de-anonymize a creator.
   delete listing.seller_id;
+
+  // Record where this visitor came from. Best-effort in the strongest sense — nobody waits on it and
+  // nobody sees an error if it fails, because the listing is what they came for and the counting is
+  // ours. Fire-and-forget rather than awaited for the same reason.
+  try {
+    const attribution = require('../services/clay/attribution');
+    attribution.recordVisit({
+      listingId: req.params.id,
+      source: req.query.from,
+      // The anonymous visitor token the platform already issues. Not a person — just enough to tell
+      // a return visit from a new one.
+      // Issue the token if they do not have one. A listing is often the FIRST page somebody lands
+      // on, straight from a shared link, and the homepage is what used to mint this — so without
+      // this line every visit arriving from a post counted as an anonymous nobody, which is
+      // precisely what attribution exists to fix.
+      visitor: require('./visitor').ensureToken(req, res),
+      signedIn: !!(req.user && req.user.id),
+    }).catch(() => {});
+  } catch (_) { /* attribution must never break a listing page */ }
+
   res.json({ listing });
 }));
 
