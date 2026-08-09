@@ -305,6 +305,21 @@ async function runSeedCore() {
       return { ok: false, reason: 'build_' + (result.result_status || 'failed') };
     }
     const concept = await persistSeed(clayUser.id, result, { category: idea.category, embeddingLit: novelty.vector });
+    // A seeded listing should be something you can LOOK at, not just read. The landing page and, where
+    // the business actually has screens, a clickable prototype. Deliberately no payment integration:
+    // we are selling the project, not standing up a shop that takes money for a business nobody runs.
+    // Best-effort — a good seed must never fail because a headline could not be written.
+    try {
+      const presentation = require('./seedPresentation');
+      const out = await presentation.enrich(clay, { id: concept.id, category: idea.category });
+      const made = [];
+      if (out.landing_page && out.landing_page.ok) made.push('landing page');
+      if (out.demo && out.demo.ok) made.push('prototype');
+      if (made.length) console.log('seed presentation:', concept.id, made.join(' + '));
+      else console.log('seed presentation: none —',
+        (out.landing_page && out.landing_page.reason) || '?', '/', (out.demo && out.demo.reason) || '?');
+    } catch (e) { console.error('seed presentation failed (seed is unaffected):', e && e.message); }
+
     // Bonus: real computed unit economics on the seed too (defensive — never blocks the seed).
     try { await economics.computeAndAttach(concept.id); } catch (_) { /* economics is a bonus */ }
 
