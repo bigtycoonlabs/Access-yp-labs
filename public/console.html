@@ -114,9 +114,9 @@
   </section>
 </main>
 
-<script src="/js/a11y.js?v=20260807r"></script>
-<script src="/js/api.js?v=20260807r"></script>
-<script src="/js/nav.js?v=20260807r"></script>
+<script src="/js/a11y.js?v=20260807s"></script>
+<script src="/js/api.js?v=20260807s"></script>
+<script src="/js/nav.js?v=20260807s"></script>
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
@@ -270,7 +270,14 @@
     g.appendChild(stat(w.this_week||0, 'joined this week'));
     g.appendChild(stat(s.desk ? s.desk.published : 0, 'Desk pieces published'));
     g.appendChild(stat(s.active_movers||0, 'Dream Movers'));
+    // Shown here rather than in the task list: nobody on staff can accept or decline a partner
+    // request, so counting it as something waiting on you was a queue that could never be cleared.
+    if (s.partner_requests) g.appendChild(stat(s.partner_requests.open||0, 'partner asks open'));
     host.appendChild(g);
+    if (s.partner_requests && s.partner_requests.open){
+      host.appendChild(el('p','muted', 'Partner asks are between creators — there is nothing for you to '
+        + 'approve. They are here because people asking each other for help is a sign the board is alive.'));
+    }
 
     if (w.awaiting) host.appendChild(el('p','muted', w.awaiting + ' subscriber' + (w.awaiting===1?'':'s') + ' have not confirmed yet, so they receive nothing.'));
 

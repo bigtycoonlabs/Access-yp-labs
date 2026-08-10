@@ -65,12 +65,16 @@ async function nowSection() {
     SELECT 'Weekly issues waiting', 'weekly-admin.html', count(*)::int,
            MAX(EXTRACT(EPOCH FROM (now() - created_at)) / 3600)::int
       FROM weekly_issues WHERE status='draft'
+    -- Partner requests are deliberately NOT here. An open one is a creator waiting for another
+    -- creator, and there is no staff route that can action it — no accept, no decline, nothing.
+    -- Leaving it in "what needs me" put a permanently unclearable item at the top of the list,
+    -- ageing forever, which is exactly how somebody learns to ignore the whole list. It is counted
+    -- under Growth instead, where it belongs: a sign of whether the board is alive.
     UNION ALL
-    SELECT 'Partner requests open', 'partners.html', count(*)::int,
-           MAX(EXTRACT(EPOCH FROM (now() - created_at)) / 3600)::int
-      FROM partner_requests WHERE status='open'
-    UNION ALL
-    SELECT 'Sellers not yet verified', 'people.html', count(*)::int, NULL -- people.html does list accounts
+    -- Framed as reaching a person rather than clearing a queue, because verification is STRIPE'S
+    -- decision and nobody here can grant it. What staff can actually do is notice somebody stuck
+    -- and contact them, so the label says that instead of implying an approve button exists.
+    SELECT 'Sellers stuck unverified — worth reaching out', 'people.html', count(*)::int, NULL
       FROM seller_accounts WHERE kyc_status <> 'verified'
     UNION ALL
     -- Pointed at people.html, which does not show orders at all, so following it left somebody
@@ -160,6 +164,12 @@ async function growthSection() {
            count(*) FILTER (WHERE status='published' AND published_at > now() - interval '7 days')::int AS this_week
       FROM desk_articles`);
   const movers = await query(`SELECT count(*)::int AS n FROM dream_movers WHERE status='active'`);
+  // Watched, not actioned. Nobody on staff can accept or decline one of these — it tells you
+  // whether people are asking each other for help, which is a health signal rather than a queue.
+  const partners = await query(`
+    SELECT count(*) FILTER (WHERE status='open')::int AS open,
+           count(*) FILTER (WHERE created_at > now() - interval '30 days')::int AS this_month
+      FROM partner_requests`);
 
   // Which live listings have never been promoted. This is the marketing worklist, and its absence is
   // how a creator's project sits untouched while the easy ones get posted about repeatedly.
@@ -175,6 +185,7 @@ async function growthSection() {
     weekly_by_source: bySource.rows,
     desk: desk.rows[0],
     active_movers: movers.rows[0].n,
+    partner_requests: partners.rows[0],
     never_promoted: unpromoted.rows,
   };
 }
