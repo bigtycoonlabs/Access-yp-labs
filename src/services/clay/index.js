@@ -404,7 +404,7 @@ const DEMO_SYSTEM =
 
 async function generateDemo({ concept, context = '' }) {
   if (!provider.available()) {
-    return { status: 'unavailable', message: 'Clay could not run right now (generation service is not configured). Nothing was made.' };
+    return { status: 'unavailable', message: 'Clay could not run just now, so nothing was built and nothing was invented. This is a problem on our side, not anything you did — your idea is saved exactly as you wrote it, and it will still be here. Try again in a few minutes.' };
   }
   const user = [
     'Build a working, clickable, accessible HTML demo for this product.',
@@ -432,7 +432,7 @@ async function generateDemo({ concept, context = '' }) {
 // look or behaviour. Returns the corrected document or an honest status.
 async function remediateDemo({ html, issues }) {
   if (!provider.available()) {
-    return { status: 'unavailable', message: 'Clay could not run right now (generation service is not configured). Nothing was changed.' };
+    return { status: 'unavailable', message: 'Clay could not run just now, so nothing was built and nothing was invented. This is a problem on our side, not anything you did — your idea is saved exactly as you wrote it, and it will still be here. Try again in a few minutes.' };
   }
   const system = 'You fix the accessibility of an HTML document for screen-reader (VoiceOver) users WITHOUT changing its visual design or its functionality. Keep it a single self-contained document with inline JavaScript only. Return ONLY the corrected, complete HTML document — no explanation and no markdown fences.';
   const user = `Fix these accessibility issues in the HTML below. Set <html lang>, use semantic landmarks, real button/a/label elements (no click-only divs), a label on every control and field, alt text on every image, visible focus, and 44px targets. Do not change what the demo does.\n\nIssues:\n- ${(issues || []).join('\n- ')}\n\nHTML:\n${html}`;

@@ -236,7 +236,7 @@ async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext 
   };
   if (!provider.available()) {
     return { status: 'unavailable',
-      reply: 'Clay could not run right now (generation service is not configured). Nothing was fabricated.' };
+      reply: 'Clay could not run just now, so nothing was built and nothing was invented. This is a problem on our side, not anything you did — your idea is saved exactly as you wrote it, and it will still be here. Try again in a few minutes.' };
   }
   // Public surface hands the model ONLY the account-free tools; the authenticated surface gets all.
   const tools = Array.isArray(allowTools) ? toolSchemas().filter((t) => allowTools.includes(t.name)) : toolSchemas();
@@ -262,7 +262,7 @@ async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext 
     if (!resp.ok) {
       return { status: 'unavailable',
         reply: resp.reason === 'unavailable'
-          ? 'Clay could not run right now (generation service is not configured). Nothing was fabricated.'
+          ? 'Clay could not run just now, so nothing was built and nothing was invented. This is a problem on our side, not anything you did — your idea is saved exactly as you wrote it, and it will still be here. Try again in a few minutes.'
           : `Clay could not reach the generation service: ${resp.error}. Nothing was fabricated.` };
     }
     const toolCalls = resp.tool_calls || [];
