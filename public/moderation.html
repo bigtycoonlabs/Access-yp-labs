@@ -27,7 +27,7 @@
   <div id="queue" aria-labelledby="queue-h"></div>
   <div id="result" role="alert" aria-live="assertive"></div>
 </main>
-<script src="/js/a11y.js?v=20260807q"></script><script src="/js/api.js?v=20260807q"></script><script src="/js/nav.js?v=20260807q"></script>
+<script src="/js/a11y.js?v=20260807r"></script><script src="/js/api.js?v=20260807r"></script><script src="/js/nav.js?v=20260807r"></script>
 <script>
 const REASONS=[['missing_baseline','Missing baseline package'],['running_business','A business already running (we sell pre-proven projects)'],['fraud','Fraud or misrepresentation'],['missing_risk_disclosure','Risk not disclosed']];
 const gate=document.getElementById('gate'), queueEl=document.getElementById('queue'), result=document.getElementById('result');
@@ -178,13 +178,6 @@ function renderReview(d,host){
   host.innerHTML='';
   if(d.is_clay_seed){
     host.appendChild(el('p','muted','Seeded by Clay under a dreamer tag. Review it exactly like any other concept.'));
-    // EDIT IT HERE, where you are already reading it.
-    //
-    // Editing used to live on the Operations console while reviewing lived here, so fixing a title
-    // meant holding a listing in your head across two screens and hoping you were looking at the
-    // same one. Everything a person can change about a Clay listing is now on the screen that shows
-    // them what it says.
-    host.appendChild(clayEditor(d));
   }
   const c=d.project||{};
   const g=[]; g.push(c.research_grounded?'Research-grounded':'Not research-grounded');
@@ -193,6 +186,14 @@ function renderReview(d,host){
   else if(c.claims_verified===false) g.push('claims self-checked: FLAGGED');
   host.appendChild(el('p','muted',g.join(' · ')));
   if(c.clays_take){ host.appendChild(el('h4',null,"Clay's take")); host.appendChild(el('div','prose',c.clays_take)); }
+  // NOTHING TO READ IS ITSELF A FINDING. A listing with no materials rendered as silence, and the
+  // approve button sat there anyway — so the screen looked the same whether a project was thin or
+  // simply had not loaded. Say which.
+  if(!(d.materials||[]).length){
+    host.appendChild(el('p',null,'This listing has no materials attached. There is nothing to read, '
+      + 'which is worth knowing before deciding: approving it publishes a listing a buyer cannot '
+      + 'learn anything from.'));
+  }
   (d.materials||[]).forEach(m=>{
     host.appendChild(el('h4',null,(m.title||nice(m.type))));
     if(m.scan_status && m.scan_status!=='not_required' && m.scan_status!=='clean'){
@@ -200,6 +201,10 @@ function renderReview(d,host){
     }
     host.appendChild(el('div','prose',m.body||'(empty)'));
   });
+
+  // EDIT AFTER READING, not before. The editor used to render above the project, so the first thing
+  // offered was changing a listing you had not yet read. Review, then fix what you found.
+  if(d.is_clay_seed){ host.appendChild(clayEditor(d)); }
   if(d.demo_description){
     host.appendChild(el('h4',null,'Working demo — accessible outline'));
     if(d.demo_description.accessibility){ host.appendChild(el('p','muted',d.demo_description.accessibility)); }

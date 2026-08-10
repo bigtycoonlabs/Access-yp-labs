@@ -70,10 +70,13 @@ async function nowSection() {
            MAX(EXTRACT(EPOCH FROM (now() - created_at)) / 3600)::int
       FROM partner_requests WHERE status='open'
     UNION ALL
-    SELECT 'Sellers not yet verified', 'people.html', count(*)::int, NULL
+    SELECT 'Sellers not yet verified', 'people.html', count(*)::int, NULL -- people.html does list accounts
       FROM seller_accounts WHERE kyc_status <> 'verified'
     UNION ALL
-    SELECT 'Orders holding money', 'people.html', count(*)::int,
+    -- Pointed at people.html, which does not show orders at all, so following it left somebody
+    -- looking for money on a page about accounts. Nothing on the platform lists escrow yet, so it
+    -- points at the console's own business section, which does show the held total.
+    SELECT 'Orders holding money', 'console.html#business', count(*)::int,
            MAX(EXTRACT(EPOCH FROM (now() - created_at)) / 3600)::int
       FROM orders_transfers WHERE status='in_escrow'
   `);
