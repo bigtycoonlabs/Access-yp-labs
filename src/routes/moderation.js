@@ -33,7 +33,7 @@ router.get('/:listingId/review', authenticate, authorize('staff', 'admin', 'mast
   asyncHandler(async (req, res) => {
     const l = await query(
       `SELECT l.id, l.status, l.stage_label, l.format, l.price_cents, l.starting_bid_cents, l.created_at,
-              c.id AS concept_id, c.title, c.category, c.stage, c.risk_summary, c.origin,
+              c.id AS concept_id, c.title, c.category, c.stage, c.risk_summary, c.brief, c.origin,
               c.research_grounded, c.claims_verified, c.source_count, c.clays_take,
               l.seller_id, u.name AS seller_name, COALESCE(u.display_name, '—') AS seller_alias, u.role AS seller_role
        FROM listings l JOIN concepts c ON c.id=l.concept_id JOIN users u ON u.id=l.seller_id
@@ -59,6 +59,14 @@ router.get('/:listingId/review', authenticate, authorize('staff', 'admin', 'mast
     res.json({
       ok: true,
       is_clay_seed: row.origin === 'clay_seed',
+      // Flattened alongside the nested copies so the in-place editor on this screen has everything
+      // it needs without reaching into three different shapes. `brief` is what a buyer actually
+      // reads on the public listing; risk_summary is the risk note.
+      listing_id: row.id,
+      title: row.title,
+      price_cents: row.price_cents,
+      risk_summary: row.risk_summary,
+      brief: row.brief || null,
       listing: { id: row.id, status: row.status, stage_label: row.stage_label, format: row.format,
         price_cents: row.price_cents, starting_bid_cents: row.starting_bid_cents, created_at: row.created_at },
       // Sent under BOTH keys. The moderation page was renamed to read d.project while this still

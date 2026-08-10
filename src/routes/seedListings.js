@@ -51,7 +51,7 @@ const NOT_YOURS_TO_EDIT =
 router.get('/', staffOnly, asyncHandler(async (req, res) => {
   const r = await query(
     `SELECT l.id, l.status, l.price_cents, l.format, l.stage_label, l.created_at,
-            c.id AS concept_id, c.title, c.risk_summary,
+            c.id AS concept_id, c.title, c.risk_summary, c.brief,
             (SELECT count(*)::int FROM assets a WHERE a.concept_id = c.id AND a.is_current) AS materials,
             (c.launch_page IS NOT NULL) AS has_landing_page,
             EXISTS (SELECT 1 FROM assets a WHERE a.concept_id = c.id AND a.type = 'html_demo' AND a.is_current) AS has_demo
@@ -71,11 +71,17 @@ router.get('/', staffOnly, asyncHandler(async (req, res) => {
 // listing does not have to know which table anything is in.
 router.patch('/:id', staffOnly, [
   body('title').optional().isString().trim().isLength({ min: 3, max: 120 }),
-  // There is no blurb column. A listing card shows the title, the category and the risk summary —
-  // the descriptive text a buyer reads comes from the project's own materials. So the editable text
-  // here is the title and the risk summary, and pretending otherwise would have shipped a field
-  // that silently saved nowhere.
+  // risk_summary is the RISK NOTE. It renders on the review screen as "Risk noted:" and in a risk
+  // panel on the public listing — it is not the summary a buyer reads, and labelling it as one
+  // meant editing it changed something the person editing never saw change.
   body('risk_summary').optional().isString().trim().isLength({ max: 2000 }),
+  // The BRIEF is what a buyer actually reads: the problem, who they would serve, what they could
+  // make, and why them. Four fields, edited as four fields, because handing somebody raw JSON to
+  // edit is how you get a listing with a broken brief and no way to tell.
+  body('brief.problem').optional().isString().trim().isLength({ max: 600 }),
+  body('brief.customer').optional().isString().trim().isLength({ max: 600 }),
+  body('brief.earning').optional().isString().trim().isLength({ max: 600 }),
+  body('brief.why_you').optional().isString().trim().isLength({ max: 600 }),
   body('price_cents').optional().isInt({ min: PRICE_FLOOR_CENTS }).toInt(),
   body('stage_label').optional().isIn(['concept', 'in_build', 'prepared_to_start']),
 ], asyncHandler(async (req, res) => {
@@ -100,9 +106,25 @@ router.patch('/:id', staffOnly, [
     await query('UPDATE concepts SET title=$2, updated_at=now() WHERE id=$1', [l.concept_id, req.body.title]);
     changes.push(`title: "${l.title}" to "${req.body.title}"`);
   }
+  if (req.body.brief && typeof req.body.brief === 'object') {
+    const cur = await query('SELECT brief FROM concepts WHERE id=$1', [l.concept_id]);
+    let brief = (cur.rows[0] && cur.rows[0].brief) || {};
+    if (typeof brief === 'string') { try { brief = JSON.parse(brief); } catch (_) { brief = {}; } }
+    const touched = [];
+    ['problem', 'customer', 'earning', 'why_you'].forEach((k) => {
+      if (req.body.brief[k] !== undefined && String(req.body.brief[k]) !== String(brief[k] || '')) {
+        brief[k] = String(req.body.brief[k]);
+        touched.push(k);
+      }
+    });
+    if (touched.length) {
+      await query('UPDATE concepts SET brief=$2, updated_at=now() WHERE id=$1', [l.concept_id, JSON.stringify(brief)]);
+      changes.push('what a buyer reads: ' + touched.join(', '));
+    }
+  }
   if (req.body.risk_summary !== undefined) {
     await query('UPDATE concepts SET risk_summary=$2, updated_at=now() WHERE id=$1', [l.concept_id, req.body.risk_summary]);
-    changes.push('risk summary rewritten');
+    changes.push('risk note rewritten');
   }
   if (req.body.price_cents !== undefined && req.body.price_cents !== l.price_cents) {
     await query('UPDATE listings SET price_cents=$2 WHERE id=$1', [l.id, req.body.price_cents]);

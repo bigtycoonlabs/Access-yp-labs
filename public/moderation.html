@@ -27,7 +27,7 @@
   <div id="queue" aria-labelledby="queue-h"></div>
   <div id="result" role="alert" aria-live="assertive"></div>
 </main>
-<script src="/js/a11y.js?v=20260807p"></script><script src="/js/api.js?v=20260807p"></script><script src="/js/nav.js?v=20260807p"></script>
+<script src="/js/a11y.js?v=20260807q"></script><script src="/js/api.js?v=20260807q"></script><script src="/js/nav.js?v=20260807q"></script>
 <script>
 const REASONS=[['missing_baseline','Missing baseline package'],['running_business','A business already running (we sell pre-proven projects)'],['fraud','Fraud or misrepresentation'],['missing_risk_disclosure','Risk not disclosed']];
 const gate=document.getElementById('gate'), queueEl=document.getElementById('queue'), result=document.getElementById('result');
@@ -101,6 +101,65 @@ async function load(){
     });
   }catch(e){queueEl.appendChild(el('p','msg err',e.message));}
 }
+
+// The whole editable surface of a Clay-seeded listing, in the order somebody reads it.
+//
+// Field names match what they actually do. "Risk note" is the line that renders as "Risk noted:"
+// above; the four brief fields are the panel a buyer sees on the public listing. Calling the risk
+// note a summary — which is what it was called — meant editing it changed something the person
+// editing never saw change.
+function clayEditor(d){
+  const box=el('details','panel');
+  const sm=document.createElement('summary'); sm.textContent='Edit this listing';
+  box.appendChild(sm);
+
+  const said=el('p','muted'); said.setAttribute('role','status'); said.setAttribute('aria-live','polite');
+  const b=(d.brief && typeof d.brief==='object') ? d.brief : {};
+
+  function field(id,label,value,rows){
+    const wrap=el('div');
+    const lb=el('label'); lb.setAttribute('for',id); lb.textContent=label;
+    const inp = rows ? document.createElement('textarea') : el('input');
+    inp.id=id; if(rows) inp.rows=rows; else inp.type='text';
+    inp.value=value||'';
+    wrap.appendChild(lb); wrap.appendChild(inp);
+    box.appendChild(wrap);
+    return inp;
+  }
+
+  const ti=field('ed-title','Title', d.title);
+  const pi=field('ed-price','Price in dollars', String(Math.round((d.price_cents||0)/100)));
+  pi.type='number'; pi.min='10'; pi.step='1';
+
+  box.appendChild(el('h4',null,'What a buyer reads'));
+  const bp=field('ed-problem','The problem it solves', b.problem, 2);
+  const bc=field('ed-customer','Who they would serve', b.customer, 2);
+  const be=field('ed-earning','What they could make', b.earning, 2);
+  const bw=field('ed-why','Why them', b.why_you, 2);
+
+  box.appendChild(el('h4',null,'Shown as a risk note'));
+  const ri=field('ed-risk','Risk note', d.risk_summary, 2);
+
+  const save=el('button','btn','Save this listing'); save.type='button';
+  save.addEventListener('click', async function(){
+    const raw=String(pi.value||'').trim();
+    if(raw==='' || !isFinite(Number(raw))){ said.textContent='Put a number in the price box. Nothing was sent.'; announce(said.textContent,true); return; }
+    if(Number(raw)<10){ said.textContent='The lowest a listing can be is $10. Nothing was sent.'; announce(said.textContent,true); return; }
+    if(String(ti.value||'').trim().length<3){ said.textContent='A title needs at least three characters. Nothing was sent.'; announce(said.textContent,true); return; }
+    save.disabled=true; said.textContent='Saving…';
+    try{
+      const r=await Kiln.api('/seed-listings/'+d.listing_id,{method:'PATCH',body:{
+        title:String(ti.value).trim(), price_cents:Math.round(Number(raw)*100),
+        risk_summary:ri.value,
+        brief:{ problem:bp.value, customer:bc.value, earning:be.value, why_you:bw.value } }});
+      said.textContent=r.message||'Saved.';
+    }catch(e){ said.textContent=(e&&e.message)||'That did not save. Nothing changed.'; }
+    announce(said.textContent,true); save.disabled=false;
+  });
+  const p2=el('p'); p2.appendChild(save); box.appendChild(p2); box.appendChild(said);
+  return box;
+}
+
 async function toggleReview(id,host,btn){
   const open = btn.getAttribute('aria-expanded')==='true';
   if(open){ host.hidden=true; btn.setAttribute('aria-expanded','false'); btn.textContent='Open to review'; return; }
@@ -117,7 +176,16 @@ async function toggleReview(id,host,btn){
 }
 function renderReview(d,host){
   host.innerHTML='';
-  if(d.is_clay_seed){ host.appendChild(el('p','muted','Seeded by Clay under a dreamer tag. Review it exactly like any other concept.')); }
+  if(d.is_clay_seed){
+    host.appendChild(el('p','muted','Seeded by Clay under a dreamer tag. Review it exactly like any other concept.'));
+    // EDIT IT HERE, where you are already reading it.
+    //
+    // Editing used to live on the Operations console while reviewing lived here, so fixing a title
+    // meant holding a listing in your head across two screens and hoping you were looking at the
+    // same one. Everything a person can change about a Clay listing is now on the screen that shows
+    // them what it says.
+    host.appendChild(clayEditor(d));
+  }
   const c=d.project||{};
   const g=[]; g.push(c.research_grounded?'Research-grounded':'Not research-grounded');
   if(c.source_count){ g.push(c.source_count+' source'+(c.source_count>1?'s':'')); }

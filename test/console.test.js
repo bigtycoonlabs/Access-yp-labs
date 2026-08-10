@@ -48,9 +48,12 @@ test('the marketing worklist names listings never promoted', () => {
   assert.match(page, /Live listings never promoted/);
 });
 
-test('staff can edit and build from the console itself', () => {
-  assert.match(page, /'\/seed-listings\/'\+l\.id/);
-  assert.match(page, /'\/presentation'/);
+test('the console points at the listing rather than duplicating its editor', () => {
+  // Editing lived here while reviewing lived on the moderation screen, so changing a title meant
+  // holding a listing in your head across two screens and hoping you were looking at the same one.
+  assert.match(page, /Open one to read and edit it/);
+  assert.match(page, /moderation\.html#listing-/);
+  assert.ok(!/id='t-'\+l\.id|'t-'\+l\.id/.test(page), 'no duplicate title field on the console');
   assert.match(page, /A creator's listing is their work/);
 });
 
