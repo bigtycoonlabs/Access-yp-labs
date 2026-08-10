@@ -5,7 +5,8 @@ const fs = require('fs');
 const flat = (s) => s.replace(/\n\s*(?:\/\/)?\s*/g, ' ').replace(/\s+/g, ' ');
 const listing = fs.readFileSync('public/listing.html', 'utf8');
 const pres = fs.readFileSync(require.resolve('../src/services/clay/seedPresentation.js'), 'utf8');
-const mod = fs.readFileSync('public/moderation.html', 'utf8');
+// The review job moved to the control centre; the warning moved with it.
+const mod = fs.readFileSync('public/market-control.html', 'utf8');
 
 test('a missing brief makes the opportunity panel vanish entirely', () => {
   // This is the behaviour that made the finding matter: it returns null rather than degrading, so a
@@ -23,9 +24,9 @@ test('every seeded project gets a brief built with it', () => {
 
 test('review warns before a listing without one goes live', () => {
   // The last moment somebody can notice.
-  assert.match(mod, /No opportunity brief/);
-  assert.match(mod, /that panel does not '/);
-  assert.match(mod, /Worth filling in below before approving/);
+  assert.ok(mod.includes('No brief. On the public listing'));
+  assert.ok(mod.includes('that panel does not appear at '));
+  assert.ok(mod.includes('Have Clay write the brief'), 'and the fix is on the same screen');
 });
 
 test('the console says whether the brief was built', () => {

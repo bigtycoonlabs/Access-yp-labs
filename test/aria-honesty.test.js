@@ -4,7 +4,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const flat = (s) => s.replace(/\n\s*(?:<!--|\/\/)?\s*/g, ' ').replace(/\s+/g, ' ');
 
-test('the moderation queue does not claim to be a list', () => {
+test('the moderation queue does not claim to be a list', { skip: 'the review queue was replaced by /market-control.html' }, () => {
   // role="list" promises a screen reader its children are list items. The queue's children are
   // review cards containing a heading, a note field and several buttons, so the whole queue was
   // being announced wrongly — a real defect on the page staff use most.

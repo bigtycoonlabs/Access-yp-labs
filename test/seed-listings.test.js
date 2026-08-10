@@ -108,8 +108,8 @@ test('a refusal to save says what it compared', () => {
 test('an empty or non-numeric price never leaves the page', () => {
   // An empty price box sends 0 and a non-numeric one sends NaN, and both came back as a validation
   // error that read like the TITLE was wrong. The editor now lives on the review screen.
-  const page = fs.readFileSync('public/moderation.html', 'utf8');
-  assert.match(page, /raw===''\s*\|\|\s*!isFinite\(Number\(raw\)\)/);
+  const page = fs.readFileSync('public/market-control.html', 'utf8');
+  assert.ok(page.includes("raw==='' || !isFinite(Number(raw))"));
   assert.match(page, /Put a number in the price box/);
   assert.match(page, /The lowest a listing can be is \$10/);
 });
@@ -118,10 +118,10 @@ test('the fields are named for what they actually do', () => {
   // risk_summary renders as "Risk noted:" — it is not the summary a buyer reads, and labelling it
   // as one meant editing it changed something the person editing never saw change. What a buyer
   // reads is the brief.
-  const page = fs.readFileSync('public/moderation.html', 'utf8');
-  assert.match(page, /'Risk note'/);
-  assert.match(page, /What a buyer reads/);
-  assert.match(page, /The problem it solves/);
+  const page = fs.readFileSync('public/market-control.html', 'utf8');
+  assert.ok(page.includes('Risk note (shown as "Risk noted")'));
+  assert.ok(page.includes('What a buyer reads'));
+  assert.ok(page.includes('The problem it solves'));
   assert.ok(!/Summary a buyer reads/.test(page), 'the mislabel is gone');
 });
 

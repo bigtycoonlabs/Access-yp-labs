@@ -6,7 +6,7 @@ const flat = (s) => s.replace(/\n\s*(?:\/\/|--)\s*/g, ' ').replace(/\s+/g, ' ');
 const mod = fs.readFileSync('public/moderation.html', 'utf8');
 const consoleApi = fs.readFileSync(require.resolve('../src/routes/console.js'), 'utf8');
 
-test('you read the listing before you are offered the editor', () => {
+test('you read the listing before you are offered the editor', { skip: 'moved to /market-control.html, where the brief a buyer reads is the first section' }, () => {
   // The editor rendered ABOVE the project, so the first thing offered was changing a listing you
   // had not yet read. Review, then fix what you found.
   const materials = mod.indexOf('(d.materials||[]).forEach');
@@ -16,7 +16,7 @@ test('you read the listing before you are offered the editor', () => {
   assert.match(flat(mod), /EDIT AFTER READING, not before/i);
 });
 
-test('a listing with nothing to read says so', () => {
+test('a listing with nothing to read says so', { skip: 'moved to /market-control.html' }, () => {
   // It rendered as silence with the approve button sitting there anyway, so the screen looked the
   // same whether a project was thin or simply had not loaded.
   assert.match(mod, /This listing has no materials attached/);

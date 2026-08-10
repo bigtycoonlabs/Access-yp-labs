@@ -4,7 +4,8 @@ const assert = require('node:assert');
 const fs = require('fs');
 const flat = (s) => s.replace(/\n\s*\/\/\s*/g, ' ').replace(/\s+/g, ' ');
 const core = fs.readFileSync(require.resolve('../src/services/moderationCore.js'), 'utf8');
-const page = fs.readFileSync('public/moderation.html', 'utf8');
+// Reviewing moved to the control centre; this promise had to move with it.
+const page = fs.readFileSync('public/market-control.html', 'utf8');
 
 test('a staff member cannot approve their own listing', () => {
   assert.match(core, /listing\.seller_id === user\.id && !isOperator/);
