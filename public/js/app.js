@@ -248,9 +248,12 @@
     } else if (prefs && prefs.interests && prefs.interests.length) {
       const words = prefs.interests.map((i) => CATEGORY_WORDS[i] || i.replace(/_/g, ' '));
       const list = words.length === 1 ? words[0] : (words.slice(0, -1).join(', ') + ' and ' + words[words.length - 1]);
-      opening = 'Welcome back. You told me you’re drawn to ' + list + ' — so what’s it going to be: shape one of those, or chase something brand new? “Create” starts fresh; “Enhance” sharpens something you’ve already got.';
+      // The Create / Enhance buttons were removed days ago — Clay reads which one you mean from what
+      // you write. Telling somebody to press buttons that no longer exist is worse than saying
+      // nothing: they hunt for them, do not find them, and conclude the page is broken.
+      opening = 'Welcome back. You told me you’re drawn to ' + list + ' — so what’s it going to be: shape one of those, or chase something brand new? Just tell me which; I’ll work out the rest.';
     } else {
-      opening = "I'm Clay. Here's how this works: you bring me an idea — any idea, half-formed is fine — and we pressure-test it, sharpen it, and build the whole thing out together: the plan, the research, the marketing, a working demo. It stays your idea; I just help bring it to life — and it stays private: everything you build lives in your Laboratory, and nothing goes on the Dream Market unless you choose to list it. Pick “Create” to start something new, or “Enhance” to sharpen an idea you already have or a business you already run. So — what's the one that's been living in your head?";
+      opening = "I'm Clay. Here's how this works: you bring me an idea — any idea, half-formed is fine — and we pressure-test it, sharpen it, and build the whole thing out together: the plan, the research, the marketing, a working demo. It stays your idea; I just help bring it to life — and it stays private: everything you build lives in your Laboratory, and nothing goes on the Dream Market unless you choose to list it. Whether it's brand new or something you already run, just describe it in your own words — I'll work out which it is. So — what's the one that's been living in your head?";
     }
     // If they handed Clay an idea from the homepage before signing up, it's
     // waiting for them here — greet them with it and pre-fill the box.

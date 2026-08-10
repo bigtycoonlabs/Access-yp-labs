@@ -145,7 +145,7 @@ async function generate({ mode, category, prompt, operating = false, priorWork =
   if (!provider.available()) {
     // Honest degradation: we could not run, so we say exactly that.
     return { result_status: 'unavailable',
-      message: 'Clay could not run right now (generation service is not configured). Nothing was fabricated.' };
+      message: 'Clay could not run just now, so nothing was built and nothing was invented. This is a problem on our side, not anything you did — your idea is saved exactly as you wrote it, and it will still be here. Try again in a few minutes.' };
   }
 
   const system = operating ? (SYSTEM_PROMPT + '\n\n' + OPERATING_ADDENDUM) : SYSTEM_PROMPT;
@@ -235,7 +235,7 @@ async function generate({ mode, category, prompt, operating = false, priorWork =
   if (!out.ok) {
     return { result_status: 'unavailable',
       message: out.reason === 'unavailable'
-        ? 'Clay could not run right now (generation service is not configured). Nothing was fabricated.'
+        ? 'Clay could not run just now, so nothing was built and nothing was invented. This is a problem on our side, not anything you did — your idea is saved exactly as you wrote it, and it will still be here. Try again in a few minutes.'
         : `Clay could not reach the generation service: ${out.error}. Nothing was fabricated.` };
   }
   const raw = out.text;
@@ -328,7 +328,7 @@ Respond with a SINGLE valid JSON object and nothing else (no markdown fences):
 async function generateSocial({ concept, platforms, goal, count }) {
   if (!provider.available()) {
     return { result_status: 'unavailable',
-      message: 'Clay could not run right now (generation service is not configured). Nothing was fabricated.' };
+      message: 'Clay could not run just now, so nothing was built and nothing was invented. This is a problem on our side, not anything you did — your idea is saved exactly as you wrote it, and it will still be here. Try again in a few minutes.' };
   }
   const ctx = [
     `Concept title: ${concept.title || '(untitled)'}`,
@@ -340,7 +340,7 @@ async function generateSocial({ concept, platforms, goal, count }) {
   if (!out.ok) {
     return { result_status: 'unavailable',
       message: out.reason === 'unavailable'
-        ? 'Clay could not run right now (generation service is not configured). Nothing was fabricated.'
+        ? 'Clay could not run just now, so nothing was built and nothing was invented. This is a problem on our side, not anything you did — your idea is saved exactly as you wrote it, and it will still be here. Try again in a few minutes.'
         : `Clay could not reach the generation service: ${out.error}. Nothing was fabricated.` };
   }
   const raw = out.text;
