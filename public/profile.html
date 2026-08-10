@@ -12,14 +12,50 @@
 </div></header>
 <main id="main" class="wrap">
   <h1>Your profile</h1>
-  <p class="muted">Your About Me and what you show publicly. Your contact details are never shown to other members — don't put an email or phone number in About Me.</p>
   <div id="feedback" role="alert" aria-live="assertive"></div>
+
+  <!-- THE THREE CHECKBOXES ARE GONE.
+       "Show my projects publicly", "show my completed work publicly", "show my live listings
+       publicly" — asking somebody to make three privacy decisions about a public profile page that
+       does not exist. Two of the three were written to the database and read by nothing at all; the
+       third was read only by an endpoint no page in the platform links to. Three confusing questions
+       that controlled nothing, in place of the settings somebody actually needs.
+
+       What replaced them is what a person can really change: the public name that appears on every
+       listing they make, and their own contact details. -->
+
+  <section aria-labelledby="pub-h">
+    <h2 id="pub-h">How you appear to other people</h2>
+    <p class="muted">Your real name is never shown. Everywhere on the platform — listings, the
+      partner board, Clay Weekly — people see the public name below.</p>
+    <div class="panel"><div class="stack">
+      <div><label for="display_name">Your public name</label>
+        <input type="text" id="display_name" maxlength="40" autocomplete="nickname"/></div>
+      <div><label for="about">About you</label>
+        <textarea id="about" rows="3"></textarea>
+        <p class="muted">Kept with your account. It is not shown on a public page today — there
+          is no public profile page yet — so this is for your own record until there is.</p></div>
+    </div></div>
+  </section>
+
+  <section aria-labelledby="you-h">
+    <h2 id="you-h">Your details</h2>
+    <p class="muted">Only you and the team see these. They are never shown to other members.</p>
+    <div class="panel"><div class="stack">
+      <div><label for="real_name">Your name</label>
+        <input type="text" id="real_name" maxlength="80" autocomplete="name"/></div>
+      <div><label for="email">Email address</label>
+        <input type="email" id="email" autocomplete="email" autocapitalize="none"/>
+        <p class="muted">This is how you sign in, so changing it changes your sign-in address too.</p></div>
+      <div><label for="phone">Phone number</label>
+        <input type="tel" id="phone" autocomplete="tel"/></div>
+      <p><a href="/login.html">Change your password from the sign-in page</a> using the
+        forgotten-password link — we never show or store a readable copy of it.</p>
+    </div></div>
+  </section>
+
   <div class="panel"><div class="stack">
-    <div><label for="about">About me</label><textarea id="about"></textarea></div>
-    <label class="check"><input type="checkbox" id="show_concepts"/> Show my projects publicly</label>
-    <label class="check"><input type="checkbox" id="show_completed"/> Show my completed work publicly</label>
-    <label class="check"><input type="checkbox" id="show_listings"/> Show my live listings publicly</label>
-    <button type="button" class="btn" id="save">Save profile</button>
+    <button type="button" class="btn" id="save">Save my profile</button>
 
   <!-- CONVERSATION HISTORY. The platform records what people say to Clay so we can see where the
        product loses them, and it promises in writing that a creator can erase their own. That
@@ -34,32 +70,52 @@
   </section>
   </div></div>
 </main>
-<script src="/js/a11y.js?v=20260808b"></script><script src="/js/api.js?v=20260808b"></script><script src="/js/nav.js?v=20260808b"></script>
+<script src="/js/a11y.js?v=20260808c"></script><script src="/js/api.js?v=20260808c"></script><script src="/js/nav.js?v=20260808c"></script>
 <script>
 if(!Kiln.isLoggedIn())location.replace('/login.html');
 const fb=document.getElementById('feedback');
 function show(m,k){fb.innerHTML='<div class="msg '+(k||'err')+'">'+m+'</div>';announce(m,true);}
+function val(id){ var e=document.getElementById(id); return e? e.value : ''; }
+function put(id, v){ var e=document.getElementById(id); if(e) e.value = v == null ? '' : v; }
+
 async function load(){
   try{
     const {profile}=await Kiln.api('/profiles/me');
     if(profile){
-      document.getElementById('about').value=profile.about_me||'';
-      document.getElementById('show_concepts').checked=!!profile.show_concepts;
-      document.getElementById('show_completed').checked=profile.show_completed!==false;
-      document.getElementById('show_listings').checked=profile.show_listings!==false;
+      put('display_name', profile.display_name);
+      put('about', profile.about_me);
+      put('real_name', profile.name);
+      put('email', profile.email);
+      put('phone', profile.phone);
     }
   }catch(e){show(e.message);}
 }
+
 document.getElementById('save').addEventListener('click',async()=>{
-  const btn=document.getElementById('save');btn.disabled=true;announce('Saving your profile…');
+  const btn=document.getElementById('save');
+  // Check here rather than letting the server refuse: a public name of one character comes back as
+  // a validation error somebody has to interpret, when the page already knows.
+  if(val('display_name').trim() && val('display_name').trim().length < 2){
+    return show('A public name needs at least two characters. Nothing was saved.');
+  }
+  btn.disabled=true; announce('Saving your profile…');
   try{
-    await Kiln.api('/profiles/me',{method:'PUT',body:{
-      about_me:document.getElementById('about').value,
-      show_concepts:document.getElementById('show_concepts').checked,
-      show_completed:document.getElementById('show_completed').checked,
-      show_listings:document.getElementById('show_listings').checked}});
-    show('Profile saved.','ok');
-  }catch(e){show(e.message);}finally{btn.disabled=false;}
+    // Two saves because they are two different things: what other people see, and who you are to
+    // us. Reported as one outcome, and if either fails the message says which — a half-saved
+    // profile reported as saved is the failure this platform exists not to make.
+    const done=[];
+    const r1=await Kiln.api('/profiles/me',{method:'PUT',body:{ about_me: val('about') }});
+    if(r1) done.push('about you');
+    const r2=await Kiln.api('/profiles/me/details',{method:'PUT',body:{
+      display_name: val('display_name').trim() || undefined,
+      name: val('real_name').trim() || undefined,
+      email: val('email').trim() || undefined,
+      phone: val('phone').trim() || undefined }});
+    show(r2 && r2.changed===false && !done.length
+      ? 'Nothing was different from what is already saved.'
+      : ((r2 && r2.message) || 'Profile saved.'), 'ok');
+  }catch(e){ show((e&&e.message)||'That did not save. Nothing was changed.'); }
+  finally{ btn.disabled=false; }
 });
 load();
 

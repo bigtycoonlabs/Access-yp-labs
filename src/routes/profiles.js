@@ -2,13 +2,61 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { query } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
-const { asyncHandler } = require('../lib/http');
+const { asyncHandler, ApiError } = require('../lib/http');
 const router = express.Router();
 
 // Own profile
+// PUT /api/profiles/me/details — the things a person actually manages about themselves.
+//
+// The profile page used to offer About Me and three checkboxes and nothing else, so somebody could
+// not change their own name, their email, their phone, or the public tag that appears on every
+// listing they make. The tag was changeable only by asking Clay in conversation, which is a fine way
+// to do it and a poor way to be the ONLY way to do it.
+router.put('/me/details', authenticate, [
+  body('display_name').optional().isString().trim().isLength({ min: 2, max: 40 }),
+  body('name').optional().isString().trim().isLength({ min: 1, max: 80 }),
+  body('email').optional().isEmail().normalizeEmail(),
+  body('phone').optional().isString().trim().isLength({ min: 7, max: 30 }),
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new ApiError(400, 'A public name needs 2 to 40 characters, and an email has to be a real address.');
+  }
+  const changed = [];
+  const cur = await query('SELECT display_name, name, email, phone FROM users WHERE id=$1', [req.user.id]);
+  const row = cur.rows[0] || {};
+
+  if (req.body.email !== undefined && req.body.email !== row.email) {
+    // Somebody else's account must not be reachable by claiming their address.
+    const taken = await query('SELECT 1 FROM users WHERE email=$1 AND id<>$2', [req.body.email, req.user.id]);
+    if (taken.rows.length) throw new ApiError(409, 'Another account already uses that email address.');
+    await query('UPDATE users SET email=$2, updated_at=now() WHERE id=$1', [req.user.id, req.body.email]);
+    changed.push('email');
+  }
+  for (const [field, label] of [['display_name', 'public name'], ['name', 'name'], ['phone', 'phone']]) {
+    if (req.body[field] !== undefined && req.body[field] !== row[field]) {
+      await query(`UPDATE users SET ${field}=$2, updated_at=now() WHERE id=$1`, [req.user.id, req.body[field]]);
+      changed.push(label);
+    }
+  }
+  if (!changed.length) {
+    return res.json({ ok: true, changed: false,
+      message: 'Nothing was different from what is already saved, so nothing changed.' });
+  }
+  res.json({ ok: true, changed: true, fields: changed,
+    message: 'Saved: ' + changed.join(', ') + '.' });
+}));
+
 router.get('/me', authenticate, asyncHandler(async (req, res) => {
-  const r = await query('SELECT * FROM profiles WHERE user_id=$1', [req.user.id]);
-  res.json({ profile: r.rows[0] || null });
+  const r = await query(
+    `SELECT u.display_name, u.name, u.email, u.phone, p.about_me
+       FROM users u LEFT JOIN profiles p ON p.user_id = u.id
+      WHERE u.id = $1`, [req.user.id]);
+  const row = r.rows[0] || {};
+  res.json({ profile: {
+    display_name: row.display_name || null, name: row.name || null,
+    email: row.email || null, phone: row.phone || null, about_me: row.about_me || null,
+  } });
 }));
 
 // Update own profile (About Me + per-section visibility). Contact info is never a field.
