@@ -43,22 +43,53 @@
   </div>
   <p class="muted">Already have an account? <a href="/login.html">Sign in</a>.</p>
 </main>
-<script src="/js/a11y.js?v=20260807w"></script><script src="/js/api.js?v=20260807w"></script><script src="/js/nav.js?v=20260807w"></script>
+<script src="/js/a11y.js?v=20260807x"></script><script src="/js/api.js?v=20260807x"></script><script src="/js/nav.js?v=20260807x"></script>
 <script>
 const fb = document.getElementById('feedback');
-function show(msg, kind){ fb.innerHTML = '<div class="msg '+(kind||'err')+'">'+msg+'</div>'; announce(msg, true); }
+function show(msg, kind){
+  fb.innerHTML = '<div class="msg '+(kind||'err')+'">'+msg+'</div>';
+  announce(msg, true);
+  // BRING IT INTO VIEW. The feedback box sits at the top of the form, and by the time somebody has
+  // filled four fields on a phone it is several hundred pixels above the screen — so tapping Create
+  // account and getting an error looked exactly like tapping it and nothing happening. A person who
+  // cannot see why they were refused tries the same thing again and then leaves.
+  try{
+    fb.setAttribute('tabindex','-1');
+    fb.scrollIntoView({behavior:'smooth',block:'center'});
+    setTimeout(function(){ try{ fb.focus({preventScroll:true}); }catch(_){ } }, 250);
+  }catch(_){ }
+}
 async function submit(){
   const name = document.getElementById('name').value.trim();
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
     const phone = document.getElementById('phone').value.trim();
-  if(!name || !email || password.length < 8){ return show('Please enter your name, email, and a password of at least 8 characters.'); }
+  // Check each thing separately and name the one that is wrong. A single sentence listing every
+  // requirement makes somebody re-read all four fields to find which one they missed.
+  if(!name){ return show('Add your name so Clay knows who he is building for.'); }
+  if(!email){ return show('Add your email — it is how Clay sends your project when it is ready.'); }
+  if(!phone){
+    // This was not checked here at all, so an empty phone reached the server, failed validation,
+    // and surfaced to the person as "Failed to fetch" — a network error about nothing.
+    return show('Add a phone number. We use it only to reach you about your own account.');
+  }
+  if(password.length < 8){ return show('Passwords need at least eight characters.'); }
   const btn = document.getElementById('submit'); btn.disabled = true; announce('Creating your account…');
   try{
     const data = await Kiln.api('/auth/register', { method:'POST', auth:false, body:{ name, email, password, phone } });
     Kiln.setTokens({ accessToken:data.accessToken, refreshToken:data.refreshToken });
     announce('Account created. Opening your laboratory.'); { const n=new URLSearchParams(location.search).get('next'); location.href = (n && n.charAt(0)==='/' && n.charAt(1)!=='/') ? n : '/app.html'; }
-  }catch(e){ show(e.message); btn.disabled = false; }
+  }catch(e){
+    // "Account already exists" is true and leaves somebody stuck. Say what to do about it.
+    var m = (e && e.message) || 'That did not go through. Nothing was created — please try again.';
+    if(/already exists/i.test(m)){
+      m = 'There is already an account with that email. <a href="/login.html">Sign in instead</a>, '
+        + 'or use the forgotten-password link there if you cannot remember it.';
+    } else if(/failed to fetch|network/i.test(m)){
+      m = 'We could not reach the server just now, so nothing was created. Check your connection and try again.';
+    }
+    show(m); btn.disabled = false;
+  }
 }
 document.getElementById('submit').addEventListener('click', submit);
 </script>
