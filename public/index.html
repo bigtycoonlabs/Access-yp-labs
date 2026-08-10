@@ -413,7 +413,7 @@
         <a href="/risk.html" style="display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Risk Disclosure</a>
       </nav>
     </footer>
-<script src="/js/a11y.js?v=20260807v"></script><script src="/js/api.js?v=20260807v"></script><script src="/js/nav.js?v=20260807v"></script>
+<script src="/js/a11y.js?v=20260807w"></script><script src="/js/api.js?v=20260807w"></script><script src="/js/nav.js?v=20260807w"></script>
 <script>
 (function(){
   const inner=document.getElementById('hero-inner');
@@ -489,11 +489,40 @@
         }
         const cta=el('a','cta solid','Create a free account & keep building');cta.href='/register.html';cta.style.marginTop='10px';out.appendChild(cta);
         const si=el('p','muted');const a=el('a',null,'I already have an account');a.href='/login.html';a.style.color='#8ce0ff';si.appendChild(a);out.appendChild(si);
-      }catch(e){out.innerHTML='';out.appendChild(claySpeaker());out.appendChild(el('p','err',(e&&e.message)||'Something went sideways — try that again.'));announce((e&&e.message)||'Error',true);}
+        // BRING IT INTO VIEW. Clay's reply renders below the button, which on a phone puts it about
+        // thirty pixels under the fold and the account button two hundred below that — so somebody
+        // types their idea, taps, and the screen does not visibly change. The request succeeded,
+        // the answer was there, and the one moment this whole page exists to produce was invisible.
+        // Announcing it to a screen reader was already handled; showing it to everybody else was not.
+        showResult(out);
+      }catch(e){
+        out.innerHTML='';out.appendChild(claySpeaker());
+        out.appendChild(el('p','err',(e&&e.message)||'Something went sideways — try that again.'));
+        announce((e&&e.message)||'Error',true);
+        // Errors need seeing just as much as answers — arguably more.
+        showResult(out);
+      }
       finally{btn.disabled=false;}
     });
     wrap.appendChild(label);wrap.appendChild(ta);wrap.appendChild(btn);wrap.appendChild(out);
     return wrap;
+  }
+
+
+  // Scroll a freshly rendered answer into view, and put focus at the top of it so a keyboard or
+  // screen-reader user continues from the answer rather than from where the button used to be.
+  // `smooth` is deliberate: a jump makes people lose their place, and this is the moment somebody
+  // decides whether to keep going.
+  function showResult(node){
+    if(!node) return;
+    try{
+      node.setAttribute('tabindex','-1');
+      node.scrollIntoView({behavior:'smooth',block:'start'});
+      // Focus after the scroll starts, so the browser does not fight its own scrolling.
+      setTimeout(function(){ try{ node.focus({preventScroll:true}); }catch(_){ } }, 250);
+    }catch(_){
+      // Any browser that refuses either of those still gets the answer; it just does not move.
+    }
   }
 
   function askClayBox(){
@@ -514,13 +543,15 @@
       try{
         const r=await Kiln.api('/ask',{auth:false,method:'POST',body:{message:msg,history:history}});
         thinking.remove();
-        if(r&&r.limited){const p=el('p','muted',r.reply||'');log.appendChild(p);const cta=el('a','cta solid','Create a free account');cta.href='/register.html';cta.style.marginTop='8px';log.appendChild(cta);announce(r.reply||'',true);return;}
+        if(r&&r.limited){const p=el('p','muted',r.reply||'');log.appendChild(p);const cta=el('a','cta solid','Create a free account');cta.href='/register.html';cta.style.marginTop='8px';log.appendChild(cta);announce(r.reply||'',true);showResult(p);return;}
         const bubbles=(r&&Array.isArray(r.bubbles)&&r.bubbles.length)?r.bubbles:[(r&&r.reply)||'…'];
         bubbles.forEach((b)=>{const p=el('p','ask-clay');p.textContent=b;log.appendChild(p);});
         announce(bubbles[0]||'',true);
+        // Same reason as the idea box: an answer appended below the fold is an answer nobody sees.
+        showResult(log.lastElementChild);
         history.push({role:'user',content:msg});history.push({role:'assistant',text:(r&&r.reply)||''});
         if(history.length>12)history=history.slice(-12);
-      }catch(e){thinking.remove();const p=el('p','err',(e&&e.message)||'Something went sideways — try that again.');log.appendChild(p);announce((e&&e.message)||'Error',true);}
+      }catch(e){thinking.remove();const p=el('p','err',(e&&e.message)||'Something went sideways — try that again.');log.appendChild(p);announce((e&&e.message)||'Error',true);showResult(p);}
       finally{btn.disabled=false;ta.focus();}
     }
     btn.addEventListener('click',send);

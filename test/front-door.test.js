@@ -33,3 +33,32 @@ test('the reason is written down where the next person will see it', () => {
   // below the fold on a phone.
   assert.match(flat(home), /push the idea box below the fold/i);
 });
+
+test('Clay\'s answer is brought into view, not just announced', () => {
+  // The reply renders below the button, which on a phone put it thirty pixels under the fold and
+  // the account button two hundred below that. Somebody typed their idea, tapped, and the screen
+  // did not visibly change — the request succeeded, the answer was there, and the one moment this
+  // page exists to produce was invisible. It was announced to a screen reader and shown to nobody.
+  assert.match(home, /function showResult\(node\)/);
+  assert.match(home, /scrollIntoView\(\{behavior:'smooth',block:'start'\}\)/);
+  assert.match(flat(home), /BRING IT INTO VIEW/i);
+});
+
+test('focus follows the answer', () => {
+  // So a keyboard or screen-reader user continues from the answer rather than from where the button
+  // used to be.
+  assert.match(home, /node\.setAttribute\('tabindex','-1'\)/);
+  assert.match(home, /node\.focus\(\{preventScroll:true\}\)/);
+});
+
+test('errors are brought into view too', () => {
+  // Arguably more than answers: an error nobody sees is indistinguishable from nothing happening.
+  const sparkCatch = home.slice(home.indexOf("}catch(e){"), home.indexOf("}catch(e){") + 500);
+  assert.match(sparkCatch, /showResult\(out\)/);
+  assert.match(flat(home), /Errors need seeing just as much as answers/i);
+});
+
+test('the Ask Clay box does the same', () => {
+  // Same page, same failure: an answer appended below the fold is an answer nobody sees.
+  assert.match(home, /showResult\(log\.lastElementChild\)/);
+});
