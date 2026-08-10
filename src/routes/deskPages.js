@@ -257,7 +257,17 @@ router.get('/sitemap.xml', asyncHandler(async (req, res) => {
   // Clay Weekly issue that goes live, appears the moment it does.
   const topics = deskSeo.CATEGORIES.map((c) => ({ loc: `${site}/desk/topic/${c.slug}`, priority: '0.7' }));
 
-  const urls = core.concat([{ loc: `${site}/weekly`, priority: '0.8' }]).concat(topics)
+  // THE THINGS WE ACTUALLY SELL. The sitemap listed every Desk article and not one live listing, so
+  // the part of the platform that gives things away was fully indexed and the part that is the
+  // business was invisible. Priority above the topic pages because a project for sale is the point.
+  let listings = [];
+  try {
+    const r = await require('../config/db').query(
+      `SELECT l.id, l.updated_at FROM listings l WHERE l.status='live' ORDER BY l.created_at DESC LIMIT 500`);
+    listings = r.rows.map((x) => ({ loc: `${site}/market/${x.id}`, priority: '0.8' }));
+  } catch (_) { listings = []; }
+
+  const urls = core.concat([{ loc: `${site}/weekly`, priority: '0.8' }]).concat(topics).concat(listings)
     .map((c) => `  <url><loc>${esc(c.loc)}</loc><priority>${c.priority}</priority></url>`)
     .concat(issues.map((i) => {
       const lastmod = i.published_at ? new Date(i.published_at).toISOString().slice(0, 10) : null;

@@ -383,21 +383,28 @@
       <p class="muted">We will email once to confirm it was really you. Nothing is sent until you click that.</p>
     </section>
 
-    <section aria-labelledby="price-h">
-      <h2 id="price-h">Pricing</h2>
-      <p class="lead">Your first project is free — properly free, not a trial. One plan covers everything after that.</p>
-      <div class="cards">
-        <div class="card">
-          <p class="price">Free</p>
-          <p><strong>Your first project, forever.</strong> Shape it with Clay, upload your own material to it, add to it as it grows, take it off the platform, work with a launch partner, and list it for sale. Nothing held back and no card.</p>
-        </div>
-        <div class="card">
-          <p class="price">$19 / month</p>
-          <p><strong>Everything, unlimited.</strong> Every project you want, plus the website builder and landing pages, images as Clay works, exports, and your storefront. One price, no add-ons, nothing charged per project.</p>
-        </div>
+    <!-- WHAT IS FOR SALE, NOT WHAT IT COSTS TO JOIN.
+         This was a pricing section: two cards, a plan, and a Get started button. Amazon does not
+         open with Prime. The products here are the projects people are selling, and a visitor who
+         can see three real ones understands this place in a way no description achieves. Pricing
+         moved to one line at the bottom, because somebody deciding whether to type an idea does not
+         need to know what a subscription costs — and the plan is not required to use the platform. -->
+    <section aria-labelledby="market-h">
+      <h2 id="market-h">On the Dream Market right now</h2>
+      <p class="lead">Businesses somebody researched, packaged and never launched — for sale to
+        whoever wants to start one.</p>
+      <div id="recent-listings" class="cards">
+        <p class="muted">Loading what is for sale…</p>
       </div>
-      <p>There is no trial, because you do not need one. Building with Clay is free and unlimited — shape as many ideas as you like, for as long as you like. The plan is for what comes after building: keeping and exporting more than your first project, the website builder, and your storefront.</p>
-      <p class="cta-row"><a class="cta solid" href="/register.html">Get started</a></p>
+      <p class="cta-row"><a class="cta" href="/marketplace.html">See everything on the market</a></p>
+    </section>
+
+    <section aria-labelledby="price-h">
+      <h2 id="price-h">What it costs</h2>
+      <p>Building with Clay is free and unlimited, and your first project is free forever — not a
+        trial. If you want more than one project kept, the website builder, or your own storefront,
+        that is one plan at $19 a month. You never need it to use this place, and nothing asks you
+        for a card to start.</p>
     </section>
   </main>
 
@@ -413,7 +420,7 @@
         <a href="/risk.html" style="display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Risk Disclosure</a>
       </nav>
     </footer>
-<script src="/js/a11y.js?v=20260807z"></script><script src="/js/api.js?v=20260807z"></script><script src="/js/nav.js?v=20260807z"></script>
+<script src="/js/a11y.js?v=20260808a"></script><script src="/js/api.js?v=20260808a"></script><script src="/js/nav.js?v=20260808a"></script>
 <script>
 (function(){
   const inner=document.getElementById('hero-inner');
@@ -655,6 +662,42 @@
     }catch(e){ said.textContent='Could not reach us just now. Please try again in a moment.'; }
     go.disabled=false;
   });
+})();
+
+// The three most recent things for sale. This is the shop window, and it is the first honest answer
+// to "what is this place" — better than any sentence describing it.
+//
+// Fails silently: a homepage that shouts about a broken sidebar is worse than one that quietly does
+// without it, and the idea box above is what actually matters here.
+(async function(){
+  var host=document.getElementById('recent-listings'); if(!host) return;
+  try{
+    var r=await fetch('/api/listings/recent?limit=3');
+    if(!r.ok) throw new Error('unavailable');
+    var d=await r.json();
+    var items=(d && d.listings) || [];
+    host.innerHTML='';
+    if(!items.length){
+      host.appendChild(Object.assign(document.createElement('p'),{className:'muted',
+        textContent:'Nothing is listed at this moment. The market fills as people finish projects.'}));
+      return;
+    }
+    items.forEach(function(l){
+      var card=document.createElement('div'); card.className='card';
+      var h=document.createElement('h3');
+      var a=document.createElement('a'); a.href='/market/'+encodeURIComponent(l.id); a.textContent=l.title||'Untitled project';
+      h.appendChild(a); card.appendChild(h);
+      var price=document.createElement('p'); price.className='price'; price.textContent='$'+((l.price_cents||0)/100).toFixed(0);
+      card.appendChild(price);
+      if(l.line){ var p2=document.createElement('p'); p2.textContent=l.line; card.appendChild(p2); }
+      host.appendChild(card);
+    });
+  }catch(e){
+    host.innerHTML='';
+    var p3=document.createElement('p'); p3.className='muted';
+    p3.textContent='Could not load the market just now. It is at the link below.';
+    host.appendChild(p3);
+  }
 })();
 </script>
 <div class="sticky-cta">

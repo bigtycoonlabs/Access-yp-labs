@@ -176,6 +176,40 @@ router.post('/:id/withdraw', authenticate, asyncHandler(async (req, res) => {
 // Separate from the terms route on purpose. Changing what something costs and changing what it says
 // are different acts with different consequences, and a buyer watching a listing should be able to
 // tell which happened.
+// GET /api/listings/recent — the shop window for the homepage.
+//
+// Public and unauthenticated on purpose: it feeds the first thing a stranger sees, and requiring a
+// session to find out what is for sale would be exactly backwards. Only live listings, only the
+// fields needed to make a card — no seller identity beyond the dreamer tag, nothing private.
+router.get('/recent', asyncHandler(async (req, res) => {
+  const limit = Math.min(Math.max(Number(req.query.limit) || 3, 1), 6);
+  const r = await query(
+    `SELECT l.id, l.price_cents, c.title, c.brief, c.risk_summary
+       FROM listings l
+       JOIN concepts c ON c.id = l.concept_id
+      WHERE l.status = 'live'
+      ORDER BY l.created_at DESC
+      LIMIT $1`, [limit]);
+
+  res.set('Cache-Control', 'public, max-age=120');
+  res.json({
+    ok: true,
+    listings: r.rows.map((x) => {
+      const b = x.brief && typeof x.brief === 'object' ? x.brief : {};
+      // One line describing the opportunity, from the project's own words. Never invented: if there
+      // is nothing real to say, the card carries the title and price and says nothing else rather
+      // than filling the gap with copy.
+      const line = (b.problem || b.customer || '').replace(/\s+/g, ' ').trim();
+      return {
+        id: x.id,
+        title: x.title,
+        price_cents: x.price_cents,
+        line: line ? line.slice(0, 140) : null,
+      };
+    }),
+  });
+}));
+
 router.patch('/:id/story', authenticate, [
   body('title').optional().isString().trim().isLength({ min: 3, max: 120 }),
   body('summary').optional().isString().trim().isLength({ max: 2000 }),
