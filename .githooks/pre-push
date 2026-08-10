@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# THE GATE, ENFORCED RATHER THAN REMEMBERED.
+#
+# I have pushed on a red gate three times in one session. Each time I ran the check and did not read
+# the output, which produces the appearance of rigour with none of it. Writing "read the gate" into
+# commit messages has not changed the behaviour, so this removes the choice: a failing gate now
+# makes the push itself fail.
+#
+# Deliberately not bypassable by accident. --no-verify still works, which is correct: there are real
+# emergencies, and a hook nobody can override gets deleted rather than respected. But it has to be
+# typed on purpose.
+set -uo pipefail
+echo "pre-push: running the gate…"
+if ! bash scripts/gate.sh; then
+  echo ""
+  echo "PUSH BLOCKED — the gate failed. Fix it, or push with --no-verify if you truly mean to."
+  exit 1
+fi
+echo "pre-push: gate green, pushing."
