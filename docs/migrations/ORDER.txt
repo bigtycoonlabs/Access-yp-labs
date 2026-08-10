@@ -1,0 +1,72 @@
+# THE ORDER MIGRATIONS MUST RUN IN.
+#
+# Filename order does not work and never did. On a clean database, 46 of the 54 files fail and only
+# five tables get created, because `users` — which nearly every other file references — is created in
+# 050_recover_untracked_tables.sql, and 050 sorts near the end. The live database is fine only
+# because it was built up over time rather than restored from these files; a genuine restore from
+# version control would have produced a broken system, and nobody would have found out until they
+# needed it.
+#
+# Renaming the files would break every reference to them in commits and notes, so the order lives
+# here instead. scripts/migrate.sh reads this file. A test fails if a .sql file exists that is not
+# listed here, so a new migration cannot be silently forgotten.
+
+# --- foundations: extensions, then the tables everything else hangs off
+# users and the other tables that were never in version control until 050 recovered them
+050_recover_untracked_tables.sql
+# concepts, listings and the rest of the marketplace — the baseline below indexes them
+004_marketplace_schema.sql
+000_recovered_schema_baseline.sql
+001_production_integrations.sql
+002_admin_subscriptions.sql
+003_retire_housing.sql
+005_broaden_roles.sql
+006_monetization_and_controls.sql
+
+# --- everything after, in the order it was written
+007_social_content_asset_types.sql
+008_tech_requirements_asset_type.sql
+009_user_preferences.sql
+010_concept_is_operating.sql
+011_clay_uploads.sql
+012_subscription_cancel_at_period_end.sql
+013_clay_memory.sql
+014_dream_mover_program.sql
+015_mover_earnings_transfer_id.sql
+016_seed_runs.sql
+017_concepts_origin_clay_seed.sql
+018_concept_intents.sql
+019_clay_staff_notes_and_review.sql
+020_desk_articles.sql
+021_creator_proof_prompts.sql
+022_movement_state.sql
+023_concept_brief.sql
+024_concept_launch_page.sql
+025_site_pages.sql
+026_site_domains.sql
+027_enterprise_orchestration.sql
+028_tech_spec_asset.sql
+029_store_products.sql
+030_store_orders.sql
+031_product_kind.sql
+032_desk_article_pages.sql
+033_clay_weekly.sql
+034_auction_settlement.sql
+035_launch_partners.sql
+036_partner_market_tab.sql
+037_listing_launch_partner.sql
+038_watch_activity_and_mover_page.sql
+039_users_display_name_backfill.sql
+040_record_undocumented_columns.sql
+043_desk_categories_and_seo.sql
+043_grandfather_maker_projects.sql
+045_weekly_rejection_note.sql
+046_weekly_subscribers.sql
+047_conversations.sql
+048_concept_nudged_at.sql
+049_allow_builder_plan.sql
+051_order_payment_reference.sql
+052_password_resets.sql
+053_listing_attribution.sql
+054_alert_acknowledgement.sql
+055_handover_notes.sql
