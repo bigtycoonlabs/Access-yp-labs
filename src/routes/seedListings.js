@@ -214,6 +214,8 @@ router.post('/:id/presentation', staffOnly, asyncHandler(async (req, res) => {
 
   const made = [];
   const skipped = [];
+  if (out.brief && out.brief.ok) made.push('the opportunity brief');
+  else skipped.push('opportunity brief (' + ((out.brief && out.brief.reason) || 'unknown') + ')');
   if (out.landing_page && out.landing_page.ok) made.push('landing page'); else skipped.push('landing page (' + ((out.landing_page && out.landing_page.reason) || 'unknown') + ')');
   if (out.demo && out.demo.ok && !out.demo.already) made.push('prototype');
   else if (out.demo && out.demo.already) skipped.push('prototype (already had one)');

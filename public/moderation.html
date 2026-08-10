@@ -27,7 +27,7 @@
   <div id="queue" aria-labelledby="queue-h"></div>
   <div id="result" role="alert" aria-live="assertive"></div>
 </main>
-<script src="/js/a11y.js?v=20260807y"></script><script src="/js/api.js?v=20260807y"></script><script src="/js/nav.js?v=20260807y"></script>
+<script src="/js/a11y.js?v=20260807z"></script><script src="/js/api.js?v=20260807z"></script><script src="/js/nav.js?v=20260807z"></script>
 <script>
 const REASONS=[['missing_baseline','Missing baseline package'],['running_business','A business already running (we sell pre-proven projects)'],['fraud','Fraud or misrepresentation'],['missing_risk_disclosure','Risk not disclosed']];
 const gate=document.getElementById('gate'), queueEl=document.getElementById('queue'), result=document.getElementById('result');
@@ -186,6 +186,16 @@ function renderReview(d,host){
   else if(c.claims_verified===false) g.push('claims self-checked: FLAGGED');
   host.appendChild(el('p','muted',g.join(' · ')));
   if(c.clays_take){ host.appendChild(el('h4',null,"Clay's take")); host.appendChild(el('div','prose',c.clays_take)); }
+  // A LISTING WITH NO BRIEF IS ONE A BUYER CANNOT UNDERSTAND. The "opportunity at a glance" panel on
+  // the public listing returns null and vanishes when the brief is missing, so the buyer sees a
+  // price, a risk note, and no explanation of what they would be getting. This is the last moment
+  // somebody can notice that before it goes live.
+  if(!d.brief || typeof d.brief!=='object' || !(d.brief.problem||d.brief.customer)){
+    host.appendChild(el('p',null,'No opportunity brief. On the public listing that panel does not '
+      + 'appear at all, so a buyer would see the price and the risk note and nothing explaining what '
+      + 'this is. Worth filling in below before approving.'));
+  }
+
   // NOTHING TO READ IS ITSELF A FINDING. A listing with no materials rendered as silence, and the
   // approve button sat there anyway — so the screen looked the same whether a project was thin or
   // simply had not loaded. Say which.

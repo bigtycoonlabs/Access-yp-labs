@@ -160,8 +160,24 @@ Return only the HTML.`;
 }
 
 // Called by the seeder after the materials are saved. Never throws into the seed run.
+// The four lines a buyer actually reads on a listing: the problem, who they would serve, what they
+// could make, and why them. Without it the listing's "opportunity at a glance" panel does not render
+// AT ALL — it returns null and disappears — so somebody browsing sees a price, a risk note, and no
+// explanation of what they would be buying. Twelve of thirteen live listings were in that state.
+async function buildBrief(concept) {
+  try {
+    const { ensureBriefFor } = require('./brief');
+    const out = await ensureBriefFor(concept.id);
+    return out && out.ok !== false ? { ok: true } : { ok: false, reason: (out && out.reason) || 'no_brief' };
+  } catch (e) {
+    return { ok: false, reason: (e && e.message) || 'threw' };
+  }
+}
+
 async function enrich(concept) {
-  const result = { landing_page: null, demo: null };
+  const result = { landing_page: null, demo: null, brief: null };
+  try { result.brief = await buildBrief(concept); }
+  catch (e) { result.brief = { ok: false, reason: (e && e.message) || 'threw' }; }
   try { result.landing_page = await buildLandingPage(concept); }
   catch (e) { result.landing_page = { ok: false, reason: (e && e.message) || 'threw' }; }
   try { result.demo = await buildDemo(concept); }
@@ -169,4 +185,4 @@ async function enrich(concept) {
   return result;
 }
 
-module.exports = { enrich, buildLandingPage, buildDemo, wantsDemo, THEME_BY_CATEGORY };
+module.exports = { enrich, buildLandingPage, buildDemo, buildBrief, wantsDemo, THEME_BY_CATEGORY };
