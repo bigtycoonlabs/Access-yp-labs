@@ -25,8 +25,20 @@
       radial-gradient(120% 90% at 95% 120%, rgba(184,166,255,.28), transparent 55%), var(--void);}
     .brand{display:flex;align-items:center;gap:12px;padding:22px 0;}
     .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
-    nav.top{display:flex;flex-wrap:wrap;align-items:center;gap:2px;}
+    /* The menu is a real list now, so these rules have to target the list rather than the nav —
+       otherwise the items stack one per row and six rows of menu push the idea box below the fold
+       on a phone. That box is the single thing this page exists to get somebody to use, and it was
+       sitting at y=828 on a 780px screen: invisible without scrolling. */
+    nav.top{display:block;}
+    /* A real gap, not 2px. At 2px the links read as one string — "HomeThe Dream Market" — which is
+       the same run-together problem the list was meant to fix, just visual instead of spoken. */
+    nav.top .nav-list{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;align-items:center;column-gap:14px;row-gap:0;}
+    nav.top .nav-list>li{margin:0;padding:0;}
     nav.top a{color:#f2eefb;font-size:17px;font-weight:600;text-decoration:none;padding:11px 12px;display:inline-block;min-height:44px;box-sizing:border-box;line-height:22px;border-radius:8px;}
+    @media (max-width:640px){
+      /* Smaller text and tighter padding, but the 44px target is kept by min-height. */
+      nav.top a{font-size:15px;padding:11px 8px;}
+    }
     nav.top a:hover{text-decoration:underline;}
     nav.top a:focus-visible{outline:3px solid var(--dream2);outline-offset:2px;}
     nav.top a[aria-current="page"]{text-decoration:underline;}
@@ -401,7 +413,7 @@
         <a href="/risk.html" style="display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Risk Disclosure</a>
       </nav>
     </footer>
-<script src="/js/a11y.js?v=20260807s"></script><script src="/js/api.js?v=20260807s"></script><script src="/js/nav.js?v=20260807s"></script>
+<script src="/js/a11y.js?v=20260807v"></script><script src="/js/api.js?v=20260807v"></script><script src="/js/nav.js?v=20260807v"></script>
 <script>
 (function(){
   const inner=document.getElementById('hero-inner');

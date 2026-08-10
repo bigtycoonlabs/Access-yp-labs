@@ -226,8 +226,26 @@ legend{font-weight:700;padding:0 6px;}
 
 /* The menu is a real list for screen readers; visually it stays a horizontal row of links, so
    nothing about the look changes — only what someone listening hears. */
-nav.top .nav-list { list-style: none; display: flex; flex-wrap: wrap; gap: 1rem; margin: 0; padding: 0; }
+/* The menu is a real list so a screen reader can count and step through it. It must still LOOK like
+   a row of links — when I first made it a list the items stacked one per row on a phone, and six
+   rows of nav pushed the idea box on the homepage below the fold. On a platform whose main problem
+   is that most visitors never type anything, burying the box under the menu was a real cost, and it
+   came from an accessibility fix that did not check the phone. */
+nav.top { display: block; }
+nav.top .nav-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  column-gap: 1rem; row-gap: .25rem;
+  width: 100%;
+}
 nav.top .nav-list > li { margin: 0; padding: 0; }
+
+@media (max-width: 640px) {
+  /* Tighter on a phone, and the links stop being full-height blocks so several fit per row. The
+     44px target is preserved by the line-height and padding together rather than by height alone. */
+  nav.top .nav-list { column-gap: .85rem; row-gap: 0; font-size: 15px; }
+  nav.top .nav-list > li > a { display: inline-block; padding: 10px 0; line-height: 1.5; }
+}
 
 /* A button that reads as a link: used where an offer should cost nothing to ignore. It is a real
    button, not an anchor, because it performs an action rather than going somewhere. */
