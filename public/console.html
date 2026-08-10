@@ -114,9 +114,9 @@
   </section>
 </main>
 
-<script src="/js/a11y.js?v=20260808a"></script>
-<script src="/js/api.js?v=20260808a"></script>
-<script src="/js/nav.js?v=20260808a"></script>
+<script src="/js/a11y.js?v=20260808b"></script>
+<script src="/js/api.js?v=20260808b"></script>
+<script src="/js/nav.js?v=20260808b"></script>
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
@@ -364,13 +364,13 @@
     var needsPage = items.filter(function(l){ return !l.has_landing_page; }).length;
     host.appendChild(el('p', null, items.length + ' seeded listing' + (items.length===1?'':'s')
       + (needsPage ? (', ' + needsPage + ' without a landing page.') : ', all with a landing page.')
-      + ' Open one to read and edit it.'));
+      + ' Review, edit and approve them in Dream Market control.'));
 
     var list=el('div'); list.setAttribute('role','list');
     items.forEach(function(l){
       var r=el('div','row'); r.setAttribute('role','listitem');
       var a=el('a', null, (l.title || 'Untitled') + ' — ' + l.status + ', ' + money(l.price_cents));
-      a.href='/moderation.html#listing-' + encodeURIComponent(l.id);
+      a.href='/market-control.html';
       r.appendChild(el('p')).appendChild(a);
       r.appendChild(el('p','muted',
         l.materials + ' materials · ' +

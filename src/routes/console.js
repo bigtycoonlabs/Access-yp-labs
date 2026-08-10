@@ -50,11 +50,11 @@ async function safe(label, fn) {
 // ---- NOW: what is waiting, and how long it has waited ------------------------------------------
 async function nowSection() {
   const q = await query(`
-    SELECT 'Listings to review' AS queue, 'moderation.html' AS page, count(*)::int AS n,
+    SELECT 'Listings to review' AS queue, 'market-control.html' AS page, count(*)::int AS n,
            MAX(EXTRACT(EPOCH FROM (now() - created_at)) / 3600)::int AS oldest_hours
       FROM listings WHERE status='in_review'
     UNION ALL
-    SELECT 'Reports to resolve', 'moderation.html', count(*)::int,
+    SELECT 'Reports to resolve', 'market-control.html', count(*)::int,
            MAX(EXTRACT(EPOCH FROM (now() - created_at)) / 3600)::int
       FROM reports WHERE status='open'
     UNION ALL

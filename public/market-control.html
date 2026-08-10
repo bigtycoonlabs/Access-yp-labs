@@ -1,0 +1,233 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dream Market control — Access YP Labs</title>
+<link rel="stylesheet" href="/css/kiln.css"/>
+<meta name="robots" content="noindex, nofollow"/>
+<style>
+  /* Filters read as a row of toggles. Each is a real button with aria-pressed, so a screen reader
+     says "Waiting, pressed" rather than leaving somebody to guess which view they are in. */
+  .filters { margin: 0 0 1rem; }
+  .filters ul { list-style:none; display:flex; flex-wrap:wrap; gap:.5rem; margin:.35rem 0 0; padding:0; }
+  .filters li { margin:0; }
+  .filters button { min-height:44px; }
+  .filters button[aria-pressed="true"] { text-decoration: underline; font-weight: 700; }
+  .listing { border:1px solid var(--line,#2a2f45); border-radius:10px; padding:0; margin:0 0 .75rem; }
+  .listing > summary { padding:.85rem 1rem; cursor:pointer; min-height:44px; }
+  .listing .inner { padding:0 1rem 1rem; }
+  .flag { font-weight:700; }
+</style>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site"><div class="wrap bar">
+  <a class="brand" href="/">Access YP Labs</a>
+  <nav class="top" aria-label="Primary"></nav>
+</div></header>
+
+<main id="main" class="wrap">
+  <h1>Dream Market control</h1>
+  <p class="muted" id="summary">Loading the market…</p>
+
+  <section class="filters" aria-labelledby="f1-h">
+    <h2 id="f1-h">Show</h2>
+    <ul role="list">
+      <li><button type="button" class="btn secondary" data-status="waiting" aria-pressed="true">Waiting for review</button></li>
+      <li><button type="button" class="btn secondary" data-status="live" aria-pressed="false">Live on the market</button></li>
+      <li><button type="button" class="btn secondary" data-status="all" aria-pressed="false">Everything</button></li>
+    </ul>
+    <h2 id="f2-h" class="sr-only">Whose</h2>
+    <ul role="list" aria-labelledby="f2-h">
+      <li><button type="button" class="btn secondary" data-owner="all" aria-pressed="true">Anyone's</button></li>
+      <li><button type="button" class="btn secondary" data-owner="clay" aria-pressed="false">Clay's</button></li>
+      <li><button type="button" class="btn secondary" data-owner="creators" aria-pressed="false">Creators'</button></li>
+    </ul>
+  </section>
+
+  <div id="live-msg" role="status" aria-live="polite" class="muted"></div>
+  <section aria-labelledby="list-h">
+    <h2 id="list-h">Listings</h2>
+    <div id="list"><p class="muted">Loading…</p></div>
+  </section>
+</main>
+
+<script src="/js/a11y.js?v=20260808b"></script>
+<script src="/js/api.js?v=20260808b"></script>
+<script src="/js/nav.js?v=20260808b"></script>
+<script>
+(function(){
+  var state = { status:'waiting', owner:'all' };
+  function $(id){ return document.getElementById(id); }
+  function el(tag, cls, text){ var e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
+  function money(c){ return '$' + (Number(c||0)/100).toFixed(2); }
+  function say(msg){ $('live-msg').textContent=msg; announce(msg, true); }
+
+  // Filters. aria-pressed is the state, and it is set from `state` rather than toggled blindly, so
+  // the buttons cannot disagree with what is on screen.
+  function wireFilters(){
+    document.querySelectorAll('.filters button').forEach(function(b){
+      b.addEventListener('click', function(){
+        if(b.dataset.status) state.status=b.dataset.status;
+        if(b.dataset.owner) state.owner=b.dataset.owner;
+        document.querySelectorAll('.filters button').forEach(function(o){
+          var mine = (o.dataset.status && o.dataset.status===state.status) ||
+                     (o.dataset.owner && o.dataset.owner===state.owner);
+          o.setAttribute('aria-pressed', String(!!mine));
+        });
+        load();
+      });
+    });
+  }
+
+  function field(host, id, label, value, rows){
+    var lb=el('label'); lb.setAttribute('for',id); lb.textContent=label;
+    var inp = rows ? document.createElement('textarea') : el('input');
+    inp.id=id; if(rows) inp.rows=rows; else inp.type='text';
+    inp.value = value == null ? '' : value;
+    host.appendChild(lb); host.appendChild(inp);
+    return inp;
+  }
+
+  function card(l){
+    var d=el('details','listing');
+    var sm=document.createElement('summary');
+    // Everything needed to triage is in the summary, so somebody can decide whether to open it
+    // without opening it.
+    var flags=[];
+    if(l.status==='in_review') flags.push('WAITING');
+    if(l.needs_brief) flags.push('no brief');
+    if(l.needs_materials) flags.push('no materials');
+    sm.textContent = (l.title||'Untitled') + ' — ' + (l.is_clays?'Clay':l.seller_tag) + ' · ' +
+      money(l.price_cents) + ' · ' + l.status + (flags.length? ' · ' + flags.join(', ') : '');
+    d.appendChild(sm);
+
+    var inner=el('div','inner');
+    var said=el('p','muted'); said.setAttribute('role','status'); said.setAttribute('aria-live','polite');
+
+    // ---- what a buyer would see
+    inner.appendChild(el('h3', null, 'What a buyer reads'));
+    if(l.needs_brief){
+      inner.appendChild(el('p','flag','No brief. On the public listing that panel does not appear at '
+        + 'all, so a buyer sees a price and a risk note and nothing explaining what this is.'));
+    }
+    var b = l.brief || {};
+    var bp=field(inner,'p-'+l.id,'The problem it solves',b.problem,2);
+    var bc=field(inner,'c-'+l.id,'Who they would serve',b.customer,2);
+    var be=field(inner,'e-'+l.id,'What they could make',b.earning,2);
+    var bw=field(inner,'w-'+l.id,'Why them',b.why_you,2);
+
+    var gen=el('button','btn secondary','Have Clay write the brief'); gen.type='button';
+    gen.addEventListener('click', async function(){
+      gen.disabled=true; said.textContent='Clay is writing it…'; announce(said.textContent,true);
+      try{
+        var r=await Kiln.api('/market-admin/'+l.id+'/brief',{method:'POST'});
+        var nb=r.brief||{};
+        bp.value=nb.problem||''; bc.value=nb.customer||''; be.value=nb.earning||''; bw.value=nb.why_you||'';
+        said.textContent=r.message||'Written.';
+      }catch(e){ said.textContent=(e&&e.message)||'That did not go through. Nothing was changed.'; }
+      announce(said.textContent,true); gen.disabled=false;
+    });
+    inner.appendChild(el('p')).appendChild(gen);
+
+    // ---- the listing itself
+    inner.appendChild(el('h3', null, 'The listing'));
+    var ti=field(inner,'t-'+l.id,'Title',l.title);
+    var pi=field(inner,'pr-'+l.id,'Price in dollars',String(Math.round((l.price_cents||0)/100)));
+    pi.type='number'; pi.min='10'; pi.step='1';
+    var ri=field(inner,'r-'+l.id,'Risk note (shown as "Risk noted")',l.risk_summary,2);
+
+    var save=el('button','btn','Save this listing'); save.type='button';
+    save.addEventListener('click', async function(){
+      var raw=String(pi.value||'').trim();
+      if(raw==='' || !isFinite(Number(raw))){ said.textContent='Put a number in the price box. Nothing was sent.'; announce(said.textContent,true); return; }
+      if(Number(raw)<10){ said.textContent='The lowest a listing can be is $10. Nothing was sent.'; announce(said.textContent,true); return; }
+      if(String(ti.value||'').trim().length<3){ said.textContent='A title needs at least three characters. Nothing was sent.'; announce(said.textContent,true); return; }
+      save.disabled=true; said.textContent='Saving…';
+      // Clay's listings go through the staff editor; a creator's own words go through the route that
+      // only ever touches the fields a listing needs, and never rewrites their materials.
+      var path = l.is_clays ? ('/seed-listings/'+l.id) : ('/listings/'+l.id+'/story');
+      var body = l.is_clays
+        ? { title:String(ti.value).trim(), price_cents:Math.round(Number(raw)*100), risk_summary:ri.value,
+            brief:{ problem:bp.value, customer:bc.value, earning:be.value, why_you:bw.value } }
+        : { title:String(ti.value).trim(), summary:ri.value };
+      try{
+        var r2=await Kiln.api(path,{method:'PATCH',body:body});
+        said.textContent=r2.message||'Saved.';
+        sm.textContent=(ti.value||'Untitled')+' — '+(l.is_clays?'Clay':l.seller_tag)+' · $'+Number(raw).toFixed(2)+' · '+l.status;
+      }catch(e){ said.textContent=(e&&e.message)||'That did not save. Nothing changed.'; }
+      announce(said.textContent,true); save.disabled=false;
+    });
+    inner.appendChild(el('p')).appendChild(save);
+
+    // ---- deciding
+    if(l.status==='in_review'){
+      inner.appendChild(el('h3', null, 'Decide'));
+      var why=field(inner,'why-'+l.id,'Reason (shown to the creator if you reject)','',2);
+      var ok=el('button','btn','Approve — put it on the market'); ok.type='button';
+      var no=el('button','btn secondary','Reject'); no.type='button';
+      ok.addEventListener('click', async function(){ await decide('approved'); });
+      no.addEventListener('click', async function(){
+        if(!String(why.value||'').trim()){
+          said.textContent='Say why you are rejecting it. That reason is read by the person who made it.';
+          announce(said.textContent,true); why.focus(); return;
+        }
+        await decide('rejected');
+      });
+      async function decide(kind){
+        ok.disabled=true; no.disabled=true; said.textContent='Recording…';
+        try{
+          await Kiln.api('/moderation/'+l.id+'/decide',{method:'POST',body:{decision:kind,notes:why.value||undefined}});
+          said.textContent = kind==='approved' ? 'Approved. It is on the market now.' : 'Rejected, with your reason recorded.';
+          announce(said.textContent,true);
+          load();
+          return;
+        }catch(e){ said.textContent=(e&&e.message)||'That did not go through.'; }
+        announce(said.textContent,true); ok.disabled=false; no.disabled=false;
+      }
+      var row=el('p'); row.appendChild(ok); row.appendChild(no); inner.appendChild(row);
+    }
+
+    // ---- seeing it
+    inner.appendChild(el('h3', null, 'See it'));
+    var links=el('p');
+    var pub=el('a',null,'The public listing'); pub.href='/market/'+encodeURIComponent(l.id); pub.target='_blank'; pub.rel='noopener';
+    links.appendChild(pub);
+    links.appendChild(document.createTextNode(' · '));
+    var interactive=el('a',null,'The interactive version'); interactive.href='/listing.html?id='+encodeURIComponent(l.id);
+    interactive.target='_blank'; interactive.rel='noopener';
+    links.appendChild(interactive);
+    inner.appendChild(links);
+    inner.appendChild(el('p','muted', l.materials + ' materials · ' + (l.has_page?'landing page':'no landing page')
+      + ' · ' + (l.has_demo?'prototype':'no prototype') + ' · ' + l.visits + ' visits recorded'));
+
+    inner.appendChild(said);
+    d.appendChild(inner);
+    return d;
+  }
+
+  async function load(){
+    var host=$('list');
+    try{
+      var d=await Kiln.api('/market-admin?status='+state.status+'&owner='+state.owner);
+      var c=d.counts;
+      $('summary').textContent = c.waiting + ' waiting for review · ' + c.live + ' live · '
+        + c.clays + " of Clay's · " + c.creators + " from creators"
+        + (c.needs_brief ? (' · ' + c.needs_brief + ' live listings have no brief') : '');
+      host.innerHTML='';
+      if(!d.listings.length){
+        host.appendChild(el('p',null,'Nothing matches that view.'));
+        say('Nothing matches that view.');
+        return;
+      }
+      d.listings.forEach(function(l){ host.appendChild(card(l)); });
+      say(d.listings.length + ' listing' + (d.listings.length===1?'':'s') + ' shown.');
+    }catch(e){
+      host.innerHTML='';
+      host.appendChild(el('p','flag','Could not read the market: ' + ((e&&e.message)||'unknown reason')
+        + '. This is missing rather than empty.'));
+    }
+  }
+
+  wireFilters();
+  load();
+})();
+</script>
+</body></html>
