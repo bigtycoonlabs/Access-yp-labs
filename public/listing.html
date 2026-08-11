@@ -169,7 +169,17 @@ async function loadPreview(container){
       const a=description.a11y;
       body.appendChild(el('p', a.ok?'msg ok':'muted', a.summary));
       if(a.issues&&a.issues.length){ const ul=el('ul'); a.issues.forEach(function(is){ ul.appendChild(el('li',null,is)); }); body.appendChild(ul); }
-      announce(a.summary,true);
+      // Polite, not assertive. This is a useful thing to say — whether the demo a buyer would
+      // receive is operable by a screen reader — and it is not urgent. Assertive interrupts.
+      //
+      // Walked live: clicking "Claim this dream" put "Purchase started — complete it below." into
+      // the polite region while this audit sat in the assertive one, so the less important message
+      // was the louder one and could speak over the more important. At the moment somebody starts
+      // buying something, the thing that interrupts them should be about the purchase.
+      //
+      // Assertive is for the outcome of what the person just did, and for errors. A background
+      // report on an asset preview is neither.
+      announce(a.summary);
     }
   }catch(e){ body.textContent=''; body.appendChild(el('p','muted','A preview isn’t available for this listing.')); }
 }
