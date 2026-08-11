@@ -40,7 +40,7 @@
       <li><button type="button" class="btn secondary" data-status="live" aria-pressed="false">Live on the market</button></li>
       <li><button type="button" class="btn secondary" data-status="all" aria-pressed="false">Everything</button></li>
     </ul>
-    <h2 id="f2-h" class="sr-only">Whose</h2>
+    <h2 id="f2-h">Whose listings</h2>
     <ul role="list" aria-labelledby="f2-h">
       <li><button type="button" class="btn secondary" data-owner="all" aria-pressed="true">Anyone's</button></li>
       <li><button type="button" class="btn secondary" data-owner="clay" aria-pressed="false">Clay's</button></li>
@@ -55,9 +55,9 @@
   </section>
 </main>
 
-<script src="/js/a11y.js?v=20260808c"></script>
-<script src="/js/api.js?v=20260808c"></script>
-<script src="/js/nav.js?v=20260808c"></script>
+<script src="/js/a11y.js?v=20260808e"></script>
+<script src="/js/api.js?v=20260808e"></script>
+<script src="/js/nav.js?v=20260808e"></script>
 <script>
 (function(){
   var state = { status:'waiting', owner:'all' };
@@ -98,11 +98,15 @@
     // Everything needed to triage is in the summary, so somebody can decide whether to open it
     // without opening it.
     var flags=[];
-    if(l.status==='in_review') flags.push('WAITING');
     if(l.needs_brief) flags.push('no brief');
     if(l.needs_materials) flags.push('no materials');
+    // Plain words, not database values. "in_review" was rendering on screen, and it also duplicated
+    // the WAITING flag beside it — two ways of saying the same thing, neither of them English.
+    var STATE = { in_review:'waiting for review', live:'on the market',
+                  withdrawn:'withdrawn', sold:'sold' };
     sm.textContent = (l.title||'Untitled') + ' — ' + (l.is_clays?'Clay':l.seller_tag) + ' · ' +
-      money(l.price_cents) + ' · ' + l.status + (flags.length? ' · ' + flags.join(', ') : '');
+      money(l.price_cents) + ' · ' + (STATE[l.status] || l.status) +
+      (flags.length? ' · ' + flags.join(', ') : '');
     d.appendChild(sm);
 
     var inner=el('div','inner');

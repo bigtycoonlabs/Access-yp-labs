@@ -102,12 +102,28 @@ async function nowSection() {
   // Operational alarms sort above routine notes because they mean something already went wrong and
   // somebody is affected who does not know it. A new creator signing up is worth telling you; it is
   // not worth telling you FIRST.
+  // GROUPED, because the same problem repeating is ONE thing to deal with, not twenty.
+  //
+  // Seen on screen: four identical "Seller B still billed" cards, each ~240 pixels tall, filling the
+  // section entirely. A recurring fault floods the one list that has to stay readable, and the
+  // genuinely different alert underneath it never gets seen. Counting the repeats says more than
+  // listing them anyway — "four times, most recently at 2:07" is the useful fact.
+  //
+  // The id kept is the OLDEST in the group, so resolving works on the one that has been waiting
+  // longest, and the count tells you how many others share its cause.
   const alerts = await query(`
-    SELECT id, kind, subject, body, created_at, acknowledged_at,
+    SELECT (array_agg(id ORDER BY created_at ASC))[1] AS id,
+           kind, subject,
+           (array_agg(body ORDER BY created_at DESC))[1] AS body,
+           max(created_at) AS created_at,
+           min(created_at) AS first_seen,
+           count(*)::int AS times,
+           bool_or(acknowledged_at IS NOT NULL) AS acknowledged_at,
            (kind = ANY($1::text[])) AS urgent
       FROM clay_staff_notes
      WHERE resolved_at IS NULL
-     ORDER BY (kind = ANY($1::text[])) DESC, created_at DESC
+     GROUP BY kind, subject, (kind = ANY($1::text[]))
+     ORDER BY (kind = ANY($1::text[])) DESC, max(created_at) DESC
      LIMIT 25`, [URGENT_KINDS]);
 
   return {
@@ -312,12 +328,17 @@ router.post('/alerts/:id/resolve', staffOnly, asyncHandler(async (req, res) => {
         + 'told apart later from one that was simply dismissed.',
     });
   }
+  // Resolve the WHOLE group. The list groups identical alerts, so clearing only the one row somebody
+  // clicked would drop the count by one and leave the same entry sitting there — which reads as the
+  // button not working.
   const r = await query(
     `UPDATE clay_staff_notes
         SET resolved_at = now(), resolved_by = $2, resolution_note = $3,
             acknowledged_at = COALESCE(acknowledged_at, now()),
             acknowledged_by = COALESCE(acknowledged_by, $2)
-      WHERE id = $1 AND resolved_at IS NULL RETURNING id`,
+      WHERE resolved_at IS NULL
+        AND (kind, subject) = (SELECT kind, subject FROM clay_staff_notes WHERE id = $1)
+      RETURNING id`,
     [req.params.id, req.user.id, note.slice(0, 1000)]);
   if (!r.rows.length) {
     return res.status(404).json({ ok: false, message: 'That alert is not open — it may already be resolved.' });

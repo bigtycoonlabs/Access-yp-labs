@@ -114,9 +114,9 @@
   </section>
 </main>
 
-<script src="/js/a11y.js?v=20260808c"></script>
-<script src="/js/api.js?v=20260808c"></script>
-<script src="/js/nav.js?v=20260808c"></script>
+<script src="/js/a11y.js?v=20260808e"></script>
+<script src="/js/api.js?v=20260808e"></script>
+<script src="/js/nav.js?v=20260808e"></script>
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
@@ -158,8 +158,12 @@
         if (a.urgent) head.appendChild(el('strong', null, 'Needs action — '));
         head.appendChild(el('strong', null, a.subject || a.kind));
         r.appendChild(head);
-        r.appendChild(el('p','muted', new Date(a.created_at).toLocaleString() +
-          (a.acknowledged_at ? ' · somebody is on this' : '')));
+        // Say how many times, not once per time.
+        var when = new Date(a.created_at).toLocaleString();
+        var line = (a.times > 1)
+          ? (a.times + ' times, most recently ' + when)
+          : when;
+        r.appendChild(el('p','muted', line + (a.acknowledged_at ? ' · somebody is on this' : '')));
         if (a.body) {
           var d=document.createElement('details');
           var sm=document.createElement('summary'); sm.textContent='What happened';
@@ -232,7 +236,13 @@
       top.appendChild(a);
       if (q.oldest_hours != null){
         var days = Math.floor(q.oldest_hours/24);
-        var txt = days >= 1 ? ('waiting ' + days + ' day' + (days===1?'':'s')) : ('waiting ' + q.oldest_hours + ' hour' + (q.oldest_hours===1?'':'s'));
+        // "waiting 0 hours" is not a thing anybody says, and it reads as broken rather than as
+        // recent. Anything under an hour is just arrived.
+        var txt = days >= 1
+          ? ('waiting ' + days + ' day' + (days===1?'':'s'))
+          : (q.oldest_hours < 1
+              ? 'arrived in the last hour'
+              : ('waiting ' + q.oldest_hours + ' hour' + (q.oldest_hours===1?'':'s')));
         var w=el('span','waited' + (q.oldest_hours >= 24 ? ' long' : ''), txt);
         top.appendChild(w);
       }
@@ -369,7 +379,9 @@
     var list=el('div'); list.setAttribute('role','list');
     items.forEach(function(l){
       var r=el('div','row'); r.setAttribute('role','listitem');
-      var a=el('a', null, (l.title || 'Untitled') + ' — ' + l.status + ', ' + money(l.price_cents));
+      // Same raw-value problem as the control centre had: "in_review" is a database word.
+      var STATE = { in_review:'waiting for review', live:'on the market', withdrawn:'withdrawn', sold:'sold' };
+      var a=el('a', null, (l.title || 'Untitled') + ' — ' + (STATE[l.status] || l.status) + ', ' + money(l.price_cents));
       a.href='/market-control.html';
       r.appendChild(el('p')).appendChild(a);
       r.appendChild(el('p','muted',

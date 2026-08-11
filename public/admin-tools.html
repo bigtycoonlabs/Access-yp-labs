@@ -40,7 +40,7 @@
     <section aria-labelledby="log-h"><h2 id="log-h">Recent moderation activity</h2><div id="events" class="stack"></div></section>
   </div>
 </main>
-<script src="/js/a11y.js?v=20260808c"></script><script src="/js/api.js?v=20260808c"></script><script src="/js/nav.js?v=20260808c"></script>
+<script src="/js/a11y.js?v=20260808e"></script><script src="/js/api.js?v=20260808e"></script><script src="/js/nav.js?v=20260808e"></script>
 <script>
 const gate=document.getElementById('gate'),result=document.getElementById('result');
 let me=null;
@@ -84,7 +84,10 @@ async function searchUsers(){
     users.forEach(u=>{
       const row=el('div','row');
       row.appendChild(el('h3',null,(u.name||'(no name)')+' — '+u.role));
-      row.appendChild(el('p','muted',u.email+' · '+u.status));
+      // "active" and "suspended" happen to read fine; anything else in this column would not, and
+      // the point of translating is that nobody has to check which values exist today.
+      var ACCOUNT = { active:'active', suspended:'suspended', pending:'not finished signing up' };
+      row.appendChild(el('p','muted',u.email+' · '+(ACCOUNT[u.status] || u.status)));
       const a=el('div','actions');
       if(u.status!=='suspended'){const b=el('button','btn secondary','Suspend');b.type='button';
         b.addEventListener('click',()=>act(Kiln.api('/moderation/users/'+u.id+'/suspend',{method:'POST',body:{}}),'User suspended.').then(searchUsers));a.appendChild(b);}
