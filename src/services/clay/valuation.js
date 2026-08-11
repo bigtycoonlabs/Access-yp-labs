@@ -52,8 +52,27 @@ function assessValue({ concept = {}, assets = [], waiting = 0 } = {}) {
     marketing: types.has('marketing_strategy'),
     buildPath: BUILD_PATH_TYPES.some((t) => types.has(t)),
     launchable: LAUNCHABLE_TYPES.some((t) => types.has(t)),
-    proof: !!(concept.research_grounded || concept.claims_verified || waiting > 0
-      || concept.movement_state === 'ready_to_package'),
+    // PROOF IS BEHAVIOUR. SOMEBODY OUTSIDE THE BUILDING HAS TO HAVE DONE SOMETHING.
+    //
+    // research_grounded and claims_verified used to count here. Both mean Clay searched the web and
+    // checked his claims against sources. That is desk research — good work, and not the same thing
+    // as evidence that anyone wants this. Counting it as proof of demand raised the price ceiling by
+    // 35% on the strength of Clay having done a web search, which is nothing the creator did and
+    // nothing a stranger did.
+    //
+    // Found by walking a real build end to end. The growth project came back with
+    // movement_state 'needs_customer_clarity' — Clay's own honest read that nobody had been
+    // identified yet — while the value panel on the same project said "real proof of demand behind
+    // it" and quoted a higher range for it. Two statements from the same platform contradicting each
+    // other about the same project, with a price attached to the wrong one.
+    //
+    // It is also flatly against the doctrine Clay is given: proof is behaviour, not compliments, and
+    // a project is never strong because it reads polished. A research-grounded package reads
+    // polished. That is exactly the case the rule was written for.
+    //
+    // What counts now: somebody joined the waitlist, or Clay placed the project at ready_to_package,
+    // which he is instructed to set only from real behaviour and never to flatter.
+    proof: !!(waiting > 0 || concept.movement_state === 'ready_to_package'),
   };
 
   let tier;
