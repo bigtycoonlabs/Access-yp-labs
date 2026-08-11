@@ -268,7 +268,7 @@
   // It also has to say WHY, not just where. A live listing's terms are locked on purpose so nobody
   // can change a price out from under a bidder. Sending somebody to an edit screen that will refuse
   // them, without saying so first, is a worse version of not sending them at all.
-  async function listingBox(conceptId) {
+  async function listingBox(conceptId, project) {
     var sect = el('section', 'panel');
     sect.setAttribute('aria-labelledby', 'listing-h');
     var h = el('h2', null, 'Your Dream Market listing'); h.id = 'listing-h';
@@ -290,6 +290,21 @@
     }
 
     if (!listing) {
+      // A business somebody already runs cannot be listed — the API refuses it with a 409, and that
+      // is the right rule: the Dream Market sells unlaunched projects, not live operations.
+      //
+      // I wrote this section earlier in the same session as the staff fix that says an offered
+      // button the server will refuse is the same as a button that does nothing, and then made that
+      // exact mistake here. Opening it on the live site is what caught it: a Cleveland cleaning
+      // business, already running, being offered "List this project for sale" that could only ever
+      // end in a refusal.
+      if (project && project.is_operating) {
+        sect.appendChild(el('p', null, 'This is a business you already run, so it is not for sale '
+          + 'here. The Dream Market sells projects that have not launched yet, not live operations '
+          + 'somebody is depending on. Everything else on this page still works — keep building it, '
+          + 'and it stays yours.'));
+        return;
+      }
       sect.appendChild(el('p', null, 'This project is not on the Dream Market. Listing it puts it in '
         + 'front of buyers looking for a business to start. Most listed projects do not sell.'));
       var sell = el('a', 'btn', 'List this project for sale');
@@ -718,7 +733,28 @@
   (async function load() {
     try {
       var data = await Kiln.api('/concepts/' + id);
-      var project = data.project || {};
+      // `data.concept`, not `data.project`. The endpoint has always returned { concept, assets,
+      // entitled }, so this was `{}` on every project page anybody has ever opened, and every read
+      // off it came back undefined — silently, because `|| {}` makes the wrong key look like an
+      // empty object rather than a mistake.
+      //
+      // Found by opening the page in a browser on the live site. Six things were broken by it and
+      // not one of them threw:
+      //   the h1 and the document title never said the project's name, only "Your project" — so
+      //     every project a person owns announces the same heading to a screen reader
+      //   Clay's take on the project never appeared
+      //   the value panel called /concepts/undefined/value and 404'd, so "what this is worth"
+      //     rendered as nothing at all
+      //   the delete box said "this project" instead of naming what it was about to delete
+      //   the spoken vault summary said "your project" instead of the title
+      //   and `if (!project.is_operating)` was ALWAYS true, so "List this in the Dream Market" was
+      //     offered on businesses the API refuses to list. The guard was written correctly and had
+      //     never once run.
+      //
+      // Same shape as PropertyDetail.tsx reading property.square_feet on the sister platform: a key
+      // that never existed, undefined for the life of the page, and nobody noticed because nothing
+      // failed loudly.
+      var project = data.concept || data.project || {};
       var entitled = data.entitled !== false;
       var assets = (data.assets || []).filter(function (a) { return a && a.is_current !== false; });
 
@@ -794,7 +830,7 @@
       loadSales(id);
       // Before the danger zone: what a creator most often came here to do is see and change what is
       // for sale, and deleting the project should never be the last thing on the page they read.
-      listingBox(id);
+      listingBox(id, project);
       deleteBox(id, project.title || 'this project');
 
       // ---- keep / unlock, only when something is actually locked ----
