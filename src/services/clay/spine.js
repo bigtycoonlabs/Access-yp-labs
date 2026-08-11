@@ -30,6 +30,7 @@ const TOOLS = {
     summary: 'Search live marketplace listings by keyword and/or category (read-only).',
   },
   set_dreamer_tag: {
+    ask: 'Set your dreamer tag — the public name people here will know you by, on your listings, the launch partner board and your Dream Mover page. Your real name stays private. It changes everywhere going forward, including on anything you have already listed.',
     irreversible: false, requires_confirmation: true,
     required: ['tag'], enums: {},
     summary: "Set the person's DREAMER TAG — the public name they are known by across Access YP Labs: on their listings, on the launch partner board, and on their Dream Mover page. Their real name stays private. It is like a gamer tag. They are asked to confirm before it changes, because changing it changes how people recognise them everywhere going forward.",
@@ -83,12 +84,14 @@ const TOOLS = {
     summary: "Write a complete BUILD SPEC PACKAGE for a project — the hand-off document someone takes to a developer or to an AI builder (Claude Code, Cursor, Lovable, Replit) to get the actual software built. This is what Clay does INSTEAD of building applications: the screens and what each one does, the data model, the user flows end to end, the business rules, the external services and keys needed with honest costs, what counts as done, and a paste-ready opening prompt. Call it when someone needs a real APPLICATION rather than a website — accounts, dashboards, custom logic, a database — or asks what it would take to build their idea for real. Free to generate; taking the file away is part of the plan. Pass focus to aim it at one area (for example 'booking flow') when the whole thing is too broad.",
   },
   generate_concept: {
+    ask: 'Shape this into a full project package — the plan, the research, the risks and the materials. It is free, it stays private in your Laboratory, and nothing is published or listed.',
     irreversible: false, requires_confirmation: true,
     required: ['prompt'],
     enums: { category: CATEGORIES },
     summary: 'Shape a full project package with Clay. Only call this once you actually understand the idea — never on a raw one-liner you have not pressure-tested with a sharpening question or two first, unless the person clearly says to just build it. The person is ALWAYS asked to approve before the build starts, so calling this is a PROPOSAL, not the act itself — say what you understood and what you are about to build, and let them say go. Free; nothing is published.',
   },
   build_enterprise: {
+    ask: 'Plan this as a multi-venture enterprise rather than a single project. Free, private to your Laboratory, and nothing is published.',
     irreversible: false, requires_confirmation: true,
     required: ['prompt'],
     enums: {},
@@ -142,18 +145,21 @@ const TOOLS = {
     summary: 'Generate posts, image prompts, video scripts, templates, and a calendar. Free.',
   },
   list_on_marketplace: {
+    ask: 'Put this project up for sale in the Dream Market. It goes to review first rather than straight on sale, and the platform takes 20% of a sale made through the market. You can take it down again.',
     irreversible: true, requires_confirmation: true,
     required: ['concept_id', 'format', 'price'],
     enums: { format: MARKETPLACE_FORMATS },
     summary: 'Publish a public listing and take on the seller-fee obligation.',
   },
   purchase_concept: {
+    ask: 'Buy this project. This spends real money and transfers ownership to you.',
     irreversible: true, requires_confirmation: true,
     required: ['listing_id'],
     enums: {},
     summary: 'Buy a project. Spends real money and transfers ownership.',
   },
   remove_concept: {
+    ask: 'Delete this project. This cannot be undone, and everything built into it goes with it.',
     irreversible: true, requires_confirmation: true,
     required: ['concept_id'],
     enums: {},
@@ -171,6 +177,7 @@ const TOOLS = {
     summary: "Forget one remembered fact by its key, at the builder's request.",
   },
   clear_memory: {
+    ask: 'Forget what is remembered about you. This cannot be undone.',
     irreversible: true, requires_confirmation: true,
     required: [], enums: {},
     summary: "Erase EVERYTHING you remember about this builder. Irreversible — needs their explicit confirmation.",
@@ -238,6 +245,7 @@ const TOOLS = {
     summary: "Staff only. List the marketplace listings currently waiting for review (status in_review), oldest first — the marketplace review queue. Read-only. Use it to help a teammate see what needs a decision, then talk the decision through before acting.",
   },
   decide_listing: {
+    ask: 'Record your decision on this listing. Approving puts it on the market; rejecting sends it back to the creator with your reason, which they read.',
     irreversible: false, requires_confirmation: true,
     required: ['listing_id', 'decision'], optional: ['reason', 'notes'],
     enums: { decision: ['approved', 'rejected'], reason: ['missing_baseline', 'running_business', 'fraud', 'missing_risk_disclosure'] },
@@ -248,21 +256,25 @@ const TOOLS = {
     summary: "Staff only. List the open reports (flagged listings or content) waiting to be looked at, oldest first — basic moderation. Read-only.",
   },
   resolve_report: {
+    ask: 'Close this report with your decision. The creator is affected by what you choose here.',
     irreversible: false, requires_confirmation: true,
     required: ['report_id', 'action'], optional: ['notes'], enums: { action: ['dismiss'] },
     summary: "Staff only, consequential — confirm first. Resolve an open report. Right now the action is dismiss (mark a report handled/closed). Use it once a teammate has actually looked at the report and decided.",
   },
   suspend_user: {
+    ask: 'Suspend this account. They lose access until somebody reinstates them.',
     irreversible: false, requires_confirmation: true,
     required: ['user_id'], optional: ['reason', 'notes'], enums: {},
     summary: "Admins and owners only, consequential — confirm first. Suspend an account (they can't act until reinstated). Reversible with reinstate_user. Only for real policy or safety grounds; record the reason.",
   },
   reinstate_user: {
+    ask: "Restore this account's access.",
     irreversible: false, requires_confirmation: true,
     required: ['user_id'], optional: ['notes'], enums: {},
     summary: "Admins and owners only, consequential — confirm first. Lift a suspension and restore an account.",
   },
   manage_staff: {
+    ask: 'Change what this person can do on the platform. It takes effect immediately.',
     irreversible: false, requires_confirmation: true,
     required: ['action'], optional: ['email', 'new_role'],
     enums: { action: ['list', 'promote', 'set_role'], new_role: ['staff', 'admin', 'master_staff'] },
@@ -311,15 +323,32 @@ function requiresConfirmation(name) {
 // The asking rule (Arbo): an irreversible action must ASK/CONFIRM before it
 // runs, and an irreversible action that is also under-specified must always
 // ask. Reversible, free actions proceed once their params validate.
+// `reason` here is READ BY A PERSON. It is the sentence they are asked to approve.
+//
+// It used to be `tool.summary`, and summary is written TO CLAY — second person, prompt-engineering,
+// instructions about when he may call the tool. So at the single most important moment in the whole
+// product, the moment a builder approves a build, they were read Clay's own instructions:
+//
+//   "Shape a full project package with Clay. Only call this once you actually understand the idea —
+//    never on a raw one-liner you have not pressure-tested with a sharpening question or two first,
+//    unless the person clearly says to just build it. The person is ALWAYS asked to approve..."
+//
+// Walked it on a real account and that is verbatim what came back. A sighted person might squint
+// past it; through VoiceOver it is a paragraph of nonsense addressed to somebody else, arriving at
+// the exact moment they are being asked to say yes to something.
+//
+// `ask` is the human sentence. `summary` stays as it is, for the model. Two audiences, two strings,
+// and the fallback to summary is kept only so a tool added without an `ask` still asks rather than
+// silently acting — but the test suite requires one on every tool that stops.
 function shouldAsk(name, params = {}) {
   const tool = getTool(name);
   if (!tool) return { ask: true, reason: `Unknown tool "${name}" — Clay will not act on it.` };
   const missing = missingRequired(name, params);
   if (tool.irreversible && missing.length) {
-    return { ask: true, reason: `This action is irreversible and is missing: ${missing.join(', ')}. Clay must confirm the details first.` };
+    return { ask: true, reason: `Before doing this, Clay needs: ${missing.join(', ')}. Nothing has happened yet.` };
   }
-  if (tool.requires_confirmation) {
-    return { ask: true, reason: `${tool.summary} Clay will confirm with you before doing this.` };
+  if (tool.requires_confirmation || tool.irreversible) {
+    return { ask: true, reason: tool.ask || tool.summary };
   }
   return { ask: false, reason: '' };
 }
