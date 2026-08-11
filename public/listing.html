@@ -283,15 +283,20 @@ async function load(){
       announce('This auction has no closing time, so it is not open for bids or purchase.',true);
     }else if(isAuction && !closed){
       const bidWrap=el('div','panel');bidWrap.appendChild(el('h2',null,'Place a bid'));
-      const bl=el('label',null,'Your bid in US dollars (must beat the current high)');bl.setAttribute('for','bid');
-      const bi=el('input');bi.id='bid';bi.type='number';bi.min='10';bi.step='1';
-      const minNext=Math.max(10, Math.floor((Math.max(listing.starting_bid_cents||0, highBid))/100)+1);
+      // $50, not $10. bids.amount_cents enforces >= 5000 in the database. This box offered a $10
+      // minimum and pre-filled one dollar above the starting bid, so a $35 auction invited a $36 bid
+      // that came back as a 500 with a raw constraint name in it. The page must not instruct
+      // somebody into an error.
+      const MIN_BID=50;
+      const bl=el('label',null,'Your bid in US dollars (at least $'+MIN_BID+', and must beat the current high)');bl.setAttribute('for','bid');
+      const bi=el('input');bi.id='bid';bi.type='number';bi.min=String(MIN_BID);bi.step='1';
+      const minNext=Math.max(MIN_BID, Math.floor((Math.max(listing.starting_bid_cents||0, highBid))/100)+1);
       bi.value=String(minNext);
       const bb=el('button','btn','Place bid');bb.type='button';
       const bout=el('div');bout.setAttribute('role','alert');bout.setAttribute('aria-live','assertive');
       bb.addEventListener('click',async()=>{
         bout.textContent='';const d=parseInt(bi.value,10);
-        if(!d||d<10){bout.appendChild(el('p','msg err','Bid must be at least $10.'));announce('Bid must be at least $10.',true);return;}
+        if(!d||d<MIN_BID){const m='Bid must be at least $'+MIN_BID+'. Nothing was placed.';bout.appendChild(el('p','msg err',m));announce(m,true);return;}
         bb.disabled=true;announce('Placing your bid…');
         try{await Kiln.api('/bids/'+id,{method:'POST',body:{amount_cents:d*100}});
           announce('Bid placed at '+money(d*100)+'.',true);location.reload();

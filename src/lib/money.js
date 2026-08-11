@@ -3,6 +3,26 @@
 const PLATFORM_RATE = 0.20;      // 20% across marketplace + consultants
 const PRICE_FLOOR_CENTS = 1000;  // $10 minimum listing price
 
+// THE MINIMUM BID, AND WHY IT IS NOT THE LISTING FLOOR.
+//
+// `bids.amount_cents` carries CHECK (amount_cents >= 5000) in production and in every migration
+// since 004 — a $50 floor, from when the minimum listing price was $50 rather than $10. The listing
+// floor was lowered; this was not, and nothing compared them.
+//
+// So the bid route validated against PRICE_FLOOR_CENTS, told people "Bid must be at least $10",
+// accepted $20, and Postgres threw. Driven for real: a $20 bid and a $49.99 bid both returned
+// HTTP 500 carrying `violates check constraint "bids_amount_cents_check"` to the bidder. On the one
+// live auction, whose starting bid is $35, the page would have said "Bid must exceed $35.00" and
+// then 500'd on $36 — the software instructing somebody into an error.
+//
+// This is the exact bug the schema-agreement guard was written for, in a shape it did not cover: it
+// compares enum value lists and never looked at a numeric floor.
+//
+// The code is moved to the database's number rather than the constraint to the code's, because
+// which floor is CORRECT is a pricing decision and not one to make silently while fixing a crash.
+// If the minimum bid is meant to be $10, this constant and the constraint move together.
+const MIN_BID_CENTS = 5000;      // $50 minimum bid — matches bids_amount_cents_check
+
 // Consultant session economics (fixed): $150 total, 20% / 80% split.
 const CONSULT_FEE_CENTS = 15000;
 const CONSULT_PLATFORM_CENTS = 3000;   // $30
@@ -46,6 +66,9 @@ function planCents(plan) { return PLANS[plan] ? PLANS[plan].cents : null; }
 function platformFeeCents(amountCents) { return Math.round(amountCents * PLATFORM_RATE); }
 function sellerNetCents(amountCents) { return amountCents - platformFeeCents(amountCents); }
 function isAboveFloor(amountCents) { return Number.isInteger(amountCents) && amountCents >= PRICE_FLOOR_CENTS; }
+// Separate from isAboveFloor on purpose. Conflating them is how the bid route came to promise the
+// listing floor on a column that enforces a different one.
+function isValidBid(amountCents) { return Number.isInteger(amountCents) && amountCents >= MIN_BID_CENTS; }
 
 // Dream Mover referral commission. A mover who drives a sale through their promo link
 // earns 5% of the sale — paid OUT OF the platform's 20% take, never out of the seller's
@@ -67,7 +90,7 @@ function recordedPlanCents(plan) {
 }
 
 module.exports = {
-  PLATFORM_RATE, PRICE_FLOOR_CENTS,
+  PLATFORM_RATE, PRICE_FLOOR_CENTS, MIN_BID_CENTS, isValidBid,
   CONSULT_FEE_CENTS, CONSULT_PLATFORM_CENTS, CONSULT_CONSULTANT_CENTS, CONSULT_WINDOW_HOURS,
   BUILDER_CENTS, FREE_PROJECTS, LEGACY_PLANS, LEGACY_PLAN_CENTS, recordedPlanCents, CONCEPT_ACCESS_DAYS, PLANS, planCents,
   platformFeeCents, sellerNetCents, isAboveFloor,

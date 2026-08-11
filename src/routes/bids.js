@@ -3,7 +3,7 @@ const { body, validationResult } = require('express-validator');
 const { query, getClient } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
-const { isAboveFloor, PRICE_FLOOR_CENTS } = require('../lib/money');
+const { isValidBid, MIN_BID_CENTS } = require('../lib/money');
 const watchActivity = require('../services/clay/watchActivity');
 const router = express.Router();
 
@@ -13,7 +13,15 @@ const router = express.Router();
 // same high-water mark and both land, letting a bid that doesn't truly beat the current high
 // slip in.
 router.post('/:listingId', authenticate, [
-  body('amount_cents').isInt({ min: PRICE_FLOOR_CENTS }).toInt(),
+  // MIN_BID_CENTS, not the listing floor. bids.amount_cents enforces >= 5000 in the database, so
+  // validating against 1000 here accepted a $20 bid and then handed the bidder a 500 carrying a raw
+  // constraint name. See the note on MIN_BID_CENTS in lib/money.js.
+  //
+  // withMessage because the default is "Invalid value", which is a machine describing its own
+  // disappointment. It fires before the route body runs, so without it the careful sentence below
+  // is never reached and the bidder is told nothing about what to do differently.
+  body('amount_cents').isInt({ min: MIN_BID_CENTS }).toInt()
+    .withMessage(`Bid must be a whole number of cents, at least $${(MIN_BID_CENTS / 100).toFixed(2)}. Nothing was placed.`),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
@@ -39,10 +47,14 @@ router.post('/:listingId', authenticate, [
     if (new Date(listing.auction_close_at) < new Date()) {
       throw new ApiError(400, 'This auction has closed.');
     }
-    if (!isAboveFloor(amount_cents)) throw new ApiError(400, 'Bid must be at least $10.');
+    if (!isValidBid(amount_cents)) {
+      throw new ApiError(400, `Bid must be at least $${(MIN_BID_CENTS / 100).toFixed(2)}. Nothing was placed.`);
+    }
 
     const high = await client.query('SELECT COALESCE(MAX(amount_cents),0) AS m FROM bids WHERE listing_id=$1', [req.params.listingId]);
-    const floor = Math.max(listing.starting_bid_cents || 0, high.rows[0].m);
+    // The floor a bid must beat, and never below the one the column will accept — a starting bid of
+    // $35 was letting the page invite a $36 bid that the database then refused.
+    const floor = Math.max(listing.starting_bid_cents || 0, high.rows[0].m, MIN_BID_CENTS - 1);
     if (amount_cents <= floor) throw new ApiError(400, `Bid must exceed the current high of $${(floor / 100).toFixed(2)}.`);
 
     const r = await client.query(
