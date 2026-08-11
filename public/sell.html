@@ -262,16 +262,42 @@ document.getElementById('createlisting').addEventListener('click',async()=>{
   const btn=document.getElementById('createlisting');btn.disabled=true;announce('Creating your listing…');
   try{
     const {listing}=await Kiln.api('/listings',{method:'POST',body});
-    show('Listing created as a draft.','ok');
+    // "Listing created as a draft." is true and it is not enough. A draft does nothing: it is not on
+    // the market and nobody can see it, and the ONLY thing that moves it is the Submit button that
+    // appears below at the same moment. Walked live: the button rendered, focus went to BODY, and
+    // the only thing announced was that a draft existed. Somebody who cannot see the page is told
+    // they have made a thing, not that they are one click from the market and have not taken it.
+    //
+    // So: say the outcome, say what arrived, say what it does, and put them on it.
+    show('Listing created as a draft. It is not on the market yet — a Submit for staff review button '
+      + 'has appeared below, and that is what sends it.','ok');
     const pc=document.getElementById('postcreate');pc.innerHTML='';
     const submit=el('button','btn','Submit for staff review');submit.type='button';
     submit.addEventListener('click',async()=>{submit.disabled=true;
-      try{await Kiln.api('/listings/'+listing.id+'/submit',{method:'POST'});show('Submitted for review. Staff will approve it before it goes live.','ok');}
+      try{await Kiln.api('/listings/'+listing.id+'/submit',{method:'POST'});
+        show('Submitted for review. Staff read it before it goes live, so there is nothing more for you to do on this one.','ok');
+        submit.remove();}
       catch(e){showError(e, 'submitting it for review');submit.disabled=false;}});
     pc.appendChild(submit);
+    // Focus was landing on BODY, dropping a keyboard or screen-reader user at the top of a
+    // 4,000-pixel page while the thing they needed sat three thousand pixels down.
+    submit.setAttribute('tabindex','0');
+    try{ submit.scrollIntoView({block:'center'}); submit.focus(); }catch(_){ }
     const wl=el('div','panel');
     wl.appendChild(el('h3',null,'Your project has a built-in waitlist'));
-    wl.appendChild(el('p','muted','Once this listing is live, anyone can join the waitlist for the business — no account needed. Share this link to capture real demand before it launches:'));
+    // Two sentences that contradicted each other, one after the other: "Once this listing is live,
+    // anyone can join" and "Share this link to capture real demand before it launches". The second
+    // says share it now. Walked it as a stranger: right now that link reads "Could not load this
+    // listing: Listing not available." A seller who follows the instruction sends an error page to
+    // the people whose interest they were trying to capture, and has no way to know — least of all
+    // if they cannot see the screen.
+    //
+    // The draft being private is correct and stays. What changes is that we stop telling somebody to
+    // share something that does not work yet, and say plainly when it will.
+    wl.appendChild(el('p','muted','This link is your listing\u2019s public home. It does not work yet — '
+      + 'the listing is a private draft, and anyone you send it to today would see an error. Once '
+      + 'staff approve it and it goes live, this same link opens the listing and anyone can join the '
+      + 'waitlist without an account. Save it now, share it then:'));
     wl.appendChild(el('p',null,location.origin+'/listing.html?id='+listing.id));
     wl.appendChild(el('p','muted','That demand travels with the project — whoever buys it inherits the waitlist. It is proof your idea is wanted.'));
     const mgr=el('a','btn secondary','Manage waitlist & send launch announcement');
