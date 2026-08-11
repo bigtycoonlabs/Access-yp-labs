@@ -227,6 +227,11 @@ async function load(){
 
     const isAuction=listing.format==='auction';
     const closed=isAuction && listing.auction_close_at && new Date(listing.auction_close_at)<new Date();
+    // An auction with no closing time can never decide a winner. The server refuses both a bid and
+    // a purchase on one now; saying so here means somebody is told BEFORE they fill in a figure
+    // rather than after, which is the difference between a clear listing and a form that rejects
+    // you for a reason you had no way to know.
+    const endless=isAuction && !listing.auction_close_at;
     let highBid=0, winnerIsMe=false;
     if(isAuction){
       try{ const {bids}=await Kiln.api('/bids/'+id,{auth:false}); if(bids.length) highBid=bids[0].amount_cents; }catch(_){}
@@ -234,6 +239,10 @@ async function load(){
       detail.appendChild(el('p','price', highBid? ('Current high bid '+money(highBid)) : ('Auction — starting at '+money(listing.starting_bid_cents))));
       if(listing.auction_close_at){
         detail.appendChild(el('p','muted', (closed?'Auction closed on ':'Auction closes ')+new Date(listing.auction_close_at).toLocaleString()));
+      }else{
+        detail.appendChild(el('p','muted','This auction has no closing time, so no winner can be '
+          + 'decided and it cannot be bought or bid on yet. The seller has been told. If this is '
+          + 'your listing, withdraw it, set an end date, and list it again.'));
       }
     }else{
       detail.appendChild(el('p','price', money(listing.price_cents)));
@@ -262,7 +271,17 @@ async function load(){
       return;
     }
     // The claim/purchase action lives right here, up front, inside the listing — one tap starts it.
-    if(isAuction && !closed){
+    if(endless){
+      // Neither form. Offering a bid box or a buy button here would be offering an action the
+      // server will refuse — which is the same as a button that does nothing.
+      const w=el('div','panel');
+      w.appendChild(el('h2',null,'Not open for bids'));
+      w.appendChild(el('p',null,'This auction was listed without a closing time, so there is no '
+        + 'point at which a winner is decided. Nothing can be bid or bought on it until the seller '
+        + 'relists it with an end date.'));
+      detail.appendChild(w);
+      announce('This auction has no closing time, so it is not open for bids or purchase.',true);
+    }else if(isAuction && !closed){
       const bidWrap=el('div','panel');bidWrap.appendChild(el('h2',null,'Place a bid'));
       const bl=el('label',null,'Your bid in US dollars (must beat the current high)');bl.setAttribute('for','bid');
       const bi=el('input');bi.id='bid';bi.type='number';bi.min='10';bi.step='1';

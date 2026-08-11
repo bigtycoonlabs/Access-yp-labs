@@ -3,7 +3,7 @@ const { body, validationResult } = require('express-validator');
 const { query, getClient } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
-const { platformFeeCents, moverCommissionCents } = require('../lib/money');
+const { platformFeeCents, moverCommissionCents, isAboveFloor } = require('../lib/money');
 const { normalizeSlug } = require('../lib/movers');
 const stripe = require('../services/stripe');
 const { notifyStaff } = require('../services/clay/staffNotify');
@@ -47,7 +47,26 @@ router.post('/', authenticate, [
   // Settle price: flat = price; auction = highest bid, restricted to the winner.
   let amount = listing.price_cents;
   if (listing.format === 'auction') {
-    if (listing.auction_close_at && new Date(listing.auction_close_at) > new Date()) {
+    // An auction with no close date cannot be bought. This guard used to be only the "still open"
+    // check below, which is written as `close_at && ...` and therefore skipped entirely when there
+    // is no close date — so a never-closing auction read as CLOSED and its top bidder could buy it
+    // the moment they bid, while everyone else was still being told bidding was open.
+    //
+    // The system already knew about these listings and said the opposite about them: the endless
+    // auction sweep emails staff that they "can never settle and no bidder can ever win them".
+    // That was true of the automatic settlement and false here. Two parts of the platform stating
+    // opposite things about the same listing, with money on the line, is the failure this codebase
+    // exists to avoid — and the direction to fail is closed.
+    //
+    // As with the sweep, no deadline is invented on the seller's behalf. Changing the terms of
+    // somebody's live listing is not ours to do; refusing to take money against terms that cannot
+    // resolve is.
+    if (!listing.auction_close_at) {
+      throw new ApiError(400, 'This auction has no closing time, so there is no point at which a '
+        + 'winner is decided and nothing can be bought here yet. The seller can withdraw it, set an '
+        + 'end date, and list it again. Nothing has been charged.');
+    }
+    if (new Date(listing.auction_close_at) > new Date()) {
       throw new ApiError(400, 'This auction is still open. It must close before the winner can complete the purchase.');
     }
     const h = await query(
@@ -58,6 +77,17 @@ router.post('/', authenticate, [
       throw new ApiError(403, 'Only the winning bidder can complete this auction purchase.');
     }
     amount = h.rows[0].amount_cents;
+  }
+
+  // Never take a figure we are not sure of into a charge. A flat listing with no price_cents
+  // carried `amount = null` all the way here: platformFeeCents(null) is 0, the insert breaks a NOT
+  // NULL column, and had it not, Stripe would have been sent unit_amount: null. The same absent
+  // value that was rendering as "$0.00" on the public page reaches the money path here, and this
+  // is the end of it where it would cost somebody real money rather than a search snippet.
+  if (!isAboveFloor(amount)) {
+    throw new ApiError(400, 'This listing does not have a usable price, so no order was created and '
+      + 'nothing was charged. That is a fault on our side rather than anything you did — it has been '
+      + 'reported and somebody will fix the listing.');
   }
   const fee = platformFeeCents(amount);
 

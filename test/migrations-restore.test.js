@@ -44,6 +44,21 @@ test('the runner creates extensions and stops on a real failure', () => {
   assert.match(sh, /do not treat this as a restore/);
 });
 
+test('every migration runs with the schema on its search path', () => {
+  // Each file runs in its own psql process, and only 004 contains `SET search_path`. A SET lasts for
+  // one session, so the other 53 files ran with the default path. Thirteen of them do not qualify
+  // their table names, so on a genuine restore twelve failed outright — `concepts.brief`,
+  // `concepts.launch_page`, `movement_state`, site_pages, site_domains, the enterprise tables and
+  // the store tables were all absent — and `stripe_events` was created in `public` instead.
+  //
+  // The table count still came to 68, which is why this passed inspection: the number the restore
+  // was checked against was right while the schema was wrong. Counting tables is not checking a
+  // restore, and "I registered a user against it" only exercises the part that happened to work.
+  const sh = fs.readFileSync('scripts/migrate.sh', 'utf8');
+  assert.match(sh, /PGOPTIONS="--search_path=yp_labs,public"/,
+    'the runner must put yp_labs on the search path for every migration, not just the one that sets it');
+});
+
 test('the reason is written down where the next person will look', () => {
   assert.match(flat(order), /Filename order does not work and never did/i);
 });

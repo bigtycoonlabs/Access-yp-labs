@@ -19,7 +19,7 @@ while IFS= read -r line; do
   case "$line" in ''|'#'*) continue ;; esac
   f="$DIR/docs/migrations/$line"
   [ -f "$f" ] || { echo "MISSING: $line"; fails=$((fails+1)); continue; }
-  out=$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$f" 2>&1)
+  out=$(PGOPTIONS="--search_path=yp_labs,public" psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$f" 2>&1)
   if [ $? -ne 0 ]; then
     echo "FAILED: $line"
     echo "$out" | grep -i error | head -2

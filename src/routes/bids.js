@@ -27,7 +27,16 @@ router.post('/:listingId', authenticate, [
     const listing = l.rows[0];
     if (listing.format !== 'auction') throw new ApiError(400, 'This listing is not an auction.');
     if (listing.seller_id === req.user.id) throw new ApiError(400, 'You cannot bid on your own listing.');
-    if (listing.auction_close_at && new Date(listing.auction_close_at) < new Date()) {
+    // Same null-fails-open shape as the purchase path had: written as `close_at && ...`, this check
+    // is skipped entirely when there is no close date. A bid on an auction that can never close is
+    // a commitment against something that can never resolve — the bidder is not outbid, does not
+    // win, and is never told why. Refusing is not inventing a deadline on the seller's behalf; it
+    // is declining to collect against terms that do not exist.
+    if (!listing.auction_close_at) {
+      throw new ApiError(400, 'This auction has no closing time, so a bid on it could never win. '
+        + 'Nothing was placed. The seller can withdraw it, set an end date, and list it again.');
+    }
+    if (new Date(listing.auction_close_at) < new Date()) {
       throw new ApiError(400, 'This auction has closed.');
     }
     if (!isAboveFloor(amount_cents)) throw new ApiError(400, 'Bid must be at least $10.');
