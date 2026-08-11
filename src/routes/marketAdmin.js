@@ -36,6 +36,12 @@ router.get('/', staffOnly, asyncHandler(async (req, res) => {
            c.id AS concept_id, c.title, c.category, c.risk_summary, c.brief, c.clays_take,
            (c.launch_page IS NOT NULL) AS has_page,
            u.email = $1 AS is_clays,
+           -- Whether the staff member READING this screen is the seller. Neutrality is already
+           -- enforced at the decision (moderationCore refuses with 403, "You must recuse yourself"),
+           -- and that guard is right and stays. What was missing is that the screen did not know, so
+           -- it drew Approve and Reject on a listing this person is forbidden to decide, and the
+           -- refusal only arrived after they pressed it. Walked live: that is exactly what happened.
+           (l.seller_id = $2) AS is_mine,
            COALESCE(u.display_name, 'no tag') AS seller_tag,
            (SELECT count(*)::int FROM assets a WHERE a.concept_id = c.id AND a.is_current) AS materials,
            EXISTS (SELECT 1 FROM assets a WHERE a.concept_id = c.id AND a.type='html_demo' AND a.is_current) AS has_demo,
@@ -47,7 +53,7 @@ router.get('/', staffOnly, asyncHandler(async (req, res) => {
      ORDER BY
        CASE l.status WHEN 'in_review' THEN 0 WHEN 'live' THEN 1 ELSE 2 END,
        l.created_at DESC
-     LIMIT 300`, [CLAY_EMAIL]);
+     LIMIT 300`, [CLAY_EMAIL, req.user.id]);
 
   const all = r.rows.map((x) => {
     const b = x.brief && typeof x.brief === 'object' ? x.brief : null;

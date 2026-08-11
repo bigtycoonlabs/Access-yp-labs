@@ -123,3 +123,21 @@ test('focus lands on what changed rather than on the document body', () => {
   assert.match(control, /region\.focus\(\)/);
   assert.match(control, /setAttribute\('tabindex','-1'\)/);
 });
+
+test('staff are not offered a decision they are forbidden to make', () => {
+  // Walked live: submitted a listing as a creator, then opened the review queue as staff on the same
+  // account. Approve and Reject were drawn, and pressing Approve returned 403 "You must recuse
+  // yourself — you are the seller of this listing."
+  //
+  // The server guard is right and stays; neutrality has to be enforced where it cannot be bypassed.
+  // What was missing is that the screen did not know, so the only way to learn the rule was to press
+  // the button. Third instance of this shape today, after the endless auction's bid box and my own
+  // project-page section offering to list a running business.
+  assert.match(control, /l\.status==='in_review' && l\.is_mine/);
+  assert.match(control, /Not yours to decide/);
+  assert.match(control, /Somebody else on the team has to review it/);
+  // And the feed has to actually carry it, or the check is always false and nothing changes.
+  const admin = fs.readFileSync('src/routes/marketAdmin.js', 'utf8');
+  assert.match(admin, /\(l\.seller_id = \$2\) AS is_mine/);
+  assert.match(admin, /\[CLAY_EMAIL, req\.user\.id\]/);
+});

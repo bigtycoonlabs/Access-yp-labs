@@ -123,7 +123,23 @@
     // Editing still lives below, unchanged and available. This only puts the decision where the
     // person's hand already is.
     // ---- deciding
-    if(l.status==='in_review'){
+    if(l.status==='in_review' && l.is_mine){
+      // Neutrality is enforced at the decision itself, and rightly: moderationCore refuses with a
+      // 403, "You must recuse yourself — you are the seller of this listing." Walked live and it
+      // fired correctly.
+      //
+      // But the screen drew Approve and Reject anyway, so the only way to learn the rule was to
+      // press a button and be refused. Same pattern as the endless auction offering a bid box, and
+      // as my own project-page section offering to list a running business: a button the server will
+      // refuse is a button that does nothing.
+      //
+      // The listing stays visible. Hiding somebody's own submission from the queue they work would
+      // be worse — they should see it sitting there. What they cannot have is the decision.
+      inner.appendChild(el('h3', null, 'Not yours to decide'));
+      inner.appendChild(el('p', null, 'You are the seller of this listing, so you cannot approve or '
+        + 'reject it. Somebody else on the team has to review it. Everything below is still here to '
+        + 'read, and you can edit it as its owner.'));
+    } else if(l.status==='in_review'){
       inner.appendChild(el('h3', null, 'Decide'));
       var why=field(inner,'why-'+l.id,'Reason (shown to the creator if you reject)','',2);
       var ok=el('button','btn','Approve — put it on the market'); ok.type='button';
