@@ -31,8 +31,16 @@ function isValidSlug(slug) {
 
 // The dollars a mover earns if THIS concept sells through their link. We surface the
 // dollar figure, not the percentage, everywhere a mover sees an opportunity.
+//
+// Except when there is no figure to surface. `priceCents || 0` turned a listing with no fixed price
+// — an auction, where the sale price is decided by bidding — into a commission of $0.00, shown to
+// somebody being asked to promote it. A rate is the honest answer there: it is the part we know.
+// The caller renders `label`; `cents` being null is the signal that arithmetic is not available.
 function commissionDisplay(priceCents) {
-  const cents = moverCommissionCents(priceCents || 0);
+  if (priceCents == null) {
+    return { cents: null, dollars: null, label: '5% of whatever it sells for' };
+  }
+  const cents = moverCommissionCents(priceCents);
   return { cents, dollars: cents / 100, label: '$' + (cents / 100).toFixed(2) };
 }
 

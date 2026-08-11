@@ -32,7 +32,7 @@ router.get('/', staffOnly, asyncHandler(async (req, res) => {
   const owner = ['clay', 'creators', 'all'].includes(req.query.owner) ? req.query.owner : 'all';
 
   const r = await query(`
-    SELECT l.id, l.status, l.price_cents, l.stage_label, l.format, l.created_at,
+    SELECT l.id, l.status, l.price_cents, l.starting_bid_cents, l.stage_label, l.format, l.created_at,
            c.id AS concept_id, c.title, c.category, c.risk_summary, c.brief, c.clays_take,
            (c.launch_page IS NOT NULL) AS has_page,
            u.email = $1 AS is_clays,

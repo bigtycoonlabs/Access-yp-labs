@@ -21,7 +21,12 @@ test('every listing has its own title and its own words in the HTML', () => {
 test('a listing is marked up as a product, without invented ratings', () => {
   // Inventing review counts to win a rich snippet is the same lie as inventing a revenue figure.
   assert.match(market, /'@type': 'Product'/);
-  assert.match(market, /priceCurrency: 'USD'/);
+  // The offer itself moved into src/lib/price.js, because building it here from price_cents alone
+  // published a live auction as an Offer of 0.00 — telling search engines somebody's work was free.
+  // This follows the currency claim to where it now lives rather than dropping the check.
+  const price = fs.readFileSync(require.resolve('../src/lib/price.js'), 'utf8');
+  assert.match(price, /priceCurrency: 'USD'/);
+  assert.match(market, /offerJsonLd\(row/);
   // Strip comments first: the comment EXPLAINING that there is no aggregateRating contains the
   // word, so a check that cannot tell code from its own explanation fails on the file that is
   // correct. Third time this exact trap has caught me — worth stating rather than re-learning.

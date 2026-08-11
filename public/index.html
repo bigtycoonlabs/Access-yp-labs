@@ -687,7 +687,7 @@
       var h=document.createElement('h3');
       var a=document.createElement('a'); a.href='/market/'+encodeURIComponent(l.id); a.textContent=l.title||'Untitled project';
       h.appendChild(a); card.appendChild(h);
-      var price=document.createElement('p'); price.className='price'; price.textContent='$'+((l.price_cents||0)/100).toFixed(0);
+      var price=document.createElement('p'); price.className='price'; price.textContent=Kiln.priceLabel(l);
       card.appendChild(price);
       if(l.line){ var p2=document.createElement('p'); p2.textContent=l.line; card.appendChild(p2); }
       host.appendChild(card);

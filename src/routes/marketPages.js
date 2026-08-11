@@ -16,6 +16,7 @@
 const express = require('express');
 const { query } = require('../config/db');
 const { asyncHandler } = require('../lib/http');
+const { priceLabel, offerJsonLd } = require('../lib/price');
 
 const router = express.Router();
 const SITE = () => (process.env.CLIENT_URL || 'https://accessyplabs.com').replace(/\/+$/, '');
@@ -70,7 +71,8 @@ function describe(row) {
 router.get('/market/:id', asyncHandler(async (req, res, next) => {
   if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) return next();
   const r = await query(
-    `SELECT l.id, l.price_cents, l.format, l.stage_label, l.status, l.created_at,
+    `SELECT l.id, l.price_cents, l.starting_bid_cents, l.auction_close_at,
+            l.format, l.stage_label, l.status, l.created_at,
             c.title, c.category, c.risk_summary, c.brief, c.clays_take,
             COALESCE(u.display_name, 'A Dream Market creator') AS seller_alias
        FROM listings l
@@ -94,7 +96,11 @@ router.get('/market/:id', asyncHandler(async (req, res, next) => {
 
   const row = r.rows[0];
   const brief = row.brief && typeof row.brief === 'object' ? row.brief : {};
-  const price = (row.price_cents / 100).toFixed(2);
+  // Not `row.price_cents / 100`. An auction has no price_cents, and that arithmetic was rendering
+  // a live listing as "$0.00" on the page and as an Offer of 0.00 in the Product markup. See
+  // ../lib/price.js — the price is asked for, never computed here.
+  const price = priceLabel(row);
+  const offer = offerJsonLd(row, `${SITE()}/market/${row.id}`);
   const description = describe(row);
 
   const rows = [
@@ -107,7 +113,9 @@ router.get('/market/:id', asyncHandler(async (req, res, next) => {
   const body = `
   <p><a href="/marketplace.html">← The Dream Market</a></p>
   <h1>${esc(row.title)}</h1>
-  <p class="muted">An unbuilt business project, listed by ${esc(row.seller_alias)} · $${esc(price)}</p>
+  <p class="muted">An unbuilt business project, listed by ${esc(row.seller_alias)} · ${esc(price)}</p>
+  ${row.format === 'auction' && row.auction_close_at
+    ? `<p class="muted">Bidding closes ${esc(new Date(row.auction_close_at).toUTCString())}.</p>` : ''}
 
   ${rows.length ? `<section aria-labelledby="opp-h">
     <h2 id="opp-h">The opportunity at a glance</h2>
@@ -141,19 +149,18 @@ router.get('/market/:id', asyncHandler(async (req, res, next) => {
     // Marked up as a Product so a search result can show the price. Deliberately no aggregateRating
     // and no availability claim beyond InStock — inventing review counts to win a rich snippet is
     // the same lie as inventing a revenue figure.
+    //
+    // And no offer at all rather than an offer of nothing. This block published price 0.00 for a
+    // live auction, which told every search engine that somebody's work was free. A missing offer
+    // costs a rich snippet; a wrong one is a price quote we never agreed to and cannot retract
+    // from a search index.
     jsonLd: {
       '@context': 'https://schema.org',
       '@type': 'Product',
       name: row.title,
       description,
       category: String(row.category || '').replace(/_/g, ' '),
-      offers: {
-        '@type': 'Offer',
-        price,
-        priceCurrency: 'USD',
-        availability: 'https://schema.org/InStock',
-        url: `${SITE()}/market/${row.id}`,
-      },
+      ...(offer ? { offers: offer } : {}),
     },
   }));
 }));

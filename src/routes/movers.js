@@ -209,7 +209,8 @@ router.get('/:slug', asyncHandler(async (req, res) => {
   const mover = m.rows[0];
 
   const rows = await query(
-    `SELECT l.id, l.price_cents, c.title, c.category, c.risk_summary,
+    `SELECT l.id, l.price_cents, l.format, l.starting_bid_cents,
+            c.title, c.category, c.risk_summary,
             (l.seller_id = $1) AS own
        FROM listings l
        JOIN concepts c ON c.id = l.concept_id
@@ -223,7 +224,11 @@ router.get('/:slug', asyncHandler(async (req, res) => {
     title: r.title,
     category: r.category,
     risk_summary: r.risk_summary,
+    // format and the starting bid travel with the price. Without them the mover page cannot tell an
+    // auction from a free listing, and it was rendering both as "$0.00".
+    format: r.format,
     price_cents: r.price_cents,
+    starting_bid_cents: r.starting_bid_cents,
     own: r.own,
     // A mover earns the commission only on OTHER creators' Dreams; on their own they are
     // the seller and keep the full 80%, so no mover figure is shown there.

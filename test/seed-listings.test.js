@@ -101,7 +101,11 @@ test('a refusal to save says what it compared', () => {
   // the value genuinely matched. For a screen reader user that is the difference between "it
   // ignored me" and "it saw the same words I did".
   assert.match(routeSrc, /you sent "\$\{req\.body\.title\}", stored is/);
-  assert.match(routeSrc, /you sent \$\$\{\(req\.body\.price_cents \/ 100\)/);
+  // Both sides of the price, still. Pinned to the property rather than to the arithmetic: the
+  // formatting moved into src/lib/price.js when it turned out `(l.price_cents / 100)` printed
+  // "$NaN" for an auction, which has a starting bid and no price. What must not regress is that
+  // the message reports what was sent AND what is stored.
+  assert.match(routeSrc, /you sent \$\{dollars\(req\.body\.price_cents\)\}, stored is \$\{priceLabel\(l\)\}/);
   assert.match(routeSrc, /no fields were sent at all/);
 });
 

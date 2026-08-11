@@ -141,7 +141,7 @@ function money(c){return '$'+(c/100).toFixed(2);}
 function esc(t){const d=document.createElement('div');d.textContent=t==null?'':t;return d.innerHTML;}
 function renderCard(l,into,leaping){
   const c=document.createElement('article');c.className='card';
-  const price=l.format==='auction'?('Auction from '+money(l.starting_bid_cents)):money(l.price_cents);
+  const price=Kiln.priceLabel(l);
   const pitch=((l.brief&&l.brief.problem)||l.pitch||'').trim();
   const usingPitch=!(l.brief&&l.brief.problem);
   const pitchHtml=pitch?('<p>'+esc(pitch)+((usingPitch&&pitch.length>=240)?'…':'')+'</p>'):'';

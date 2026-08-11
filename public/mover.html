@@ -102,7 +102,7 @@ function card(d){
   c.appendChild(el('h3',null,d.title||'Untitled Dream'));
   const tags=el('p');
   if(d.category){ tags.appendChild(el('span','tag',String(d.category).replace(/_/g,' '))); }
-  tags.appendChild(el('span','tag',money(d.price_cents)));
+  tags.appendChild(el('span','tag',Kiln.priceLabel(d)));
   c.appendChild(tags);
   if(d.risk_summary){ c.appendChild(el('p','muted',d.risk_summary)); }
   const link=el('a','btn',d.own?'View this Dream':'View this Dream');

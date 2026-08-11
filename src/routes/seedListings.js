@@ -20,6 +20,7 @@ const { query } = require('../config/db');
 const { authenticate, authorize } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { PRICE_FLOOR_CENTS } = require('../lib/money');
+const { priceLabel, dollars } = require('../lib/price');
 
 const router = express.Router();
 const staffOnly = [authenticate, authorize('staff', 'admin', 'master_staff')];
@@ -50,7 +51,7 @@ const NOT_YOURS_TO_EDIT =
 // GET /api/seed-listings — everything Clay owns that a person may edit, newest first.
 router.get('/', staffOnly, asyncHandler(async (req, res) => {
   const r = await query(
-    `SELECT l.id, l.status, l.price_cents, l.format, l.stage_label, l.created_at,
+    `SELECT l.id, l.status, l.price_cents, l.starting_bid_cents, l.format, l.stage_label, l.created_at,
             c.id AS concept_id, c.title, c.risk_summary, c.brief,
             (SELECT count(*)::int FROM assets a WHERE a.concept_id = c.id AND a.is_current) AS materials,
             (c.launch_page IS NOT NULL) AS has_landing_page,
@@ -128,7 +129,9 @@ router.patch('/:id', staffOnly, [
   }
   if (req.body.price_cents !== undefined && req.body.price_cents !== l.price_cents) {
     await query('UPDATE listings SET price_cents=$2 WHERE id=$1', [l.id, req.body.price_cents]);
-    changes.push(`price: $${(l.price_cents / 100).toFixed(2)} to $${(req.body.price_cents / 100).toFixed(2)}`);
+    // priceLabel rather than the arithmetic: the stored side is null on an auction, and this line
+    // read "price: $NaN to $50.00" — a message that tells somebody nothing about what they changed.
+    changes.push(`price: ${priceLabel(l)} to ${dollars(req.body.price_cents)}`);
   }
   if (req.body.stage_label !== undefined) {
     await query('UPDATE listings SET stage_label=$2 WHERE id=$1', [l.id, req.body.stage_label]);
@@ -143,7 +146,7 @@ router.patch('/:id', staffOnly, [
     // the difference between "it ignored me" and "it saw the same words I did".
     const compared = [];
     if (req.body.title !== undefined) compared.push(`title — you sent "${req.body.title}", stored is "${l.title}"`);
-    if (req.body.price_cents !== undefined) compared.push(`price — you sent $${(req.body.price_cents / 100).toFixed(2)}, stored is $${(l.price_cents / 100).toFixed(2)}`);
+    if (req.body.price_cents !== undefined) compared.push(`price — you sent ${dollars(req.body.price_cents)}, stored is ${priceLabel(l)}`);
     if (req.body.risk_summary !== undefined) compared.push('summary — what you sent matches what is stored');
     if (req.body.stage_label !== undefined) compared.push(`stage — you sent ${req.body.stage_label}, stored is ${l.stage_label}`);
 

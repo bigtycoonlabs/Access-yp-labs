@@ -204,7 +204,19 @@ async function loadDreams(){
     listings.forEach(l=>{
       const d=el('div','dream');
       d.appendChild(el('h3',null,l.title||'Untitled Dream'));
-      const pay=el('p'); pay.appendChild(el('span','pay','You earn '+money(Math.round((l.price_cents||0)*0.05)))); pay.appendChild(document.createTextNode(' if it sells through your link ('+money(l.price_cents)+' Dream).')); d.appendChild(pay);
+      // A flat listing has a sale price, so the commission is a number. An auction does not have one
+      // yet, and `(null||0)*0.05` was rendering "You earn $0.00" — asking somebody to promote a
+      // listing while telling them it pays nothing. Say the rate instead: it is the part we know.
+      const pay=el('p');
+      const cents=Kiln.askingCents(l);
+      if(l.format==='auction' || cents==null){
+        pay.appendChild(el('span','pay','You earn 5% of whatever it sells for'));
+        pay.appendChild(document.createTextNode(' if it sells through your link ('+Kiln.priceLabel(l)+').'));
+      }else{
+        pay.appendChild(el('span','pay','You earn '+money(Math.round(cents*0.05))));
+        pay.appendChild(document.createTextNode(' if it sells through your link ('+money(cents)+' Dream).'));
+      }
+      d.appendChild(pay);
       const on=mine.has(l.id);
       const btn=el('button', on?'btn secondary':'btn', on?'On your page — remove':'Promote on my page'); btn.type='button';
       btn.addEventListener('click',async()=>{ btn.disabled=true;

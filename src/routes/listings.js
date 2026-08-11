@@ -184,7 +184,7 @@ router.post('/:id/withdraw', authenticate, asyncHandler(async (req, res) => {
 router.get('/recent', asyncHandler(async (req, res) => {
   const limit = Math.min(Math.max(Number(req.query.limit) || 3, 1), 6);
   const r = await query(
-    `SELECT l.id, l.price_cents, c.title, c.brief, c.risk_summary
+    `SELECT l.id, l.price_cents, l.format, l.starting_bid_cents, c.title, c.brief, c.risk_summary
        FROM listings l
        JOIN concepts c ON c.id = l.concept_id
       WHERE l.status = 'live'
@@ -203,7 +203,13 @@ router.get('/recent', asyncHandler(async (req, res) => {
       return {
         id: x.id,
         title: x.title,
+        // format and the starting bid travel with the price, because a card that gets only
+        // price_cents cannot tell an auction from a free one. This feed omitted them, and the
+        // homepage rendered `(price_cents || 0)` — so a live auction would have appeared on the
+        // front page of the site at $0 the moment it rotated into the three newest.
+        format: x.format,
         price_cents: x.price_cents,
+        starting_bid_cents: x.starting_bid_cents,
         line: line ? line.slice(0, 140) : null,
       };
     }),

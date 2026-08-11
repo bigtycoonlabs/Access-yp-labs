@@ -381,7 +381,7 @@
       var r=el('div','row'); r.setAttribute('role','listitem');
       // Same raw-value problem as the control centre had: "in_review" is a database word.
       var STATE = { in_review:'waiting for review', live:'on the market', withdrawn:'withdrawn', sold:'sold' };
-      var a=el('a', null, (l.title || 'Untitled') + ' — ' + (STATE[l.status] || l.status) + ', ' + money(l.price_cents));
+      var a=el('a', null, (l.title || 'Untitled') + ' — ' + (STATE[l.status] || l.status) + ', ' + Kiln.priceLabel(l));
       a.href='/market-control.html';
       r.appendChild(el('p')).appendChild(a);
       r.appendChild(el('p','muted',

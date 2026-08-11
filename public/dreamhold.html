@@ -239,7 +239,7 @@ async function showLeaping(){
       card.style.cssText='border:1px solid var(--line);border-radius:14px;padding:14px;background:rgba(184,166,255,.08);';
       card.appendChild(el('p','',(l.category||'').replace(/_/g,' ')+' · a dream leaning toward you'));
       var h=el('h3',null,l.title); h.style.margin='4px 0'; card.appendChild(h);
-      var price=l.format==='auction'?('Auction from '+money(l.starting_bid_cents)):money(l.price_cents);
+      var price=Kiln.priceLabel(l);
       var p=el('p',null,price); p.style.margin='4px 0 10px'; card.appendChild(p);
       var a=el('a',null,'View this dream'); a.href='/listing.html?id='+encodeURIComponent(l.id);
       a.style.cssText='display:inline-block;min-height:44px;padding:10px 16px;border-radius:10px;background:linear-gradient(180deg,var(--dream),var(--dream2));color:#1a1230;font-weight:700;text-decoration:none;';

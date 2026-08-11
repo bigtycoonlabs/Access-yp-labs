@@ -105,7 +105,7 @@
     var STATE = { in_review:'waiting for review', live:'on the market',
                   withdrawn:'withdrawn', sold:'sold' };
     sm.textContent = (l.title||'Untitled') + ' — ' + (l.is_clays?'Clay':l.seller_tag) + ' · ' +
-      money(l.price_cents) + ' · ' + (STATE[l.status] || l.status) +
+      Kiln.priceLabel(l) + ' · ' + (STATE[l.status] || l.status) +
       (flags.length? ' · ' + flags.join(', ') : '');
     d.appendChild(sm);
 
@@ -140,28 +140,46 @@
     // ---- the listing itself
     inner.appendChild(el('h3', null, 'The listing'));
     var ti=field(inner,'t-'+l.id,'Title',l.title);
-    var pi=field(inner,'pr-'+l.id,'Price in dollars',String(Math.round((l.price_cents||0)/100)));
-    pi.type='number'; pi.min='10'; pi.step='1';
+    // An auction has no price to edit. This box used to prefill 0 from a null price_cents, and the
+    // "$10 minimum" guard below then refused every save — so nobody could fix the title or the risk
+    // note on an auction listing at all, and the reason given was a price they had never typed.
+    var isAuction = l.format === 'auction';
+    var pi = null;
+    if(isAuction){
+      inner.appendChild(el('p','muted', Kiln.priceLabel(l)
+        + '. What an auction sells for is decided by bidding, so there is no price to set here.'));
+    }else{
+      pi=field(inner,'pr-'+l.id,'Price in dollars',l.price_cents==null?'':String(Math.round(l.price_cents/100)));
+      pi.type='number'; pi.min='10'; pi.step='1';
+    }
     var ri=field(inner,'r-'+l.id,'Risk note (shown as "Risk noted")',l.risk_summary,2);
 
     var save=el('button','btn','Save this listing'); save.type='button';
     save.addEventListener('click', async function(){
-      var raw=String(pi.value||'').trim();
-      if(raw==='' || !isFinite(Number(raw))){ said.textContent='Put a number in the price box. Nothing was sent.'; announce(said.textContent,true); return; }
-      if(Number(raw)<10){ said.textContent='The lowest a listing can be is $10. Nothing was sent.'; announce(said.textContent,true); return; }
+      var raw = pi ? String(pi.value||'').trim() : null;
+      if(pi){
+        if(raw==='' || !isFinite(Number(raw))){ said.textContent='Put a number in the price box. Nothing was sent.'; announce(said.textContent,true); return; }
+        if(Number(raw)<10){ said.textContent='The lowest a listing can be is $10. Nothing was sent.'; announce(said.textContent,true); return; }
+      }
       if(String(ti.value||'').trim().length<3){ said.textContent='A title needs at least three characters. Nothing was sent.'; announce(said.textContent,true); return; }
       save.disabled=true; said.textContent='Saving…';
       // Clay's listings go through the staff editor; a creator's own words go through the route that
       // only ever touches the fields a listing needs, and never rewrites their materials.
       var path = l.is_clays ? ('/seed-listings/'+l.id) : ('/listings/'+l.id+'/story');
       var body = l.is_clays
-        ? { title:String(ti.value).trim(), price_cents:Math.round(Number(raw)*100), risk_summary:ri.value,
-            brief:{ problem:bp.value, customer:bc.value, earning:be.value, why_you:bw.value } }
+        ? Object.assign(
+            { title:String(ti.value).trim(), risk_summary:ri.value,
+              brief:{ problem:bp.value, customer:bc.value, earning:be.value, why_you:bw.value } },
+            pi ? { price_cents:Math.round(Number(raw)*100) } : {})
         : { title:String(ti.value).trim(), summary:ri.value };
       try{
         var r2=await Kiln.api(path,{method:'PATCH',body:body});
         said.textContent=r2.message||'Saved.';
-        sm.textContent=(ti.value||'Untitled')+' — '+(l.is_clays?'Clay':l.seller_tag)+' · $'+Number(raw).toFixed(2)+' · '+l.status;
+        // Rebuilt through the same rule the card was drawn with, so the line after a save cannot
+        // disagree with the line before it. It used to print "$NaN" here for an auction.
+        if(pi) l.price_cents=Math.round(Number(raw)*100);
+        sm.textContent=(ti.value||'Untitled')+' — '+(l.is_clays?'Clay':l.seller_tag)+' · '
+          +Kiln.priceLabel(l)+' · '+(STATE[l.status]||l.status);
       }catch(e){ said.textContent=(e&&e.message)||'That did not save. Nothing changed.'; }
       announce(said.textContent,true); save.disabled=false;
     });
