@@ -174,6 +174,23 @@ function renderConceptContext({ concept, assets, intent }) {
   if (concept.category) lines.push(`Category: ${concept.category}`);
   if (concept.stage) lines.push(`Stage: ${concept.stage}`);
   if (concept.risk_summary) lines.push(`Noted risk: ${String(concept.risk_summary).slice(0, 400)}`);
+  // A business the person ALREADY RUNS cannot be listed. The API refuses it with a 409, by design:
+  // the Dream Market sells unlaunched projects, not live operations somebody depends on.
+  //
+  // Clay was never told. Walked live: asked to list a Cleveland cleaning business, he set the
+  // project's path to "refine it to sell", then asked for a dreamer tag, a format and a price so he
+  // could propose a listing that could only ever be refused. He even sensed the tension and reasoned
+  // around it — "we need to list it carefully as a transferable growth plan, not the sale of your
+  // existing operating company" — rather than saying the plain thing, because nothing had told him
+  // the plain thing was true.
+  if (concept.is_operating) {
+    lines.push('THIS IS A BUSINESS THEY ALREADY RUN. It CANNOT be listed or sold in the Dream Market '
+      + '— the platform refuses it, and that is deliberate: this market sells unlaunched projects, '
+      + 'not live operations. Never offer to list it, never ask for a price or a listing format for '
+      + 'it, and never set its path to refining it to sell. If they ask to sell it, say plainly that '
+      + 'it cannot be listed here and why, then get straight back to helping them grow it — which is '
+      + 'one of the real ways people earn here, and the reason they came.');
+  }
   lines.push('');
   // The creator's plan for THIS concept — the compass for how you coach it.
   if (intent && intent.path) {

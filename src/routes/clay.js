@@ -1363,8 +1363,17 @@ function buildExecutors(user) {
       return ok ? { status: 'forgotten', key } : { status: 'not_found', key };
     },
     set_concept_path: async ({ concept_id, path, note }) => {
-      const own = await query('SELECT id FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
+      const own = await query('SELECT id, is_operating FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, user.id]);
       if (!own.rows.length) return { status: 'error', message: 'That project could not be found — it may have been removed, or it may not be yours.' };
+      // A prompt rule is guidance; this is the guarantee. Refining to sell is not a path that exists
+      // for a business somebody already runs — the listing route refuses it with a 409 — so recording
+      // it would point the creator at a wall and make Clay coach toward it for every turn after.
+      // Verified live: this is exactly what happened, and the row was really written.
+      if (own.rows[0].is_operating && path === 'refine_to_sell') {
+        return { status: 'refused', message: 'That path was not recorded. This is a business they '
+          + 'already run, and a running business cannot be listed or sold in the Dream Market. Tell '
+          + 'them that plainly, then help them grow it or build it further — both are real paths.' };
+      }
       const r = await intent.setIntent(concept_id, user.id, path, note, 'clay');
       if (!r.ok) return { status: 'error', message: r.reason === 'invalid_path' ? 'That isn\'t a valid path.' : 'Could not record the path.' };
       return { status: 'path_set', path: r.intent.path, label: r.intent.label, note: r.intent.note,
@@ -1623,7 +1632,11 @@ async function buildChatContext(req) {
     // That traded someone's privacy for a convenience, which is not a trade that was ours to make.)
     const staffViewer = ['staff', 'admin', 'master_staff'].includes(req.user.role);
     const c = await query(
-      `SELECT c.id, c.title, c.category, c.stage, c.risk_summary, c.movement_state, c.movement_note
+      // is_operating travels with the concept. Without it Clay had no idea a project was a business
+      // the person already runs, so he set its path to "refine it to sell" and then spent a long
+      // message coaching toward a listing the API refuses with a 409.
+      `SELECT c.id, c.title, c.category, c.stage, c.risk_summary, c.movement_state, c.movement_note,
+              c.is_operating
          FROM concepts c
         WHERE c.id = $1
           AND (
