@@ -3,25 +3,20 @@
 const PLATFORM_RATE = 0.20;      // 20% across marketplace + consultants
 const PRICE_FLOOR_CENTS = 1000;  // $10 minimum listing price
 
-// THE MINIMUM BID, AND WHY IT IS NOT THE LISTING FLOOR.
+// THE MINIMUM BID IS THE MINIMUM LISTING PRICE. ONE FLOOR, $10, EVERYWHERE.
 //
-// `bids.amount_cents` carries CHECK (amount_cents >= 5000) in production and in every migration
-// since 004 — a $50 floor, from when the minimum listing price was $50 rather than $10. The listing
-// floor was lowered; this was not, and nothing compared them.
+// It was not always. `bids.amount_cents` carried CHECK (amount_cents >= 5000) from migration 004 —
+// a $50 floor from when the minimum listing price was also $50. The listing floor was lowered to
+// $10 and this was not, so the route validated against $10, told people "Bid must be at least $10",
+// and Postgres rejected anything under $50 with a raw constraint name inside an HTTP 500. On the one
+// live auction, whose starting bid is $35, the page pre-filled a $36 bid that could not be placed.
 //
-// So the bid route validated against PRICE_FLOOR_CENTS, told people "Bid must be at least $10",
-// accepted $20, and Postgres threw. Driven for real: a $20 bid and a $49.99 bid both returned
-// HTTP 500 carrying `violates check constraint "bids_amount_cents_check"` to the bidder. On the one
-// live auction, whose starting bid is $35, the page would have said "Bid must exceed $35.00" and
-// then 500'd on $36 — the software instructing somebody into an error.
-//
-// This is the exact bug the schema-agreement guard was written for, in a shape it did not cover: it
-// compares enum value lists and never looked at a numeric floor.
-//
-// The code is moved to the database's number rather than the constraint to the code's, because
-// which floor is CORRECT is a pricing decision and not one to make silently while fixing a crash.
-// If the minimum bid is meant to be $10, this constant and the constraint move together.
-const MIN_BID_CENTS = 5000;      // $50 minimum bid — matches bids_amount_cents_check
+// Owner's decision, 11 August 2026: one floor of $10 for projects and auctions alike. Migration 056
+// moved the constraint. MIN_BID_CENTS is kept as its own name rather than collapsed into
+// PRICE_FLOOR_CENTS so the bid route still says which rule it is obeying — but they are now the same
+// number, and the schema-agreement guard asserts both against the live constraints so they cannot
+// drift apart again the way they did for months without anything noticing.
+const MIN_BID_CENTS = PRICE_FLOOR_CENTS;   // $10 — matches bids_amount_cents_check (migration 056)
 
 // Consultant session economics (fixed): $150 total, 20% / 80% split.
 const CONSULT_FEE_CENTS = 15000;

@@ -283,11 +283,12 @@ async function load(){
       announce('This auction has no closing time, so it is not open for bids or purchase.',true);
     }else if(isAuction && !closed){
       const bidWrap=el('div','panel');bidWrap.appendChild(el('h2',null,'Place a bid'));
-      // $50, not $10. bids.amount_cents enforces >= 5000 in the database. This box offered a $10
-      // minimum and pre-filled one dollar above the starting bid, so a $35 auction invited a $36 bid
-      // that came back as a 500 with a raw constraint name in it. The page must not instruct
-      // somebody into an error.
-      const MIN_BID=50;
+      // One floor, $10, for projects and auctions alike (migration 056). This number must stay equal
+      // to MIN_BID_CENTS in src/lib/money.js and to bids_amount_cents_check. When they disagreed,
+      // this box offered a $10 minimum against a database enforcing $50, so a $35 auction invited a
+      // $36 bid that came back as a 500 with a raw constraint name in it. The page must never
+      // instruct somebody into an error.
+      const MIN_BID=10;
       const bl=el('label',null,'Your bid in US dollars (at least $'+MIN_BID+', and must beat the current high)');bl.setAttribute('for','bid');
       const bi=el('input');bi.id='bid';bi.type='number';bi.min=String(MIN_BID);bi.step='1';
       const minNext=Math.max(MIN_BID, Math.floor((Math.max(listing.starting_bid_cents||0, highBid))/100)+1);

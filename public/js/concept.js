@@ -254,6 +254,111 @@
     if (btn) { btn.disabled = false; btn.textContent = 'Compute the real numbers'; }
   }
 
+  // ---- THIS PROJECT'S DREAM MARKET LISTING ----
+  //
+  // The project page had no idea a listing existed. It showed the vault, the images, the store, the
+  // sales and the plan, and said nothing about the thing being sold — the word "listing" appeared
+  // once on the whole page, inside a comment. Editing lived on a different page entirely
+  // (dashboard.html) and nothing here pointed at it.
+  //
+  // The owner's own auction sat unedited for a week for exactly this reason: "I go to my listing in
+  // my account and I don't know where to edit anything." A feature nobody can find is not a feature,
+  // and this is the same fault as a component that renders correctly and is announced to nobody.
+  //
+  // It also has to say WHY, not just where. A live listing's terms are locked on purpose so nobody
+  // can change a price out from under a bidder. Sending somebody to an edit screen that will refuse
+  // them, without saying so first, is a worse version of not sending them at all.
+  async function listingBox(conceptId) {
+    var sect = el('section', 'panel');
+    sect.setAttribute('aria-labelledby', 'listing-h');
+    var h = el('h2', null, 'Your Dream Market listing'); h.id = 'listing-h';
+    sect.appendChild(h);
+    actionsEl.appendChild(sect);
+
+    var listing = null;
+    try {
+      var r = await Kiln.api('/listings/mine');
+      listing = (r.listings || []).filter(function (x) { return x.concept_id === conceptId; })[0] || null;
+    } catch (e) {
+      if (e && e.sessionExpired) return goSignIn();
+      // A failed read is not "no listing". Saying "not listed" here would tell somebody their
+      // listing had vanished.
+      sect.appendChild(el('p', 'msg err', 'Could not check whether this project is listed: '
+        + ((e && e.message) || 'unknown reason') + '. That is a failed read, not an empty one — '
+        + 'your listing has not changed.'));
+      return;
+    }
+
+    if (!listing) {
+      sect.appendChild(el('p', null, 'This project is not on the Dream Market. Listing it puts it in '
+        + 'front of buyers looking for a business to start. Most listed projects do not sell.'));
+      var sell = el('a', 'btn', 'List this project for sale');
+      sell.href = '/sell.html?project=' + encodeURIComponent(conceptId);
+      sect.appendChild(sell);
+      return;
+    }
+
+    var STATE = {
+      draft: 'a draft — nobody can see it yet',
+      in_review: 'waiting for staff to approve it',
+      live: 'live on the market',
+      sold: 'sold',
+      withdrawn: 'taken off the market',
+      rejected: 'not approved',
+    };
+    sect.appendChild(el('p', null, 'This project is ' + (STATE[listing.status] || listing.status) + '.'));
+    sect.appendChild(el('p', 'price', Kiln.priceLabel(listing)));
+
+    if (listing.format === 'auction' && !listing.auction_close_at) {
+      sect.appendChild(el('p', 'msg err', 'This auction has no closing time, so no winner can ever be '
+        + 'decided and nobody can bid on it or buy it. To fix it: take it off the market, set an end '
+        + 'date, and put it back.'));
+    }
+
+    var acts = el('p');
+    acts.style.display = 'flex'; acts.style.gap = '10px'; acts.style.flexWrap = 'wrap';
+
+    if (listing.status === 'live' || listing.status === 'in_review') {
+      // Say the rule before offering the button, so nobody walks into a refusal.
+      sect.appendChild(el('p', 'muted', 'Its price and terms are locked while people can act on it. '
+        + 'Take it off the market to change anything — then you can put it straight back.'));
+      var wd = el('button', 'btn secondary', 'Take it off the market so I can edit it'); wd.type = 'button';
+      var said = el('div'); said.setAttribute('role', 'alert'); said.setAttribute('aria-live', 'assertive');
+      wd.addEventListener('click', async function () {
+        wd.disabled = true; announce('Taking it off the market\u2026');
+        try {
+          await Kiln.api('/listings/' + listing.id + '/withdraw', { method: 'POST' });
+          said.textContent = 'Taken off the market. You can edit it now and put it straight back.';
+          announce(said.textContent, true);
+          var go = el('a', 'btn', 'Edit this listing');
+          go.href = '/dashboard.html#listings';
+          said.appendChild(document.createTextNode(' '));
+          said.appendChild(go);
+          if (window.focusEl) focusEl(said, 'Taken off the market');
+        } catch (e2) {
+          wd.disabled = false;
+          if (e2 && e2.sessionExpired) return goSignIn();
+          said.textContent = 'That did not go through, so nothing changed: ' + ((e2 && e2.message) || 'unknown reason');
+          announce(said.textContent, true);
+        }
+      });
+      acts.appendChild(wd);
+      sect.appendChild(acts);
+      sect.appendChild(said);
+    } else if (listing.status === 'draft' || listing.status === 'withdrawn') {
+      var edit = el('a', 'btn', 'Edit this listing');
+      edit.href = '/dashboard.html#listings';
+      acts.appendChild(edit);
+      sect.appendChild(acts);
+    }
+
+    if (listing.status === 'live') {
+      var view = el('a', 'btn secondary', 'See it the way a buyer does');
+      view.href = '/listing.html?id=' + encodeURIComponent(listing.id);
+      acts.appendChild(view);
+    }
+  }
+
   // ---- delete this project ----
   // A creator must be able to remove their own work. Two steps on purpose: the first button only
   // reveals the confirmation, so a mis-tap can never delete anything, and the confirm step states
@@ -687,6 +792,9 @@
       loadExtras(id);
       loadStore(id);
       loadSales(id);
+      // Before the danger zone: what a creator most often came here to do is see and change what is
+      // for sale, and deleting the project should never be the last thing on the page they read.
+      listingBox(id);
       deleteBox(id, project.title || 'this project');
 
       // ---- keep / unlock, only when something is actually locked ----
