@@ -21,6 +21,7 @@ const PARAM_TYPES = {
   headline: 'string', subhead: 'string', blurb: 'string', cta_label: 'string', publish: 'boolean',
   title: 'string', body: 'string', kind: 'string', page_slug: 'string', nav_order: 'number',
   theme: 'string', hero_image: 'string', label: 'string', place_as_hero: 'boolean',
+  operating: 'boolean',
   listing_id: 'string', decision: 'string', reason: 'string', notes: 'string',
   report_id: 'string', action: 'string', user_id: 'string', email: 'string', new_role: 'string',
 };

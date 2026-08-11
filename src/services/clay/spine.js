@@ -87,6 +87,12 @@ const TOOLS = {
     ask: 'Shape this into a full project package — the plan, the research, the risks and the materials. It is free, it stays private in your Laboratory, and nothing is published or listed.',
     irreversible: false, requires_confirmation: true,
     required: ['prompt'],
+    // `operating` carries what Clay already worked out in the conversation: this person RUNS the
+    // business, they are not inventing one. Without it the build pipeline had no way to know, hit a
+    // blanket "already running → refuse" rule, and killed the build after the person had approved it
+    // and waited two minutes. The build has always had an existing-business mode; chat just could
+    // not reach it.
+    optional: ['operating'],
     enums: { category: CATEGORIES },
     summary: 'Shape a full project package with Clay. Only call this once you actually understand the idea — never on a raw one-liner you have not pressure-tested with a sharpening question or two first, unless the person clearly says to just build it. The person is ALWAYS asked to approve before the build starts, so calling this is a PROPOSAL, not the act itself — say what you understood and what you are about to build, and let them say go. Free; nothing is published.',
   },

@@ -86,7 +86,7 @@ Non-negotiable honesty rules (you inherited these from Arbo):
 
 Scope guardrails:
 - You only help with businesses that can run virtually / digitally / remotely / as a micro or solo operation. If the idea is inherently location-bound, either reframe it into a remote/hybrid model or set redirect="out_of_category".
-- If the user is describing a business they are ALREADY running, set redirect="running_business" (this platform sells pre-proven projects, not live operations).
+- If the user is describing a business they ALREADY RUN and you were NOT told this is existing-business mode, set redirect="running_business". But read this narrowly. It is a rule about what the Dream Market may SELL, not a rule about who you may help. Growing a business somebody already operates is one of the ways people earn here, the platform has a whole mode for it, and the listing gate refuses a running business separately and by itself. So when EXISTING BUSINESS MODE is on below, do NOT redirect — build the growth package.
 - If a category was not provided and you cannot confidently infer one, set redirect="needs_category".
 - If an "enhance" request has drifted into a fundamentally different business, set redirect="scope_drift".
 
@@ -128,6 +128,21 @@ function parseModelJson(text) {
  * Run a Clay generation. Returns a normalized result the caller persists.
  * Never throws for "the model couldn't help" — that becomes an honest status.
  */
+// EXISTING BUSINESS MODE. Reachable from chat since a walk found it was not.
+//
+// A man with a Cleveland cleaning business, two vans and 40 recurring homes asked Clay for a growth
+// package. Chat-Clay read him exactly right, remembered the business, and proposed the build. The
+// build then refused him — "Dream Market is built for unlaunched or pre-launch projects, not
+// live-business growth consulting... the right next move is an advisory engagement outside this
+// project format" — and reported status FAILED, after he had approved it and waited two minutes.
+//
+// Two Clays disagreeing about the same person. The conversational one is right: growing a business
+// you already run is one of the five ways to earn here, and this mode exists precisely for it. The
+// build one was applying a LISTING rule at BUILD time, and the listing gate already enforces that
+// rule on its own, with its own message, in routes/listings.js.
+//
+// So the redirect stays for someone who never said they were an operator, and gets out of the way
+// the moment they did.
 const OPERATING_ADDENDUM = `IMPORTANT — EXISTING BUSINESS MODE:
 The user ALREADY OPERATES this business. You are enhancing a running operation, not shaping a new launch. Frame every section for a live business: the business plan is a growth/enhancement plan for what already exists; the marketing strategy upgrades what they already do; the build path is a rollout plan for the improvements; any demo illustrates a NEW feature or offer, not a whole new company. Never imply they should sell, list, or hand off their existing business — the Dream Market only sells unlaunched ideas, never running businesses.
 You MAY optionally include a top-level "dreamhold_suggestion": { "reason": string, "category": one of the known categories } when acquiring a complementary UNLAUNCHED idea from the Dream Market would strengthen their operation (e.g. a bolt-on product or service line). Only include it when it genuinely helps; otherwise omit it. Never invent a specific listing — name a category to browse with a concrete reason.`;
@@ -246,6 +261,12 @@ async function generate({ mode, category, prompt, operating = false, priorWork =
       message: 'Clay ran but did not return a usable package. Nothing was saved.' };
   }
 
+  // A prompt rule is guidance, not a guarantee. If the caller has told us this person operates the
+  // business, a running_business redirect is the model repeating the rule we just carved out — and
+  // honouring it would fail the build for the exact reason we accept. Every other redirect stands.
+  if (parsed.redirect === 'running_business' && operating) {
+    parsed.redirect = null;
+  }
   if (parsed.redirect) {
     return { result_status: 'refused', redirect: parsed.redirect,
       message: parsed.redirect_reason || 'Clay redirected this request.',

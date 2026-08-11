@@ -1220,11 +1220,19 @@ function buildExecutors(user) {
         .catch(() => {});
       return { status: 'building', build_id: buildId, message: 'Planning your enterprise now, then building each venture one at a time — this runs in the background and you can watch it happen.' };
     },
-    generate_concept: async ({ prompt, category }) => {
+    generate_concept: async ({ prompt, category, operating }) => {
       // Run the 1–3 minute build in the background so the chat request returns fast; the
       // client watches progress by build id. Same pipeline as POST /clay/generate.
+      //
+      // `operating` was hardcoded false here. Walked on a real account: a man with a Cleveland
+      // cleaning business, two vans and 40 recurring homes asked for a growth package. Clay in chat
+      // read him perfectly, remembered the business, and proposed the build — then this passed
+      // false, the build hit the "already running → redirect" rule, and it FAILED after he had
+      // approved it and waited two minutes. He was told to go find "an advisory engagement outside
+      // this project format". Growing a business you already run is one of the five ways to earn
+      // here; it is not something to be shown the door for.
       const buildId = await createBuild(user.id, buildOpener(prompt, 'Got it — shaping your idea'));
-      runBuild({ user, mode: 'create', category: category || null, prompt, operating: false, conceptId: null, buildId })
+      runBuild({ user, mode: 'create', category: category || null, prompt, operating: !!operating, conceptId: null, buildId })
         .catch(() => {});
       return { status: 'building', build_id: buildId, message: 'Shaping the concept now — this takes a minute or two, and you can watch it happen.' };
     },
