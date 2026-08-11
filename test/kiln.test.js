@@ -16,10 +16,13 @@ test('$10 price floor is enforced', () => {
   assert.strictEqual(money.isAboveFloor(10.5), false);  // non-integer cents rejected
 });
 
-test('consultant split is $150 -> $30 / $120', () => {
-  assert.strictEqual(money.CONSULT_FEE_CENTS, 15000);
-  assert.strictEqual(money.CONSULT_PLATFORM_CENTS + money.CONSULT_CONSULTANT_CENTS, money.CONSULT_FEE_CENTS);
-  assert.strictEqual(money.CONSULT_CONSULTANT_CENTS, 12000);
+test('nothing prices a consultant session any more', () => {
+  // The $150 / $30 / $120 split lived here. Paid consultant sessions are retired, and keeping a
+  // price for something we do not sell is how a retired thing gets sold again by accident — the
+  // same reason planCents refuses to price the retired subscription plans.
+  for (const k of ['CONSULT_FEE_CENTS', 'CONSULT_PLATFORM_CENTS', 'CONSULT_CONSULTANT_CENTS', 'CONSULT_WINDOW_HOURS']) {
+    assert.strictEqual(money[k], undefined, `${k} must not exist`);
+  }
 });
 
 test('plan prices', () => {
@@ -417,20 +420,27 @@ test('concept expiry always warns before it expires', () => {
   assert.strictEqual(typeof exp.runExpirySweep, 'function');
 });
 
-// --- consultants get paid through Stripe: the checkout seam degrades honestly ---
-test('consultant checkout routes the platform fee and consultant cut, honestly unavailable with no key', async () => {
+// --- the retired consultant checkout is gone, not merely unreachable ---
+test('no code path can open a checkout for a consultant session', () => {
   const stripe = require('../src/services/stripe');
-  const money = require('../src/lib/money');
-  assert.strictEqual(typeof stripe.createConsultCheckout, 'function');
-  // With no Stripe key configured it must report not-configured, never pretend to charge.
-  const r = await stripe.createConsultCheckout({
-    amountCents: money.CONSULT_FEE_CENTS, feeCents: money.CONSULT_PLATFORM_CENTS,
-    consultantAccountId: 'acct_test', engagementId: 'eng_test',
-  });
-  assert.strictEqual(r.ok, false);
-  assert.strictEqual(r.reason, 'stripe_not_configured');
-  // The client pays the full fee; platform fee + consultant cut reconcile to it exactly.
-  assert.strictEqual(money.CONSULT_PLATFORM_CENTS + money.CONSULT_CONSULTANT_CENTS, money.CONSULT_FEE_CENTS);
+  // This opened a real $150 Stripe checkout. The routes calling it returned 410, so nothing reached
+  // it — but a working payment function for a product we no longer sell is a live wire behind a
+  // closed door, and the door was the only thing stopping it. Deleting it is what makes the
+  // retirement real: a later cleanup that removes the gate cannot bring the charge back.
+  assert.strictEqual(stripe.createConsultCheckout, undefined);
+  const src = require('fs').readFileSync(require.resolve('../src/services/stripe.js'), 'utf8');
+  assert.ok(!/async function createConsultCheckout/.test(src));
+  // And nothing anywhere still calls it.
+  const files = require('fs').readdirSync('src/routes').map((f) => 'src/routes/' + f)
+    .filter((f) => f.endsWith('.js'));
+  // Comments stripped first: the property is that no CODE calls it, not that the name is never
+  // written down. The retired router explains what it used to do, and that explanation is the
+  // reason the deletion is understandable later.
+  const codeOnly = (t) => t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+  for (const f of files) {
+    assert.ok(!/createConsultCheckout/.test(codeOnly(require('fs').readFileSync(f, 'utf8'))),
+      f + ' still calls it');
+  }
 });
 
 // ---- file ingestion (Clay accepting user files) ----

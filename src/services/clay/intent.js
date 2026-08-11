@@ -61,12 +61,12 @@ const EARNING_PATHS = [
     how: 'Use the build materials \u2014 the plan, the demo, the step-by-step build \u2014 to '
       + 'actually launch and run the business yourself, keeping everything it earns.',
   },
-  {
-    id: 'consult',
-    title: 'Become a consultant',
-    how: 'As you gain experience shaping and launching ideas, help other creators do the same as a '
-      + 'paid consultant on the platform.',
-  },
+  // 'Become a consultant' was here. Paid consultant sessions are retired — the routes have returned
+  // 410 since they were withdrawn and the pages redirect. This list is the one Clay TEACHES FROM, so
+  // leaving the entry meant Clay kept telling creators they could earn as a paid consultant on this
+  // platform, months after there was any such thing. A retired product is not retired while the
+  // assistant is still recruiting for it. Launch Partners is how people work together now, and it
+  // carries no fee, so it is not an earning path and deliberately not listed here as one.
 ];
 
 function pathById(id) {

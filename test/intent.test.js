@@ -13,13 +13,26 @@ test('PATHS: exactly the three creator plans, each fully described', () => {
   }
 });
 
-test('EARNING_PATHS: the four ways to earn, each with a plain how', () => {
+test('EARNING_PATHS: the ways to earn, each with a plain how', () => {
   const ids = intent.EARNING_PATHS.map((p) => p.id);
-  assert.deepStrictEqual(ids, ['sell_your_ideas', 'resell_ideas', 'launch_business', 'consult']);
+  assert.deepStrictEqual(ids, ['sell_your_ideas', 'resell_ideas', 'launch_business']);
   for (const p of intent.EARNING_PATHS) {
     assert.ok(p.title && typeof p.title === 'string', `${p.id} has a title`);
     assert.ok(p.how && p.how.length > 20, `${p.id} explains how you earn`);
   }
+});
+
+test('Clay does not teach an earning path that no longer exists', () => {
+  // This list is the one Clay TEACHES FROM. 'Become a consultant' stayed in it after paid consultant
+  // sessions were retired, so Clay kept recruiting creators into a product with no routes, no
+  // checkout and nobody on the other end. A retired product is not retired while the assistant is
+  // still selling it.
+  const text = JSON.stringify(intent.EARNING_PATHS).toLowerCase();
+  assert.ok(!/consultant/.test(text), 'no earning path may mention consultants');
+  assert.ok(!intent.EARNING_PATHS.some((p) => p.id === 'consult'));
+  // Launch partners replaced them and carry no fee, so partnering is not an earning path either —
+  // listing it as one would promise money the platform does not move.
+  assert.ok(!intent.EARNING_PATHS.some((p) => /partner/i.test(p.title || '')));
 });
 
 test('pathById resolves known ids and rejects unknown', () => {

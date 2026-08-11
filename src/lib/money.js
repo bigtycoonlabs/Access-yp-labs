@@ -1,6 +1,6 @@
 // Money is handled in integer cents everywhere. One source of truth for the
 // platform economics so no route can drift: 20% platform take, $10 floor.
-const PLATFORM_RATE = 0.20;      // 20% across marketplace + consultants
+const PLATFORM_RATE = 0.20;      // 20% on marketplace sales
 const PRICE_FLOOR_CENTS = 1000;  // $10 minimum listing price
 
 // THE MINIMUM BID IS THE MINIMUM LISTING PRICE. ONE FLOOR, $10, EVERYWHERE.
@@ -18,11 +18,10 @@ const PRICE_FLOOR_CENTS = 1000;  // $10 minimum listing price
 // drift apart again the way they did for months without anything noticing.
 const MIN_BID_CENTS = PRICE_FLOOR_CENTS;   // $10 — matches bids_amount_cents_check (migration 056)
 
-// Consultant session economics (fixed): $150 total, 20% / 80% split.
-const CONSULT_FEE_CENTS = 15000;
-const CONSULT_PLATFORM_CENTS = 3000;   // $30
-const CONSULT_CONSULTANT_CENTS = 12000; // $120
-const CONSULT_WINDOW_HOURS = 12;        // free continuation window
+// Consultant session economics lived here: $150 total, split $30 / $120. Retired with the product.
+// Nothing prices a consultant session any more, and keeping a price for something we do not sell is
+// how a retired thing gets sold again by accident — the same reason planCents refuses to price the
+// retired subscription plans.
 
 // ONE PLAN, and a first project that is genuinely free.
 //
@@ -86,7 +85,6 @@ function recordedPlanCents(plan) {
 
 module.exports = {
   PLATFORM_RATE, PRICE_FLOOR_CENTS, MIN_BID_CENTS, isValidBid,
-  CONSULT_FEE_CENTS, CONSULT_PLATFORM_CENTS, CONSULT_CONSULTANT_CENTS, CONSULT_WINDOW_HOURS,
   BUILDER_CENTS, FREE_PROJECTS, LEGACY_PLANS, LEGACY_PLAN_CENTS, recordedPlanCents, CONCEPT_ACCESS_DAYS, PLANS, planCents,
   platformFeeCents, sellerNetCents, isAboveFloor,
   MOVER_RATE, moverCommissionCents, platformNetAfterMoverCents,
