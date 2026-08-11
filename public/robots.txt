@@ -5,7 +5,6 @@ Disallow: /app.html
 Disallow: /dashboard.html
 Disallow: /profile.html
 Disallow: /admin-clay.html
-Disallow: /admin-consultants.html
 Disallow: /admin-overview.html
 Disallow: /admin-tools.html
 Disallow: /moderation.html

@@ -73,3 +73,53 @@ test('Operations leads with what needs a person, not with a list of other places
   assert.ok(now > -1 && jump > -1);
   assert.ok(now < jump, 'the urgent section must come before the list of sections');
 });
+
+// COMPLETING A TASK, NOT JUST FINDING THE SCREEN.
+//
+// The other half of "difficult to complete tasks". Walked signed-in on a phone, approving a listing
+// waiting for review. Three faults, all in the one action:
+//
+//   1. "Approve — put it on the market" sat at y=2886 in a 2,177-pixel panel — nearly four
+//      screenfuls down, below four brief textareas, the title, the price and the risk note. The most
+//      common action on a review queue was the furthest thing from the top of it.
+//
+//   2. The right sentence was produced and then buried. The handler said "Approved. It is on the
+//      market now." and announced it — and then called load(), which announced "1 listing shown."
+//      over the top. The approval genuinely happened (verified in the database). The only thing a
+//      blind staff member heard was a count of what was left.
+//
+//   3. Focus landed on BODY, dropping a keyboard or screen-reader user at the top of the document
+//      with no idea what had happened.
+const control = fs.readFileSync('public/market-control.html', 'utf8');
+
+test('the decision comes before the editing, because deciding is the job', () => {
+  const decide = control.indexOf('// ---- deciding');
+  const edit = control.indexOf('// ---- what a buyer would see');
+  assert.ok(decide > -1 && edit > -1);
+  assert.ok(decide < edit, 'Approve and Reject must come before the brief editor');
+});
+
+test('the outcome leads and survives the refresh that follows it', () => {
+  // load() re-renders the list and destroys the card, so the sentence is handed TO it rather than
+  // spoken and overwritten a moment later.
+  assert.match(control, /async function load\(outcome\)/);
+  assert.match(control, /var lead = outcome \? outcome \+ ' ' : ''/);
+  assert.match(control, /await load\(outcome\)/);
+  // The count still follows — it is how somebody knows whether the queue is done — but it cannot
+  // come first.
+  assert.match(control, /lead \+ d\.listings\.length/);
+});
+
+test('the outcome names which listing, and names the saved one', () => {
+  // "Approved" alone does not say WHICH, and on a queue that is the whole question. It reads
+  // l.title rather than the title box: if somebody edits the title and approves without saving,
+  // the saved title is what went live, so naming the unsaved one would report something that is
+  // not on the market.
+  assert.match(control, /var title = String\(l\.title \|\| 'That listing'\)/);
+  assert.ok(!/String\(ti\.value \|\| l\.title/.test(control));
+});
+
+test('focus lands on what changed rather than on the document body', () => {
+  assert.match(control, /region\.focus\(\)/);
+  assert.match(control, /setAttribute\('tabindex','-1'\)/);
+});

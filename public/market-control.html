@@ -112,6 +112,62 @@
     var inner=el('div','inner');
     var said=el('p','muted'); said.setAttribute('role','status'); said.setAttribute('aria-live','polite');
 
+    // DECIDING COMES FIRST, because on a review queue it is the whole job.
+    //
+    // Walked it on a phone: opening a listing waiting for review produced a 2,177-pixel panel, and
+    // "Approve — put it on the market" sat at y=2886 — nearly four screenfuls down, below four brief
+    // textareas, the title, the price and the risk note. The single most common action on this
+    // screen was the furthest thing from the top of it, and everything above it is optional: staff
+    // may edit a listing, but mostly they approve or reject one.
+    //
+    // Editing still lives below, unchanged and available. This only puts the decision where the
+    // person's hand already is.
+    // ---- deciding
+    if(l.status==='in_review'){
+      inner.appendChild(el('h3', null, 'Decide'));
+      var why=field(inner,'why-'+l.id,'Reason (shown to the creator if you reject)','',2);
+      var ok=el('button','btn','Approve — put it on the market'); ok.type='button';
+      var no=el('button','btn secondary','Reject'); no.type='button';
+      ok.addEventListener('click', async function(){ await decide('approved'); });
+      no.addEventListener('click', async function(){
+        if(!String(why.value||'').trim()){
+          said.textContent='Say why you are rejecting it. That reason is read by the person who made it.';
+          announce(said.textContent,true); why.focus(); return;
+        }
+        await decide('rejected');
+      });
+      async function decide(kind){
+        ok.disabled=true; no.disabled=true; said.textContent='Recording…';
+        try{
+          await Kiln.api('/moderation/'+l.id+'/decide',{method:'POST',body:{decision:kind,notes:why.value||undefined}});
+          // Name the listing. "Approved" alone does not tell somebody working a queue WHICH one they
+          // just approved, and on a queue that is the whole question.
+          //
+          // l.title, deliberately, not the title box. If somebody typed a new title and approved
+          // without saving, the SAVED title is what went live — naming the unsaved one would report
+          // something that is not on the market. (It also read the box before it was created, and
+          // only worked by var hoisting.)
+          var title = String(l.title || 'That listing').trim();
+          var outcome = kind==='approved'
+            ? 'Approved. ' + title + ' is on the market now.'
+            : 'Rejected. ' + title + ' was sent back with your reason.';
+          said.textContent = outcome;
+          // load() re-renders the whole list and destroys this card, so the sentence is handed to
+          // it rather than spoken here and overwritten a moment later.
+          await load(outcome);
+          // Focus was landing on BODY, which drops a keyboard or screen-reader user at the top of
+          // the document with no idea what happened. The live region is the thing that just changed,
+          // so put them there.
+          var region = $('live-msg');
+          if (region) { region.setAttribute('tabindex','-1'); region.focus(); }
+          return;
+        }catch(e){ said.textContent=(e&&e.message)||'That did not go through.'; }
+        announce(said.textContent,true); ok.disabled=false; no.disabled=false;
+      }
+      var row=el('p'); row.appendChild(ok); row.appendChild(no); inner.appendChild(row);
+    }
+
+
     // ---- what a buyer would see
     inner.appendChild(el('h3', null, 'What a buyer reads'));
     if(l.needs_brief){
@@ -185,34 +241,6 @@
     });
     inner.appendChild(el('p')).appendChild(save);
 
-    // ---- deciding
-    if(l.status==='in_review'){
-      inner.appendChild(el('h3', null, 'Decide'));
-      var why=field(inner,'why-'+l.id,'Reason (shown to the creator if you reject)','',2);
-      var ok=el('button','btn','Approve — put it on the market'); ok.type='button';
-      var no=el('button','btn secondary','Reject'); no.type='button';
-      ok.addEventListener('click', async function(){ await decide('approved'); });
-      no.addEventListener('click', async function(){
-        if(!String(why.value||'').trim()){
-          said.textContent='Say why you are rejecting it. That reason is read by the person who made it.';
-          announce(said.textContent,true); why.focus(); return;
-        }
-        await decide('rejected');
-      });
-      async function decide(kind){
-        ok.disabled=true; no.disabled=true; said.textContent='Recording…';
-        try{
-          await Kiln.api('/moderation/'+l.id+'/decide',{method:'POST',body:{decision:kind,notes:why.value||undefined}});
-          said.textContent = kind==='approved' ? 'Approved. It is on the market now.' : 'Rejected, with your reason recorded.';
-          announce(said.textContent,true);
-          load();
-          return;
-        }catch(e){ said.textContent=(e&&e.message)||'That did not go through.'; }
-        announce(said.textContent,true); ok.disabled=false; no.disabled=false;
-      }
-      var row=el('p'); row.appendChild(ok); row.appendChild(no); inner.appendChild(row);
-    }
-
     // ---- seeing it
     inner.appendChild(el('h3', null, 'See it'));
     var links=el('p');
@@ -231,7 +259,17 @@
     return d;
   }
 
-  async function load(){
+  // `outcome` is what the person just DID, and it leads whatever this says.
+  //
+  // Walked it: clicking "Approve" produced exactly the right sentence — "Approved. It is on the
+  // market now." — announced it, and then called load(), which immediately announced "1 listing
+  // shown." over the top of it. The approval genuinely happened; the only thing a blind staff member
+  // heard was a count of what was left. That is the outcome swallowed by the refresh, which is the
+  // same family as a silent success: the software did the thing and told the person something else.
+  //
+  // The count still matters — it is how you know whether the queue is done — so it follows the
+  // outcome rather than replacing it. Outcome first, state second.
+  async function load(outcome){
     var host=$('list');
     try{
       var d=await Kiln.api('/market-admin?status='+state.status+'&owner='+state.owner);
@@ -240,13 +278,14 @@
         + c.clays + " of Clay's · " + c.creators + " from creators"
         + (c.needs_brief ? (' · ' + c.needs_brief + ' live listings have no brief') : '');
       host.innerHTML='';
+      var lead = outcome ? outcome + ' ' : '';
       if(!d.listings.length){
         host.appendChild(el('p',null,'Nothing matches that view.'));
-        say('Nothing matches that view.');
+        say(lead + (outcome ? 'Nothing left in this view.' : 'Nothing matches that view.'));
         return;
       }
       d.listings.forEach(function(l){ host.appendChild(card(l)); });
-      say(d.listings.length + ' listing' + (d.listings.length===1?'':'s') + ' shown.');
+      say(lead + d.listings.length + ' listing' + (d.listings.length===1?'':'s') + ' shown.');
     }catch(e){
       host.innerHTML='';
       host.appendChild(el('p','flag','Could not read the market: ' + ((e&&e.message)||'unknown reason')
