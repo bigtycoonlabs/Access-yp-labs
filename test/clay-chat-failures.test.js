@@ -102,3 +102,17 @@ test('a missing helper never means a blank reply', () => {
   // failure this file already exists to prevent.
   assert.match(app, /: String\(text == null \? '' : text\)\)/);
 });
+
+test('markdown headings are stripped mid-line, not only at the start of one', () => {
+  // Caught live. Clay wrote: "...not as fully re-checked source text. ## Cleveland dog-walking
+  // demand snapshot" — hashes after a full stop, on the same line, so an anchored ^ never saw them.
+  // A screen reader says "hash hash" in the middle of a sentence.
+  const src = stream.slice(stream.indexOf('function speakable'));
+  const speakable = new Function('return ' + src.slice(0, src.indexOf('\n}\n') + 2))();
+  assert.strictEqual(speakable('source text. ## Cleveland snapshot'), 'source text. Cleveland snapshot');
+  assert.strictEqual(speakable('line one\n### Sub'), 'line one\nSub');
+  // And it must not eat things that are not headings. A hash followed by a digit is an issue number
+  // or a rank, and people write those constantly.
+  assert.strictEqual(speakable('issue #42 is open'), 'issue #42 is open');
+  assert.strictEqual(speakable('ranked #1 today'), 'ranked #1 today');
+});

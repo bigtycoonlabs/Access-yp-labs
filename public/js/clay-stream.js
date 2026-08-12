@@ -17,7 +17,12 @@ function speakable(text) {
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s.,;:!?)]|$)/g, '$1$2')
     .replace(/(^|[\s(])_([^_\n]+)_(?=[\s.,;:!?)]|$)/g, '$1$2')
-    .replace(/^#{1,6}\s+/gm, '')
+    // Headings, at the start of a line AND mid-line. Caught live: Clay wrote
+    // "...not as fully re-checked source text. ## Cleveland dog-walking demand snapshot", with the
+    // hashes sitting after a full stop on the same line, so an anchored ^ never saw them. A screen
+    // reader says "hash hash" in the middle of a sentence.
+    .replace(/^#{1,6}[ \t]+/gm, '')
+    .replace(/([.!?:;,]\s+)#{1,6}[ \t]+/g, '$1')
     .replace(/^\s*[-*+]\s+/gm, '')
     .replace(/`([^`]+)`/g, '$1');
 }

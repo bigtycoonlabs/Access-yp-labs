@@ -66,3 +66,19 @@ test('none of this loosens the honesty rules', () => {
     assert.ok(PUBLIC_SYSTEM_PROMPT.includes(rule), 'still holds: ' + rule);
   }
 });
+
+test('Clay does not apologise for things he never did', () => {
+  // Caught live. Somebody wrote "thanks for emailing me that research last week". He had never
+  // emailed them anything. He answered: "I shouldn't have implied I could. That one's on me."
+  //
+  // He had not implied it. Apologising for something you did not do is not humility — it is agreeing
+  // with a version of events that did not happen, which on this platform is the same failure as
+  // claiming something you did not do. It also tells the person their memory is right when it is
+  // not, and they may act on that.
+  const { CLAY_VOICE } = require('../src/services/clay/version');
+  assert.match(CLAY_VOICE, /DO NOT ACCEPT A FALSE PREMISE ABOUT YOUR OWN PAST/);
+  assert.match(CLAY_VOICE, /that never happened, here is what did/);
+  // The correction must not swing the other way into coldness, and a real mistake is still owned.
+  assert.match(CLAY_VOICE, /you can be warm and still be the one holding the facts steady/);
+  assert.match(CLAY_VOICE, /When you ARE wrong, say you were wrong and move on/);
+});
