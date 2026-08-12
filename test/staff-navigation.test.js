@@ -141,3 +141,28 @@ test('staff are not offered a decision they are forbidden to make', () => {
   assert.match(admin, /\(l\.seller_id = \$2\) AS is_mine/);
   assert.match(admin, /\[CLAY_EMAIL, req\.user\.id\]/);
 });
+
+test('the two composition tools fold; nothing about the state of the business does', () => {
+  // Measured on a 390x780 phone, signed in, with real data: the console was 7,682 pixels — 9.8
+  // screenfuls. Where it went:
+  //   what needs me 1620 · handover 1351 · promotion 1307 · growth 880 · business 790
+  //   clay 465 · people 341 · listings 256 · two navs 322
+  //
+  // Over a third of it, 2,658 pixels and 3.4 screenfuls, was two blocks that are not status at all.
+  // They are tasks: compose a social post, write up your shift. Somebody opening Operations to see
+  // how the business is doing scrolled past both to reach anything.
+  //
+  // The page argues against tabs and it is right — nothing about the state of the business should be
+  // hidden behind a click you have to know to make. That rule is about STATUS. A composition form is
+  // not status, and folding it hides no number from anybody. 9.8 screens down to 6.6, measured after.
+  const con = fs.readFileSync('public/console.html', 'utf8');
+  assert.match(con, /<summary><h2 id="mkt-h"/, 'promotion folds');
+  assert.match(con, /<summary><h2 id="ho-h"/, 'end of shift folds');
+  // Every status section stays open, and a test says so rather than a comment.
+  for (const id of ['business-h', 'growth-h', 'people-h', 'clay-h', 'listings-h', 'now-h']) {
+    assert.ok(!new RegExp('<summary><h2 id="' + id + '"').test(con), id + ' must not be folded');
+  }
+  // details, not a custom control: keyboard operable and announced as expanded or collapsed with no
+  // JavaScript, and the content stays in the document for find-on-page.
+  assert.ok(!/aria-expanded="false"/.test(con), 'no hand-rolled disclosure');
+});

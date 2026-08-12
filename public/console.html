@@ -68,13 +68,29 @@
     <div id="growth-body"><p class="muted">Loading…</p></div>
   </section>
 
+  <!-- TOOLS FOLD. STATUS DOES NOT.
+       Measured on a 390x780 phone, signed in, with real data: this page is 7,682 pixels, 9.8
+       screenfuls. Where it goes:
+         what needs me   1620      promotion    1307      clay        465
+         handover        1351      growth        880      people      341
+         business         790      listings      256      two navs    322
+       Over a third of it — 2,658 pixels, 3.4 screenfuls — is these two blocks, and neither is
+       status. They are TASKS: compose a social post, write up your shift. Somebody opening
+       Operations to see how the business is doing scrolls past both of them to reach anything.
+       The page argues against tabs, and it is right: nothing about the state of the business should
+       be hidden behind a click you have to know to make. That rule is about STATUS. A composition
+       form is not status, and folding it is not hiding a number from anybody.
+       <details> rather than a custom control: keyboard operable and announced as expanded or
+       collapsed with no JavaScript, and the content is still in the document for find-on-page. -->
   <section aria-labelledby="mkt-h" id="marketing">
-    <h2 id="mkt-h">Promotion — what to post next, and what it did</h2>
+    <details>
+    <summary><h2 id="mkt-h" style="display:inline;">Promotion — what to post next, and what it did</h2></summary>
     <p class="muted">Ordered by how long since each listing was last promoted, never-promoted first.
       Work down from the top and no creator's project gets left untouched while the easy ones get
       posted about repeatedly.</p>
     <div id="mkt-channels"></div>
     <div id="mkt-rotation"><p class="muted">Loading…</p></div>
+    </details>
   </section>
 
   <section aria-labelledby="people-h" id="people">
@@ -95,7 +111,8 @@
     <div id="listings-body"><p class="muted">Loading…</p></div>
   </section>
   <section aria-labelledby="ho-h" id="handover">
-    <h2 id="ho-h">End of shift</h2>
+    <details>
+    <summary><h2 id="ho-h" style="display:inline;">End of shift</h2></summary>
     <p class="muted">Written by whoever worked the shift, read by owners who were asleep while it
       happened. Saving again the same day updates it rather than adding a second one.</p>
     <div id="ho-gaps"></div>
@@ -117,6 +134,7 @@
 
     <h3>Recent shifts</h3>
     <div id="ho-recent"><p class="muted">Loading…</p></div>
+    </details>
   </section>
 </main>
 
