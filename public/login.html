@@ -27,9 +27,9 @@
   <div class="panel">
     <div class="stack">
       <div><label for="email">Email address</label>
-        <input id="email" type="email" autocomplete="email" required/></div>
+        <input id="email" type="email" autocomplete="email" required autocapitalize="none" spellcheck="false"/></div>
       <div><label for="password">Password</label>
-        <input id="password" type="password" autocomplete="current-password" required/></div>
+        <input id="password" type="password" autocomplete="current-password" required autocapitalize="none" spellcheck="false"/></div>
       <button class="btn" id="submit" type="button">Sign in</button>
 
       <!-- A locked-out person previously had no route back in, and this page did not even
@@ -37,7 +37,7 @@
       <p><a href="#" id="forgot-link">I have forgotten my password</a></p>
       <div id="forgot" hidden>
         <label for="forgot-email">Your email</label>
-        <input id="forgot-email" type="email" autocomplete="email"/>
+        <input id="forgot-email" type="email" autocomplete="email" autocapitalize="none" spellcheck="false"/>
         <p><button type="button" class="btn secondary" id="forgot-go">Send me a reset link</button></p>
         <p id="forgot-said" role="status" aria-live="polite" class="muted"></p>
       </div>

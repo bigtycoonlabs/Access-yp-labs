@@ -30,13 +30,13 @@
       <div><label for="name">Your name</label>
         <input id="name" type="text" autocomplete="name" required/></div>
       <div><label for="email">Email address</label>
-        <input id="email" type="email" autocomplete="email" required/></div>
+        <input id="email" type="email" autocomplete="email" required autocapitalize="none" spellcheck="false"/></div>
     <div><label for="phone">Phone number</label>
         <input id="phone" type="tel" autocomplete="tel" required aria-describedby="phone-hint"/>
         <p id="phone-hint" class="muted">So we can reach you about your account. We do not share it, and we will not text you marketing.</p></div>
       <div><label for="password">Password <span class="muted">(at least 8 characters)</span></label>
         <input id="password" type="password" autocomplete="new-password" minlength="8" required
-          aria-describedby="pw-hint"/>
+          aria-describedby="pw-hint" autocapitalize="none" spellcheck="false"/>
         <p id="pw-hint" class="muted">Use at least 8 characters.</p></div>
       <button class="btn" id="submit" type="button">Create account</button>
     </div>
