@@ -1,183 +1,24 @@
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Drift — The Dream Market</title>
-<style>
-  .skip{position:absolute;left:-999px;top:0;background:#0c0820;color:#fff;padding:12px 20px;z-index:100;}
-  .skip:focus{left:0;}
+<title>The Dream Market — Access YP Labs</title>
+<meta name="robots" content="noindex, nofollow"/>
+<!-- THIS PAGE IS RETIRED.
 
-:root{--void:#0b0817;--dream:#b8a6ff;--dream2:#8ce0ff;--glow:#ffd9a8;--ink:#f2eefb;}
-*{box-sizing:border-box;}
-html,body{margin:0;height:100%;overflow:hidden;color:var(--ink);
-  font-family:ui-serif,Georgia,"Times New Roman",serif;
-  background:radial-gradient(120% 80% at 20% -10%, rgba(140,224,255,.16), transparent 55%),
-    radial-gradient(120% 90% at 85% 115%, rgba(184,166,255,.20), transparent 55%), var(--void);}
-.bloom{position:fixed;left:50%;top:55%;width:60vmax;height:60vmax;transform:translate(-50%,-50%) scale(.2);
-  border-radius:50%;filter:blur(40px);opacity:0;z-index:0;pointer-events:none;
-  background:radial-gradient(circle, rgba(255,217,168,.5), rgba(184,166,255,.35) 45%, transparent 70%);}
-body.drift .bloom{animation:bloom 3s ease-out forwards;}
-@keyframes bloom{0%{opacity:0;transform:translate(-50%,-50%) scale(.2);}
-  55%{opacity:.5;}100%{opacity:.9;transform:translate(-50%,-50%) scale(1.25);}}
-.motes{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;}
-.mote{position:absolute;border-radius:50%;background:radial-gradient(circle,#fff,var(--dream2) 55%,transparent);
-  opacity:0;animation:float linear infinite;}
-@keyframes float{0%{opacity:0;transform:translateY(20px) scale(.8);}
-  15%{opacity:.85;}85%{opacity:.6;}100%{opacity:0;transform:translateY(-60px) scale(1.1);}}
-body.drift .mote{animation-duration:2.4s !important;}
-.stage{position:fixed;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  text-align:center;padding:24px;transition:transform 2.6s cubic-bezier(.35,0,.3,1);}
-body.drift .stage{transform:translateY(3vh);}
-.kicker{letter-spacing:.32em;text-transform:uppercase;font-family:ui-monospace,monospace;font-size:.7rem;color:var(--dream2);opacity:.85;margin-bottom:24px;}
-.line{font-size:clamp(1.5rem,4.6vw,2.8rem);line-height:1.35;max-width:18ch;margin:0 auto 30px;opacity:0;transition:opacity .8s ease;text-wrap:balance;}
-.line.show{opacity:1;}
-button{font:inherit;font-size:1.1rem;min-height:52px;min-width:52px;padding:14px 30px;border-radius:999px;cursor:pointer;
-  border:none;font-weight:700;color:#1a1230;background:linear-gradient(180deg,var(--dream),var(--dream2));box-shadow:0 0 44px rgba(140,224,255,.35);}
-button:focus-visible{outline:3px solid var(--glow);outline-offset:3px;}
-/* The way out, styled quietly. It is not the main event — arriving is — but it has to be a real
-   44px target and it has to be visible, because "skip this" hidden until focus is only a skip for
-   people who tab. */
-.skipentry{display:inline-block;min-height:44px;line-height:44px;padding:0 20px;border-radius:999px;
-  color:#e7e1f7;text-decoration:underline;font-size:1rem;opacity:.85;}
-.skipentry:hover{opacity:1;}
-.skipentry:focus-visible{outline:3px solid var(--glow);outline-offset:3px;}
-.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;}
-@media (prefers-reduced-motion: reduce){
-  .mote{display:none;} body.drift .bloom{animation:none;opacity:.8;transform:translate(-50%,-50%) scale(1.1);transition:opacity 1.2s ease;}
-  body.drift .stage{transform:none;} .line{transition:opacity .5s ease;}
-}
-  .home{position:absolute;top:14px;left:20px;color:#e7e1f7;text-decoration:none;font-size:15px;font-weight:600;padding:11px 12px;min-height:44px;display:inline-block;box-sizing:border-box;line-height:22px;z-index:5;}
-  .home:hover{text-decoration:underline;}
-  .home:focus-visible{outline:3px solid #8ce0ff;outline-offset:2px;}
-</style>  <meta name="robots" content="noindex, nofollow"/>
-</head>
-<body>
-<a class="skip" href="#main">Skip to main content</a>
-<a class="home" href="/">Access YP Labs — home</a>
-<div class="bloom" aria-hidden="true"></div>
-<div class="motes" id="motes" aria-hidden="true"></div>
-<main class="stage" role="main">
-  <!-- This was a paragraph styled to look like a title, so the page had NO heading — somebody
-       navigating by headings landed here and found nothing to orient by, on the one page standing
-       between them and the whole market. Visually identical; it is now a real heading. -->
-  <h1 class="kicker">Access YP Labs</h1>
-  <p class="line show" id="line" aria-hidden="true">Below every waking marketplace, a sleeping one dreams.</p>
-  <!-- The "Drift into the Dream Market" button is gone. Somebody who clicked "The Dream Market" has
-       already said where they want to go; asking them to confirm it on a second screen is a door in
-       front of a door. The entry now plays on arrival and lets them in.
+     It was the entry to the market: a screen between you and the marketplace with a "Drift into the
+     Dream Market" button on it. Somebody who clicked The Dream Market had already said where they
+     wanted to go, and this asked them to say it again.
 
-       What replaces it is a way OUT, not a way in: a skip link for anyone who has seen it, is in a
-       hurry, or does not want to sit through an animation to look at what is for sale. -->
-  <a class="skipentry" id="skip" href="/marketplace.html?entered=1">Skip to the market</a>
+     The entry itself is kept — it is good — and now plays on the click that starts it, in
+     js/dreamentry.js, on whatever page you were already on. That is also what brought the sound
+     back: a browser will not start audio without a user gesture in the same document, so an entry
+     that lives behind a redirect can never make a sound.
+
+     Anything still linking here lands in the market rather than nowhere. -->
+<meta http-equiv="refresh" content="0; url=/marketplace.html?entered=1"/>
+</head><body>
+<main id="main">
+  <h1>The Dream Market</h1>
+  <p>Taking you to the market. <a href="/marketplace.html?entered=1">Open it now</a>.</p>
 </main>
-<div class="sr-only" role="status" aria-live="assertive" id="narr"></div>
-<script src="/js/api.js?v=20260808e"></script>
-<script>
-// Account required before entering.
-// THE TUNING GATE IS GONE. Reaching a listing used to mean marketplace -> enter -> dreamhold, with
-// seven category buttons and two Continues to get through before a single project was visible. The
-// lab already offers that same tuning, optionally, as one quiet line somebody can ignore — and the
-// code there says plainly that the door "made everyone answer these before they could go in" and
-// was replaced. It was not replaced; it was still standing here, first in the chain.
-//
-// Anyone who wants to tune the market can still do it from the lab or from their profile. Nobody
-// has to answer questions to look at what is for sale.
-
-var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-var go=document.getElementById('go'), line=document.getElementById('line'), narr=document.getElementById('narr');
-
-// drifting dream-motes (each a sleeping idea)
-if(!reduce){
-  var box=document.getElementById('motes');
-  for(var i=0;i<30;i++){
-    var m=document.createElement('div');m.className='mote';
-    var s=4+Math.random()*10; m.style.width=m.style.height=s+'px';
-    m.style.left=(Math.random()*100)+'%'; m.style.top=(Math.random()*100)+'%';
-    m.style.animationDuration=(4+Math.random()*6)+'s'; m.style.animationDelay=(Math.random()*5)+'s';
-    box.appendChild(m);
-  }
-}
-
-// A soft ~3s dream: an evolving pad, a few rising chimes, an airy drift, and a
-// warm bloom as the dreams turn toward you. Dreamy — never a hard impact.
-function playDream(){
-  var actx; try{ actx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return; }
-  var now=actx.currentTime, master=actx.createGain(); master.gain.value=0.8; master.connect(actx.destination);
-  [174,220,262].forEach(function(f,i){
-    var o=actx.createOscillator(); o.type='sine'; o.frequency.value=f; o.detune.value=(i-1)*6;
-    var g=actx.createGain(); g.gain.setValueAtTime(0.0001,now);
-    g.gain.linearRampToValueAtTime(0.05,now+0.9); g.gain.linearRampToValueAtTime(0.0001,now+3.2);
-    o.connect(g); g.connect(master); o.start(now); o.stop(now+3.3);
-  });
-  [523,659,784,988,1175].forEach(function(base,i){
-    var t=[0.2,0.7,1.2,1.9,2.5][i];
-    var o=actx.createOscillator(); o.type='sine'; o.frequency.value=base;
-    var g=actx.createGain(); g.gain.setValueAtTime(0.0001,now+t);
-    g.gain.exponentialRampToValueAtTime(0.06,now+t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,now+t+0.9);
-    o.connect(g); g.connect(master); o.start(now+t); o.stop(now+t+1.0);
-  });
-  var nb=actx.createBuffer(1,Math.floor(actx.sampleRate*3),actx.sampleRate), nd=nb.getChannelData(0);
-  for(var i=0;i<nd.length;i++){ nd[i]=(Math.random()*2-1); }
-  var n=actx.createBufferSource(); n.buffer=nb;
-  var nf=actx.createBiquadFilter(); nf.type='lowpass'; nf.frequency.value=520;
-  var ng=actx.createGain(); ng.gain.setValueAtTime(0.0001,now); ng.gain.linearRampToValueAtTime(0.03,now+1.0); ng.gain.linearRampToValueAtTime(0.0001,now+3.0);
-  n.connect(nf); nf.connect(ng); ng.connect(master); n.start(now); n.stop(now+3.0);
-  var o2=actx.createOscillator(); o2.type='sine'; o2.frequency.value=131;
-  var g2=actx.createGain(); g2.gain.setValueAtTime(0.0001,now+2.2); g2.gain.linearRampToValueAtTime(0.08,now+2.7); g2.gain.linearRampToValueAtTime(0.0001,now+3.5);
-  o2.connect(g2); g2.connect(master); o2.start(now+2.2); o2.stop(now+3.6);
-  setTimeout(function(){ try{actx.close();}catch(e){} },3800);
-}
-
-var started=false;
-function drift(){
-  if(started)return; started=true;
-  playDream();
-  document.body.classList.add('drift');
-  line.classList.remove('show');
-  // THE LANGUAGE.
-  //
-  // "A thousand unlived ideas turn, all at once, toward you" was the owner's word for it: creepy. It
-  // is — a thousand things noticing you at the same moment is a horror image, not a welcome, and it
-  // is the last thing somebody hears before the market opens.
-  //
-  // "Something here already has your name on it" is worse, and worse in a way this platform has a
-  // rule about. It is a promise: that one of these is meant for you. We cannot know that, and the
-  // honest caution elsewhere says plainly that the median seller earns very little and most listed
-  // projects never sell. Opening with fate and closing with that is two voices.
-  //
-  // "You let go" also goes. Nobody arriving at a marketplace wants to be told they are surrendering.
-  //
-  // What is kept is the thing worth keeping: these are real businesses that nobody got around to
-  // starting, and they are sitting here waiting for someone. That is true, it is the actual pitch,
-  // and it does not need a ghost story.
-  setTimeout(function(){ line.textContent='Every one of these is a business somebody never got around to starting.'; line.classList.add('show'); },220);
-  narr.textContent='Every one of these is a business somebody never got around to starting.';
-  setTimeout(function(){
-    line.classList.remove('show');
-    setTimeout(function(){ line.textContent='They are all still here. Have a look.'; line.classList.add('show'); },160);
-    narr.textContent='They are all still here. Have a look around the Dream Market.';
-  }, 1900);
-  try{ sessionStorage.setItem('descended','1'); }catch(e){}
-  setTimeout(function(){ location.href='/marketplace.html?entered=1'; }, 3100);
-}
-// Somebody who has asked their browser to reduce motion has asked not to be shown this. Sending
-// them through it anyway, and making them wait three seconds for a redirect, is answering a stated
-// preference with a no. They go straight to the market.
-if (reduce) { location.replace('/marketplace.html?entered=1'); }
-else {
-  // On arrival, not on a second click.
-  //
-  // Audio needs a gesture on THIS page, and there is not one any more, so the sound will not play on
-  // a cold arrival. That is the trade and it is worth it: an extra click on every visit costs more
-  // than a chime once. playDream() fails quietly rather than pretending — the AudioContext simply
-  // stays suspended.
-  document.getElementById('skip').focus();
-  drift();
-}
-</script>
-  <footer style="border-top:1px solid var(--line);color:var(--muted);font-size:15px;padding:22px 24px;text-align:center;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
-    <nav aria-label="Legal">
-      <a href="/terms.html" style="color:var(--clay-dark);display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Terms of Service</a> ·
-      <a href="/privacy.html" style="color:var(--clay-dark);display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Privacy Policy</a> ·
-      <a href="/risk.html" style="color:var(--clay-dark);display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Risk Disclosure</a>
-    </nav>
-  </footer>
+<script>location.replace('/marketplace.html?entered=1');</script>
 </body></html>

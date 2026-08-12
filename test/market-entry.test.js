@@ -18,37 +18,50 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const enter = fs.readFileSync('public/enter.html', 'utf8');
-const code = enter.replace(/<!--[\s\S]*?-->/g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+const entry = fs.readFileSync('public/js/dreamentry.js', 'utf8');
+const market = fs.readFileSync('public/marketplace.html', 'utf8');
+const code = entry.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
 
-test('the entry plays on arrival rather than asking for a second click', () => {
-  assert.ok(!/<button id="go">/.test(enter), 'the Drift button is gone');
-  assert.match(code, /else \{[\s\S]*drift\(\);/, 'the sequence starts by itself');
+test('the entry plays on the click, which is what lets it make a sound', () => {
+  // A browser will not start audio without a user gesture in the SAME document. The entry used to
+  // live behind a redirect, so by the time it ran there was no gesture left and the sound was lost
+  // the moment the confirm button was removed. Creating the AudioContext inside the click handler
+  // is the whole fix.
+  assert.match(code, /a\.addEventListener\('click', enter\)/);
+  assert.match(code, /try \{ playDream\(\); \} catch/);
+  assert.match(code, /new \(window\.AudioContext\|\|window\.webkitAudioContext\)/);
 });
 
-test('there is a way out for anyone who does not want to sit through it', () => {
-  // A skip is the replacement for the button: not a way in, a way past. Real 44px target, visible
-  // rather than revealed on focus — "skip this" that only appears when you tab is only a skip for
-  // people who tab.
-  assert.match(enter, /class="skipentry" id="skip" href="\/marketplace\.html\?entered=1"/);
-  assert.match(enter, /\.skipentry\{[^}]*min-height:44px/);
+test('there is no extra screen between the click and the market', () => {
+  // marketplace.html used to bounce anyone without a session flag to a separate entry page.
+  assert.ok(!/location\.replace\('\/enter\.html'\)/.test(market));
+  assert.match(code, /location\.href = DEST/);
 });
 
-test('a stated preference for less motion is answered with yes', () => {
-  // Reduced motion used to only turn off the floating motes; the person still sat through the
-  // sequence and a three second wait. They now go straight to the market.
-  assert.match(code, /if \(reduce\) \{ location\.replace\('\/marketplace\.html\?entered=1'\); \}/);
+test('no skip and no mute, because it is under three seconds', () => {
+  // A control to escape a three second thing is more friction than the thing.
+  // Comments stripped: the file EXPLAINS that there is deliberately no skip, and that explanation
+  // is why the decision is understandable later.
+  assert.ok(!/skipentry|Skip to the market|<button/i.test(code));
+});
+
+test('a stated preference for less motion is still answered with yes', () => {
+  assert.match(code, /if \(reduce\) \{ location\.href = DEST; return; \}/);
+});
+
+test('the words are spoken once, not narrated as an animation', () => {
+  // The overlay is hidden from assistive tech and one clean sentence goes to the live region.
+  assert.match(code, /setAttribute\('aria-hidden', 'true'\)/);
+  assert.match(code, /window\.announce/);
 });
 
 test('nothing turns toward you and nothing has your name on it', () => {
-  assert.ok(!/turn, all at once, toward you/.test(code));
-  assert.ok(!/has your name on it/.test(code));
-  assert.ok(!/You let go/.test(code), 'nobody arriving at a market wants to be told they are surrendering');
+  assert.ok(!/turn, all at once, toward you/.test(entry));
+  assert.ok(!/has your name on it/.test(entry));
+  assert.match(code, /a business somebody never got around to starting/);
 });
 
-test('what replaces it is the actual pitch, and it is true', () => {
-  // These really are businesses nobody got around to starting. That is the whole proposition, it
-  // needs no ghost story, and it promises nothing we cannot keep.
-  assert.match(code, /a business somebody never got around to starting/);
-  assert.match(code, /They are all still here/);
+test('opening in a new tab still works, and so does having no JavaScript', () => {
+  // Modified clicks are left alone, and the destination is a real href underneath.
+  assert.match(code, /e\.metaKey \|\| e\.ctrlKey \|\| e\.shiftKey \|\| e\.button > 0/);
 });

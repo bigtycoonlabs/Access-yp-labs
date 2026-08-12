@@ -12,7 +12,11 @@ test('nobody answers questions before seeing what is for sale', () => {
   // Continues before a single project was visible. The lab code says the door "made everyone answer
   // these before they could go in" and was replaced — it was not; it was still first in the chain.
   assert.ok(!/location\.replace\('\/dreamhold\.html'\)/.test(enter), 'the gate no longer redirects');
-  assert.match(flat(enter), /THE TUNING GATE IS GONE/i);
+  // Stronger than it was: the entry page itself is retired. There is no screen at all between
+  // clicking The Dream Market and the market, so there is nothing left to answer questions on.
+  assert.match(enter, /THIS PAGE IS RETIRED/);
+  const market = fs.readFileSync('public/marketplace.html', 'utf8');
+  assert.ok(!/location\.replace\('\/enter\.html'\)/.test(market), 'and the market does not bounce anyone to it');
 });
 
 test('the same tuning is still available, just not demanded', () => {
