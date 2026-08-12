@@ -80,3 +80,25 @@ test('an expired session says so, and gives a way back', () => {
 test('focus lands on the failure so it is not scrolled past', () => {
   assert.match(app, /box\.scrollIntoView\(\{ block: 'center' \}\); box\.focus\(\)/);
 });
+
+test('the strip happens where every reply actually lands: sayLine', () => {
+  // I fixed this in the wrong layer twice. First in clay-stream.js's progress helper, then in the
+  // streaming delta accumulator. Both times I went to the live page and counted twenty literal
+  // asterisks still on screen, because the final answer is rendered by renderChatReply -> sayLine
+  // and always was.
+  //
+  // Two lessons, and the second is the one that matters: a fix is not done until the live page is
+  // looked at, and tracing the text to where it LANDS beats fixing the first plausible place.
+  assert.match(app, /function sayLine\(text, cls\) \{/);
+  assert.match(app, /window\.ClaySpeakable \? window\.ClaySpeakable\(text\)/);
+  // Every bubble goes through it, so nothing can route around the strip.
+  assert.match(app, /bubbles\.forEach\(function \(b\) \{ container\.appendChild\(sayLine\(b\)\); \}\)/);
+  // And the helper is exported for it.
+  assert.match(stream, /window\.ClaySpeakable = speakable;/);
+});
+
+test('a missing helper never means a blank reply', () => {
+  // sayLine falls back to the raw string rather than to nothing, because an empty bubble is the
+  // failure this file already exists to prevent.
+  assert.match(app, /: String\(text == null \? '' : text\)\)/);
+});

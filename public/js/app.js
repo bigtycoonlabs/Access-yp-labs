@@ -119,9 +119,21 @@
   }
   // Render a line of Clay's text with any http(s) links clickable — so a landing-page link he
   // hands you is a real link you can open, not dead text. Safe: only text nodes and anchors.
+  // EVERY LINE CLAY SAYS GOES THROUGH HERE. Which is why the markdown strip belongs here and
+  // nowhere else.
+  //
+  // I fixed this twice in the wrong layer first. The stripper went into clay-stream.js, which
+  // renders the PROGRESS commentary, and then into the streaming delta accumulator — and both times
+  // I went to the live page and counted twenty literal asterisks still on screen, because the final
+  // answer is rendered by renderChatReply -> sayLine and always was. Tracing the text to where it
+  // lands, instead of fixing the first plausible place, would have found this in one step.
+  //
+  // ClaySpeakable is defined in clay-stream.js and shared; the fallback keeps this working if that
+  // file has not loaded, because a missing helper must not mean a blank reply.
   function sayLine(text, cls) {
     const p = el('p', cls || null);
-    String(text == null ? '' : text).split(/(https?:\/\/[^\s]+)/g).forEach(function (seg) {
+    const clean = (window.ClaySpeakable ? window.ClaySpeakable(text) : String(text == null ? '' : text));
+    clean.split(/(https?:\/\/[^\s]+)/g).forEach(function (seg) {
       if (/^https?:\/\//.test(seg)) {
         const a = el('a', null, seg); a.href = seg; a.target = '_blank'; a.rel = 'noopener';
         p.appendChild(a);
