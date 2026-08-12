@@ -1,3 +1,27 @@
+// CLAY WRITES FOR THE EAR, AND SOMETIMES FORGETS.
+//
+// Every bubble is rendered with textContent, deliberately — no innerHTML anywhere near model output.
+// The cost is that any markdown Clay emits arrives on screen as literal characters. Walked live and
+// caught it: "the hard part won't be walking dogs. It'll be **trust and access**".
+//
+// A sighted reader shrugs at that. VoiceOver reads it as "asterisk asterisk trust and access
+// asterisk asterisk" in the middle of a sentence, which is exactly the audience this platform is
+// built for. His prompt already tells him not to use markdown; a prompt is guidance and a model
+// drifts, so the render strips it too.
+//
+// Emphasis is removed rather than converted: the words carry the emphasis, and turning it into <b>
+// would mean putting model output through innerHTML, which is not a trade worth making.
+function speakable(text) {
+  return String(text == null ? '' : text)
+    .replace(/```+/g, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s.,;:!?)]|$)/g, '$1$2')
+    .replace(/(^|[\s(])_([^_\n]+)_(?=[\s.,;:!?)]|$)/g, '$1$2')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^\s*[-*+]\s+/gm, '')
+    .replace(/`([^`]+)`/g, '$1');
+}
+
 // WATCHING CLAY WORK — the client half of the stream.
 //
 // The accessibility decision here is the whole design, so it is written down rather than left to be
@@ -51,7 +75,7 @@
     const show = (text) => {
       const p = document.createElement('p');
       p.className = 'clay-progress-line';
-      p.textContent = text;
+      p.textContent = speakable(text);
       log.appendChild(p);
       sawAnything = true;
     };
@@ -59,7 +83,7 @@
       const now = Date.now();
       if (!force && now - lastSpokeAt < QUIET_MS) return;   // stay quiet rather than interrupt
       lastSpokeAt = now;
-      spoken.textContent = text;
+      spoken.textContent = speakable(text);
     };
 
     const controller = new AbortController();
@@ -138,7 +162,7 @@
               answerEl.setAttribute('aria-hidden', 'true');
               host.appendChild(answerEl);
             }
-            answerEl.textContent += ev.text;
+            answerEl.textContent += speakable(ev.text);
           } else if (ev.type === 'thinking') {
             show(ev.note + '…');
             // Not announced: "working out what to do next" is reassuring to see and tedious to hear
@@ -183,5 +207,6 @@
     if (!sawAnything) log.remove();
   }
 
+  window.ClaySpeakable = speakable;
   window.ClayStream = { streamChat };
 })();

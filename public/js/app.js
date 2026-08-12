@@ -802,8 +802,34 @@
                 // a transport problem is ours, not theirs.
                 try { finish(await Kiln.api('/clay/chat', { method: 'POST', body: chatBody })); }
                 catch (e) {
+                  // WHEN CLAY CANNOT ANSWER, SAY SO ON THE SCREEN.
+                  //
+                  // Walked live: the session expired mid-conversation, the stream 401'd, the plain
+                  // request 401'd, the token refresh 401'd — and what the person got was an empty
+                  // bubble with Clay's name on it and nothing in it. The failure was announced to a
+                  // live region and drawn nowhere, so a sighted user saw Clay reply with silence and
+                  // a screen-reader user heard one sentence float past with no way to act on it.
+                  //
+                  // An empty reply from an assistant is the worst possible failure here: it reads as
+                  // "he has nothing to say to you" rather than "something broke on our side".
                   if (think.parentNode === thinking) thinking.removeChild(think);
-                  announce(e.message || 'Clay could not answer that one.', true);
+                  const expired = /sign in again/i.test(e && e.message || '') || (e && e.status === 401);
+                  const box = document.createElement('div');
+                  box.className = 'msg err';
+                  box.setAttribute('role', 'alert');
+                  box.textContent = expired
+                    ? 'Your session timed out, so that did not reach Clay. Nothing was lost — sign in again and the conversation is still here.'
+                    : 'That did not reach Clay, so nothing was saved. It is a fault on our side, not something you did. Try sending it again.';
+                  if (expired) {
+                    const a = document.createElement('a');
+                    a.href = '/login.html'; a.className = 'btn'; a.textContent = 'Sign in again';
+                    a.style.marginLeft = '8px';
+                    box.appendChild(document.createTextNode(' '));
+                    box.appendChild(a);
+                  }
+                  thinking.appendChild(box);
+                  try { box.setAttribute('tabindex', '-1'); box.scrollIntoView({ block: 'center' }); box.focus(); } catch (_) { }
+                  announce(box.textContent, true);
                 }
                 resolve();
               });
