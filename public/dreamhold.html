@@ -110,7 +110,7 @@ function askAccount(){
 }
 function accountForm(){
   you('Create my account'); clearControls();
-  var fs=el('fieldset'); fs.appendChild(el('legend',null,'Create your Exchange account'));
+  var fs=el('fieldset'); fs.appendChild(el('legend',null,'Create your account'));
   var nn=field('Your name','db-name','text'); var ee=field('Email','db-email','email'); var pp=field('Password (at least 8 characters)','db-pass','password');
   fs.appendChild(nn.wrap); fs.appendChild(ee.wrap); fs.appendChild(pp.wrap);
   var err=el('p','msgerr'); err.setAttribute('role','alert');
@@ -209,7 +209,7 @@ async function askBudget(){
 }
 
 async function finish(){
-  clay('Tuning your Exchange…'); clearControls();
+  clay('Tuning the Exchange for you…'); clearControls();
   try{
     await Kiln.api('/preferences',{method:'PUT',body:{
       interests:state.interests, runs_business:state.runs_business,

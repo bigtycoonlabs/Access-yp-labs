@@ -73,3 +73,22 @@ test('affiliate, never broker', () => {
   assert.match(CLAY_LANGUAGE, /AFFILIATE, not a broker/);
   assert.match(CLAY_LANGUAGE, /licensed activity/);
 });
+
+test('the spoken form is "the Exchange", everywhere a person reads it', () => {
+  // Owner's call: The Exchange is the spoken form, not YP Exchange. It is a place inside Access YP
+  // Labs, a sibling to The Desk, and a place takes an article — you go TO the Exchange.
+  //
+  // The rename sweep stripped the article in a few spots and left things reading like a product
+  // name: a nav link that just said "Exchange", "Create your Exchange account", "Tuning your
+  // Exchange", "makes an Exchange project".
+  const pages = fs.readdirSync('public').filter((f) => f.endsWith('.html')).map((f) => 'public/' + f);
+  for (const p of pages) {
+    const s = fs.readFileSync(p, 'utf8');
+    assert.ok(!/>Exchange<\/a>/.test(s), p + ': a nav link must read "The Exchange"');
+    assert.ok(!/\ban Exchange\b/.test(s), p + ': "an Exchange" is never right');
+  }
+  // And the brand it sits inside is never renamed to match it.
+  for (const p of pages) {
+    assert.ok(!/YP Exchange/.test(fs.readFileSync(p, 'utf8')), p + ': the brand stays Access YP Labs');
+  }
+});
