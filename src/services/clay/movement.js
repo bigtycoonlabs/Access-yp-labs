@@ -18,7 +18,7 @@ const DETAIL = {
   ready_to_package: {
     label: 'Ready to package',
     meaning: 'You have a clear customer and real evidence they’ll pay.',
-    moves: 'It’s ready to package and list in the Dream Market.',
+    moves: 'It’s ready to package and list in the Exchange.',
   },
 };
 

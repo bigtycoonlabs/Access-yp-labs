@@ -1,7 +1,7 @@
 'use strict';
 // THE BUYER'S SIDE, WALKED LIVE AND SIGNED IN.
 //
-// Opened a real live listing as a buyer and clicked "Claim this dream". The purchase gate opened
+// Opened a real live listing as a buyer and clicked "Claim this project". The purchase gate opened
 // correctly: three acknowledgement checkboxes, all labelled — transfer agreement, risk, and that the
 // purchase is final and non-refundable — plus a Confirm purchase button, and focus landed on the new
 // section's heading rather than on BODY. No failed requests. That path is in good shape and is not

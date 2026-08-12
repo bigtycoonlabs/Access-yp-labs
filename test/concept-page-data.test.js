@@ -17,7 +17,7 @@
 //     whole value ladder — rendered as nothing.
 //   - the delete box said "this project" rather than naming what it was about to delete.
 //   - the spoken vault summary said "your project" instead of the title.
-//   - `if (!project.is_operating)` was ALWAYS true, so "List this in the Dream Market" was offered
+//   - `if (!project.is_operating)` was ALWAYS true, so "List this in the Exchange" was offered
 //     on businesses the API refuses to list with a 409. The guard was written correctly and had
 //     never once run.
 //

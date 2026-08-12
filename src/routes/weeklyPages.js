@@ -44,8 +44,8 @@ ${opts.head || ''}
   <a href="/">Access YP Labs</a>
   <a href="/weekly">Clay Weekly</a>
   <a href="/desk.html">Clay's Desk</a>
-  <a href="/dreamhold.html">Dream Market</a>
-  <a href="/movers.html">Become a Dream Mover</a>
+  <a href="/dreamhold.html">Exchange</a>
+  <a href="/movers.html">Become an Affiliate</a>
 </nav>
 <main id="main" tabindex="-1" class="wrap">
 ${body}
@@ -62,7 +62,7 @@ function issueHtml(issue) {
   // what was approved, not numbers recomputed after the week has moved on.
   const best = Array.isArray(h.best_reads) ? h.best_reads : [];
   const term = h.term || null;
-  const dreamer = h.dreamer || null;
+  const builder = h.builder || null;
   const news = Array.isArray(h.world_news) ? h.world_news : [];
   const paper = h.white_paper || null;
   const when = issue.published_at ? new Date(issue.published_at) : null;
@@ -114,10 +114,10 @@ function issueHtml(issue) {
         <p>${esc(term.long)}</p>
       </section>` : ''}
 
-      ${dreamer ? `
-      <section aria-labelledby="dreamer-h">
-        <h2 id="dreamer-h">The dreamer who kept turning up</h2>
-        <p>${esc(dreamer.note)}</p>
+      ${builder ? `
+      <section aria-labelledby="builder-h">
+        <h2 id="builder-h">The builder who kept turning up</h2>
+        <p>${esc(builder.note)}</p>
       </section>` : ''}
 
       ${news.length ? `
@@ -141,13 +141,13 @@ function issueHtml(issue) {
       <section aria-labelledby="creators-h">
         <h2 id="creators-h">Creators who shipped</h2>
         <ul>
-          ${creators.map((c) => `<li>${esc(c.name)} — ${c.listings} ${c.listings === 1 ? 'project' : 'projects'} into the Dream Market</li>`).join('\n          ')}
+          ${creators.map((c) => `<li>${esc(c.name)} — ${c.listings} ${c.listings === 1 ? 'project' : 'projects'} into the Exchange</li>`).join('\n          ')}
         </ul>
       </section>` : ''}
 
       ${movers.length ? `
       <section aria-labelledby="movers-h">
-        <h2 id="movers-h">Dream Movers who earned</h2>
+        <h2 id="movers-h">Affiliates who earned</h2>
         <ul>
           ${movers.map((m) => `<li>${esc(m.name)} — ${esc(money(m.earned_cents))} from ${m.sales} ${m.sales === 1 ? 'sale' : 'sales'}</li>`).join('\n          ')}
         </ul>
@@ -161,7 +161,7 @@ function issueHtml(issue) {
 
       <section aria-labelledby="join-h">
         <h2 id="join-h">Want in?</h2>
-        <p><a href="/register.html">Shape your own idea with Clay</a> — free. Or <a href="/dreamhold.html">claim a business someone already proved</a>. Or <a href="/movers.html">become a Dream Mover</a> and earn on what you promote.</p>
+        <p><a href="/register.html">Shape your own idea with Clay</a> — free. Or <a href="/dreamhold.html">claim a business someone already proved</a>. Or <a href="/movers.html">become an Affiliate</a> and earn on what you promote.</p>
       </section>
     </article>
     <p><a href="/weekly">Every issue of Clay Weekly</a></p>`;
@@ -380,12 +380,12 @@ router.get('/weekly/:slug', asyncHandler(async (req, res) => {
 }));
 
 
-// GET/POST /watch/unsubscribe/:token — stop news about dreams you watch. Separate switch from the
+// GET/POST /watch/unsubscribe/:token — stop news about projects you watch. Separate switch from the
 // magazine, because wanting one and not the other is a perfectly normal thing to want.
 router.get('/watch/unsubscribe/:token', asyncHandler(async (req, res) => {
   const ok = await watchActivity.unsubscribeWatch(req.params.token);
   const body = ok
-    ? `<h1>You're unsubscribed</h1><p>You won't get news about dreams you're watching any more. You are still watching them — you can see everything on your dashboard whenever you like — and your other emails are unaffected.</p><p><a href="/dashboard.html">Go to your dashboard</a></p>`
+    ? `<h1>You're unsubscribed</h1><p>You won't get news about projects you're watching any more. You are still watching them — you can see everything on your dashboard whenever you like — and your other emails are unaffected.</p><p><a href="/dashboard.html">Go to your dashboard</a></p>`
     : `<h1>That link didn't work</h1><p>It may already have been used. Nothing was changed.</p>`;
   res.type('html').send(shell('Watching — unsubscribe', body, { noindex: true }));
 }));

@@ -16,7 +16,7 @@ test('the menu is styled as a LIST, not as bare links', () => {
 });
 
 test('the links do not run together visually', () => {
-  // At a 2px gap they read as "HomeThe Dream Market" — the same run-together problem the list was
+  // At a 2px gap they read as "HomeThe Exchange" — the same run-together problem the list was
   // meant to fix, visual instead of spoken.
   assert.match(home, /column-gap:14px/);
   assert.match(flat(home), /the links read as one string/i);

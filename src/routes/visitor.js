@@ -185,7 +185,7 @@ router.post('/ask', asyncHandler(async (req, res) => {
 }));
 
 // GET /api/liveness — real, honest signals for the homepage. Only true counts:
-// concepts shaped, concepts currently live in the Dream Market, and people waiting on
+// concepts shaped, concepts currently live in the Exchange, and people waiting on
 // those live concepts. If there's nothing yet, the homepage says so plainly rather
 // than inventing activity.
 router.get('/liveness', asyncHandler(async (req, res) => {

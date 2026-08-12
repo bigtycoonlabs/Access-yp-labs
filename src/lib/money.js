@@ -64,7 +64,7 @@ function isAboveFloor(amountCents) { return Number.isInteger(amountCents) && amo
 // listing floor on a column that enforces a different one.
 function isValidBid(amountCents) { return Number.isInteger(amountCents) && amountCents >= MIN_BID_CENTS; }
 
-// Dream Mover referral commission. A mover who drives a sale through their promo link
+// Affiliate referral commission. A mover who drives a sale through their promo link
 // earns 5% of the sale — paid OUT OF the platform's 20% take, never out of the seller's
 // share. So on an attributed sale the seller still nets 80%, the mover gets 5%, and the
 // platform keeps 15%. This keeps sellers strictly better off when movers promote them.

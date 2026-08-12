@@ -12,7 +12,7 @@
 // Then he said: "I also marked its path as Refine it to sell." He had. The row was really written —
 // no fabrication. It was simply the wrong thing to write. That project is a Cleveland cleaning
 // business the person operates, and a running business CANNOT be listed: the listings route refuses
-// it with a 409, deliberately. So he set a path toward a wall and then asked for a dreamer tag, a
+// it with a 409, deliberately. So he set a path toward a wall and then asked for a display name, a
 // format and a price so he could propose a listing that could only ever be refused.
 //
 // He half-sensed it — "we need to list it carefully as a transferable growth plan, not the sale of
@@ -34,7 +34,7 @@ test('the concept context carries whether it is a live operation', () => {
 
 test('and Clay is told plainly what that means', () => {
   assert.match(agent, /if \(concept\.is_operating\) \{/);
-  assert.match(agent, /CANNOT be listed or sold in the Dream Market/);
+  assert.match(agent, /CANNOT be listed or sold in the Exchange/);
   // Not just a prohibition. He is told where to go instead, because growing a business somebody
   // already runs is a real path here and is why they came.
   assert.match(agent, /get straight back to helping them grow it/);

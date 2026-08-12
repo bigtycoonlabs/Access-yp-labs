@@ -23,7 +23,7 @@ router.get('/candidates', authenticate, authorize('staff', 'admin', 'master_staf
   res.json({
     candidates: rows.map((c) => ({
       concept_id: c.id, title: c.title, owner_name: c.owner_name,
-      signals: [c.listed ? 'listed in the Dream Market' : null,
+      signals: [c.listed ? 'listed in the Exchange' : null,
         c.has_site ? 'has a working site' : null,
         c.movement_state ? 'creator says: ' + c.movement_state : null].filter(Boolean),
     })),

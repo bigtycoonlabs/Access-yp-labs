@@ -9,7 +9,7 @@
 // permission on the existing route: staff may edit CLAY'S listings and nobody else's. A creator's
 // listing is their work and their words. Staff can approve it, reject it with a reason, or take it
 // down on policy grounds — they cannot rewrite it. Editing someone's sales copy on their behalf,
-// silently, under their own dreamer tag, would be a serious breach of what this platform promises.
+// silently, under their own display name, would be a serious breach of what this platform promises.
 //
 // Every edit here is recorded in the audit log with the editor's name, because "the platform owner
 // changed the price on platform-owned inventory" should be a fact somebody can look up later.

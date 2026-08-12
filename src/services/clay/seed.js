@@ -1,4 +1,4 @@
-// Clay seeds the Dream Market. Clay invents simple, quick-to-start, UNIQUE small-business ideas,
+// Clay seeds the Exchange. Clay invents simple, quick-to-start, UNIQUE small-business ideas,
 // builds each into a real concept, and posts it FOR REVIEW under his own pen name — never
 // straight to sale. A human on staff approves or rejects every one, through the SAME listing
 // moderation flow every seller uses. This exists to solve the cold-start problem: an inspiring,
@@ -76,7 +76,7 @@ async function ensurePenName(clayUser) {
   const current = (clayUser.display_name || '').trim();
   if (current && !/^clay$/i.test(current)) return current;
   const saved = await setPenName(clayUser.id, await chooseNewPenName());
-  return saved || 'A Dream Market creator';
+  return saved || 'A Exchange creator';
 }
 
 // Seeds Clay has posted since local midnight — the cadence guard.
@@ -125,7 +125,7 @@ async function inventIdea(avoidTitles) {
     + 'Invent ONE genuinely simple, quick-to-start, and UNIQUE small business an ordinary person could begin '
     + 'from home with little money. It must be a virtual, remote, or micro business, not a large operation. '
     + 'Avoid anything generic or already common. It must genuinely hold up — a real business a creator would '
-    + 'want to build or a buyer would want to own — because the Dream Market is only worth what sits on it; a shelf '
+    + 'want to build or a buyer would want to own — because the Exchange is only worth what sits on it; a shelf '
     + 'of weak filler ideas is worthless, so seed only something you would stand behind. '
     + 'Respond with ONLY a JSON object, no prose.';
   const avoid = (avoidTitles && avoidTitles.length) ? ('\nAvoid ideas close to these: ' + avoidTitles.slice(0, 20).join('; ') + '.') : '';
@@ -228,7 +228,7 @@ async function emailStaffReview({ title, pitch, priceCents, penName }) {
   const reviewUrl = base + '/admin-overview.html';
   const price = '$' + (priceCents / 100).toFixed(2);
   const subject = 'Clay seeded a concept for review: ' + title;
-  const html = `<p>Clay created a new seed concept and is asking for review before it can go live on the Dream Market.</p>`
+  const html = `<p>Clay created a new seed concept and is asking for review before it can go live on the Exchange.</p>`
     + `<p><strong>${escapeHtml(title)}</strong> — ${price}, posting as <em>${escapeHtml(penName || 'Clay')}</em></p>`
     + `<p>${escapeHtml(pitch)}</p>`
     + `<p>It is waiting in the review queue (status: in review). Approve to publish it under Clay's pen name, or reject with a reason. Nothing is public until you approve.</p>`

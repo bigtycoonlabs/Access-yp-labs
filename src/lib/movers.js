@@ -1,4 +1,4 @@
-// Dream Mover helpers: promo-page handles, and the founder's display rule —
+// Affiliate helpers: promo-page handles, and the founder's display rule —
 // never show a bare "5%" (it reads as small); show the real dollars a mover earns
 // on THIS concept.
 const { moverCommissionCents } = require('./money');

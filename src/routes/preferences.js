@@ -1,5 +1,5 @@
-// Dream Market customization — the interests, existing-business context, and launch
-// budget Clay collects at the door so the right dreams leap at each user without
+// Exchange customization — the interests, existing-business context, and launch
+// budget Clay collects at the door so the right projects leap at each user without
 // overwhelming them. Read/written only by the signed-in user.
 const express = require('express');
 const { body, validationResult } = require('express-validator');

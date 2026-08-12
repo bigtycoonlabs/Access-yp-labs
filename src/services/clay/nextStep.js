@@ -41,7 +41,7 @@ const NEXT_STEP = {
   },
   ready_to_package: {
     ask: 'You have a clear customer and evidence they will pay. Decide what this becomes.',
-    how: 'Launch it yourself, or list it in the Dream Market and let someone else run with it. Both are '
+    how: 'Launch it yourself, or list it in the Exchange and let someone else run with it. Both are '
       + 'real choices and neither is a failure. What is a waste is leaving it sitting here finished.',
     reply: 'Ask Clay what it is honestly worth as a listing — he will tell you, including when the answer is "not much yet".',
   },

@@ -1,7 +1,7 @@
 // Clay Weekly — the platform's magazine.
 //
 // What it is: once a week Clay assembles an issue — the sponsored project of the week, everything he
-// wrote for the Desk, shout-outs for the creators and Dream Movers who moved, and "Clay's Note", a
+// wrote for the Desk, shout-outs for the creators and Affiliates who moved, and "Clay's Note", a
 // short personal piece in his own voice. It becomes a public page AND an email to everyone who wants
 // it. That turns this place into a quiet media company for entrepreneurs instead of just software.
 //
@@ -48,12 +48,12 @@ async function weekArticles(weekStart) {
   return r.rows;
 }
 
-// Creators who put work into the Dream Market this week — the people to shout out.
+// Creators who put work into the Exchange this week — the people to shout out.
 async function topCreators(weekStart) {
   const r = await query(
     // THE DREAMER TAG, NEVER THE REAL NAME. This read u.name, so the magazine — which goes to every
     // account and is posted publicly — was printing people's actual first and last names. The whole
-    // point of a dreamer tag is that it is the only name shown anywhere; a publication leaking real
+    // point of a builder tag is that it is the only name shown anywhere; a publication leaking real
     // names is the single worst place for that rule to break.
     `SELECT u.id, COALESCE(NULLIF(u.display_name,''), 'A creator') AS name, count(*)::int AS listings
        FROM listings l
@@ -66,11 +66,11 @@ async function topCreators(weekStart) {
   return r.rows;
 }
 
-// Dream Movers who actually earned this week. Money is reported as a dollar amount, never a bare
+// Affiliates who actually earned this week. Money is reported as a dollar amount, never a bare
 // percentage, and only what the ledger says.
 async function topMovers(weekStart) {
   const r = await query(
-    `SELECT COALESCE(NULLIF(u.display_name,''), 'A Dream Mover') AS name,
+    `SELECT COALESCE(NULLIF(u.display_name,''), 'A Affiliate') AS name,
             m.slug,
             COALESCE(SUM(e.amount_cents),0)::int AS earned_cents,
             count(*)::int AS sales
@@ -144,7 +144,7 @@ function sponsorBlurbPrompt(c) {
 
 Project: ${c.title}
 What it is: ${(c.brief || '').slice(0, 600)}
-Signals: ${[c.listed ? 'listed in the Dream Market' : null, c.has_site ? 'has a working site' : null, c.movement_state ? 'creator says they are ' + c.movement_state : null].filter(Boolean).join('; ') || 'active this week'}
+Signals: ${[c.listed ? 'listed in the Exchange' : null, c.has_site ? 'has a working site' : null, c.movement_state ? 'creator says they are ' + c.movement_state : null].filter(Boolean).join('; ') || 'active this week'}
 
 Be specific about what makes it interesting. Never invent traction, revenue, customers, or results — you may only reference the signals above. Plain prose for screen readers: no markdown, no bullets, no emoji. Return ONLY the sentences.`;
 }
@@ -167,7 +167,7 @@ async function claySays(prompt, fallback) {
 // Build (or rebuild) this week's DRAFT issue. Never publishes, never emails.
 async function composeIssue({ weekStart } = {}) {
   const week = weekStart || weekStartOf(Date.now());
-  const [articles, creators, movers, best, dreamer, news] = await Promise.all([
+  const [articles, creators, movers, best, builder, news] = await Promise.all([
     weekArticles(week), topCreators(week), topMovers(week),
     // The recurring sections that make this a publication rather than a digest. Each fails soft:
     // a section with nothing real behind it is left out, never filled with something invented.
@@ -201,12 +201,12 @@ async function composeIssue({ weekStart } = {}) {
   const facts = [
     best.length ? `the five pieces worth reading are ${best.slice(0, 5).map((a) => a.title).join('; ')}` : null,
     `the term explained this week is ${term.term} — ${term.short}`,
-    dreamer ? `the dreamer who kept turning up is ${dreamer.tag}, here on ${dreamer.days_here} days` : null,
+    builder ? `the builder who kept turning up is ${builder.tag}, here on ${builder.days_here} days` : null,
     (news && news.ok && news.items.length) ? `outside news worth noting: ${news.items.map((i) => i.title).join('; ')}` : null,
     isFirstIssue ? 'this is the FIRST issue ever, and it carries the white paper explaining why this place exists — mention that this one comes with the whole argument attached' : null,
     `${articles.length} new piece${articles.length === 1 ? '' : 's'} on the Desk`,
-    `${creators.length} creator${creators.length === 1 ? '' : 's'} put work into the Dream Market`,
-    `${movers.length} Dream Mover${movers.length === 1 ? '' : 's'} earned from a sale`,
+    `${creators.length} creator${creators.length === 1 ? '' : 's'} put work into the Exchange`,
+    `${movers.length} Affiliate${movers.length === 1 ? '' : 's'} earned from a sale`,
     sponsored ? `the sponsored project of the week is ${sponsored.title}` : 'no sponsored project this week',
   ].filter(Boolean).join('; ');
 
@@ -227,7 +227,7 @@ async function composeIssue({ weekStart } = {}) {
     best_reads: best.map((a) => ({ title: a.title, dek: a.dek, slug: a.slug, category: a.category,
       from_earlier: !!a.from_earlier })),
     term,
-    dreamer,
+    builder,
     world_news: (news && news.ok) ? news.items : [],
     white_paper: isFirstIssue ? {
       title: 'Why we built this place',
@@ -511,7 +511,7 @@ async function tick() {
       dedupeKey: 'weekly-draft-' + week,
       subject: `Clay Weekly is drafted for the week of ${week}`,
       body: `I put this week's issue together: ${c.articles || 0} Desk piece(s), `
-        + `${c.creators || 0} creator(s) who listed, and ${c.movers || 0} Dream Mover(s) who earned.\n\n`
+        + `${c.creators || 0} creator(s) who listed, and ${c.movers || 0} Affiliate(s) who earned.\n\n`
         + `Nothing is public and nothing has been emailed. Read it, approve it, publish it, and send it `
         + `when you're ready: ${SITE()}/weekly-admin.html\n\n— Clay`,
     });

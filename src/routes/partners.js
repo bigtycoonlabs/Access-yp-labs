@@ -122,15 +122,15 @@ router.post('/requests/:id/interest', authenticate, [
   const request = pr.rows[0];
   if (request.owner_id === req.user.id) throw new ApiError(400, 'This is your own project.');
 
-  // You need a dreamer tag first. It is the name the creator will see, and the one that carries
-  // across your listings and your Dream Mover page — so it has to exist before you approach anyone.
+  // You need a builder tag first. It is the name the creator will see, and the one that carries
+  // across your listings and your Affiliate page — so it has to exist before you approach anyone.
   const me = await query('SELECT display_name FROM users WHERE id=$1', [req.user.id]);
   const tag = me.rows[0] && (me.rows[0].display_name || '').trim();
   if (!tag) {
     throw new ApiError(409,
-      'Choose your dreamer tag before you offer to help. It is the name creators here will know you by — '
+      'Choose your display name before you offer to help. It is the name creators here will know you by — '
       + 'your real name stays private. You can set it on your dashboard.',
-      { need_dreamer_tag: true });
+      { need_builder_tag: true });
   }
 
   let row;
@@ -283,7 +283,7 @@ router.get('/availability', authenticate, asyncHandler(async (req, res) => {
   const row = r.rows[0] || {};
   res.json({
     open_to_partnering: !!row.open_to_partnering,
-    dreamer_tag: (row.display_name || '').trim() || null,
+    builder_tag: (row.display_name || '').trim() || null,
   });
 }));
 
@@ -298,8 +298,8 @@ router.put('/availability', authenticate, [
     const me = await query('SELECT display_name FROM users WHERE id=$1', [req.user.id]);
     if (!((me.rows[0] && me.rows[0].display_name) || '').trim()) {
       throw new ApiError(409,
-        'Choose your dreamer tag first — it is the name creators would see when you offer to help.',
-        { need_dreamer_tag: true });
+        'Choose your display name first — it is the name creators would see when you offer to help.',
+        { need_builder_tag: true });
     }
   }
   await query('UPDATE users SET open_to_partnering=$2 WHERE id=$1', [req.user.id, on]);

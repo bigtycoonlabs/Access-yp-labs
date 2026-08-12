@@ -14,7 +14,7 @@ test('the moderation queue does not claim to be a list', { skip: 'the review que
   assert.match(flat(mod), /a list role promises a screen reader that its children are list items/i);
 });
 
-test('the Dream Market door has a real heading', () => {
+test('the Exchange door has a real heading', () => {
   // The door was a page with a paragraph styled to look like a title, so it had NO heading at all,
   // on the one screen standing between somebody and the whole market. It was given a real h1.
   //
@@ -22,7 +22,7 @@ test('the Dream Market door has a real heading', () => {
   // so the strongest version of this is that the page still standing at that address has a heading
   // and gets people onwards rather than leaving them at a dead end.
   const enter = fs.readFileSync('public/enter.html', 'utf8');
-  assert.match(enter, /<h1>The Dream Market<\/h1>/);
+  assert.match(enter, /<h1>The Exchange<\/h1>/);
   assert.match(enter, /\/marketplace\.html\?entered=1/);
   assert.ok(!/<p class="kicker">/.test(enter));
 });

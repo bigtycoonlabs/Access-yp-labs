@@ -10,7 +10,7 @@ test('platform fee is 20% and the seller nets 80%', () => {
   assert.strictEqual(sellerNetCents(32500), 26000);    // 80% of $325
 });
 
-test('Dream Mover commission is 5% of the sale', () => {
+test('Affiliate commission is 5% of the sale', () => {
   assert.strictEqual(MOVER_RATE, 0.05);
   assert.strictEqual(moverCommissionCents(32500), 1625); // 5% of $325 = $16.25
 });

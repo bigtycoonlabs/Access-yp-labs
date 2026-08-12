@@ -97,7 +97,7 @@ router.post('/:id/assets', authenticate, [
     [req.params.id, type, title || null, assetBody,
      ['business_plan', 'marketing_strategy'].includes(type), scanStatus, scanDetail, nextVersion]);
   const blocked = scanStatus === 'flagged';
-  // If this project is live in the Dream Market, adding real material to it is news for anyone
+  // If this project is live in the Exchange, adding real material to it is news for anyone
   // watching — it is the seller raising what the listing is worth. Flagged material is NOT
   // announced: it isn't visible to anyone yet, so saying value was added would not be true.
   if (!blocked) {

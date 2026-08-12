@@ -23,7 +23,7 @@ const CATEGORIES = [
   { slug: 'pricing',            label: 'Pricing',             blurb: 'What to charge, and what it does to everything else.' },
   { slug: 'marketing',          label: 'Marketing',           blurb: 'Getting seen, and saying the thing that lands.' },
   { slug: 'growing',            label: 'Growing',             blurb: 'When something works and you want more of it.' },
-  { slug: 'buying-and-selling', label: 'Buying and selling',  blurb: 'The Dream Market, what makes a project worth buying, and what it is worth.' },
+  { slug: 'buying-and-selling', label: 'Buying and selling',  blurb: 'The Exchange, what makes a project worth buying, and what it is worth.' },
   { slug: 'getting-help',       label: 'Getting help',        blurb: 'Partners, first hires, and what to hand off.' },
 ];
 const CATEGORY_SLUGS = CATEGORIES.map((c) => c.slug);

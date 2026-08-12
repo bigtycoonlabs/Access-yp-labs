@@ -9,7 +9,7 @@ const home = fs.readFileSync('public/index.html', 'utf8');
 const listings = fs.readFileSync(require.resolve('../src/routes/listings.js'), 'utf8');
 
 test('every listing has its own title and its own words in the HTML', () => {
-  // Every listing shared one title — "Listing — The Dream Market" — carried no h1, and rendered
+  // Every listing shared one title — "Listing — The Exchange" — carried no h1, and rendered
   // entirely from JavaScript, so a crawler saw thirteen identical empty shells. The Desk, which
   // sells nothing, was fully indexed; the marketplace, which is the business, was invisible.
   assert.match(market, /router\.get\('\/market\/:id'/);
@@ -51,7 +51,7 @@ test('the sitemap carries the things we sell', () => {
 
 test('the homepage shows what is for sale before what it costs', () => {
   // Amazon does not open with Prime. The products here are the projects people are selling.
-  assert.match(home, /On the Dream Market right now/);
+  assert.match(home, /On the Exchange right now/);
   assert.match(home, /id="recent-listings"/);
   assert.ok(home.indexOf('market-h') < home.indexOf('price-h'), 'the market comes before pricing');
   assert.match(flat(home), /Amazon does not open with Prime/i);

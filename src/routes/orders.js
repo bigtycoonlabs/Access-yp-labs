@@ -91,7 +91,7 @@ router.post('/', authenticate, [
   }
   const fee = platformFeeCents(amount);
 
-  // Dream Mover attribution: if the buyer arrived through a mover's promo link, credit that
+  // Affiliate attribution: if the buyer arrived through a mover's promo link, credit that
   // mover — but never in a self-dealing case (a mover can't earn on their own listing, and
   // can't earn on their own purchase). The commission itself is settled later, at release.
   let moverId = null;
@@ -178,7 +178,7 @@ router.post('/:id/release', authenticate, asyncHandler(async (req, res) => {
     }
     const l = await client.query('SELECT concept_id, status FROM listings WHERE id=$1 FOR UPDATE', [order.listing_id]);
     if (!l.rows.length) throw new ApiError(404, 'The listing for this order no longer exists.');
-    // A Dream Market concept is one-of-a-kind: it can only transfer to ONE buyer. Locking the
+    // A Exchange concept is one-of-a-kind: it can only transfer to ONE buyer. Locking the
     // listing row above serializes concurrent releases; if another order already won this
     // listing (status 'sold'), we must NOT transfer the concept again — that would silently
     // overwrite the first buyer's ownership. Refuse honestly; this order's payment is refunded
@@ -246,9 +246,9 @@ router.post('/:id/release', authenticate, asyncHandler(async (req, res) => {
     await client.query('UPDATE concepts SET free_forever = true WHERE id = $1', [conceptId]);
     const done = await client.query(
       `UPDATE orders_transfers SET status='released' WHERE id=$1 RETURNING *`, [order.id]);
-    // People watching this dream should learn it is gone, rather than discovering it later.
+    // People watching this project should learn it is gone, rather than discovering it later.
     watchActivity.record(order.listing_id, 'sold', watchActivity.say.sold()).catch((e) => console.error('watch note failed:', e && e.message));
-    // Dream Mover commission: if a mover drove this sale, accrue their 5% now — inside the
+    // Affiliate commission: if a mover drove this sale, accrue their 5% now — inside the
     // same transaction as the transfer, keyed UNIQUE by order so it can only ever be
     // recorded once. It's paid out of the platform's take; the seller's 80% is untouched.
     if (order.referred_by_mover_id) {

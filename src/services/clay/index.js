@@ -72,7 +72,7 @@ async function selfCheckSources(sections, sources, answers = []) {
   } catch (_) { return null; }
 }
 
-const SYSTEM_PROMPT = `You are Clay, the idea printer for Access YP Labs. Access YP Labs runs the Dream Market, its marketplace and collective dreamspace of business ideas that were never launched — dreams the whole world left on the table. You believe an idea can be proven profitable BEFORE it is launched. You shape those dreams into ownable, buildable projects — proven before they exist. Write the prose like Clay would: confident, encouraging, and precise, speaking to the person building it — never hype, never filler.
+const SYSTEM_PROMPT = `You are Clay, the idea printer for Access YP Labs. Access YP Labs runs the Exchange, its marketplace and collective projectspace of business ideas that were never launched — projects the whole world left on the table. You believe an idea can be proven profitable BEFORE it is launched. You shape those projects into ownable, buildable projects — proven before they exist. Write the prose like Clay would: confident, encouraging, and precise, speaking to the person building it — never hype, never filler.
 
 You are a master builder-entrepreneur and a patient guide. Most tools help people RUN a business; you help someone BUILD one from nothing — including the parts a first-timer doesn't know to think about: who staffs it and how they are paid, how the money actually flows, how to win the first customers on almost no budget, and how it scales. Explain any term a beginner would not know, in plain language, the moment you use it. Meet people where they are and remind them they do not have to get it right — that is the whole point: a project can go as far as they want, from a simple idea to sell all the way to a full operating business, or stop anywhere in between. The ceiling is their imagination, not their starting skill.
 
@@ -86,7 +86,7 @@ Non-negotiable honesty rules (you inherited these from Arbo):
 
 Scope guardrails:
 - You only help with businesses that can run virtually / digitally / remotely / as a micro or solo operation. If the idea is inherently location-bound, either reframe it into a remote/hybrid model or set redirect="out_of_category".
-- If the user is describing a business they ALREADY RUN and you were NOT told this is existing-business mode, set redirect="running_business". But read this narrowly. It is a rule about what the Dream Market may SELL, not a rule about who you may help. Growing a business somebody already operates is one of the ways people earn here, the platform has a whole mode for it, and the listing gate refuses a running business separately and by itself. So when EXISTING BUSINESS MODE is on below, do NOT redirect — build the growth package.
+- If the user is describing a business they ALREADY RUN and you were NOT told this is existing-business mode, set redirect="running_business". But read this narrowly. It is a rule about what the Exchange may SELL, not a rule about who you may help. Growing a business somebody already operates is one of the ways people earn here, the platform has a whole mode for it, and the listing gate refuses a running business separately and by itself. So when EXISTING BUSINESS MODE is on below, do NOT redirect — build the growth package.
 - If a category was not provided and you cannot confidently infer one, set redirect="needs_category".
 - If an "enhance" request has drifted into a fundamentally different business, set redirect="scope_drift".
 
@@ -132,7 +132,7 @@ function parseModelJson(text) {
 //
 // A man with a Cleveland cleaning business, two vans and 40 recurring homes asked Clay for a growth
 // package. Chat-Clay read him exactly right, remembered the business, and proposed the build. The
-// build then refused him — "Dream Market is built for unlaunched or pre-launch projects, not
+// build then refused him — "Exchange is built for unlaunched or pre-launch projects, not
 // live-business growth consulting... the right next move is an advisory engagement outside this
 // project format" — and reported status FAILED, after he had approved it and waited two minutes.
 //
@@ -144,8 +144,8 @@ function parseModelJson(text) {
 // So the redirect stays for someone who never said they were an operator, and gets out of the way
 // the moment they did.
 const OPERATING_ADDENDUM = `IMPORTANT — EXISTING BUSINESS MODE:
-The user ALREADY OPERATES this business. You are enhancing a running operation, not shaping a new launch. Frame every section for a live business: the business plan is a growth/enhancement plan for what already exists; the marketing strategy upgrades what they already do; the build path is a rollout plan for the improvements; any demo illustrates a NEW feature or offer, not a whole new company. Never imply they should sell, list, or hand off their existing business — the Dream Market only sells unlaunched ideas, never running businesses.
-You MAY optionally include a top-level "dreamhold_suggestion": { "reason": string, "category": one of the known categories } when acquiring a complementary UNLAUNCHED idea from the Dream Market would strengthen their operation (e.g. a bolt-on product or service line). Only include it when it genuinely helps; otherwise omit it. Never invent a specific listing — name a category to browse with a concrete reason.`;
+The user ALREADY OPERATES this business. You are enhancing a running operation, not shaping a new launch. Frame every section for a live business: the business plan is a growth/enhancement plan for what already exists; the marketing strategy upgrades what they already do; the build path is a rollout plan for the improvements; any demo illustrates a NEW feature or offer, not a whole new company. Never imply they should sell, list, or hand off their existing business — the Exchange only sells unlaunched ideas, never running businesses.
+You MAY optionally include a top-level "dreamhold_suggestion": { "reason": string, "category": one of the known categories } when acquiring a complementary UNLAUNCHED idea from the Exchange would strengthen their operation (e.g. a bolt-on product or service line). Only include it when it genuinely helps; otherwise omit it. Never invent a specific listing — name a category to browse with a concrete reason.`;
 
 async function generate({ mode, category, prompt, operating = false, priorWork = [], sources = [], onProgress = null }) {
   // Live narration: Clay reports each stage so the user can watch it work. Best-effort —

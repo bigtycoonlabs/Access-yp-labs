@@ -3,21 +3,21 @@
 // on each screen. Renders synchronously (so #signout exists for other page scripts),
 // then reveals a Staff link for staff accounts after checking the session.
 //
-// Logged-in menu:  Laboratory · Dashboard · The Dream Market · Dream Mover · Profile
+// Logged-in menu:  Laboratory · Dashboard · The Exchange · Affiliate · Profile
 //                  · Staff (staff only) · Sign out
-// Logged-out menu: Home · The Dream Market · Become a Dream Mover · The Desk · Sign in · Sign up
+// Logged-out menu: Home · The Exchange · Become an Affiliate · The Desk · Sign in · Sign up
 //
 // Clay Weekly is NOT a separate entry: it is part of The Desk, reached from there. The Desk and the
 // magazine are the same thing to a reader — writing about what is happening here — and two menu
 // entries for one idea makes a person wonder what the difference is.
 //
-// Launch partners is deliberately NOT here: it is a tab INSIDE the Dream Market, not a separate
+// Launch partners is deliberately NOT here: it is a tab INSIDE the Exchange, not a separate
 // destination. Two entrances to one room only makes people wonder which is the real one.
 //
 // IMPORTANT: this file REPLACES whatever markup a page has in nav.top. Adding a link to a page's
 // HTML therefore does nothing — it is wiped on load. Every destination has to be listed HERE, or it
 // is invisible to everyone. (Links added to individual pages were silently disappearing this way,
-// which is exactly how the Dream Mover and Launch partner pages ended up unreachable from the menu.)
+// which is exactly how the Affiliate and Launch partner pages ended up unreachable from the menu.)
 (function () {
   var nav = document.querySelector('nav.top');
   if (!nav) return;
@@ -31,7 +31,7 @@
     return a;
   }
   // A LIST, NOT A RUN-ON SENTENCE. The links were appended with nothing between them, so a screen
-  // reader announced "LaboratoryDashboardThe Dream MarketDream MoverProfileSign out" as a single
+  // reader announced "LaboratoryDashboardThe ExchangeAffiliateProfileSign out" as a single
   // unbroken string — the first thing heard on every page of the platform. Marking the nav up as a
   // real list makes each item a separate stop with a countable position, which is how someone
   // listening navigates rather than guesses.
@@ -65,8 +65,8 @@
     nav.appendChild(asList([
       link('/app.html', 'Laboratory'),
       link('/dashboard.html', 'Dashboard'),
-      link('/marketplace.html', 'The Dream Market'),
-      link('/movers.html', 'Dream Mover'),
+      link('/marketplace.html', 'The Exchange'),
+      link('/movers.html', 'Affiliate'),
       link('/profile.html', 'Profile'),
       so,
     ]));
@@ -91,8 +91,8 @@
   } else {
     var out = [
       link('/', 'Home'),
-      link('/marketplace.html', 'The Dream Market'),
-      link('/movers.html', 'Become a Dream Mover'),
+      link('/marketplace.html', 'The Exchange'),
+      link('/movers.html', 'Become an Affiliate'),
       link('/desk', 'The Desk'),
       link('/login.html', 'Sign in'),
       link('/register.html', 'Sign up'),

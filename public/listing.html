@@ -1,25 +1,25 @@
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Listing — The Dream Market</title><link rel="stylesheet" href="/css/kiln.css"/>
+<title>Listing — The Exchange</title><link rel="stylesheet" href="/css/kiln.css"/>
   <link rel="canonical" href="https://accessyplabs.com/listing.html"/>
-  <meta name="description" content="A business project listed on the Dream Market — a complete, pre-proven idea you can claim and make your own."/>
+  <meta name="description" content="A business project listed on the Exchange — a complete, pre-proven idea you can claim and make your own."/>
   <meta property="og:type" content="website"/>
   <meta property="og:site_name" content="Access YP Labs"/>
-  <meta property="og:title" content="Listing — The Dream Market"/>
-  <meta property="og:description" content="A business project listed on the Dream Market — a complete, pre-proven idea you can claim and make your own."/>
+  <meta property="og:title" content="Listing — The Exchange"/>
+  <meta property="og:description" content="A business project listed on the Exchange — a complete, pre-proven idea you can claim and make your own."/>
   <meta property="og:url" content="https://accessyplabs.com/listing.html"/>
   <meta property="og:image" content="https://accessyplabs.com/img/og-cover.png"/>
   <meta property="og:image:width" content="1200"/>
   <meta property="og:image:height" content="630"/>
   <meta name="twitter:card" content="summary_large_image"/>
-  <meta name="twitter:title" content="Listing — The Dream Market"/>
-  <meta name="twitter:description" content="A business project listed on the Dream Market — a complete, pre-proven idea you can claim and make your own."/>
+  <meta name="twitter:title" content="Listing — The Exchange"/>
+  <meta name="twitter:description" content="A business project listed on the Exchange — a complete, pre-proven idea you can claim and make your own."/>
   <meta name="twitter:image" content="https://accessyplabs.com/img/og-cover.png"/>
 </head><body>
 <a class="skip" href="#main">Skip to main content</a>
 <header class="site"><div class="wrap bar">
   <a class="brand" href="/">Access YP Labs</a>
-  <nav class="top" aria-label="Primary"><a href="/movers.html">Become a Dream Mover</a><a href="/dashboard.html">Dashboard</a><a href="/marketplace.html">The Dream Market</a><a href="/app.html">Laboratory</a></nav>
+  <nav class="top" aria-label="Primary"><a href="/movers.html">Become an Affiliate</a><a href="/dashboard.html">Dashboard</a><a href="/marketplace.html">The Exchange</a><a href="/app.html">Laboratory</a></nav>
 </div></header>
 <main id="main" class="wrap">
   <p><a href="/marketplace.html">← Back to marketplace</a></p>
@@ -154,7 +154,7 @@ function clarityBlock(listing){
   return box;
 }
 async function loadPreview(container){
-  const box=el('div','panel'); box.appendChild(el('h2',null,'What’s inside this dream'));
+  const box=el('div','panel'); box.appendChild(el('h2',null,'What’s inside this project'));
   const body=el('div'); box.appendChild(body); container.appendChild(box);
   body.textContent='Loading preview…';
   try{
@@ -172,7 +172,7 @@ async function loadPreview(container){
       // Polite, not assertive. This is a useful thing to say — whether the demo a buyer would
       // receive is operable by a screen reader — and it is not urgent. Assertive interrupts.
       //
-      // Walked live: clicking "Claim this dream" put "Purchase started — complete it below." into
+      // Walked live: clicking "Claim this project" put "Purchase started — complete it below." into
       // the polite region while this audit sat in the assertive one, so the less important message
       // was the louder one and could speak over the more important. At the moment somebody starts
       // buying something, the thing that interrupts them should be about the purchase.
@@ -232,7 +232,7 @@ async function load(){
     // Lead with the dream, not the fine print: what this project is and what it's like to own it.
     detail.appendChild(dreamHero(listing));
     var askP=el('p');askP.style.margin='2px 0 16px';
-    var askA=el('a','btn secondary','Ask Clay about this dream');askA.href='/app.html';askA.style.textDecoration='none';
+    var askA=el('a','btn secondary','Ask Clay about this project');askA.href='/app.html';askA.style.textDecoration='none';
     askP.appendChild(askA);detail.appendChild(askP);
 
     const isAuction=listing.format==='auction';
@@ -271,7 +271,7 @@ async function load(){
       await renderWaitlist(detail, listing.concept_id, id);
       const rp0=riskPanel(listing); if(rp0) detail.appendChild(rp0);
       const box=el('div','panel');
-      box.appendChild(el('p',null,'This is a project from the Dream Market — a business you can own and build before it exists. Create a free account to claim it, place a bid, or follow it before it launches.'));
+      box.appendChild(el('p',null,'This is a project from the Exchange — a business you can own and build before it exists. Create a free account to claim it, place a bid, or follow it before it launches.'));
       const p=el('p');p.style.display='flex';p.style.gap='10px';p.style.flexWrap='wrap';
       const create=el('a','btn','Create a free account to claim this');create.href='/register.html?next='+back;
       const signin=el('a','btn secondary','I already have an account');signin.href='/login.html?next='+back;
@@ -315,7 +315,7 @@ async function load(){
       });
       [bl,bi,bb,bout].forEach(n=>bidWrap.appendChild(n));detail.appendChild(bidWrap);
     }else{
-      const buy=el('button','btn', isAuction?'Complete auction purchase (winner only)':'Claim this dream');buy.type='button';
+      const buy=el('button','btn', isAuction?'Complete auction purchase (winner only)':'Claim this project');buy.type='button';
       buy.addEventListener('click',()=>openBuy(listing));
       const bp=el('p');bp.id='claim-anchor';bp.style.margin='4px 0 12px';bp.appendChild(buy);detail.appendChild(bp);
     }

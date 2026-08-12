@@ -31,7 +31,7 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
   const pendingCents = n(s.pending_cents);
 
   // Two routes to earning, and a person may walk either or both. Nothing here assumes someone must
-  // have an idea of their own — the Dream Mover route deliberately doesn't.
+  // have an idea of their own — the Affiliate route deliberately doesn't.
   const steps = [
     {
       key: 'shape',
@@ -53,7 +53,7 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
     },
     {
       key: 'list',
-      title: 'Put one in the Dream Market',
+      title: 'Put one in the Exchange',
       done: n(s.live_listings) > 0,
       spoken: n(s.live_listings) > 0
         ? `Done. You have ${n(s.live_listings)} listing${n(s.live_listings) === 1 ? '' : 's'} live.`
@@ -74,9 +74,9 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
       title: 'Or earn without an idea of your own',
       done: s.is_mover,
       spoken: s.is_mover
-        ? 'Done. You are a Dream Mover — share what you believe in and earn on each sale.'
-        : 'Optional, and open to anyone. Become a Dream Mover, promote projects you believe in, and earn a commission when one sells.',
-      action: { label: 'Become a Dream Mover', href: '/movers.html' },
+        ? 'Done. You are a Affiliate — share what you believe in and earn on each sale.'
+        : 'Optional, and open to anyone. Become an Affiliate, promote projects you believe in, and earn a commission when one sells.',
+      action: { label: 'Become an Affiliate', href: '/movers.html' },
     },
   ];
 

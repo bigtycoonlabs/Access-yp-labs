@@ -1,7 +1,7 @@
 // Per-concept creator intent — the keystone that lets Clay coach.
 //
 // For one concept, a creator has a plan: build it themselves and launch it as a real business, keep
-// refining it to sell at the highest value in the Dream Market, or they're still exploring. Clay reads
+// refining it to sell at the highest value in the Exchange, or they're still exploring. Clay reads
 // this in every concept conversation and coaches toward it; when it's unknown he learns it and
 // records it here. This module is the single source of truth: the same PATHS the UI shows are the
 // ones Clay coaches from, so the guidance a creator hears always matches the choices they see.
@@ -24,10 +24,10 @@ const PATHS = [
   {
     id: 'refine_to_sell',
     label: 'Refine it to sell',
-    short: 'Polish the concept to sell at the highest honest value in the Dream Market.',
+    short: 'Polish the concept to sell at the highest honest value in the Exchange.',
     coaching: 'Coach toward a sellable asset: sharpen the pitch, the proof, the demo, and the '
       + 'completeness so a buyer immediately sees the value. Aim for the highest HONEST sale price '
-      + 'in the Dream Market — never inflate or fabricate traction to raise it.',
+      + 'in the Exchange — never inflate or fabricate traction to raise it.',
   },
   {
     id: 'exploring',
@@ -46,13 +46,13 @@ const EARNING_PATHS = [
   {
     id: 'sell_your_ideas',
     title: 'Build and sell your own ideas',
-    how: 'Shape a concept with Clay, refine it, and list it in the Dream Market. When it sells you '
+    how: 'Shape a concept with Clay, refine it, and list it in the Exchange. When it sells you '
       + 'earn the sale price minus the platform fee.',
   },
   {
     id: 'resell_ideas',
     title: 'Buy and resell other people\u2019s ideas',
-    how: 'Buy a concept in the Dream Market, sharpen or extend it with Clay, and relist it for more '
+    how: 'Buy a concept in the Exchange, sharpen or extend it with Clay, and relist it for more '
       + 'than you paid.',
   },
   {

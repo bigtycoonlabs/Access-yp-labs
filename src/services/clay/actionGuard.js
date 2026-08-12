@@ -26,11 +26,11 @@ function claimedCompletedActions(text) {
   const t = (text || '').toLowerCase();
   const out = [];
 
-  // LISTED on the marketplace / Dream Market
+  // LISTED on the marketplace / Exchange
   const listed =
-    /\b(i'?ve|i have|i just|i'?ve gone ahead and)\b[^.!?]{0,45}\b(listed|posted|published|put it up|put your (concept|idea) up)\b[^.!?]{0,30}\b(marketplace|for sale|dreamhold|dream market|listing)\b/.test(t) ||
-    /\byour (concept|idea|listing)\b[^.!?]{0,20}\b(is|are)\b[^.!?]{0,8}\b(now )?(live|listed|posted|published|up)\b[^.!?]{0,18}\b(marketplace|for sale|dreamhold|dream market)\b/.test(t) ||
-    /\bit'?s (now )?(live|listed|up|published) (on the )?(marketplace|for sale|dreamhold|dream market)\b/.test(t);
+    /\b(i'?ve|i have|i just|i'?ve gone ahead and)\b[^.!?]{0,45}\b(listed|posted|published|put it up|put your (concept|idea) up)\b[^.!?]{0,30}\b(marketplace|for sale|dreamhold|Exchange|listing)\b/.test(t) ||
+    /\byour (concept|idea|listing)\b[^.!?]{0,20}\b(is|are)\b[^.!?]{0,8}\b(now )?(live|listed|posted|published|up)\b[^.!?]{0,18}\b(marketplace|for sale|dreamhold|Exchange)\b/.test(t) ||
+    /\bit'?s (now )?(live|listed|up|published) (on the )?(marketplace|for sale|dreamhold|Exchange)\b/.test(t);
   if (listed) out.push('listed');
 
   // PURCHASED / unlocked / kept

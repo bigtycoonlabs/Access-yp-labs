@@ -71,7 +71,7 @@ router.get('/:listingId/review', authenticate, authorize('staff', 'admin', 'mast
         price_cents: row.price_cents, starting_bid_cents: row.starting_bid_cents, created_at: row.created_at },
       // Sent under BOTH keys. The moderation page was renamed to read d.project while this still
       // only sent 'concept', so the review screen — the one used to decide whether something goes
-      // live in the Dream Market — was reading undefined for every field.
+      // live in the Exchange — was reading undefined for every field.
       concept: { id: row.concept_id, title: row.title, category: row.category, stage: row.stage,
         risk_summary: row.risk_summary, origin: row.origin, research_grounded: row.research_grounded,
         claims_verified: row.claims_verified, source_count: row.source_count, clays_take: row.clays_take },

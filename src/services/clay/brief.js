@@ -27,7 +27,7 @@ function parseModelJson(text) {
   try { return JSON.parse(t.slice(start, end + 1)); } catch (_) { return null; }
 }
 
-const SYSTEM = `You are Clay, writing a tight opportunity brief for a business concept listed on the Dream Market. Someone browsing wants to know at a glance: what problem it solves, who they'd serve, what they could realistically make, and why it might be them. Return a SINGLE JSON object and nothing else:
+const SYSTEM = `You are Clay, writing a tight opportunity brief for a business concept listed on the Exchange. Someone browsing wants to know at a glance: what problem it solves, who they'd serve, what they could realistically make, and why it might be them. Return a SINGLE JSON object and nothing else:
 {
   "problem": string,   // the real pain this answers, in one plain sentence.
   "customer": string,  // who they'd serve — the specific customer base — in one sentence, grounded in the research provided.

@@ -285,7 +285,7 @@
     g.appendChild(stat(w.confirmed||0, 'Clay Weekly subscribers'));
     g.appendChild(stat(w.this_week||0, 'joined this week'));
     g.appendChild(stat(s.desk ? s.desk.published : 0, 'Desk pieces published'));
-    g.appendChild(stat(s.active_movers||0, 'Dream Movers'));
+    g.appendChild(stat(s.active_movers||0, 'Affiliates'));
     // Shown here rather than in the task list: nobody on staff can accept or decline a partner
     // request, so counting it as something waiting on you was a queue that could never be cleared.
     if (s.partner_requests) g.appendChild(stat(s.partner_requests.open||0, 'partner asks open'));
@@ -380,7 +380,7 @@
     var needsPage = items.filter(function(l){ return !l.has_landing_page; }).length;
     host.appendChild(el('p', null, items.length + ' seeded listing' + (items.length===1?'':'s')
       + (needsPage ? (', ' + needsPage + ' without a landing page.') : ', all with a landing page.')
-      + ' Review, edit and approve them in Dream Market control.'));
+      + ' Review, edit and approve them in Exchange control.'));
 
     var list=el('div'); list.setAttribute('role','list');
     items.forEach(function(l){

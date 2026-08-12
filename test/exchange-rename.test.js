@@ -1,0 +1,75 @@
+'use strict';
+// THE MARKETPLACE IS THE EXCHANGE. THE ROLE IS AFFILIATE.
+//
+// "Dream" was doing the wrong work. It means NOT REAL, on a marketplace asking people for real money
+// for real business projects, and every other word on the page was fighting it — pre-proven,
+// transfer agreement, 20% fee, most listed projects do not sell.
+//
+// The brand is not changing: Access YP Labs stays. This names a room inside it, a sibling to The
+// Desk and Launch Partners, which is why it needs no qualifier in context.
+//
+// SCOPE, deliberately: copy only. dream_movers, mover_earnings, /api/movers, movers.html and
+// dreamhold.html are all untouched. Renaming those is a schema migration plus a set of broken
+// bookmarks for no user-visible gain, and doing it in the same pass as a copy change is how a
+// rename takes a platform down.
+
+const { test } = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs');
+const glob = (dir, ext) => fs.readdirSync(dir).filter((f) => f.endsWith(ext)).map((f) => dir + '/' + f);
+const SURFACES = [...glob('public', '.html'), ...glob('public/js', '.js')];
+
+test('no page still says Dream Market or Dream Mover', () => {
+  for (const f of SURFACES) {
+    const s = fs.readFileSync(f, 'utf8');
+    assert.ok(!/Dream Market/.test(s), f + ' still says Dream Market');
+    assert.ok(!/Dream Mover/.test(s), f + ' still says Dream Mover');
+  }
+});
+
+test('nothing calls a project a dream to a person', () => {
+  // A project on this platform is a project, a concept or a business. It is real, somebody may pay
+  // thousands for it, and calling it a dream tells a buyer it is not.
+  for (const f of SURFACES) {
+    const s = fs.readFileSync(f, 'utf8');
+    // Identifiers are exempt by design — dreamentry.js, dreamhold.html, dreamsEl.
+    // Identifiers and CSS class names are exempt by design — dreamentry.js, dreamhold.html,
+    // dreamsEl, .dream{}. What must not survive is a sentence a person reads.
+    const copy = s.replace(/dreamentry|dreamhold|dreamsEl|dreamHero|dreamholdLink|dream_movers|\.dream\b/g, '');
+    assert.ok(!/this dream|View this Dream|Claim this dream|No Dreams|Fresh Dreams|Untitled Dream/i.test(copy),
+      f + ' still calls a project a dream');
+  }
+});
+
+test('the identifiers are deliberately untouched', () => {
+  // If these ever change it is a migration, not a copy sweep.
+  assert.match(fs.readFileSync('src/routes/movers.js', 'utf8'), /FROM dream_movers/);
+  assert.ok(fs.existsSync('public/movers.html'));
+  assert.ok(fs.existsSync('public/dreamhold.html'));
+});
+
+test('Clay is TOLD the words changed, not just swapped underneath him', () => {
+  // Otherwise he speaks fluent old-vocabulary from his own past output and from every reference he
+  // has to the previous name, and the platform runs two vocabularies at once — worse than either
+  // name alone. Same lesson as the earning path that still recruited consultants months after
+  // consultants were retired.
+  const { CLAY_LANGUAGE } = require('../src/services/clay/version');
+  assert.match(CLAY_LANGUAGE, /The marketplace is THE EXCHANGE/);
+  assert.match(CLAY_LANGUAGE, /RETIRED WORDS/);
+  assert.match(CLAY_LANGUAGE, /same place, new name/);
+});
+
+test('and both surfaces get it, the member and the stranger', () => {
+  const { PUBLIC_SYSTEM_PROMPT } = require('../src/services/clay/capabilityProfile');
+  const agent = fs.readFileSync('src/services/clay/agent.js', 'utf8');
+  assert.match(PUBLIC_SYSTEM_PROMPT, /THE WORDS WE USE/);
+  assert.match(agent, /\$\{CLAY_LANGUAGE\}/);
+});
+
+test('affiliate, never broker', () => {
+  // Brokering the sale of a business is a licensed activity in several US states. The word invites a
+  // reading of this platform that is not true of it.
+  const { CLAY_LANGUAGE } = require('../src/services/clay/version');
+  assert.match(CLAY_LANGUAGE, /AFFILIATE, not a broker/);
+  assert.match(CLAY_LANGUAGE, /licensed activity/);
+});

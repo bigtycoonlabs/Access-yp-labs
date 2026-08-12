@@ -161,11 +161,11 @@ function renderPatterns(p) {
   if (!p || !p.conceptCount) return '';
   const bits = [`They have ${p.conceptCount} concept${p.conceptCount === 1 ? '' : 's'} in their Laboratory`];
   if (p.categoryFocus) bits.push(`concentrated in ${String(p.categoryFocus).replace(/_/g, ' ')}`);
-  if (p.listedCount) bits.push(`${p.listedCount} put on the Dream Market`);
+  if (p.listedCount) bits.push(`${p.listedCount} put on the Exchange`);
   if (p.operatingCount) bits.push(`${p.operatingCount} already operating`);
   let facts = bits.join(', ') + '.';
   if (p.disposition === 'both') facts += ' Across their concepts they both refine ideas to sell AND build ideas to launch themselves — a do-it-all creator; coach both sides.';
-  else if (p.disposition === 'sells') facts += ' So far they lean toward refining ideas to sell in the Dream Market — coach toward a sellable, packaged concept, while staying open if they signal a different aim.';
+  else if (p.disposition === 'sells') facts += ' So far they lean toward refining ideas to sell in the Exchange — coach toward a sellable, packaged concept, while staying open if they signal a different aim.';
   else if (p.disposition === 'launches') facts += ' So far they lean toward building ideas to launch and run themselves — coach toward proof, first customers, and going live, not toward a sale.';
   if (p.operatingCount) facts += ' Some of their concepts are businesses they already run, so part of the work here is growing what already exists, not only shaping something new.';
   if (p.daysSinceLastActive != null && p.daysSinceLastActive >= 14) {

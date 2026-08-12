@@ -1,6 +1,6 @@
 'use strict';
 // Similarity — pure and testable. Before Clay builds a brand-new idea from scratch, we check the
-// Dream Market for a listing that's already selling something a lot like it, so a creator can buy
+// Exchange for a listing that's already selling something a lot like it, so a creator can buy
 // and enhance instead of starting from zero. This is deliberately simple, deterministic
 // token-overlap matching (no external model, no new infra): it catches obvious overlaps well and
 // never claims more confidence than that. Generic scaffolding words (business, app, platform…) are

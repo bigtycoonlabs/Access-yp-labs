@@ -17,7 +17,7 @@ test('staff can edit a Clay listing, including its title', () => {
 });
 
 test('staff can NEVER edit a creator listing', () => {
-  // Rewriting somebody's sales copy, silently, under their own dreamer tag, would break what this
+  // Rewriting somebody's sales copy, silently, under their own display name, would break what this
   // platform promises. Two independent checks: origin could in principle be edited, the owning
   // account cannot.
   assert.match(routeSrc, /row\.origin === 'clay_seed' && row\.owner_email === 'clay@accessyplabs\.com'/);

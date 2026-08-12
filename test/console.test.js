@@ -51,7 +51,7 @@ test('the marketing worklist names listings never promoted', () => {
 test('the console points at the listing rather than duplicating its editor', () => {
   // Editing lived here while reviewing lived on the moderation screen, so changing a title meant
   // holding a listing in your head across two screens and hoping you were looking at the same one.
-  assert.match(page, /Review, edit and approve them in Dream Market control/);
+  assert.match(page, /Review, edit and approve them in Exchange control/);
   assert.match(page, /market-control\.html/);
   assert.ok(!/id='t-'\+l\.id|'t-'\+l\.id/.test(page), 'no duplicate title field on the console');
   assert.match(page, /A creator's listing is their work/);

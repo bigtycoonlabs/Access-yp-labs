@@ -740,7 +740,7 @@ router.post('/enterprise', authenticate, [
 }));
 
 // POST /api/clay/seed — STAFF ONLY. Ask Clay to invent, build, and post ONE seed concept to
-// the Dream Market FOR REVIEW (never straight to sale). A full build takes 1-3 minutes, so this is
+// the Exchange FOR REVIEW (never straight to sale). A full build takes 1-3 minutes, so this is
 // fire-and-forget: it lands in the moderation queue and emails staff when ready. runSeed owns its
 // own errors and never throws, so we never await it. Nothing goes live without a staff approval.
 router.post('/seed', authenticate, authorize('staff', 'admin', 'master_staff'), asyncHandler(async (req, res) => {
@@ -1050,19 +1050,19 @@ function buildExecutors(user) {
          WHERE ${clauses.join(' AND ')} ORDER BY l.created_at DESC LIMIT 25`, args);
       return { listings: r.rows };
     },
-    get_dreamer_tag: async () => {
+    get_builder_tag: async () => {
       const r = await query('SELECT display_name, open_to_partnering FROM users WHERE id=$1', [user.id]);
       const tag = (r.rows[0] && (r.rows[0].display_name || '').trim()) || null;
-      return { has_tag: !!tag, dreamer_tag: tag, open_to_partnering: !!(r.rows[0] && r.rows[0].open_to_partnering) };
+      return { has_tag: !!tag, builder_tag: tag, open_to_partnering: !!(r.rows[0] && r.rows[0].open_to_partnering) };
     },
-    set_dreamer_tag: async ({ tag }) => {
+    set_builder_tag: async ({ tag }) => {
       const name = String(tag || '').trim();
       if (name.length < 2 || name.length > 40) {
-        return { ok: false, message: 'A dreamer tag needs to be between 2 and 40 characters.' };
+        return { ok: false, message: 'A display name needs to be between 2 and 40 characters.' };
       }
       await query('UPDATE users SET display_name=$1 WHERE id=$2', [name, user.id]);
-      return { ok: true, dreamer_tag: name,
-        message: `Done — you are ${name} here now. That is the name on your listings, on the launch partner board, and on your Dream Mover page. Your real name stays private.` };
+      return { ok: true, builder_tag: name,
+        message: `Done — you are ${name} here now. That is the name on your listings, on the launch partner board, and on your Affiliate page. Your real name stays private.` };
     },
     find_similar_listings: async ({ idea }) => {
       const tokens = similarity.significantTokens(idea || '');
@@ -1152,7 +1152,7 @@ function buildExecutors(user) {
       if (!staffCapability.allows(user && user.role, 'decide_listing')) return { refused: true, note: 'Deciding listings is staff-only.' };
       const r = await moderationCore.decideListing(user, listing_id, { decision, reason, notes });
       if (!r.ok) return { status: 'error', message: r.error };
-      return { status: 'listing_' + r.status, listing_status: r.status, message: decision === 'approved' ? 'Approved — it’s live in the Dream Market now. Logged.' : 'Rejected and out of review. Logged.' };
+      return { status: 'listing_' + r.status, listing_status: r.status, message: decision === 'approved' ? 'Approved — it’s live in the Exchange now. Logged.' : 'Rejected and out of review. Logged.' };
     },
     report_queue: async () => {
       if (!staffCapability.allows(user && user.role, 'report_queue')) return { refused: true, note: 'That’s a staff-only view.' };
@@ -1371,7 +1371,7 @@ function buildExecutors(user) {
       // Verified live: this is exactly what happened, and the row was really written.
       if (own.rows[0].is_operating && path === 'refine_to_sell') {
         return { status: 'refused', message: 'That path was not recorded. This is a business they '
-          + 'already run, and a running business cannot be listed or sold in the Dream Market. Tell '
+          + 'already run, and a running business cannot be listed or sold in the Exchange. Tell '
           + 'them that plainly, then help them grow it or build it further — both are real paths.' };
       }
       const r = await intent.setIntent(concept_id, user.id, path, note, 'clay');
@@ -1624,7 +1624,7 @@ async function buildChatContext(req) {
     //
     // Staff may see it only where the project has ALREADY left the private stage, and only for the
     // reason it left:
-    //   * it is in the Dream Market or waiting on review — we are asked to review it;
+    //   * it is in the Exchange or waiting on review — we are asked to review it;
     //   * it has a published site or landing page — it is public already;
     //   * it is a Clay-seeded project, owned by the platform rather than by a person.
     //
@@ -1945,7 +1945,7 @@ function buildPackageEmail(title, coverage, assets, conceptId, claysTake, nextSt
     '<h1 style="font-family:system-ui,sans-serif;color:#1c1917">'+escapeHtml(title)+'</h1>'+
     '<p style="font-family:system-ui,sans-serif;font-size:16px;line-height:1.5">Your concept is ready — Clay at Access YP Labs finished building it. It’s also waiting in your Laboratory.</p>'+
     take + cta + gap + parts.join('') +
-    '<hr/><p style="color:#57534e;font-size:13px;font-family:system-ui,sans-serif">The Dream Market is a neutral marketplace. Concepts are pre-proven starting points, not guarantees of income.</p></div>';
+    '<hr/><p style="color:#57534e;font-size:13px;font-family:system-ui,sans-serif">The Exchange is a neutral marketplace. Concepts are pre-proven starting points, not guarantees of income.</p></div>';
 }
 
 // Short, honest email for when a build could not finish (redirect, empty, or error).

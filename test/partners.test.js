@@ -27,7 +27,7 @@ test('your own asks and offers view never selects an email address', () => {
 
 test('raising a hand does not hand the creator your contact details', () => {
   // Scan the WHOLE handler rather than a fixed number of lines, so adding a step to it (like the
-  // dreamer tag gate) can never quietly move the thing under test out of view.
+  // display name gate) can never quietly move the thing under test out of view.
   const from = src.indexOf("requests/:id/interest");
   const to = src.indexOf("router.get('/mine'");
   assert.ok(from > -1 && to > from, 'could not bound the interest handler');

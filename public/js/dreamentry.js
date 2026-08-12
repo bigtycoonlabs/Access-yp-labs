@@ -1,12 +1,12 @@
 // THE ENTRY TO THE MARKET, PLAYED WHERE YOU CLICK.
 //
-// It used to be its own page. Clicking "The Dream Market" landed on marketplace.html, which
-// redirected to enter.html, which asked you to press "Drift into the Dream Market" before showing
+// It used to be its own page. Clicking "The Exchange" landed on marketplace.html, which
+// redirected to enter.html, which asked you to press "Drift into the Exchange" before showing
 // you anything — a door in front of a door. Removing that button killed the sound, because a browser
 // will not start audio without a user gesture IN THE SAME DOCUMENT, and after the redirect there was
 // no gesture left.
 //
-// So the entry moves to where the gesture is. Clicking the Dream Market link plays it right there,
+// So the entry moves to where the gesture is. Clicking the Exchange link plays it right there,
 // on the page you are already on, and then takes you in. One click, sound intact, no extra screen.
 //
 // No skip and no mute, deliberately: it lasts under three seconds. A control to escape a three

@@ -1,9 +1,9 @@
 'use strict';
 // THE DOOR IN FRONT OF THE DOOR, AND THE LANGUAGE ON IT.
 //
-// Clicking "The Dream Market" landed on marketplace.html, which redirected to enter.html, which
-// asked you to click "Drift into the Dream Market" before letting you see anything. Somebody who
-// clicked The Dream Market has already said where they want to go. Asking them to confirm it on a
+// Clicking "The Exchange" landed on marketplace.html, which redirected to enter.html, which
+// asked you to click "Drift into the Exchange" before letting you see anything. Somebody who
+// clicked The Exchange has already said where they want to go. Asking them to confirm it on a
 // second screen is a door in front of a door.
 //
 // The owner's note on the copy, and he is right: "A thousand unlived ideas turn, all at once, toward

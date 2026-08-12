@@ -7,7 +7,7 @@ const { normalizeSlug, isValidSlug, commissionDisplay } = require('../lib/movers
 const stripe = require('../services/stripe');
 const router = express.Router();
 
-// Enroll as a Dream Mover, or update your promo page. Idempotent per user: the same
+// Enroll as a Affiliate, or update your promo page. Idempotent per user: the same
 // creator re-enrolling just updates their handle/headline/bio.
 router.post('/enroll', authenticate, [
   body('slug').isString(),
@@ -56,7 +56,7 @@ router.get('/me', authenticate, asyncHandler(async (req, res) => {
 }));
 
 
-// A Dream Mover's page is theirs to shape: a photo, a bio, and links to their own work off this
+// A Affiliate's page is theirs to shape: a photo, a bio, and links to their own work off this
 // platform. Links are normalised and limited rather than trusted: only http(s) is allowed (so a
 // javascript: URL can never be stored), each gets a plain label, and the list is capped so a page
 // can't become a link farm.
@@ -115,7 +115,7 @@ router.put('/me', authenticate, [
      req.body.photo_url === undefined ? null : photo,
      links === null ? null : JSON.stringify(links),
      req.body.show_real_name === undefined ? null : !!req.body.show_real_name]);
-  if (!r.rows.length) throw new ApiError(404, 'You are not enrolled as a Dream Mover yet.');
+  if (!r.rows.length) throw new ApiError(404, 'You are not enrolled as a Affiliate yet.');
   res.json({ mover: r.rows[0] });
 }));
 
@@ -126,7 +126,7 @@ router.post('/promote', authenticate, [
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   const me = await query('SELECT 1 FROM dream_movers WHERE user_id=$1', [req.user.id]);
-  if (!me.rows.length) throw new ApiError(403, 'Enroll as a Dream Mover first.');
+  if (!me.rows.length) throw new ApiError(403, 'Enroll as a Affiliate first.');
   const l = await query('SELECT id, status FROM listings WHERE id=$1', [req.body.listing_id]);
   if (!l.rows.length || l.rows[0].status !== 'live') throw new ApiError(404, 'That Dream is not available to promote.');
   await query(
@@ -149,7 +149,7 @@ router.delete('/promote/:listingId', authenticate, asyncHandler(async (req, res)
 // ledger row flips to 'paid' only if it was still 'pending', which also guards concurrency.
 router.post('/payout', authenticate, asyncHandler(async (req, res) => {
   const me = await query('SELECT 1 FROM dream_movers WHERE user_id=$1', [req.user.id]);
-  if (!me.rows.length) throw new ApiError(403, 'Enroll as a Dream Mover first.');
+  if (!me.rows.length) throw new ApiError(403, 'Enroll as a Affiliate first.');
   if (!stripe.configured()) {
     return res.json({ ok: false, reason: 'stripe_not_configured', message: 'Payouts are not enabled on the platform yet.' });
   }
@@ -187,25 +187,25 @@ router.post('/payout', authenticate, asyncHandler(async (req, res) => {
   res.json({ ok: true, paid_count: paidCount, paid_cents: paidCents, failed });
 }));
 
-// PUBLIC promo page data — a mover's shopfront. Their headline, the Dreams they're
-// selling (their own), and the Dreams they're championing (others'). Each carries the
+// PUBLIC promo page data — a mover's shopfront. Their headline, the Projects they're
+// selling (their own), and the Projects they're championing (others'). Each carries the
 // dollar commission and a promo link that credits this mover on a sale.
 router.get('/:slug', asyncHandler(async (req, res) => {
   const slug = normalizeSlug(req.params.slug);
-  // The dreamer tag carries here too. It is ONE identity across the platform — listings, the
+  // The display name carries here too. It is ONE identity across the platform — listings, the
   // partner board, and this promo page — so a person is known by the same name everywhere and their
   // real name stays private. Changing the tag changes it here as well, by design.
-  // The displayed name is the mover's own choice. It defaults to the dreamer tag — showing a real
+  // The displayed name is the mover's own choice. It defaults to the display name — showing a real
   // name has to be something a person deliberately turns on, never something that happens to them.
   const m = await query(
     `SELECT dm.user_id, dm.slug, dm.headline, dm.bio, dm.status,
             dm.photo_url, dm.links, dm.show_real_name,
-            COALESCE(NULLIF(u.display_name,''), 'A Dream Mover') AS dreamer_tag,
-            CASE WHEN dm.show_real_name THEN COALESCE(NULLIF(u.name,''), NULLIF(u.display_name,''), 'A Dream Mover')
-                 ELSE COALESCE(NULLIF(u.display_name,''), 'A Dream Mover') END AS shown_name
+            COALESCE(NULLIF(u.display_name,''), 'A Affiliate') AS builder_tag,
+            CASE WHEN dm.show_real_name THEN COALESCE(NULLIF(u.name,''), NULLIF(u.display_name,''), 'A Affiliate')
+                 ELSE COALESCE(NULLIF(u.display_name,''), 'A Affiliate') END AS shown_name
        FROM dream_movers dm JOIN users u ON u.id = dm.user_id
       WHERE dm.slug=$1`, [slug]);
-  if (!m.rows.length || m.rows[0].status !== 'active') throw new ApiError(404, 'No Dream Mover here.');
+  if (!m.rows.length || m.rows[0].status !== 'active') throw new ApiError(404, 'No Affiliate here.');
   const mover = m.rows[0];
 
   const rows = await query(
@@ -219,7 +219,7 @@ router.get('/:slug', asyncHandler(async (req, res) => {
               OR l.id IN (SELECT listing_id FROM mover_promotions WHERE mover_id=$1) )
       ORDER BY (l.seller_id = $1) DESC, l.created_at DESC`, [mover.user_id]);
 
-  const dreams = rows.rows.map((r) => ({
+  const projects = rows.rows.map((r) => ({
     id: r.id,
     title: r.title,
     category: r.category,
@@ -230,13 +230,13 @@ router.get('/:slug', asyncHandler(async (req, res) => {
     price_cents: r.price_cents,
     starting_bid_cents: r.starting_bid_cents,
     own: r.own,
-    // A mover earns the commission only on OTHER creators' Dreams; on their own they are
+    // A mover earns the commission only on OTHER creators' Projects; on their own they are
     // the seller and keep the full 80%, so no mover figure is shown there.
     commission: r.own ? null : commissionDisplay(r.price_cents),
     promo_url: '/listing.html?id=' + r.id + '&m=' + encodeURIComponent(slug),
   }));
 
-  res.json({ mover: { slug: mover.slug, headline: mover.headline, bio: mover.bio }, dreams });
+  res.json({ mover: { slug: mover.slug, headline: mover.headline, bio: mover.bio }, projects });
 }));
 
 module.exports = router;

@@ -1,30 +1,30 @@
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Sell a project — The Dream Market</title><link rel="stylesheet" href="/css/kiln.css"/>
+<title>Sell a project — The Exchange</title><link rel="stylesheet" href="/css/kiln.css"/>
 <style>.check{font-weight:400;display:flex;align-items:center;gap:10px;margin:8px 0;}.check input{width:auto;min-height:auto;}
 fieldset{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:0;}legend{font-weight:700;padding:0 6px;}</style>
   <link rel="canonical" href="https://accessyplabs.com/sell.html"/>
-  <meta name="description" content="List a business project on the Dream Market. Set your price, keep ownership until it sells, and hand a complete idea to the founder who’ll build it."/>
+  <meta name="description" content="List a business project on the Exchange. Set your price, keep ownership until it sells, and hand a complete idea to the founder who’ll build it."/>
   <meta property="og:type" content="website"/>
   <meta property="og:site_name" content="Access YP Labs"/>
-  <meta property="og:title" content="Sell a project — The Dream Market"/>
-  <meta property="og:description" content="List a business project on the Dream Market. Set your price, keep ownership until it sells, and hand a complete idea to the founder who’ll build it."/>
+  <meta property="og:title" content="Sell a project — The Exchange"/>
+  <meta property="og:description" content="List a business project on the Exchange. Set your price, keep ownership until it sells, and hand a complete idea to the founder who’ll build it."/>
   <meta property="og:url" content="https://accessyplabs.com/sell.html"/>
   <meta property="og:image" content="https://accessyplabs.com/img/og-cover.png"/>
   <meta property="og:image:width" content="1200"/>
   <meta property="og:image:height" content="630"/>
   <meta name="twitter:card" content="summary_large_image"/>
-  <meta name="twitter:title" content="Sell a project — The Dream Market"/>
-  <meta name="twitter:description" content="List a business project on the Dream Market. Set your price, keep ownership until it sells, and hand a complete idea to the founder who’ll build it."/>
+  <meta name="twitter:title" content="Sell a project — The Exchange"/>
+  <meta name="twitter:description" content="List a business project on the Exchange. Set your price, keep ownership until it sells, and hand a complete idea to the founder who’ll build it."/>
   <meta name="twitter:image" content="https://accessyplabs.com/img/og-cover.png"/>
 </head><body>
 <a class="skip" href="#main">Skip to main content</a>
 <header class="site"><div class="wrap bar">
   <a class="brand" href="/">Access YP Labs</a>
-  <nav class="top" aria-label="Primary"><a href="/movers.html">Become a Dream Mover</a><a href="/dashboard.html">Dashboard</a><a href="/app.html">Laboratory</a><a href="/marketplace.html">The Dream Market</a></nav>
+  <nav class="top" aria-label="Primary"><a href="/movers.html">Become an Affiliate</a><a href="/dashboard.html">Dashboard</a><a href="/app.html">Laboratory</a><a href="/marketplace.html">The Exchange</a></nav>
 </div></header>
 <main id="main" class="wrap">
-  <h1>Sell a project on The Dream Market</h1>
+  <h1>Sell a project on The Exchange</h1>
   <p class="muted">You can list at any stage. A fuller package — a business plan, a marketing strategy, and a build path — makes a stronger listing, and Clay can build these for you, but none of it is required to post. Buyers always see exactly how far along it is. Nothing lists until you submit it and staff review it.</p>
   <div id="feedback" role="alert" aria-live="assertive"></div>
 
@@ -65,9 +65,9 @@ fieldset{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margi
   </section>
 
   <section aria-labelledby="s3" id="sec3" hidden><h2 id="s3">3. Create your listing</h2>
-      <div><label for="penname">Your dreamer tag (shown on the listing instead of your real name)</label>
+      <div><label for="penname">Your display name (shown on the listing instead of your real name)</label>
         <input id="penname" type="text" maxlength="40" placeholder="e.g. NightMarket"/>
-        <button type="button" class="btn secondary" id="savepen">Save your dreamer tag</button>
+        <button type="button" class="btn secondary" id="savepen">Save your display name</button>
         <p id="penname-status" class="muted" role="status"></p>
         <p class="muted">Buyers see this name, never your account name. We still know it's you behind the scenes, for payouts and trust.</p></div>
       <div id="value-guide" role="region" aria-label="What this project is worth right now"></div>
@@ -123,7 +123,7 @@ async function loadValueGuide(id){
 // WHOSE SENTENCE IS THIS?
 //
 // Kiln.api rejects with the SERVER's message and sets .status on the error. Those messages are
-// written for people and are exactly what somebody should read: "The Dream Market sells unlaunched
+// written for people and are exactly what somebody should read: "The Exchange sells unlaunched
 // ideas, not running businesses."
 //
 // A bug in this page rejects with a JavaScript message and no status. Those must never be shown.
@@ -150,7 +150,7 @@ async function loadProjects(){
     // it returns HTTP 200 and logs no page error, because the throw is swallowed by the catch two
     // lines below and rendered as prose.
     //
-    // Running businesses can't be listed in the Dream Market — never offer them here.
+    // Running businesses can't be listed in the Exchange — never offer them here.
     const listable=(concepts||[]).filter(c=>!c.is_operating);
     listable.forEach(c=>{const o=el('option',null,c.title);o.value=c.id;sel.appendChild(o);});
     // An empty list is not the same as a broken one, and the person deserves to know which.
@@ -158,7 +158,7 @@ async function loadProjects(){
       const operating=(concepts||[]).length-listable.length;
       show(operating
         ? 'None of your projects can be listed yet. '+(operating===1?'The one you have is':'They are')
-          +' marked as a business you already run, and the Dream Market sells projects that have not '
+          +' marked as a business you already run, and the Exchange sells projects that have not '
           +'launched yet. You can still build on it in your Laboratory.'
         : 'You do not have a project to list yet. Build one with Clay first and it will appear here.');
     }
@@ -178,7 +178,7 @@ document.getElementById('project').addEventListener('change',e=>pickProject(e.ta
     const s=await Kiln.api('/sellers/status');
     if(s.display_name){ document.getElementById('penname').value=s.display_name; }
     const pnStatus=document.getElementById('penname-status');
-    if(pnStatus){ pnStatus.textContent = s.display_name ? ('Your dreamer tag is “'+s.display_name+'.” Edit it above and save to change it \u2014 it changes everywhere, including on anything you have already listed.') : 'You haven\u2019t chosen a dreamer tag yet \u2014 add one above so your real name never appears on a listing.'; }
+    if(pnStatus){ pnStatus.textContent = s.display_name ? ('Your display name is “'+s.display_name+'.” Edit it above and save to change it \u2014 it changes everywhere, including on anything you have already listed.') : 'You haven\u2019t chosen a builder tag yet \u2014 add one above so your real name never appears on a listing.'; }
     const note=document.getElementById('payout-note');
     if(note){
       if(!s.stripe_configured){
@@ -194,7 +194,7 @@ document.getElementById('project').addEventListener('change',e=>pickProject(e.ta
 })();
 document.getElementById('savepen').addEventListener('click',async()=>{
   const v=(document.getElementById('penname').value||'').trim();
-  if(v.length<2||v.length>40){ show('Your dreamer tag needs to be between 2 and 40 characters.'); return; }
+  if(v.length<2||v.length>40){ show('Your display name needs to be between 2 and 40 characters.'); return; }
   try{ await Kiln.api('/sellers/alias',{method:'PUT',body:{display_name:v}}); show('Pen name saved. Your listings will show "'+v+'".','ok'); announce('Pen name saved.'); const pn2=document.getElementById('penname-status'); if(pn2){ pn2.textContent='Your current pen name is “'+v+'.” Edit it above and Save to change it.'; } }
   catch(e){ showError(e, 'saving your pen name'); }
 });

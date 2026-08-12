@@ -18,7 +18,7 @@ router.get('/status', authenticate, asyncHandler(async (req, res) => {
   });
 }));
 
-// Public pen name for Dream Market listings — separate from, and shown instead of,
+// Public pen name for Exchange listings — separate from, and shown instead of,
 // the real account name. Anonymity is public-only; we still know the real user.
 router.put('/alias', authenticate, asyncHandler(async (req, res) => {
   const name = (req.body && typeof req.body.display_name === 'string') ? req.body.display_name.trim() : '';

@@ -271,7 +271,7 @@
   async function listingBox(conceptId, project) {
     var sect = el('section', 'panel');
     sect.setAttribute('aria-labelledby', 'listing-h');
-    var h = el('h2', null, 'Your Dream Market listing'); h.id = 'listing-h';
+    var h = el('h2', null, 'Your Exchange listing'); h.id = 'listing-h';
     sect.appendChild(h);
     actionsEl.appendChild(sect);
 
@@ -291,7 +291,7 @@
 
     if (!listing) {
       // A business somebody already runs cannot be listed — the API refuses it with a 409, and that
-      // is the right rule: the Dream Market sells unlaunched projects, not live operations.
+      // is the right rule: the Exchange sells unlaunched projects, not live operations.
       //
       // I wrote this section earlier in the same session as the staff fix that says an offered
       // button the server will refuse is the same as a button that does nothing, and then made that
@@ -300,12 +300,12 @@
       // end in a refusal.
       if (project && project.is_operating) {
         sect.appendChild(el('p', null, 'This is a business you already run, so it is not for sale '
-          + 'here. The Dream Market sells projects that have not launched yet, not live operations '
+          + 'here. The Exchange sells projects that have not launched yet, not live operations '
           + 'somebody is depending on. Everything else on this page still works — keep building it, '
           + 'and it stays yours.'));
         return;
       }
-      sect.appendChild(el('p', null, 'This project is not on the Dream Market. Listing it puts it in '
+      sect.appendChild(el('p', null, 'This project is not on the Exchange. Listing it puts it in '
         + 'front of buyers looking for a business to start. Most listed projects do not sell.'));
       var sell = el('a', 'btn', 'List this project for sale');
       sell.href = '/sell.html?project=' + encodeURIComponent(conceptId);
@@ -747,7 +747,7 @@
       //     rendered as nothing at all
       //   the delete box said "this project" instead of naming what it was about to delete
       //   the spoken vault summary said "your project" instead of the title
-      //   and `if (!project.is_operating)` was ALWAYS true, so "List this in the Dream Market" was
+      //   and `if (!project.is_operating)` was ALWAYS true, so "List this in the Exchange" was
       //     offered on businesses the API refuses to list. The guard was written correctly and had
       //     never once run.
       //
@@ -812,7 +812,7 @@
         cActs.appendChild(demo);
       }
       if (!project.is_operating) {
-        var list = el('a', 'btn secondary', 'List this in the Dream Market');
+        var list = el('a', 'btn secondary', 'List this in the Exchange');
         list.href = '/app.html?project=' + encodeURIComponent(id) + '&action=list';
         cActs.appendChild(list);
       }

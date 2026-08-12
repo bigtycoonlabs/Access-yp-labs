@@ -1,9 +1,9 @@
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Become a Dream Mover — Access YP Labs</title>
-<meta name="description" content="Promote businesses you believe in and earn 5% of every sale you drive. No idea of your own required, no cost to join — become a Dream Mover on Access YP Labs."/>
+<title>Become an Affiliate — Access YP Labs</title>
+<meta name="description" content="Promote businesses you believe in and earn 5% of every sale you drive. No idea of your own required, no cost to join — become an Affiliate on Access YP Labs."/>
   <link rel="canonical" href="https://accessyplabs.com/movers.html"/>
-<meta property="og:title" content="Become a Dream Mover — Access YP Labs"/>
+<meta property="og:title" content="Become an Affiliate — Access YP Labs"/>
 <meta property="og:description" content="Promote businesses you believe in and earn on every sale you drive. Free to join."/>
 <meta name="twitter:card" content="summary"/><link rel="stylesheet" href="/css/kiln.css"/>
 <style>
@@ -20,11 +20,11 @@
 <a class="skip" href="#main">Skip to main content</a>
 <header class="site"><div class="wrap bar">
   <a class="brand" href="/">Access YP Labs</a>
-  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/marketplace.html">The Dream Market</a></nav>
+  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/marketplace.html">The Exchange</a></nav>
 </div></header>
 <main id="main" class="wrap">
-  <h1>Become a Dream Mover</h1>
-  <p class="muted">Promote Dreams you believe in. When one sells through your link, you earn <strong>5% of the sale</strong> — paid by us, out of our cut, so the creator still keeps their full share. Build a promo page, champion the Dreams you love, and earn on every sale you drive.</p>
+  <h1>Become an Affiliate</h1>
+  <p class="muted">Promote Projects you believe in. When one sells through your link, you earn <strong>5% of the sale</strong> — paid by us, out of our cut, so the creator still keeps their full share. Build a promo page, champion the Projects you love, and earn on every sale you drive.</p>
   <div id="gate" role="status" aria-live="polite" class="muted">Loading…</div>
   <div id="panel" hidden></div>
   <div id="result" role="alert" aria-live="assertive"></div>
@@ -64,12 +64,12 @@ async function load(){
 function renderSignedOut(){
   gate.hidden=true; panel.hidden=false; panel.innerHTML='';
   const c=el('div','card');
-  c.appendChild(el('h2',null,'How being a Dream Mover works'));
+  c.appendChild(el('h2',null,'How being a Affiliate works'));
   const ol=document.createElement('ol');
   [
     'Create a free account — it takes a minute, and you do not need a business idea of your own.',
     'Get your own promo page with a link you can share anywhere.',
-    'Champion the Dreams you actually believe in from the Dream Market.',
+    'Champion the Projects you actually believe in from the Exchange.',
     'When someone buys one through your link, you earn 5% of that sale — paid out of our cut, so the creator still keeps their full share.'
   ].forEach(function(s){ ol.appendChild(el('li',null,s)); });
   c.appendChild(ol);
@@ -82,11 +82,11 @@ function renderSignedOut(){
   const already=el('p'); const a2=el('a',null,'I already have an account — sign in'); a2.href='/login.html?next=/movers.html';
   already.appendChild(a2); c.appendChild(already);
 
-  const browse=el('p'); const a3=el('a',null,'See what is in the Dream Market first'); a3.href='/dreamhold.html';
+  const browse=el('p'); const a3=el('a',null,'See what is in the Exchange first'); a3.href='/dreamhold.html';
   browse.appendChild(a3); c.appendChild(browse);
 
   panel.appendChild(c);
-  announce('Become a Dream Mover. Promote businesses you believe in and earn five percent of each sale. Create a free account to start.', true);
+  announce('Become an Affiliate. Promote businesses you believe in and earn five percent of each sale. Create a free account to start.', true);
 }
 
 function render(){
@@ -110,7 +110,7 @@ function renderEnroll(){
     const s=slug.value.trim(); if(!s){announce('Enter a handle.',true);slug.focus();return;}
     btn.disabled=true; say('Creating your promo page…');
     try{ await Kiln.api('/movers/enroll',{method:'POST',body:{slug:s,headline:hd.value||undefined,bio:bio.value||undefined}});
-      say('You are a Dream Mover! Your page is ready.',true); await load();
+      say('You are a Affiliate! Your page is ready.',true); await load();
     }catch(e){ if(e.sessionExpired) return goSignIn(); say(e.message||'Could not create your page.',true); btn.disabled=false; }
   });
   c.appendChild(btn); panel.appendChild(c);
@@ -156,7 +156,7 @@ function renderDashboard(){
       catch(err){ if(err.sessionExpired) return goSignIn(); say(err.message||'Could not cash out right now.',true); btn.disabled=false; } });
     pc.appendChild(btn);
   } else {
-    pc.appendChild(el('p','muted','No earnings to cash out yet. Promote Dreams below — you earn 5% of every sale you drive.'));
+    pc.appendChild(el('p','muted','No earnings to cash out yet. Promote Projects below — you earn 5% of every sale you drive.'));
   }
   ec.appendChild(pc);
   panel.appendChild(ec);
@@ -183,27 +183,27 @@ function renderDashboard(){
   });
   uc.appendChild(save); panel.appendChild(uc);
 
-  // Dreams to promote
-  const dc=el('div','card'); dc.appendChild(el('h2',null,'Dreams to promote'));
-  dc.appendChild(el('p','muted','Add live Dreams to your page. The amount shown is what you earn if that Dream sells through your link.'));
+  // Projects to promote
+  const dc=el('div','card'); dc.appendChild(el('h2',null,'Projects to promote'));
+  dc.appendChild(el('p','muted','Add live Projects to your page. The amount shown is what you earn if that Dream sells through your link.'));
   const list=el('div'); list.id='promo-list'; dc.appendChild(list);
   panel.appendChild(dc);
-  loadDreams();
+  loadProjects();
 }
 
-async function loadDreams(){
+async function loadProjects(){
   const list=document.getElementById('promo-list'); if(!list) return;
-  list.textContent='Loading Dreams…';
+  list.textContent='Loading Projects…';
   try{
     const {listings}=await Kiln.api('/listings',{auth:false});
     // Which ones am I already promoting? (from my public page)
     let mine=new Set();
-    try{ const pg=await Kiln.api('/movers/'+encodeURIComponent(state.mover.slug)); (pg.dreams||[]).forEach(d=>{ if(!d.own) mine.add(d.id); }); }catch(_){}
+    try{ const pg=await Kiln.api('/movers/'+encodeURIComponent(state.mover.slug)); (pg.projects||[]).forEach(d=>{ if(!d.own) mine.add(d.id); }); }catch(_){}
     list.innerHTML='';
-    if(!listings.length){ list.textContent='No live Dreams to promote right now.'; return; }
+    if(!listings.length){ list.textContent='No live Projects to promote right now.'; return; }
     listings.forEach(l=>{
       const d=el('div','dream');
-      d.appendChild(el('h3',null,l.title||'Untitled Dream'));
+      d.appendChild(el('h3',null,l.title||'Untitled project'));
       // A flat listing has a sale price, so the commission is a number. An auction does not have one
       // yet, and `(null||0)*0.05` was rendering "You earn $0.00" — asking somebody to promote a
       // listing while telling them it pays nothing. Say the rate instead: it is the part we know.
@@ -228,7 +228,7 @@ async function loadDreams(){
       });
       d.appendChild(btn); list.appendChild(d);
     });
-  }catch(e){ if(e.sessionExpired) return goSignIn(); list.textContent='Could not load Dreams: '+(e.message||''); }
+  }catch(e){ if(e.sessionExpired) return goSignIn(); list.textContent='Could not load Projects: '+(e.message||''); }
 }
 
 init();

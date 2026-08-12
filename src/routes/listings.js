@@ -102,7 +102,7 @@ router.post('/', authenticate, [
   const own = await query('SELECT id, is_operating, brief FROM concepts WHERE id=$1 AND owner_id=$2', [concept_id, req.user.id]);
   if (!own.rows.length) throw new ApiError(404, 'That project could not be found — it may have been removed, or it may not be yours.');
   if (own.rows[0].is_operating) {
-    throw new ApiError(409, 'The Dream Market sells unlaunched ideas, not running businesses. This is marked as a business you already operate, so it can\u2019t be listed. Clay can still help you enhance it — or find a complementary dream to add to it.');
+    throw new ApiError(409, 'The Exchange sells unlaunched ideas, not running businesses. This is marked as a business you already operate, so it can\u2019t be listed. Clay can still help you enhance it — or find a complementary dream to add to it.');
   }
 
   if (!risk_disclosed || !ownership_ack) {
@@ -180,7 +180,7 @@ router.post('/:id/withdraw', authenticate, asyncHandler(async (req, res) => {
 //
 // Public and unauthenticated on purpose: it feeds the first thing a stranger sees, and requiring a
 // session to find out what is for sale would be exactly backwards. Only live listings, only the
-// fields needed to make a card — no seller identity beyond the dreamer tag, nothing private.
+// fields needed to make a card — no seller identity beyond the display name, nothing private.
 router.get('/recent', asyncHandler(async (req, res) => {
   const limit = Math.min(Math.max(Number(req.query.limit) || 3, 1), 6);
   const r = await query(
@@ -320,7 +320,7 @@ router.get('/', asyncHandler(async (req, res) => {
   const r = await query(
     `SELECT l.id, l.format, l.price_cents, l.starting_bid_cents, l.auction_close_at,
             l.stage_label, l.completion_target, l.created_at,
-            c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dream Market creator') AS seller_alias,
+            c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Exchange creator') AS seller_alias,
             c.research_grounded, c.claims_verified, c.source_count,
             left(c.clays_take, 240) AS pitch, c.brief,
             (SELECT COUNT(*)::int FROM waitlist_signups w WHERE w.concept_id=l.concept_id) AS waiting
@@ -336,7 +336,7 @@ router.get('/', asyncHandler(async (req, res) => {
   res.json({ listings: r.rows });
 }));
 
-// Dreams leaping for you — live listings tuned to the user's interests and
+// Projects leaping for you — live listings tuned to the user's interests and
 // budget from onboarding, so the right ones surface first without overwhelm.
 router.get('/leaping', authenticate, asyncHandler(async (req, res) => {
   const pr = await query('SELECT interests, launch_budget FROM user_preferences WHERE user_id=$1', [req.user.id]);
@@ -347,7 +347,7 @@ router.get('/leaping', authenticate, asyncHandler(async (req, res) => {
   const r = await query(
     `SELECT l.id, l.format, l.price_cents, l.starting_bid_cents, l.auction_close_at,
             l.stage_label, l.completion_target, l.created_at,
-            c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dream Market creator') AS seller_alias,
+            c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Exchange creator') AS seller_alias,
             c.research_grounded, c.claims_verified, c.source_count,
             left(c.clays_take, 240) AS pitch, c.brief,
             (SELECT COUNT(*)::int FROM waitlist_signups w WHERE w.concept_id=l.concept_id) AS waiting
@@ -361,10 +361,10 @@ router.get('/leaping', authenticate, asyncHandler(async (req, res) => {
   res.json({ listings: r.rows, tuned: { interests, budget: prefs.launch_budget } });
 }));
 
-// Today's Dreams — the daily reason to come back. Fresh live Dreams (listed in the last
+// Today's Projects — the daily reason to come back. Fresh live Projects (listed in the last
 // week) tuned to the creator's interests and budget, newest first, never their own. Ships
 // with a short digest so a returning creator hears what's new in a single spoken line. If
-// nothing matches their interests yet, we broaden to all fresh Dreams rather than show an
+// nothing matches their interests yet, we broaden to all fresh Projects rather than show an
 // empty feed — the marketplace should always feel alive.
 router.get('/today', authenticate, asyncHandler(async (req, res) => {
   const pr = await query('SELECT interests, launch_budget FROM user_preferences WHERE user_id=$1', [req.user.id]);
@@ -374,11 +374,11 @@ router.get('/today', authenticate, asyncHandler(async (req, res) => {
   const interests = prefs.interests || [];
   const FRESH_DAYS = 7;
 
-  async function fetchDreams(useInterests) {
+  async function fetchProjects(useInterests) {
     const r = await query(
       `SELECT l.id, l.format, l.price_cents, l.starting_bid_cents, l.auction_close_at,
               l.stage_label, l.created_at,
-              c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dream Market creator') AS seller_alias,
+              c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Exchange creator') AS seller_alias,
               c.research_grounded, c.claims_verified, c.source_count,
               left(c.clays_take, 240) AS pitch, c.brief,
               (l.created_at >= now() - interval '24 hours') AS is_new_today,
@@ -395,15 +395,15 @@ router.get('/today', authenticate, asyncHandler(async (req, res) => {
     return r.rows;
   }
 
-  let dreams = await fetchDreams(interests.length > 0);
+  let projects = await fetchProjects(interests.length > 0);
   let broadened = false;
-  if (!dreams.length && interests.length) { dreams = await fetchDreams(false); broadened = true; }
+  if (!projects.length && interests.length) { projects = await fetchProjects(false); broadened = true; }
 
-  const newToday = dreams.filter((d) => d.is_new_today).length;
-  const categories = [...new Set(dreams.map((d) => String(d.category || '').replace(/_/g, ' ')).filter(Boolean))].slice(0, 3);
+  const newToday = projects.filter((d) => d.is_new_today).length;
+  const categories = [...new Set(projects.map((d) => String(d.category || '').replace(/_/g, ' ')).filter(Boolean))].slice(0, 3);
   res.json({
-    dreams,
-    digest: { count: dreams.length, new_today: newToday, categories, broadened, fresh_days: FRESH_DAYS },
+    projects,
+    digest: { count: projects.length, new_today: newToday, categories, broadened, fresh_days: FRESH_DAYS },
     tuned: { interests, budget: prefs.launch_budget },
   });
 }));
@@ -443,7 +443,7 @@ router.get('/:id/demo-description', asyncHandler(async (req, res) => {
 // Single listing (public if live; owner may view any state).
 router.get('/:id', asyncHandler(async (req, res) => {
   const r = await query(
-    `SELECT l.*, c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Dream Market creator') AS seller_alias,
+    `SELECT l.*, c.title, c.category, c.risk_summary, COALESCE(u.display_name, 'A Exchange creator') AS seller_alias,
             c.research_grounded, c.claims_verified, c.source_count, c.next_steps, c.clays_take, c.brief,
             (SELECT COUNT(*)::int FROM waitlist_signups w WHERE w.concept_id=l.concept_id) AS waiting,
             -- A project can be BOTH for sale and looking for a launch partner. Surfacing that here

@@ -19,7 +19,7 @@ function withRow(row, fn) {
 }
 const base = { projects:0, moving:0, live_listings:0, payouts_ready:0, is_mover:0,
   sales_cents:0, pending_cents:0, mover_cents:0, my_asks:0, hands_waiting:0, watching:0,
-  dreamer_tag:null, open_to_partnering:false };
+  builder_tag:null, open_to_partnering:false };
 
 test('a zero is stated as a zero, and Clay is told not to soften it', async () => {
   const out = await withRow(base, (m) => m.renderAwareness('u1'));

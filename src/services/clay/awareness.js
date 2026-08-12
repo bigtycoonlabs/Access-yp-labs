@@ -38,7 +38,7 @@ async function pathFor(userId) {
        (SELECT count(*) FROM partner_interest pi JOIN partner_requests pr ON pr.id=pi.request_id
          WHERE pr.owner_id=$1 AND pi.status='pending')                                       AS hands_waiting,
        (SELECT count(*) FROM watches WHERE user_id=$1)                                       AS watching,
-       (SELECT display_name FROM users WHERE id=$1)                                          AS dreamer_tag,
+       (SELECT display_name FROM users WHERE id=$1)                                          AS builder_tag,
        (SELECT open_to_partnering FROM users WHERE id=$1)                                    AS open_to_partnering`,
     [userId]);
   const s = r.rows[0] || {};
@@ -54,7 +54,7 @@ async function pathFor(userId) {
     my_asks: n(s.my_asks),
     hands_waiting: n(s.hands_waiting),
     watching: n(s.watching),
-    dreamer_tag: (s.dreamer_tag || '').trim() || null,
+    builder_tag: (s.builder_tag || '').trim() || null,
     open_to_partnering: !!s.open_to_partnering,
   };
 }
@@ -98,7 +98,7 @@ async function renderAwareness(userId) {
     } else if (p.moving === 0) {
       lines.push('Next step: none of their projects has a site or is marked ready to package.');
     } else if (p.live_listings === 0) {
-      lines.push('Next step: nothing of theirs is listed in the Dream Market yet.');
+      lines.push('Next step: nothing of theirs is listed in the Exchange yet.');
     } else if (!p.payouts_ready) {
       lines.push('Next step: payouts are not set up, so a sale could not pay them.');
     }
@@ -106,8 +106,8 @@ async function renderAwareness(userId) {
     if (p.hands_waiting > 0) {
       lines.push(`${p.hands_waiting} person(s) have offered to help on their launch partner ask and are WAITING for an answer.`);
     }
-    if (!p.dreamer_tag && p.projects > 0) {
-      lines.push('They have no dreamer tag yet, and they have finished at least one project — a good moment to offer one.');
+    if (!p.builder_tag && p.projects > 0) {
+      lines.push('They have no display name yet, and they have finished at least one project — a good moment to offer one.');
     }
 
     if (p.open_to_partnering) {

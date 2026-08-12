@@ -2,7 +2,7 @@
 //
 // A digest lists what happened. A publication has a point of view, teaches you something, and is
 // worth reading even in a week when nothing much occurred. These are the recurring sections that
-// carry that: the week's best writing, a business term explained properly, the dreamer who kept
+// carry that: the week's best writing, a business term explained properly, the builder who kept
 // turning up, and what changed in the wider world for very small businesses.
 //
 // The editorial stance, written down so it stays consistent: the rest of the world treats an
@@ -76,17 +76,17 @@ function termForWeek(weekStart) {
   return TERMS[((weeks % TERMS.length) + TERMS.length) % TERMS.length];
 }
 
-// ---- 3. The dreamer who kept turning up ---------------------------------------------------------
+// ---- 3. The builder who kept turning up ---------------------------------------------------------
 
 // Someone who showed up and worked this week — NOT what they worked on.
 //
 // This deliberately measures presence, not achievement: sessions with Clay and materials shaped. A
-// person with no sale, no listing and no audience can absolutely be the most active dreamer here,
+// person with no sale, no listing and no audience can absolutely be the most active builder here,
 // and saying so is the point. It never names a project, never says what they are building, and uses
-// the dreamer tag only — being noticed for turning up must never become being exposed.
+// the display name only — being noticed for turning up must never become being exposed.
 async function topDreamer(weekStart) {
   const r = await query(
-    `SELECT COALESCE(NULLIF(u.display_name,''), 'A dreamer') AS tag,
+    `SELECT COALESCE(NULLIF(u.display_name,''), 'A builder') AS tag,
             COUNT(DISTINCT a.id)::int AS shaped,
             COUNT(DISTINCT date_trunc('day', a.created_at))::int AS days_here
        FROM users u

@@ -29,21 +29,21 @@ const TOOLS = {
     irreversible: false, requires_confirmation: false, required: [], optional: ['query'], enums: { category: CATEGORIES },
     summary: 'Search live marketplace listings by keyword and/or category (read-only).',
   },
-  set_dreamer_tag: {
-    ask: 'Set your dreamer tag — the public name people here will know you by, on your listings, the launch partner board and your Dream Mover page. Your real name stays private. It changes everywhere going forward, including on anything you have already listed.',
+  set_builder_tag: {
+    ask: 'Set your display name — the public name people here will know you by, on your listings, the launch partner board and your Affiliate page. Your real name stays private. It changes everywhere going forward, including on anything you have already listed.',
     irreversible: false, requires_confirmation: true,
     required: ['tag'], enums: {},
-    summary: "Set the person's DREAMER TAG — the public name they are known by across Access YP Labs: on their listings, on the launch partner board, and on their Dream Mover page. Their real name stays private. It is like a gamer tag. They are asked to confirm before it changes, because changing it changes how people recognise them everywhere going forward.",
+    summary: "Set the person's DREAMER TAG — the public name they are known by across Access YP Labs: on their listings, on the launch partner board, and on their Affiliate page. Their real name stays private. It is like a gamer tag. They are asked to confirm before it changes, because changing it changes how people recognise them everywhere going forward.",
   },
-  get_dreamer_tag: {
+  get_builder_tag: {
     irreversible: false, requires_confirmation: false,
     required: [], enums: {},
-    summary: "Check whether this person has a dreamer tag yet, and what it is. Use this before suggesting they pick one, so you never nag someone who already has one.",
+    summary: "Check whether this person has a builder tag yet, and what it is. Use this before suggesting they pick one, so you never nag someone who already has one.",
   },
   find_similar_listings: {
     irreversible: false, requires_confirmation: false,
     required: ['idea'], enums: {},
-    summary: "BEFORE building a brand-new idea from scratch, check the Dream Market for a listing already selling something very similar. Pass the creator's idea as plain text. Read-only. If it returns strong:true, STOP building and offer to help them BUY that listing and enhance it into what they want, instead of starting from zero.",
+    summary: "BEFORE building a brand-new idea from scratch, check the Exchange for a listing already selling something very similar. Pass the creator's idea as plain text. Read-only. If it returns strong:true, STOP building and offer to help them BUY that listing and enhance it into what they want, instead of starting from zero.",
   },
   get_listing: {
     irreversible: false, requires_confirmation: false, required: ['listing_id'], enums: {},
@@ -142,7 +142,7 @@ const TOOLS = {
   store_payments: {
     irreversible: false, requires_confirmation: false,
     required: [], enums: {},
-    summary: "Check and set up PAYMENTS so the creator's store can take real money. Access YP Labs uses Stripe Connect: this checks whether the creator already has a connected account (the SAME one they'd use to sell in the Dream Market or earn as a Dream Mover) and whether it can accept charges yet. If they aren't set up, it returns a secure Stripe onboarding link they finish themselves — Stripe collects their details directly and you NEVER touch a key or credential. Offer this when a creator wants their store to actually sell. Relay exactly what the result says — payments READY, PENDING verification, or NOT STARTED — and never claim payments are live unless the result says READY.",
+    summary: "Check and set up PAYMENTS so the creator's store can take real money. Access YP Labs uses Stripe Connect: this checks whether the creator already has a connected account (the SAME one they'd use to sell in the Exchange or earn as a Affiliate) and whether it can accept charges yet. If they aren't set up, it returns a secure Stripe onboarding link they finish themselves — Stripe collects their details directly and you NEVER touch a key or credential. Offer this when a creator wants their store to actually sell. Relay exactly what the result says — payments READY, PENDING verification, or NOT STARTED — and never claim payments are live unless the result says READY.",
   },
   generate_social_content: {
     irreversible: false, requires_confirmation: false,
@@ -151,7 +151,7 @@ const TOOLS = {
     summary: 'Generate posts, image prompts, video scripts, templates, and a calendar. Free.',
   },
   list_on_marketplace: {
-    ask: 'Put this project up for sale in the Dream Market. It goes to review first rather than straight on sale, and the platform takes 20% of a sale made through the market. You can take it down again.',
+    ask: 'Put this project up for sale in the Exchange. It goes to review first rather than straight on sale, and the platform takes 20% of a sale made through the market. You can take it down again.',
     irreversible: true, requires_confirmation: true,
     required: ['concept_id', 'format', 'price'],
     enums: { format: MARKETPLACE_FORMATS },
@@ -192,7 +192,7 @@ const TOOLS = {
     irreversible: false, requires_confirmation: false,
     required: ['concept_id', 'path'], optional: ['note'],
     enums: { path: ['build_myself', 'refine_to_sell', 'exploring'] },
-    summary: "Record the creator's plan for THIS project when they tell you: build_myself (launch it as a real business they run), refine_to_sell (polish it to sell in the Dream Market), or exploring (undecided). note is an optional short line about their specific goal. Reversible — you can update it whenever their plan changes. Only set it from what the creator actually says; never guess it for them.",
+    summary: "Record the creator's plan for THIS project when they tell you: build_myself (launch it as a real business they run), refine_to_sell (polish it to sell in the Exchange), or exploring (undecided). note is an optional short line about their specific goal. Reversible — you can update it whenever their plan changes. Only set it from what the creator actually says; never guess it for them.",
   },
   value_breakdown: {
     irreversible: false, requires_confirmation: false,
@@ -255,7 +255,7 @@ const TOOLS = {
     irreversible: false, requires_confirmation: true,
     required: ['listing_id', 'decision'], optional: ['reason', 'notes'],
     enums: { decision: ['approved', 'rejected'], reason: ['missing_baseline', 'running_business', 'fraud', 'missing_risk_disclosure'] },
-    summary: "Staff only, consequential — always confirm first. Approve or reject a listing in the review queue. Approving makes it live in the Dream Market; rejecting takes it out of review. A rejection MUST carry a policy reason: missing_baseline (no complete baseline package), running_business (it's an already-operating business, and this marketplace sells pre-proven projects, not live businesses), fraud, or missing_risk_disclosure. 'It competes with mine' is never a valid reason. A moderator can't decide their own listing (owners may clear their own seed listings, recorded in the audit trail). Every decision is logged.",
+    summary: "Staff only, consequential — always confirm first. Approve or reject a listing in the review queue. Approving makes it live in the Exchange; rejecting takes it out of review. A rejection MUST carry a policy reason: missing_baseline (no complete baseline package), running_business (it's an already-operating business, and this marketplace sells pre-proven projects, not live businesses), fraud, or missing_risk_disclosure. 'It competes with mine' is never a valid reason. A moderator can't decide their own listing (owners may clear their own seed listings, recorded in the audit trail). Every decision is logged.",
   },
   report_queue: {
     irreversible: false, requires_confirmation: false, required: [], enums: {},

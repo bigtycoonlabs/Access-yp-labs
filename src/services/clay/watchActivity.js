@@ -91,7 +91,7 @@ async function notifyWatchers(limit = 200) {
         const emails = watchers.rows.map((w) => {
           const stop = `${SITE()}/watch/unsubscribe/${w.token}`;
           const body = `Hi ${w.name},\n\nSomething happened with a dream you're watching — ${group.title}:\n\n`
-            + `${lines.join('\n')}\n\nSee it: ${url}\n\n— Clay\n\nStop getting news about dreams you watch: ${stop}`;
+            + `${lines.join('\n')}\n\nSee it: ${url}\n\n— Clay\n\nStop getting news about projects you watch: ${stop}`;
           return {
             to: w.email,
             subject: `${group.title} — ${group.events.length === 1 ? 'an update' : group.events.length + ' updates'}`,
@@ -99,7 +99,7 @@ async function notifyWatchers(limit = 200) {
             html: `<p>Something happened with a dream you're watching — <strong>${group.title}</strong>:</p>`
               + `<ul>${group.events.map((e) => `<li>${e.detail || e.kind}</li>`).join('')}</ul>`
               + `<p><a href="${url}">See it</a></p><p>— Clay</p>`
-              + `<p style="font-size:12px;color:#666"><a href="${stop}">Stop getting news about dreams you watch</a>.</p>`,
+              + `<p style="font-size:12px;color:#666"><a href="${stop}">Stop getting news about projects you watch</a>.</p>`,
             headers: { 'List-Unsubscribe': `<${stop}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' },
           };
         });

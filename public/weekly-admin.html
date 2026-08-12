@@ -36,14 +36,14 @@
 
   <section aria-labelledby="step1-h">
       <h2 id="step1-h">Step one — assemble this week's draft</h2>
-      <p class="step">Clay gathers what actually happened this week — the pieces he wrote, who listed a project, who earned as a Dream Mover — and writes the opening and his Note. Safe to run more than once: it rebuilds the same week's draft rather than making a second one, and it will not touch an issue you already approved.</p>
+      <p class="step">Clay gathers what actually happened this week — the pieces he wrote, who listed a project, who earned as a Affiliate — and writes the opening and his Note. Safe to run more than once: it rebuilds the same week's draft rather than making a second one, and it will not touch an issue you already approved.</p>
       <p class="acts"><button type="button" class="btn" id="compose">Assemble this week's draft</button></p>
       <p id="composeresult" role="status" aria-live="polite" class="muted"></p>
     </section>
 
     <section aria-labelledby="step2-h">
       <h2 id="step2-h">Step two — choose a Project of the Week</h2>
-      <p class="step">Projects where somebody is clearly taking it somewhere: listed in the Dream Market, has a working site, or the creator told us they are building or launching. Asking sends that creator an email from Clay with accept and decline links. Nobody is featured without saying yes, and if they decline, Clay never asks about that project again.</p>
+      <p class="step">Projects where somebody is clearly taking it somewhere: listed in the Exchange, has a working site, or the creator told us they are building or launching. Asking sends that creator an email from Clay with accept and decline links. Nobody is featured without saying yes, and if they decline, Clay never asks about that project again.</p>
       <p id="candstatus" role="status" aria-live="polite" class="muted">Loading candidates…</p>
       <div id="cands"></div>
     </section>
@@ -79,7 +79,7 @@ document.getElementById('compose').addEventListener('click', async function(){
       var msg='Draft ready for the week of '+(r.issue&&r.issue.week_start||'this week')+'. It gathered '
         +(c.articles||0)+' Desk piece'+((c.articles===1)?'':'s')+', '
         +(c.creators||0)+' creator'+((c.creators===1)?'':'s')+' who listed, and '
-        +(c.movers||0)+' Dream Mover'+((c.movers===1)?'':'s')+' who earned.';
+        +(c.movers||0)+' Affiliate'+((c.movers===1)?'':'s')+' who earned.';
       out.textContent=msg; say(msg,true);
     } else if(r && r.reason==='already_approved_or_published'){
       out.textContent='This week\u2019s issue is already approved or published, so it was left alone. Nothing changed.';

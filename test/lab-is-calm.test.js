@@ -9,7 +9,7 @@ const html = fs.readFileSync('public/app.html', 'utf8');
 
 test('the menu is a list, not one run-on word', () => {
   // Links were appended with nothing between them, so a screen reader announced
-  // "LaboratoryDashboardThe Dream MarketDream MoverProfileSign out" as a single unbroken string —
+  // "LaboratoryDashboardThe ExchangeAffiliateProfileSign out" as a single unbroken string —
   // the first thing heard on every page of the platform.
   assert.match(nav, /function asList\(items\)/);
   assert.match(nav, /nav\.appendChild\(asList\(/);

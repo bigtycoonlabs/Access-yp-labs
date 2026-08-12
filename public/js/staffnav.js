@@ -22,7 +22,7 @@
 (function () {
   var LINKS = [
     ['/console.html', 'Operations', 'the day: what needs a person right now'],
-    ['/market-control.html', 'Dream Market', 'review, edit and approve listings'],
+    ['/market-control.html', 'Exchange', 'review, edit and approve listings'],
     ['/desk-admin.html', "Clay's Desk", 'review what Clay wrote'],
     ['/weekly-admin.html', 'Clay Weekly', 'assemble and send the magazine'],
     ['/people.html', 'People', 'accounts and creators'],

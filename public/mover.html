@@ -1,13 +1,13 @@
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>A Dream Mover — Access YP Labs</title>
-<meta name="description" content="Businesses worth building, picked out by a Dream Mover. Each one was shaped and proven before it exists — claim one and launch it as your own."/>
+<title>A Affiliate — Access YP Labs</title>
+<meta name="description" content="Businesses worth building, picked out by a Affiliate. Each one was shaped and proven before it exists — claim one and launch it as your own."/>
 <meta property="og:type" content="profile"/>
-<meta property="og:title" content="Dreams worth building — Access YP Labs"/>
+<meta property="og:title" content="Projects worth building — Access YP Labs"/>
 <meta property="og:description" content="A hand-picked set of pre-proven businesses you can claim and launch as your own."/>
 <meta property="og:site_name" content="Access YP Labs"/>
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="Dreams worth building — Access YP Labs"/>
+<meta name="twitter:title" content="Projects worth building — Access YP Labs"/>
 <meta name="twitter:description" content="A hand-picked set of pre-proven businesses you can claim and launch as your own."/>
 <link rel="stylesheet" href="/css/kiln.css"/>
 <style>
@@ -20,12 +20,12 @@
 <a class="skip" href="#main">Skip to main content</a>
 <header class="site"><div class="wrap bar">
   <a class="brand" href="/">Access YP Labs</a>
-  <nav class="top" aria-label="Primary"><a href="/marketplace.html">The Dream Market</a></nav>
+  <nav class="top" aria-label="Primary"><a href="/marketplace.html">The Exchange</a></nav>
 </div></header>
 <main id="main" class="wrap">
-  <div id="head"><h1 id="title" tabindex="-1">A Dream Mover</h1></div>
+  <div id="head"><h1 id="title" tabindex="-1">A Affiliate</h1></div>
   <div id="status" role="status" aria-live="polite" class="muted">Loading…</div>
-  <div id="dreams"></div>
+  <div id="projects"></div>
 </main>
 <script src="/js/a11y.js?v=20260808e"></script><script src="/js/api.js?v=20260808e"></script><script src="/js/nav.js?v=20260808e"></script><script src="/js/dreamentry.js?v=20260811b"></script>
 <script>
@@ -36,13 +36,13 @@ function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=nu
 function money(c){return '$'+((c||0)/100).toFixed(2);}
 
 async function init(){
-  if(!slug){ statusEl.textContent='No Dream Mover specified.'; return; }
+  if(!slug){ statusEl.textContent='No Affiliate specified.'; return; }
   try{
     const data=await Kiln.api('/movers/'+encodeURIComponent(slug),{auth:false});
     const m=data.mover||{};
-    // The dreamer tag is who this person IS here; the headline is what they chose to say. Show the
+    // The display name is who this person IS here; the headline is what they chose to say. Show the
     // tag so the same name follows them across listings, the partner board, and this page.
-    titleEl.textContent=m.headline||((m.shown_name||m.dreamer_tag||('@'+m.slug))+' — Dream Mover');
+    titleEl.textContent=m.headline||((m.shown_name||m.builder_tag||('@'+m.slug))+' — Affiliate');
     // The mover's own page: their photo, who they chose to appear as, their words, their links.
     // Everything is set with textContent or as attributes on real elements — never innerHTML — so a
     // bio or a link label can't inject anything into the page.
@@ -51,20 +51,20 @@ async function init(){
       if(m.photo_url){
         var img=document.createElement('img');
         img.src=m.photo_url;
-        img.alt='Photo of '+(m.shown_name||m.dreamer_tag||'this Dream Mover');
+        img.alt='Photo of '+(m.shown_name||m.builder_tag||'this Affiliate');
         img.width=96; img.height=96; img.loading='lazy';
         img.style.borderRadius='50%'; img.style.objectFit='cover'; img.style.display='block';
         head.appendChild(img);
       }
       if(m.shown_name){
         var who=document.createElement('p'); who.className='muted';
-        who.textContent='Dreams moved by '+m.shown_name;
+        who.textContent='Projects moved by '+m.shown_name;
         head.appendChild(who);
       }
       if(m.bio){ var b=document.createElement('p'); b.textContent=m.bio; head.appendChild(b); }
       var links=Array.isArray(m.links)?m.links:[];
       if(links.length){
-        var nav=document.createElement('nav'); nav.setAttribute('aria-label','Links from this Dream Mover');
+        var nav=document.createElement('nav'); nav.setAttribute('aria-label','Links from this Affiliate');
         var ul=document.createElement('ul');
         links.forEach(function(l){
           if(!l||!l.url) return;
@@ -78,34 +78,34 @@ async function init(){
       if(head.childNodes.length) titleEl.insertAdjacentElement('afterend', head);
     })();
     // Make the browser tab and any in-app share reflect WHOSE page this is, not a generic title.
-    document.title=(m.dreamer_tag||m.headline||('@'+m.slug))+' — Dreams worth building — Access YP Labs';
+    document.title=(m.builder_tag||m.headline||('@'+m.slug))+' — Projects worth building — Access YP Labs';
     if(m.bio){ headEl.appendChild(el('p','muted',m.bio)); }
     statusEl.textContent='';
-    render(data.dreams||[]);
+    render(data.projects||[]);
     titleEl.focus();
-    announce('Promo page for '+(m.dreamer_tag||m.headline||m.slug)+'. '+((data.dreams||[]).length)+' Dreams.',false);
+    announce('Promo page for '+(m.builder_tag||m.headline||m.slug)+'. '+((data.projects||[]).length)+' Projects.',false);
   }catch(e){
-    statusEl.textContent = e.status===404 ? 'This Dream Mover page was not found.' : (e.message||'Could not load this page.');
+    statusEl.textContent = e.status===404 ? 'This Affiliate page was not found.' : (e.message||'Could not load this page.');
   }
 }
 
-function render(dreams){
+function render(projects){
   dreamsEl.innerHTML='';
-  if(!dreams.length){ dreamsEl.appendChild(el('p','muted','No Dreams here yet — check back soon.')); return; }
-  const selling=dreams.filter(d=>d.own), champ=dreams.filter(d=>!d.own);
+  if(!dreams.length){ dreamsEl.appendChild(el('p','muted','Nothing here yet — check back soon.')); return; }
+  const selling=projects.filter(d=>d.own), champ=projects.filter(d=>!d.own);
   if(selling.length){ dreamsEl.appendChild(el('h2',null,'Dreams they’re selling')); selling.forEach(d=>dreamsEl.appendChild(card(d))); }
   if(champ.length){ dreamsEl.appendChild(el('h2',null,'Dreams they’re championing')); champ.forEach(d=>dreamsEl.appendChild(card(d))); }
 }
 
 function card(d){
   const c=el('div','dream');
-  c.appendChild(el('h3',null,d.title||'Untitled Dream'));
+  c.appendChild(el('h3',null,d.title||'Untitled project'));
   const tags=el('p');
   if(d.category){ tags.appendChild(el('span','tag',String(d.category).replace(/_/g,' '))); }
   tags.appendChild(el('span','tag',Kiln.priceLabel(d)));
   c.appendChild(tags);
   if(d.risk_summary){ c.appendChild(el('p','muted',d.risk_summary)); }
-  const link=el('a','btn',d.own?'View this Dream':'View this Dream');
+  const link=el('a','btn','View this project');
   link.href=d.promo_url; link.setAttribute('role','button');
   c.appendChild(link);
   return c;

@@ -11,7 +11,7 @@
 //
 // Two minutes later the build reported FAILED:
 //
-//   "This is an operating business already at 40 recurring homes. Dream Market is built for
+//   "This is an operating business already at 40 recurring homes. Exchange is built for
 //    unlaunched or pre-launch projects, not live-business growth consulting. The right next move is
 //    an operating growth plan or advisory engagement outside this project format."
 //
@@ -21,7 +21,7 @@
 //
 // The mechanism: the chat executor hardcoded `operating: false`, so everything Clay had worked out
 // about this person was thrown away at the boundary. The build then hit a blanket "already running →
-// redirect" rule — which is a rule about what the Dream Market may SELL, applied at BUILD time. The
+// redirect" rule — which is a rule about what the Exchange may SELL, applied at BUILD time. The
 // listing gate already enforces that rule separately, by itself, with its own message.
 
 const { test } = require('node:test');
@@ -56,7 +56,7 @@ test('a declared operator is never refused for being an operator', () => {
 });
 
 test('the rule is read narrowly, as being about selling rather than helping', () => {
-  assert.match(build, /a rule about what the Dream Market may SELL, not a rule about who you may help/);
+  assert.match(build, /a rule about what the Exchange may SELL, not a rule about who you may help/);
 });
 
 test('the line itself still holds where it belongs — at listing', () => {

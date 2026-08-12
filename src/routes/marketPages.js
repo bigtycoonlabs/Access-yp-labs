@@ -1,6 +1,6 @@
 // SERVER-RENDERED LISTING PAGES.
 //
-// The Dream Market had no indexable inventory. Every listing shared one title — "Listing — The Dream
+// The Exchange had no indexable inventory. Every listing shared one title — "Listing — The Dream
 // Market" — carried no h1, and rendered entirely from JavaScript, so a crawler saw thirteen
 // identical empty shells. The Desk, which sells nothing, was fully indexed; the marketplace, which
 // is the business, was invisible.
@@ -56,14 +56,14 @@ ${body}
 }
 
 // A listing's own words, for the title and description. Falls back down a chain rather than to
-// something generic, because "Listing — The Dream Market" repeated thirteen times is what made every
+// something generic, because "Listing — The Exchange" repeated thirteen times is what made every
 // page look like a duplicate of every other one.
 function describe(row) {
   const brief = row.brief && typeof row.brief === 'object' ? row.brief : {};
   const bits = [brief.problem, brief.customer, row.risk_summary].filter(Boolean);
   const text = bits.join(' ').replace(/\s+/g, ' ').trim();
   if (text) return text.slice(0, 300);
-  return `An unbuilt business project for sale on the Dream Market: ${row.title}. `
+  return `An unbuilt business project for sale on the Exchange: ${row.title}. `
     + 'Researched and packaged, ready for somebody to take on.';
 }
 
@@ -74,7 +74,7 @@ router.get('/market/:id', asyncHandler(async (req, res, next) => {
     `SELECT l.id, l.price_cents, l.starting_bid_cents, l.auction_close_at,
             l.format, l.stage_label, l.status, l.created_at,
             c.title, c.category, c.risk_summary, c.brief, c.clays_take,
-            COALESCE(u.display_name, 'A Dream Market creator') AS seller_alias
+            COALESCE(u.display_name, 'A Exchange creator') AS seller_alias
        FROM listings l
        JOIN concepts c ON c.id = l.concept_id
        JOIN users u ON u.id = l.seller_id
@@ -90,7 +90,7 @@ router.get('/market/:id', asyncHandler(async (req, res, next) => {
       canonical: `${SITE()}/marketplace.html`,
       body: `<h1>This project is no longer for sale</h1>
         <p>It was either claimed by somebody or taken down by the person who listed it.</p>
-        <p><a href="/marketplace.html">See what is on the Dream Market now</a></p>`,
+        <p><a href="/marketplace.html">See what is on the Exchange now</a></p>`,
     }));
   }
 
@@ -111,7 +111,7 @@ router.get('/market/:id', asyncHandler(async (req, res, next) => {
   ].filter((x) => x[1]);
 
   const body = `
-  <p><a href="/marketplace.html">← The Dream Market</a></p>
+  <p><a href="/marketplace.html">← The Exchange</a></p>
   <h1>${esc(row.title)}</h1>
   <p class="muted">An unbuilt business project, listed by ${esc(row.seller_alias)} · ${esc(price)}</p>
   ${row.format === 'auction' && row.auction_close_at
