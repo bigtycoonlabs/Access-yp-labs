@@ -26,13 +26,33 @@ const LAUNCHABLE_TYPES = ['built_site', 'code_file', 'html_demo'];
 //
 // So the ceiling grows with what has actually been built, and the top tier has no fixed ceiling at
 // all — someone who keeps adding keeps seeing it move.
+// THE LADDER, PRICED AGAINST WHAT THIS MARKET ACTUALLY PAYS.
+//
+// These numbers used to top out at $250 for a full package and about $610 once depth was counted.
+// That was priced for the marketplace as it is today — 12 live listings, $45 to $325, averaging
+// $138 — rather than for what is being sold. A seller with a researched package and a working build
+// could not ask for what comparable projects change hands for.
+//
+// Published 2026 comparables for pre-revenue projects, which is exactly this inventory:
+//   an idea plus a domain                       $0 – $500
+//   a working product with no users             $500 – $3,000
+//   a product with a waitlist or early users    $2,000 – $10,000
+//   strong assets behind it                     $5,000 – $25,000+
+// with one marketplace in this niche averaging around $4,300 a deal, and a real $0-revenue SaaS
+// selling at $4,500.
+//
+// The tiers below map onto those bands. The important structural point is which of our tiers
+// corresponds to "a working product": launch_ready, and only launch_ready, because that tier
+// requires a built_site, code_file or html_demo. Everything below it is paper, however good the
+// paper is.
 const TIERS = {
-  bare_concept: { label: 'A shaped idea', low: 1000, high: 4000 },
-  shaped:       { label: 'A shaped idea with a head start', low: 2500, high: 9000 },
-  full_package: { label: 'A full package to build from', low: 7500, high: 25000 },
+  bare_concept: { label: 'A shaped idea', low: 1000, high: 50000 },
+  shaped:       { label: 'A shaped idea with a head start', low: 5000, high: 150000 },
+  full_package: { label: 'A full package to build from', low: 25000, high: 300000 },
   // No `high`. The ceiling for a launch-ready project is worked out from its depth below, because
-  // this is the tier where the difference between projects is largest.
-  launch_ready: { label: 'Ready for someone to launch', low: 20000, high: null },
+  // this is the tier where the difference between projects is largest — and where the market's own
+  // range runs from $2,000 to $25,000 and beyond.
+  launch_ready: { label: 'Ready for someone to launch', low: 100000, high: null },
 };
 
 // How much each additional piece of substance moves the ceiling.
@@ -40,9 +60,16 @@ const TIERS = {
 // Counted as DISTINCT KINDS of material, not files. Ten versions of a business plan is one plan; a
 // plan plus research plus a risk read plus a spec plus a demo is five different things a buyer is
 // getting, and that is what actually makes a package worth more.
-const DEPTH_STEP = 0.18;          // each distinct kind beyond the baseline adds 18% to the ceiling
+const DEPTH_STEP = 0.12;          // each distinct kind beyond the baseline adds 12% to the ceiling
 const BASELINE_KINDS = 3;         // roughly what a first build produces
-const LAUNCH_READY_STEP = 0.30;   // depth counts for more once it is genuinely launchable
+const LAUNCH_READY_STEP = 0.25;   // depth counts for more once it is genuinely launchable
+// Real demand roughly DOUBLES what a project fetches in the published comparables: a working product
+// with no users sits at $500–$3,000, and the same product with a waitlist or early users sits at
+// $2,000–$10,000. The old 1.35 on the ceiling alone understated that, and left the floor untouched —
+// which is wrong in a way that matters, because a project with people already waiting for it should
+// not start where one nobody has heard of starts.
+const PROOF_CEILING = 1.8;
+const PROOF_FLOOR = 1.5;
 
 function assessValue({ concept = {}, assets = [], waiting = 0 } = {}) {
   const fresh = (Array.isArray(assets) ? assets : []).filter((a) => a.is_current && !a.exclusive_locked);
@@ -96,8 +123,19 @@ function assessValue({ concept = {}, assets = [], waiting = 0 } = {}) {
   const base = t.high == null ? t.low * 4 : t.high;
   let high = Math.round(base * (1 + extra * step));
 
-  // Real proof of demand justifies the top of the range — and a bit above it.
-  if (has.proof) high = Math.round(high * 1.35);
+  // Real proof of demand lifts BOTH ends, because that is what the comparables do.
+  if (has.proof) { high = Math.round(high * PROOF_CEILING); low = Math.round(low * PROOF_FLOOR); }
+
+  // PAPER NEVER OUTPRICES A WORKING BUILD.
+  //
+  // Without this, a thoroughly researched package with a dozen kinds of material could be quoted
+  // above a project that has an actual site somebody could launch on Monday — which is not how any
+  // buyer of these thinks. They are asking what it will cost to run this without the person who
+  // built it, and paper leaves more of that cost with them.
+  //
+  // So anything short of launch-ready is capped at the base of launch-ready. It can climb the whole
+  // way there on depth and proof; it cannot pass a thing that exists.
+  if (!has.launchable) high = Math.min(high, TIERS.launch_ready.low * 4);
   if (high < low) high = low;
 
   const drivers = [];
