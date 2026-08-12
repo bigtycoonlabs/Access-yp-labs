@@ -32,6 +32,13 @@ body.drift .stage{transform:translateY(3vh);}
 button{font:inherit;font-size:1.1rem;min-height:52px;min-width:52px;padding:14px 30px;border-radius:999px;cursor:pointer;
   border:none;font-weight:700;color:#1a1230;background:linear-gradient(180deg,var(--dream),var(--dream2));box-shadow:0 0 44px rgba(140,224,255,.35);}
 button:focus-visible{outline:3px solid var(--glow);outline-offset:3px;}
+/* The way out, styled quietly. It is not the main event — arriving is — but it has to be a real
+   44px target and it has to be visible, because "skip this" hidden until focus is only a skip for
+   people who tab. */
+.skipentry{display:inline-block;min-height:44px;line-height:44px;padding:0 20px;border-radius:999px;
+  color:#e7e1f7;text-decoration:underline;font-size:1rem;opacity:.85;}
+.skipentry:hover{opacity:1;}
+.skipentry:focus-visible{outline:3px solid var(--glow);outline-offset:3px;}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;}
 @media (prefers-reduced-motion: reduce){
   .mote{display:none;} body.drift .bloom{animation:none;opacity:.8;transform:translate(-50%,-50%) scale(1.1);transition:opacity 1.2s ease;}
@@ -53,7 +60,13 @@ button:focus-visible{outline:3px solid var(--glow);outline-offset:3px;}
        between them and the whole market. Visually identical; it is now a real heading. -->
   <h1 class="kicker">Access YP Labs</h1>
   <p class="line show" id="line" aria-hidden="true">Below every waking marketplace, a sleeping one dreams.</p>
-  <button id="go">Drift into the Dream Market</button>
+  <!-- The "Drift into the Dream Market" button is gone. Somebody who clicked "The Dream Market" has
+       already said where they want to go; asking them to confirm it on a second screen is a door in
+       front of a door. The entry now plays on arrival and lets them in.
+
+       What replaces it is a way OUT, not a way in: a skip link for anyone who has seen it, is in a
+       hurry, or does not want to sit through an animation to look at what is for sale. -->
+  <a class="skipentry" id="skip" href="/marketplace.html?entered=1">Skip to the market</a>
 </main>
 <div class="sr-only" role="status" aria-live="assertive" id="narr"></div>
 <script src="/js/api.js?v=20260808e"></script>
@@ -116,22 +129,49 @@ function playDream(){
 var started=false;
 function drift(){
   if(started)return; started=true;
-  go.style.display='none';
   playDream();
   document.body.classList.add('drift');
   line.classList.remove('show');
-  setTimeout(function(){ line.textContent='You let go, and drift down into the dreaming.'; line.classList.add('show'); },220);
-  narr.textContent='You let go, and drift down into the dreaming, where the businesses the world never launched are kept.';
+  // THE LANGUAGE.
+  //
+  // "A thousand unlived ideas turn, all at once, toward you" was the owner's word for it: creepy. It
+  // is — a thousand things noticing you at the same moment is a horror image, not a welcome, and it
+  // is the last thing somebody hears before the market opens.
+  //
+  // "Something here already has your name on it" is worse, and worse in a way this platform has a
+  // rule about. It is a promise: that one of these is meant for you. We cannot know that, and the
+  // honest caution elsewhere says plainly that the median seller earns very little and most listed
+  // projects never sell. Opening with fate and closing with that is two voices.
+  //
+  // "You let go" also goes. Nobody arriving at a marketplace wants to be told they are surrendering.
+  //
+  // What is kept is the thing worth keeping: these are real businesses that nobody got around to
+  // starting, and they are sitting here waiting for someone. That is true, it is the actual pitch,
+  // and it does not need a ghost story.
+  setTimeout(function(){ line.textContent='Every one of these is a business somebody never got around to starting.'; line.classList.add('show'); },220);
+  narr.textContent='Every one of these is a business somebody never got around to starting.';
   setTimeout(function(){
     line.classList.remove('show');
-    setTimeout(function(){ line.textContent='A thousand unlived ideas turn, all at once, toward you.'; line.classList.add('show'); },160);
-    narr.textContent='A thousand unlived ideas turn, all at once, toward you. Something here already has your name on it.';
+    setTimeout(function(){ line.textContent='They are all still here. Have a look.'; line.classList.add('show'); },160);
+    narr.textContent='They are all still here. Have a look around the Dream Market.';
   }, 1900);
   try{ sessionStorage.setItem('descended','1'); }catch(e){}
   setTimeout(function(){ location.href='/marketplace.html?entered=1'; }, 3100);
 }
-go.addEventListener('click',drift);
-go.focus();
+// Somebody who has asked their browser to reduce motion has asked not to be shown this. Sending
+// them through it anyway, and making them wait three seconds for a redirect, is answering a stated
+// preference with a no. They go straight to the market.
+if (reduce) { location.replace('/marketplace.html?entered=1'); }
+else {
+  // On arrival, not on a second click.
+  //
+  // Audio needs a gesture on THIS page, and there is not one any more, so the sound will not play on
+  // a cold arrival. That is the trade and it is worth it: an extra click on every visit costs more
+  // than a chime once. playDream() fails quietly rather than pretending — the AudioContext simply
+  // stays suspended.
+  document.getElementById('skip').focus();
+  drift();
+}
 </script>
   <footer style="border-top:1px solid var(--line);color:var(--muted);font-size:15px;padding:22px 24px;text-align:center;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
     <nav aria-label="Legal">
