@@ -160,9 +160,21 @@ function speakable(text) {
               answerEl = document.createElement('p');
               answerEl.className = 'clay-answer-stream';
               answerEl.setAttribute('aria-hidden', 'true');
+              answerEl._raw = '';
               host.appendChild(answerEl);
             }
-            answerEl.textContent += speakable(ev.text);
+            // Strip on the ACCUMULATED text, never per chunk.
+            //
+            // My first version of this called speakable() on each delta and shipped, and 18 literal
+            // asterisks were still on screen when I looked at the live page. Obvious in hindsight:
+            // the chunks arrive split, so "**trust" lands in one and " and access**" in the next,
+            // and a regex looking for a matched pair can never see one inside a fragment.
+            //
+            // Keeping the raw text and re-rendering the whole thing each time is O(n^2) in theory
+            // and completely irrelevant here — a reply is a few hundred characters and the deltas
+            // arrive a few per second.
+            answerEl._raw += ev.text;
+            answerEl.textContent = speakable(answerEl._raw);
           } else if (ev.type === 'thinking') {
             show(ev.note + '…');
             // Not announced: "working out what to do next" is reassuring to see and tedious to hear

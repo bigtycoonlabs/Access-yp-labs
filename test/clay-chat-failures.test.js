@@ -18,10 +18,18 @@ test('markdown never reaches the screen as literal characters', () => {
   // is built for. His prompt already forbids markdown, and a prompt is guidance, so the render
   // strips it as well.
   assert.match(stream, /function speakable\(text\)/);
-  for (const call of ['p.textContent = speakable(text)', 'spoken.textContent = speakable(text)',
-    'answerEl.textContent += speakable(ev.text)']) {
+  for (const call of ['p.textContent = speakable(text)', 'spoken.textContent = speakable(text)']) {
     assert.ok(stream.includes(call), 'must strip on: ' + call);
   }
+  // STREAMING STRIPS ON THE ACCUMULATED TEXT, NEVER PER CHUNK.
+  //
+  // My first version called speakable() on each delta and I shipped it. Eighteen literal asterisks
+  // were still on the live page when I went and looked. The chunks arrive split — "**trust" in one
+  // and " and access**" in the next — so a regex looking for a matched pair can never see one
+  // inside a fragment. The test that passed was checking the call existed, not that it worked.
+  assert.match(stream, /answerEl\._raw \+= ev\.text;/);
+  assert.match(stream, /answerEl\.textContent = speakable\(answerEl\._raw\)/);
+  assert.ok(!/textContent \+= speakable/.test(stream), 'per-chunk stripping cannot work');
   // Emphasis is removed, not converted — turning it into markup would mean innerHTML on model
   // output, which is not a trade worth making.
   assert.ok(!/innerHTML\s*=\s*[^'"]*speakable/.test(stream));
@@ -39,6 +47,12 @@ test('the stripper handles what Clay actually emits', () => {
   assert.strictEqual(speakable('2 * 3 = 6'), '2 * 3 = 6');
   assert.strictEqual(speakable('snake_case_name'), 'snake_case_name');
   assert.strictEqual(speakable(null), '');
+
+  // And the case that actually bit: a bold run split across two streaming chunks. Stripping each
+  // chunk leaves both halves on screen; stripping the joined text removes them.
+  const chunks = ['It will be **trust', ' and access** here'];
+  assert.notStrictEqual(chunks.map(speakable).join(''), 'It will be trust and access here');
+  assert.strictEqual(speakable(chunks.join('')), 'It will be trust and access here');
 });
 
 test('a failed turn is drawn, not only announced', () => {
