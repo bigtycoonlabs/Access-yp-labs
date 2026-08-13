@@ -33,12 +33,12 @@ const TOOLS = {
     ask: 'Set your display name — the public name people here will know you by, on your listings, the launch partner board and your Affiliate page. Your real name stays private. It changes everywhere going forward, including on anything you have already listed.',
     irreversible: false, requires_confirmation: true,
     required: ['tag'], enums: {},
-    summary: "Set the person's DREAMER TAG — the public name they are known by across Access YP Labs: on their listings, on the launch partner board, and on their Affiliate page. Their real name stays private. It is like a gamer tag. They are asked to confirm before it changes, because changing it changes how people recognise them everywhere going forward.",
+    summary: "Set the person's DISPLAY NAME — the public name they are known by across Access YP Labs: on their listings, on the launch partner board, and on their Affiliate page. Their real name stays private. It is like a gamer tag. They are asked to confirm before it changes, because changing it changes how people recognise them everywhere going forward.",
   },
   get_builder_tag: {
     irreversible: false, requires_confirmation: false,
     required: [], enums: {},
-    summary: "Check whether this person has a builder tag yet, and what it is. Use this before suggesting they pick one, so you never nag someone who already has one.",
+    summary: "Check whether this person has a display name yet, and what it is. Use this before suggesting they pick one, so you never nag someone who already has one.",
   },
   find_similar_listings: {
     irreversible: false, requires_confirmation: false,

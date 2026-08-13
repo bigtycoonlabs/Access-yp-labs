@@ -127,3 +127,34 @@ test('the rename left no broken articles behind', () => {
     assert.ok(!/\ba Affiliate\b|\ba Exchange\b/.test(fs.readFileSync(f, 'utf8')), f);
   }
 });
+
+test('Clay knows the numbers people actually ask him', () => {
+  // Asked "what percent do Affiliates earn, and what is the cheapest I can list for", he refused to
+  // invent either. That refusal is correct and is the doctrine working — and it is also two facts
+  // the platform knows going unanswered, on a prompt whose own rule says "WHAT THINGS COST, stated
+  // exactly. People ask, and a wrong answer here costs trust immediately."
+  //
+  // Silence is safer than invention and worse than the truth.
+  const agent = fs.readFileSync('src/services/clay/agent.js', 'utf8');
+  const money = require('../src/lib/money');
+  assert.match(agent, /An Affiliate earns 5% of a sale made through their link/);
+  assert.match(agent, /comes out of the PLATFORM'S 20%, never the seller's 80%/);
+  assert.match(agent, /The minimum a project can be listed for is \$10/);
+  // Pinned to the code, so a change to the floor fails here rather than leaving Clay quoting a
+  // number the platform no longer enforces.
+  assert.strictEqual(money.PRICE_FLOOR_CENTS, 1000);
+  assert.strictEqual(money.MIN_BID_CENTS, 1000);
+  assert.strictEqual(money.moverCommissionCents(10000), 500);
+  assert.strictEqual(money.PLATFORM_RATE, 0.20);
+});
+
+test('the prompt no longer names things that were renamed', () => {
+  // My own rename sweep left "THROUGH THE DREAM MARKET" in the fee rule and a "THE DREAMER TAG"
+  // heading sitting above a body that said display name — so Clay was being handed a contradiction
+  // about the platform's own vocabulary.
+  const files = ['src/services/clay/agent.js', 'src/services/clay/spine.js'];
+  for (const f of files) {
+    const code = fs.readFileSync(f, 'utf8').replace(/^\s*\/\/.*$/gm, ' ');
+    assert.ok(!/DREAM MARKET|DREAMER TAG/.test(code), f + ' still names a retired term');
+  }
+});
