@@ -128,7 +128,7 @@ async function cancelSubscription(subscriptionId, opts) {
   }
 }
 
-// Pay a Affiliate their earned commission: a Connect transfer from the platform balance
+// Pay an Affiliate their earned commission: a Connect transfer from the platform balance
 // to the mover's own connected account (the same account a seller receives sale proceeds
 // on). The idempotency key makes a retry return the SAME transfer, so a crash between the
 // transfer and the ledger write can never double-pay.

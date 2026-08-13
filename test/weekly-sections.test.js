@@ -11,7 +11,7 @@ test('the magazine prints display names, never real names', () => {
   // It read u.name, so a publication that goes to every account and is posted publicly was printing
   // people's actual first and last names. The worst possible place for that rule to break.
   assert.match(weekly, /COALESCE\(NULLIF\(u\.display_name,''\), 'A creator'\)/);
-  assert.match(weekly, /COALESCE\(NULLIF\(u\.display_name,''\), 'A Affiliate'\)/);
+  assert.match(weekly, /COALESCE\(NULLIF\(u\.display_name,''\), 'An Affiliate'\)/);
   assert.match(flat(weekly), /THE DREAMER TAG, NEVER THE REAL NAME/i);
 });
 

@@ -82,3 +82,48 @@ test('Clay does not apologise for things he never did', () => {
   assert.match(CLAY_VOICE, /you can be warm and still be the one holding the facts steady/);
   assert.match(CLAY_VOICE, /When you ARE wrong, say you were wrong and move on/);
 });
+
+test('Clay does not guess which country somebody is in', () => {
+  // Caught live: a creator said "Cleveland" and got a first-year forecast in POUNDS STERLING, with
+  // DBS checks and National Insurance — a British criminal record check and a British tax scheme —
+  // delivered with complete confidence to somebody in Ohio. Many place names exist in more than one
+  // country. Getting it wrong is not a rounding error: it sends somebody to register with the wrong
+  // government.
+  const agent = fs.readFileSync('src/services/clay/agent.js', 'utf8');
+  assert.match(agent, /MONEY IS IN US DOLLARS, AND YOU DO NOT GUESS SOMEBODY'S COUNTRY/);
+  assert.match(agent, /Never name a country-specific scheme you have not been told applies/);
+});
+
+test('an earnings question is modelled, never forecast', () => {
+  // The legal exposure the owner asked about. Refusing to discuss money would make Clay useless, and
+  // a number with the arithmetic shown is genuinely valuable. What he must not do is present it as
+  // his prediction: "My number: eighteen thousand in year one" is a forecast.
+  const agent = fs.readFileSync('src/services/clay/agent.js', 'utf8');
+  assert.match(agent, /MODEL IT, DO NOT FORECAST IT/);
+  assert.match(agent, /Never state what a project WILL earn/);
+  assert.match(agent, /never quote an income figure for something listed in the Exchange/);
+});
+
+test('Clay is not still recruiting consultants', () => {
+  // Consultants were retired, and I said so. One line survived in the coaching prompt: "as they
+  // gain experience, creators can also consult for other creators for pay." So he kept selling a
+  // product with no routes, no checkout and nobody on the other end — the exact failure I had
+  // documented while fixing its twin in intent.js. Found by grepping for something else entirely.
+  for (const f of ['src/services/clay/agent.js', 'src/services/clay/capabilityProfile.js',
+    'src/services/clay/intent.js', 'src/services/clay/spine.js']) {
+    const code = fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+    assert.ok(!/consult for other creators|become a consultant|as a paid consultant/i.test(code),
+      f + ' still recruits consultants');
+  }
+});
+
+test('the rename left no broken articles behind', () => {
+  // "Dream Mover" -> "Affiliate" without touching the article in front of it, in 18 places including
+  // user-facing errors: "Enroll as a Affiliate first."
+  const files = [...fs.readdirSync('public').filter((f) => f.endsWith('.html')).map((f) => 'public/' + f),
+    ...fs.readdirSync('public/js').map((f) => 'public/js/' + f),
+    ...fs.readdirSync('src/routes').map((f) => 'src/routes/' + f)];
+  for (const f of files) {
+    assert.ok(!/\ba Affiliate\b|\ba Exchange\b/.test(fs.readFileSync(f, 'utf8')), f);
+  }
+});

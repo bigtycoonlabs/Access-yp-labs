@@ -70,7 +70,7 @@ async function topCreators(weekStart) {
 // percentage, and only what the ledger says.
 async function topMovers(weekStart) {
   const r = await query(
-    `SELECT COALESCE(NULLIF(u.display_name,''), 'A Affiliate') AS name,
+    `SELECT COALESCE(NULLIF(u.display_name,''), 'An Affiliate') AS name,
             m.slug,
             COALESCE(SUM(e.amount_cents),0)::int AS earned_cents,
             count(*)::int AS sales

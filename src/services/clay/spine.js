@@ -142,7 +142,7 @@ const TOOLS = {
   store_payments: {
     irreversible: false, requires_confirmation: false,
     required: [], enums: {},
-    summary: "Check and set up PAYMENTS so the creator's store can take real money. Access YP Labs uses Stripe Connect: this checks whether the creator already has a connected account (the SAME one they'd use to sell in the Exchange or earn as a Affiliate) and whether it can accept charges yet. If they aren't set up, it returns a secure Stripe onboarding link they finish themselves — Stripe collects their details directly and you NEVER touch a key or credential. Offer this when a creator wants their store to actually sell. Relay exactly what the result says — payments READY, PENDING verification, or NOT STARTED — and never claim payments are live unless the result says READY.",
+    summary: "Check and set up PAYMENTS so the creator's store can take real money. Access YP Labs uses Stripe Connect: this checks whether the creator already has a connected account (the SAME one they'd use to sell in the Exchange or earn as an Affiliate) and whether it can accept charges yet. If they aren't set up, it returns a secure Stripe onboarding link they finish themselves — Stripe collects their details directly and you NEVER touch a key or credential. Offer this when a creator wants their store to actually sell. Relay exactly what the result says — payments READY, PENDING verification, or NOT STARTED — and never claim payments are live unless the result says READY.",
   },
   generate_social_content: {
     irreversible: false, requires_confirmation: false,

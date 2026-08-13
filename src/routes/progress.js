@@ -74,7 +74,7 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
       title: 'Or earn without an idea of your own',
       done: s.is_mover,
       spoken: s.is_mover
-        ? 'Done. You are a Affiliate — share what you believe in and earn on each sale.'
+        ? 'Done. You are an Affiliate — share what you believe in and earn on each sale.'
         : 'Optional, and open to anyone. Become an Affiliate, promote projects you believe in, and earn a commission when one sells.',
       action: { label: 'Become an Affiliate', href: '/movers.html' },
     },
