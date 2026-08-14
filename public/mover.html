@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>An Affiliate — Access YP Labs</title>
+<title>Affiliate page — Access YP Labs</title>
 <meta name="description" content="Businesses worth building, picked out by an Affiliate. Each one was shaped and proven before it exists — claim one and launch it as your own."/>
 <meta property="og:type" content="profile"/>
 <meta property="og:title" content="Projects worth building — Access YP Labs"/>
@@ -23,7 +23,7 @@
   <nav class="top" aria-label="Primary"><a href="/marketplace.html">The Exchange</a></nav>
 </div></header>
 <main id="main" class="wrap">
-  <div id="head"><h1 id="title" tabindex="-1">An Affiliate</h1></div>
+  <div id="head"><h1 id="title" tabindex="-1">Affiliate page</h1></div>
   <div id="status" role="status" aria-live="polite" class="muted">Loading…</div>
   <div id="projects"></div>
 </main>
@@ -78,14 +78,32 @@ async function init(){
       if(head.childNodes.length) titleEl.insertAdjacentElement('afterend', head);
     })();
     // Make the browser tab and any in-app share reflect WHOSE page this is, not a generic title.
-    document.title=(m.builder_tag||m.headline||('@'+m.slug))+' — Projects worth building — Access YP Labs';
+    //
+    // And the HEADING as well, which is the one that was missed. Only document.title was set, so
+    // every Affiliate page on the platform announced "An Affiliate" as its h1 while the browser tab
+    // correctly showed the person's name. A screen-reader user navigating by heading was told
+    // nothing about whose page they had landed on.
+    //
+    // Same shape as the project page announcing "Your project" for every project somebody owns.
+    var who = m.builder_tag||m.headline||('@'+m.slug);
+    document.title=who+' — projects worth building — Access YP Labs';
+    titleEl.textContent=who;
     if(m.bio){ headEl.appendChild(el('p','muted',m.bio)); }
     statusEl.textContent='';
     render(data.projects||[]);
     titleEl.focus();
-    announce('Promo page for '+(m.builder_tag||m.headline||m.slug)+'. '+((data.projects||[]).length)+' Projects.',false);
+    announce('Promo page for '+(m.builder_tag||m.headline||m.slug)+'. '+((data.projects||[]).length)+' projects.',false);
   }catch(e){
-    statusEl.textContent = e.status===404 ? 'This Affiliate page was not found.' : (e.message||'Could not load this page.');
+    // A missing page needs a heading too, and it must not keep the placeholder — "An Affiliate"
+    // above "This Affiliate page was not found" reads as though somebody's page had emptied out.
+    if(e.status===404){
+      titleEl.textContent='Affiliate page not found';
+      statusEl.textContent='There is no Affiliate page at this link. The handle may have changed, or the page may have been taken down.';
+    } else {
+      titleEl.textContent='Affiliate page';
+      statusEl.textContent=(e.message||'Could not load this page.');
+    }
+    announce(statusEl.textContent,true);
   }
 }
 

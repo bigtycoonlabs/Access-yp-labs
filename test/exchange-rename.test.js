@@ -122,3 +122,20 @@ test('project is not a proper noun mid-sentence', () => {
     }
   }
 });
+
+test('an Affiliate page names whose page it is', () => {
+  // Only document.title was being set, so every Affiliate page announced "An Affiliate" as its h1
+  // while the browser tab correctly showed the person's name. Somebody navigating by heading was
+  // told nothing about whose page they had landed on.
+  //
+  // Same shape as the project page announcing "Your project" for every project somebody owns, found
+  // earlier this week. A heading that never changes is a heading that says nothing.
+  const mover = fs.readFileSync('public/mover.html', 'utf8');
+  assert.match(mover, /titleEl\.textContent=who;/);
+  assert.match(mover, /var who = m\.builder_tag\|\|m\.headline\|\|\('@'\+m\.slug\)/);
+  // A missing page gets its own heading rather than keeping the placeholder: "An Affiliate" above
+  // "not found" reads as though somebody's page had emptied out.
+  assert.match(mover, /titleEl\.textContent='Affiliate page not found'/);
+  assert.match(mover, /There is no Affiliate page at this link/);
+  assert.ok(!/>An Affiliate</.test(mover), 'no placeholder heading left');
+});
