@@ -24,7 +24,7 @@
 </div></header>
 <main id="main" class="wrap">
   <h1>Become an Affiliate</h1>
-  <p class="muted">Promote Projects you believe in. When one sells through your link, you earn <strong>5% of the sale</strong> — paid by us, out of our cut, so the creator still keeps their full share. Build a promo page, champion the Projects you love, and earn on every sale you drive.</p>
+  <p class="muted">Promote projects you believe in. When one sells through your link, you earn <strong>5% of the sale</strong> — paid by us, out of our cut, so the creator still keeps their full share. Build a promo page, champion the projects you love, and earn on every sale you drive.</p>
   <div id="gate" role="status" aria-live="polite" class="muted">Loading…</div>
   <div id="panel" hidden></div>
   <div id="result" role="alert" aria-live="assertive"></div>
@@ -69,7 +69,7 @@ function renderSignedOut(){
   [
     'Create a free account — it takes a minute, and you do not need a business idea of your own.',
     'Get your own promo page with a link you can share anywhere.',
-    'Champion the Projects you actually believe in from the Exchange.',
+    'Champion the projects you actually believe in from the Exchange.',
     'When someone buys one through your link, you earn 5% of that sale — paid out of our cut, so the creator still keeps their full share.'
   ].forEach(function(s){ ol.appendChild(el('li',null,s)); });
   c.appendChild(ol);
@@ -156,7 +156,7 @@ function renderDashboard(){
       catch(err){ if(err.sessionExpired) return goSignIn(); say(err.message||'Could not cash out right now.',true); btn.disabled=false; } });
     pc.appendChild(btn);
   } else {
-    pc.appendChild(el('p','muted','No earnings to cash out yet. Promote Projects below — you earn 5% of every sale you drive.'));
+    pc.appendChild(el('p','muted','No earnings to cash out yet. Promote projects below — you earn 5% of every sale you drive.'));
   }
   ec.appendChild(pc);
   panel.appendChild(ec);
@@ -185,7 +185,7 @@ function renderDashboard(){
 
   // Projects to promote
   const dc=el('div','card'); dc.appendChild(el('h2',null,'Projects to promote'));
-  dc.appendChild(el('p','muted','Add live Projects to your page. The amount shown is what you earn if that Dream sells through your link.'));
+  dc.appendChild(el('p','muted','Add live projects to your page. The amount shown is what you earn if that project sells through your link.'));
   const list=el('div'); list.id='promo-list'; dc.appendChild(list);
   panel.appendChild(dc);
   loadProjects();
@@ -193,14 +193,14 @@ function renderDashboard(){
 
 async function loadProjects(){
   const list=document.getElementById('promo-list'); if(!list) return;
-  list.textContent='Loading Projects…';
+  list.textContent='Loading projects…';
   try{
     const {listings}=await Kiln.api('/listings',{auth:false});
     // Which ones am I already promoting? (from my public page)
     let mine=new Set();
     try{ const pg=await Kiln.api('/movers/'+encodeURIComponent(state.mover.slug)); (pg.projects||[]).forEach(d=>{ if(!d.own) mine.add(d.id); }); }catch(_){}
     list.innerHTML='';
-    if(!listings.length){ list.textContent='No live Projects to promote right now.'; return; }
+    if(!listings.length){ list.textContent='No live projects to promote right now.'; return; }
     listings.forEach(l=>{
       const d=el('div','dream');
       d.appendChild(el('h3',null,l.title||'Untitled project'));
@@ -214,7 +214,7 @@ async function loadProjects(){
         pay.appendChild(document.createTextNode(' if it sells through your link ('+Kiln.priceLabel(l)+').'));
       }else{
         pay.appendChild(el('span','pay','You earn '+money(Math.round(cents*0.05))));
-        pay.appendChild(document.createTextNode(' if it sells through your link ('+money(cents)+' Dream).'));
+        pay.appendChild(document.createTextNode(' if it sells through your link ('+money(cents)+' project).'));
       }
       d.appendChild(pay);
       const on=mine.has(l.id);
@@ -228,7 +228,7 @@ async function loadProjects(){
       });
       d.appendChild(btn); list.appendChild(d);
     });
-  }catch(e){ if(e.sessionExpired) return goSignIn(); list.textContent='Could not load Projects: '+(e.message||''); }
+  }catch(e){ if(e.sessionExpired) return goSignIn(); list.textContent='Could not load projects: '+(e.message||''); }
 }
 
 init();

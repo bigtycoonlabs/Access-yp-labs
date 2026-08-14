@@ -92,3 +92,33 @@ test('the spoken form is "the Exchange", everywhere a person reads it', () => {
     assert.ok(!/YP Exchange/.test(fs.readFileSync(p, 'utf8')), p + ': the brand stays Access YP Labs');
   }
 });
+
+test('no singular "Dream" survives in anything spoken or shown', () => {
+  // The plural was swept and the SINGULAR escaped, inside a ternary: "1 fresh Dream" versus "3 fresh
+  // Projects". It is the first line a returning creator hears on their dashboard, so the retired
+  // vocabulary was the thing being said out loud. Another survived on the Affiliate page, in the
+  // commission line: "You earn $7.45 if it sells through your link ($149.00 Dream)."
+  const files = [...fs.readdirSync('public').filter((f) => f.endsWith('.html')).map((f) => 'public/' + f),
+    ...fs.readdirSync('public/js').map((f) => 'public/js/' + f)];
+  for (const f of files) {
+    const copy = fs.readFileSync(f, 'utf8')
+      .replace(/dreamentry|dreamhold|dreamsEl|dreamHero|dreamholdLink|\.dream\b/g, '');
+    assert.ok(!/\bDream\b/.test(copy), f + ' still says Dream');
+  }
+});
+
+test('project is not a proper noun mid-sentence', () => {
+  // "Dreams" was capitalised as a proper noun and the sweep carried the capital across: "Promote
+  // Projects you believe in", "Loading Projects…", "No live Projects to promote right now."
+  const files = [...fs.readdirSync('public').filter((f) => f.endsWith('.html')).map((f) => 'public/' + f),
+    ...fs.readdirSync('public/js').map((f) => 'public/js/' + f)];
+  for (const f of files) {
+    for (const line of fs.readFileSync(f, 'utf8').split('\n')) {
+      // Headings and titles keep their capital, and so do HTML comments — the dashboard's own note
+      // explaining this reorder quotes the section name "Today's Projects", and a comment is not
+      // something a person reads on the page.
+      if (/<h[1-6]|<title|id="[a-z-]*-h"|^\s*\/\/|^\s{5,}[A-Za-z]/.test(line)) continue;
+      assert.ok(!/(?<=[a-z,] )Projects?\b/.test(line), f + ': ' + line.trim().slice(0, 70));
+    }
+  }
+});

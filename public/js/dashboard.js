@@ -112,18 +112,18 @@
   async function loadTodaysProjects() {
     const c = document.getElementById('today'); if (!c) return;
     const dg = document.getElementById('today-digest');
-    c.innerHTML = ''; if (dg) dg.textContent = 'Finding fresh Projects for you…';
+    c.innerHTML = ''; if (dg) dg.textContent = 'Finding fresh projects for you…';
     try {
       const { projects, digest } = await Kiln.api('/listings/today');
       if (!projects.length) {
         if (dg) dg.textContent = '';
-        empty(c, 'No fresh Projects matched to you just yet — new ones arrive regularly. You can explore the full Exchange anytime.');
+        empty(c, 'No fresh projects matched to you just yet — new ones arrive regularly. You can explore the full Exchange anytime.');
         const go = el('a', 'btn secondary', 'Explore the Exchange'); go.href = '/marketplace.html'; go.setAttribute('role', 'button');
         c.appendChild(go);
         return;
       }
       // One spoken line a returning creator hears immediately.
-      let line = digest.count + (digest.count === 1 ? ' fresh Dream' : ' fresh Projects') + ' for you';
+      let line = digest.count + (digest.count === 1 ? ' fresh project' : ' fresh projects') + ' for you';
       if (digest.new_today) line += ', ' + digest.new_today + ' new today';
       if (digest.categories && digest.categories.length) line += ' — in ' + digest.categories.join(', ');
       if (digest.broadened) line += ' (a wider mix, to keep things fresh)';
