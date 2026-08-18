@@ -83,6 +83,7 @@ ${a.image_url ? `<meta name="twitter:image" content="${esc(a.image_url)}">` : ''
     <a href="/">Access YP Labs</a>
     <a href="/desk.html">Clay's Desk</a>
     <a href="/marketplace.html">The Exchange</a>
+    <a href="/seats.html">Help build</a>
   </nav>
   <main id="main" tabindex="-1">
     <article>
@@ -139,7 +140,7 @@ ${noindex ? '<meta name="robots" content="noindex, nofollow"/>' : (canonical ? `
 </head><body>
 <a class="skip" href="#main">Skip to main content</a>
 <header class="site"><div class="wrap bar"><a class="brand" href="/">Access YP Labs</a>
-<nav class="top" aria-label="Primary"><a href="/desk">The Desk</a><a href="/weekly">Clay Weekly</a><a href="/marketplace.html">The Exchange</a></nav>
+<nav class="top" aria-label="Primary"><a href="/desk">The Desk</a><a href="/weekly">Clay Weekly</a><a href="/marketplace.html">The Exchange</a><a href="/seats.html">Help build</a></nav>
 </div></header>
 <main id="main" class="wrap">${bodyHtml}</main>
 <footer class="site"><div class="wrap"><nav aria-label="Legal">
@@ -241,6 +242,8 @@ router.get('/sitemap.xml', asyncHandler(async (req, res) => {
     { loc: `${site}/`, priority: '1.0' },
     { loc: `${site}/desk.html`, priority: '0.9' },
     { loc: `${site}/marketplace.html`, priority: '0.9' },
+    // The way in for somebody who has a skill and no idea of their own, which is most people.
+    { loc: `${site}/seats.html`, priority: '0.9' },
     { loc: `${site}/dreamhold.html`, priority: '0.9' },
     { loc: `${site}/sell.html`, priority: '0.8' },
   ];

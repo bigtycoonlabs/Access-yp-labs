@@ -1,0 +1,246 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Projects looking for help — Access YP Labs</title>
+<meta name="description" content="Projects here that need a builder, a seller, a backer, an operator or a maker. Bring what you are good at, take a seat, and hold a real share of what you help build."/>
+<link rel="canonical" href="https://accessyplabs.com/seats.html"/>
+<meta property="og:title" content="Projects looking for help — Access YP Labs"/>
+<meta property="og:description" content="You do not need an idea of your own. Bring what you are good at."/>
+<meta name="twitter:card" content="summary"/>
+<link rel="stylesheet" href="/css/kiln.css"/>
+<style>
+.seat{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:14px;margin:10px 0;}
+.seat h3{margin:0 0 4px;} .kind{font-weight:600;}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;}
+.filters button{min-height:44px;}
+.field{margin:12px 0;} .field label{display:block;font-weight:600;margin-bottom:6px;}
+.field textarea{width:100%;box-sizing:border-box;padding:12px;font-size:16px;border:1px solid var(--line);border-radius:8px;min-height:90px;}
+</style>
+</head><body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site">
+  <a class="brand" href="/">Access YP Labs</a>
+  <nav class="top" aria-label="Primary"><a href="/dashboard.html">Dashboard</a><a href="/marketplace.html">The Exchange</a><a href="/movers.html">Affiliate</a></nav>
+</header>
+
+<main id="main" class="wrap">
+  <h1 id="page-h" tabindex="-1">Projects looking for help</h1>
+
+  <!-- THE OTHER FRONT DOOR.
+       The platform's opening question has always been what idea you never launched, and that quietly
+       filters out most of the people it is for. There are 55 concepts here and 12 creators who ever
+       made one. What the platform is short of is not ideas; it is everyone who could turn one into a
+       business, and every one of those people arrives with a SKILL and is immediately asked for the
+       one thing they do not have.
+       This page asks nothing of them except what they are good at. -->
+  <p>You do not need an idea of your own. Bring what you are good at, and hold a real share of
+     what you help build.</p>
+
+  <!-- Measured on a 390x780 phone: the first "Offer to help" sat at y=835, one scroll below the
+       fold, on the page whose entire job is getting somebody to offer. The filter row and the
+       count were pushing it down, and neither is worth a screenful. Both are tighter now and the
+       intro is one sentence shorter. -->
+  <div class="filters" id="filters"></div>
+  <p class="muted" id="count" role="status" aria-live="polite">Loading…</p>
+  <div id="seats"></div>
+</main>
+
+<script src="/js/a11y.js?v=20260808e"></script>
+<script src="/js/api.js?v=20260808e"></script>
+<script src="/js/nav.js?v=20260808e"></script>
+<script src="/js/dreamentry.js?v=20260811b"></script>
+<script>
+(function () {
+  function el(t, c, x) { var n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; }
+  var state = { kind: '' };
+  var KINDS = null;
+
+  function say(node, text) { node.textContent = text; if (window.announce) window.announce(text, true); }
+
+  async function load() {
+    var countEl = document.getElementById('count');
+    var host = document.getElementById('seats');
+    try {
+      var d = await Kiln.api('/seats/open' + (state.kind ? '?kind=' + state.kind : ''));
+      KINDS = KINDS || d.kinds;
+      drawFilters();
+      host.innerHTML = '';
+      var n = (d.seats || []).length;
+
+      if (!n) {
+        // Empty is not broken, and the difference has to be audible. An empty board with no
+        // explanation reads as a page that failed to load.
+        say(countEl, state.kind
+          ? 'Nothing open for that kind of work right now. Try another, or check back — projects post seats as they need them.'
+          : 'No project is looking for help right now. That changes as people post what they need.');
+        return;
+      }
+      // Counted by PROJECT, not by seat. Two seats on one project is one project asking for two
+      // things, and saying "3 projects" when there are two is the platform overstating how busy it
+      // is — which is a small lie in exactly the register this platform cannot afford.
+      var projects = {};
+      (d.seats || []).forEach(function (s) {
+        (projects[s.concept_id] = projects[s.concept_id] || []).push(s);
+      });
+      var np = Object.keys(projects).length;
+      say(countEl, np + ' project' + (np === 1 ? '' : 's') + ' looking for help'
+        + (n > np ? ', ' + n + ' seats between them' : '')
+        + (state.kind ? ' \u2014 showing ' + label(state.kind).toLowerCase() + ' only' : '') + '.');
+      Object.keys(projects).forEach(function (pid) { host.appendChild(card(projects[pid])); });
+    } catch (e) {
+      if (e && e.sessionExpired) return;
+      // A failed read is not an empty board.
+      say(countEl, 'Could not load the board just now. That is a failed read, not an empty one — '
+        + 'nothing has changed. Try again in a moment.');
+    }
+  }
+
+  function label(k) { return (KINDS && KINDS[k] ? KINDS[k].split('\u2014')[0] : k).trim(); }
+
+  function drawFilters() {
+    var f = document.getElementById('filters');
+    if (f.dataset.done) return;
+    f.dataset.done = '1';
+    var all = [['', 'Everything']].concat(Object.keys(KINDS || {}).map(function (k) { return [k, label(k)]; }));
+    all.forEach(function (pair) {
+      var b = el('button', 'btn secondary', pair[1]);
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(state.kind === pair[0]));
+      b.addEventListener('click', function () {
+        state.kind = pair[0];
+        Array.prototype.forEach.call(f.querySelectorAll('button'), function (x) {
+          x.setAttribute('aria-pressed', String(x === b));
+        });
+        load();
+      });
+      f.appendChild(b);
+    });
+  }
+
+  function card(seats) {
+    var first = seats[0];
+    var d = el('div', 'seat');
+    d.appendChild(el('h3', null, first.title || 'A project'));
+    d.appendChild(el('p', 'muted', 'Started by ' + (/no name yet/i.test(first.owner_name || '')
+      ? 'somebody who has not set a display name yet' : first.owner_name) + '.'));
+
+    // The full brief for one seat, a named list for several.
+    //
+    // Grouping by project fixed a real bug and made this worse: stacking every brief pushed the
+    // first "Offer to help" from y=835 to y=945, further below the 780 fold, on the page whose
+    // entire job is getting somebody to offer.
+    //
+    // The briefs are not lost. They are in the picker, which is where somebody reads them at the
+    // moment they are choosing between them — which is the only moment the detail matters.
+    if (seats.length === 1) {
+      d.appendChild(el('p', 'kind', label(seats[0].kind) + ' \u2014 what they need'));
+      d.appendChild(el('p', null, seats[0].brief));
+    } else {
+      d.appendChild(el('p', 'kind', 'Looking for ' + seats.map(function (x) {
+        return label(x.kind).toLowerCase();
+      }).join(' and ') + ' help'));
+    }
+
+    var open = el('button', 'btn', seats.length > 1
+      ? 'Offer to help with one of these' : 'Offer to help');
+    open.type = 'button';
+    open.setAttribute('aria-expanded', 'false');
+    var form = el('div');
+    form.hidden = true;
+    d.appendChild(open); d.appendChild(form);
+
+    open.addEventListener('click', function () {
+      var showing = !form.hidden;
+      form.hidden = showing;
+      open.setAttribute('aria-expanded', String(!showing));
+      if (!showing && !form.dataset.built) { buildForm(form, seats); form.dataset.built = '1'; }
+      if (!showing) {
+        var t = form.querySelector('select') || form.querySelector('textarea');
+        if (t) t.focus();
+      }
+    });
+    return d;
+  }
+
+  function buildForm(form, seats) {
+    var s = seats[0];
+
+    // When a project asks for two things, the person choosing has to say WHICH. Without this the
+    // offer is filed against whichever seat happened to be first, and the owner reads a builder's
+    // note against a seat asking for a seller.
+    var pick = null;
+    if (seats.length > 1) {
+      var pl = el('label', null, 'Which of these you would take');
+      pl.setAttribute('for', 'pick-' + s.concept_id);
+      pick = document.createElement('select');
+      pick.id = 'pick-' + s.concept_id;
+      pick.style.minHeight = '44px';
+      seats.forEach(function (x) {
+        var o = el('option', null, label(x.kind) + ' \u2014 ' + x.brief.slice(0, 60));
+        o.value = x.kind;
+        pick.appendChild(o);
+      });
+      var pw = el('div', 'field');
+      pw.appendChild(pl); pw.appendChild(pick);
+      form.appendChild(pw);
+    }
+
+    var wrap = el('div', 'field');
+    var lab = el('label', null, 'What you would bring, and what you have already done');
+    lab.setAttribute('for', 'off-' + s.id);
+    var ta = document.createElement('textarea');
+    ta.id = 'off-' + s.id;
+    ta.placeholder = 'I have built booking sites before and can put a working demo together this week. Here is one I made earlier.';
+    wrap.appendChild(lab); wrap.appendChild(ta);
+
+    var send = el('button', 'btn', 'Send this to the owner');
+    send.type = 'button';
+    var said = el('p', 'muted');
+    said.setAttribute('role', 'status');
+    said.setAttribute('aria-live', 'polite');
+
+    // The honest sentence, before they type — not a warning, a description.
+    //
+    // Not "most projects never sell". A contributor is not spending money, and borrowing a seller's
+    // risk warning to somebody offering to help is the wrong warning in the wrong place. What is
+    // owed them is that nothing implies an outcome that has not happened.
+    var honest = el('p', 'muted', 'Access YP Labs is new, and you are early. If they accept, what '
+      + 'you build stays yours, it goes on your record straight away, and you hold a real share if '
+      + 'this project sells.');
+
+    form.insertBefore(honest, form.firstChild);
+    form.appendChild(wrap);
+    form.appendChild(send);
+    form.appendChild(said);
+
+    send.addEventListener('click', async function () {
+      // The server requires twenty characters. Say it here so nobody writes something and loses it.
+      if (ta.value.trim().length < 20) {
+        say(said, 'Say a bit more about what you would bring — at least twenty characters. The '
+          + 'owner is deciding whether it fits what they are building. Nothing was sent.');
+        return;
+      }
+      send.disabled = true;
+      try {
+        var r = await Kiln.api('/contributions/project/' + s.concept_id, {
+          method: 'POST', body: { kind: pick ? pick.value : s.kind, note: ta.value.trim() },
+        });
+        say(said, r.message || 'Sent. The owner decides, and you will see their answer either way.');
+        ta.disabled = true;
+      } catch (e) {
+        if (e && e.status === 401) {
+          say(said, 'You need an account to offer help. Nothing was sent — create one and come back '
+            + 'to this project.');
+        } else {
+          // Pass the server's own sentence through. A full project, or something already waiting,
+          // both say something specific and useful that a generic failure would throw away.
+          say(said, (e && e.status && e.message) || 'That did not send, so nothing reached the owner.');
+        }
+        send.disabled = false;
+      }
+    });
+  }
+
+  load();
+})();
+</script>
+</body></html>
