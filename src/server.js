@@ -123,6 +123,7 @@ app.use('/api/maintenance',   require('./routes/maintenance'));
 app.use('/', require('./routes/marketPages'));
 app.use('/api/seats',         require('./routes/seats'));
 app.use('/api/contributions', require('./routes/contributions'));
+app.use('/api/agreements',    require('./routes/agreements'));
 app.use('/api/market-admin', require('./routes/marketAdmin'));
 app.use('/api/console', require('./routes/console'));
 app.use('/api/seed-listings', require('./routes/seedListings'));
