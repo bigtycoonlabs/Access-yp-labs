@@ -1,4 +1,4 @@
-// THE DREAM MARKET CONTROL CENTRE — one place, everything.
+// THE EXCHANGE CONTROL CENTRE — one place, everything.
 //
 // Before this, running the market meant three screens that did not agree with each other: a review
 // queue that only showed things awaiting review and could not edit them, a console section that
@@ -11,6 +11,7 @@
 // another page. The actions live on the same screen: approve, reject, edit, generate the brief.
 
 const express = require('express');
+const { waitingOnStaff, STATUSES } = require('../lib/reviewTriage');
 const { query } = require('../config/db');
 const { authenticate, authorize } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../lib/http');
@@ -33,6 +34,10 @@ router.get('/', staffOnly, asyncHandler(async (req, res) => {
 
   const r = await query(`
     SELECT l.id, l.status, l.price_cents, l.starting_bid_cents, l.stage_label, l.format, l.created_at,
+           -- Why this listing is sitting here, and how long it has been sitting. The queue arrives
+           -- sorted into "waiting on us" and "waiting on them", which is the one distinction that
+           -- says whether 33 in review is a hiring problem or a materials problem.
+           l.review_status, l.review_note, l.review_status_at,
            c.id AS concept_id, c.title, c.category, c.risk_summary, c.brief, c.clays_take,
            (c.launch_page IS NOT NULL) AS has_page,
            u.email = $1 AS is_clays,
@@ -81,9 +86,36 @@ router.get('/', staffOnly, asyncHandler(async (req, res) => {
     clays: all.filter((x) => x.is_clays).length,
     creators: all.filter((x) => !x.is_clays).length,
     needs_brief: all.filter((x) => x.status === 'live' && x.needs_brief).length,
+    // The split that answers the real question. 33 waiting says nothing on its own; 33 waiting of
+    // which 4 need a decision and 29 need the creator to add something says whether this is a
+    // staffing problem or a materials problem, which is a hiring decision either way.
+    waiting_on_staff: all.filter((x) => x.status === 'in_review' && waitingOnStaff(x.review_status)).length,
+    waiting_on_creator: all.filter((x) => x.status === 'in_review' && x.review_status && !waitingOnStaff(x.review_status)).length,
+    untriaged: all.filter((x) => x.status === 'in_review' && !x.review_status).length,
   };
 
   res.json({ ok: true, counts, listings: all.filter(matches) });
+}));
+
+// Staff correct a triage status. The computed one is a first read and it will sometimes be wrong;
+// a queue where the machine's guess cannot be overridden is worse than no guess, because staff stop
+// trusting the whole column and go back to opening every listing.
+//
+// The note is what the CREATOR reads, so staff are editing a message to a person, not an internal
+// label. That is stated in the UI too.
+router.patch('/listing/:id/review', staffOnly, asyncHandler(async (req, res) => {
+  const { review_status, review_note } = req.body || {};
+  if (!STATUSES.includes(review_status)) {
+    throw new ApiError(400, 'That is not one of the review statuses. Nothing was changed.');
+  }
+  const r = await query(
+    `UPDATE listings SET review_status=$2, review_note=$3, review_status_at=NOW()
+      WHERE id=$1 AND status='in_review' RETURNING id, review_status, review_note`,
+    [req.params.id, review_status, (review_note || '').trim() || null]);
+  if (!r.rows.length) {
+    throw new ApiError(404, 'That listing is not in review, so there is no status to set. Nothing was changed.');
+  }
+  res.json({ ok: true, listing: r.rows[0] });
 }));
 
 // POST /api/market-admin/:id/brief — write the four lines a buyer reads.

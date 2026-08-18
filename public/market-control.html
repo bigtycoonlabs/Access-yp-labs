@@ -123,6 +123,51 @@
     // Editing still lives below, unchanged and available. This only puts the decision where the
     // person's hand already is.
     // ---- deciding
+    // WHY THIS ONE IS HERE, on the card, so the queue can be worked without opening every listing.
+    var REVIEW = {
+      ready_for_decision:         'Ready for a decision',
+      missing_baseline:           'Waiting on the creator — missing materials',
+      possible_live_business:     'Waiting on the creator — may be a running business',
+      possible_misrepresentation: 'Waiting on the creator — a claim needs softening',
+      needs_risk_disclosure:      'Waiting on the creator — risk note too thin',
+    };
+    if(l.status==='in_review'){
+      var rp=el('p', l.review_status==='ready_for_decision' ? '' : 'muted',
+        REVIEW[l.review_status] || 'Not yet read');
+      inner.appendChild(rp);
+      if(l.review_note) inner.appendChild(el('p','muted','\u201c'+l.review_note+'\u201d'));
+
+      // Staff can correct it. A computed guess that cannot be overridden is worse than no guess:
+      // staff stop trusting the column and go back to opening everything.
+      var rw=el('div'); rw.style.margin='8px 0 14px';
+      var rl=el('label',null,'Change why it is waiting'); rl.setAttribute('for','rs-'+l.id);
+      var rs=document.createElement('select'); rs.id='rs-'+l.id; rs.style.minHeight='44px';
+      Object.keys(REVIEW).forEach(function(k){
+        var o=el('option',null,REVIEW[k]); o.value=k;
+        if(k===l.review_status) o.selected=true; rs.appendChild(o);
+      });
+      var rn=field(rw,'rn-'+l.id,'What the creator will read',l.review_note||'',2);
+      rw.insertBefore(rl,rw.firstChild); rw.insertBefore(rs,rw.firstChild.nextSibling);
+      var rb=el('button','btn secondary','Save why it is waiting'); rb.type='button';
+      var rsaid=el('p','muted'); rsaid.setAttribute('role','status'); rsaid.setAttribute('aria-live','polite');
+      rb.addEventListener('click', async function(){
+        rb.disabled=true;
+        try{
+          await Kiln.api('/market-admin/listing/'+l.id+'/review',{method:'PATCH',
+            body:{review_status:rs.value, review_note:rn.value}});
+          l.review_status=rs.value; l.review_note=rn.value;
+          rp.textContent=REVIEW[rs.value];
+          rsaid.textContent='Saved. The creator sees this.';
+          announce(rsaid.textContent,true);
+        }catch(e){
+          rsaid.textContent='That did not save, so nothing changed: '+((e&&e.message)||'unknown reason');
+          announce(rsaid.textContent,true);
+        }
+        rb.disabled=false;
+      });
+      rw.appendChild(rb); rw.appendChild(rsaid); inner.appendChild(rw);
+    }
+
     if(l.status==='in_review' && l.is_mine){
       // Neutrality is enforced at the decision itself, and rightly: moderationCore refuses with a
       // 403, "You must recuse yourself — you are the seller of this listing." Walked live and it
@@ -290,8 +335,15 @@
     try{
       var d=await Kiln.api('/market-admin?status='+state.status+'&owner='+state.owner);
       var c=d.counts;
-      $('summary').textContent = c.waiting + ' waiting for review · ' + c.live + ' live · '
-        + c.clays + " of Clay's · " + c.creators + " from creators"
+      // "33 waiting" says nothing on its own. The split says whether this is a hiring decision or a
+      // materials problem, which is the actual question behind a queue that will not clear.
+      var waitBits = [];
+      if (c.waiting_on_staff) waitBits.push(c.waiting_on_staff + ' need a decision from us');
+      if (c.waiting_on_creator) waitBits.push(c.waiting_on_creator + ' waiting on the creator');
+      if (c.untriaged) waitBits.push(c.untriaged + ' not yet read');
+      $('summary').textContent = c.waiting + ' waiting for review'
+        + (waitBits.length ? ' (' + waitBits.join(', ') + ')' : '')
+        + ' · ' + c.live + ' live · ' + c.clays + " of Clay's · " + c.creators + " from creators"
         + (c.needs_brief ? (' · ' + c.needs_brief + ' live listings have no brief') : '');
       host.innerHTML='';
       var lead = outcome ? outcome + ' ' : '';

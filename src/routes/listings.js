@@ -149,7 +149,33 @@ router.post('/:id/submit', authenticate, asyncHandler(async (req, res) => {
      WHERE id=$1 AND seller_id=$2 AND status IN ('draft','withdrawn') RETURNING *`,
     [req.params.id, req.user.id]);
   if (!r.rows.length) throw new ApiError(404, 'No listing of yours is ready to submit — it may already be live or sold.');
-  res.json({ listing: r.rows[0] });
+
+  // Triage on submission, so the listing arrives in the queue already saying why it is there.
+  // 33 sitting in review against 13 live, and today not one of them says anything about itself:
+  // staff rediscover the same problem every time they open the queue, and the creator waits with
+  // nothing to fix.
+  //
+  // A first read, never a decision. A human still approves or rejects everything, and staff can
+  // change the status. Failure here must never block a submission — the listing IS submitted, and
+  // an untriaged one simply arrives without a note, which is exactly where we are today.
+  const listing = r.rows[0];
+  try {
+    const c = await query('SELECT * FROM concepts WHERE id=$1', [listing.concept_id]);
+    const a = await query('SELECT type FROM assets WHERE concept_id=$1 AND is_current=true', [listing.concept_id]);
+    const t = triage({
+      concept: c.rows[0] || {},
+      listing,
+      assetKinds: a.rows.map((x) => x.type),
+    });
+    await query(
+      `UPDATE listings SET review_status=$2, review_note=$3, review_status_at=NOW() WHERE id=$1`,
+      [listing.id, t.status, t.note]);
+    listing.review_status = t.status;
+    listing.review_note = t.note;
+  } catch (e) {
+    console.error('triage failed for listing', listing.id, e && e.message);
+  }
+  res.json({ listing });
 }));
 
 // Withdraw own listing.
