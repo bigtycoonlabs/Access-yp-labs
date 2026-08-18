@@ -42,18 +42,35 @@ const OUTCOME_CLAIMS = [
   /\bget rich\b/i,
 ];
 
-function textOf(concept, listing) {
+// The SELLING copy. What the listing claims about itself.
+//
+// Deliberately excludes the risk note, and finding out why cost two false positives on the live
+// queue. A risk note's whole job is to name what could go wrong, which means saying things like
+// "risk rises if you market this as guaranteed professional outcomes" — and the outcome-claim
+// checker flagged that listing for containing the word "guaranteed", in a sentence warning against
+// guaranteeing anything.
+//
+// Scanning a disclosure for the thing it discloses is a category error. Honest risk notes talk about
+// dishonesty; that is what makes them honest.
+function sellingCopy(concept, listing) {
   const brief = concept && concept.brief && typeof concept.brief === 'object' ? concept.brief : {};
-  return [concept && concept.title, concept && concept.risk_summary, listing && listing.summary,
+  return [concept && concept.title, listing && listing.summary,
     brief.problem, brief.customer, brief.earning, brief.why_you]
     .filter(Boolean).join(' \n ');
+}
+
+// Everything, including the risk note. Used only for the live-business read, where a mention
+// anywhere is worth a second look and the cost of a false positive is a gentle question.
+function allText(concept, listing) {
+  return [sellingCopy(concept, listing), concept && concept.risk_summary].filter(Boolean).join(' \n ');
 }
 
 // Returns { status, note }. The note is written for the CREATOR to read, because a queue that
 // tells staff what is wrong and leaves the creator guessing has only moved the silence.
 function triage({ concept = {}, listing = {}, assetKinds = [] } = {}) {
   const kinds = new Set(assetKinds);
-  const text = textOf(concept, listing);
+  const text = allText(concept, listing);
+  const selling = sellingCopy(concept, listing);
 
   // A business somebody already runs cannot be listed. The listings route refuses it outright, so
   // this only catches the case where the flag is not set but the words say otherwise — and it says
@@ -70,7 +87,7 @@ function triage({ concept = {}, listing = {}, assetKinds = [] } = {}) {
   }
 
   for (const re of OUTCOME_CLAIMS) {
-    const m = text.match(re);
+    const m = selling.match(re);
     if (m) {
       return { status: 'possible_misrepresentation',
         note: 'This says "' + String(m[0]).trim() + '", which promises a buyer an outcome nobody can '
