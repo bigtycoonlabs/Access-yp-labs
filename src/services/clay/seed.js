@@ -9,7 +9,7 @@
 //     "Seeded by Clay" marker can be shown and Clay's share of inventory can be measured. The
 //     public listing already shows Clay as the creator via the seller alias — nothing is hidden.
 //   - Nothing publishes without staff approval: Clay drafts -> in_review -> staff decide.
-//   - Guardrails keep Clay a MINORITY presence: a small daily cap, and a soft share cap once real
+//   - Guardrails keep Clay a MINORITY presence: a weekly cap, and a soft share cap once real
 //     human inventory exists. While the market is tiny, seeding is allowed to bootstrap it.
 //   - Sales of Clay-seeded concepts are PLATFORM revenue. That is deliberate, and marked.
 //   - Never fabricates: on any failure it returns an honest reason and writes nothing false.
@@ -30,7 +30,21 @@ const image = require('../image');
 const CLAY_EMAIL = 'clay@accessyplabs.com';
 const PRICE_MIN_CENTS = 1000;    // $10
 const PRICE_MAX_CENTS = 60000;   // $600
-const DAILY_CAP = 3;             // at most ~2-3 seeds a day
+// FEWER, DEEPER. TWO A WEEK, NOT THREE A DAY.
+//
+// The old cap was three a day and it worked exactly as written: 43 of the platform's 55 concepts are
+// Clay's, and 21 of them arrived in a single week. The guardrail below was meant to keep him a
+// minority presence and he is 78% of the platform.
+//
+// Volume was never the constraint. There are 55 concepts on here and one recorded customer
+// conversation. What a thin concept cannot do is attract a contributor, attract a launch partner, or
+// sell above the bottom of its tier — and now that projects can be built on collaboratively, a shelf
+// of thin seeds is worse than a short shelf of good ones, because each one is an invitation somebody
+// might waste an evening accepting.
+//
+// The trade, stated plainly because it is the owner's call and not an optimisation: roughly one
+// tenth the volume, at whatever depth the pipeline can produce.
+const WEEKLY_CAP = 2;            // at most two seeds a week
 const MINORITY_SHARE = 0.5;      // once inventory is real, Clay stays a minority of it
 const MINORITY_FLOOR = 10;       // below this many HUMAN live listings, seeding bootstraps freely
 const NOVELTY_MAX_SIM = 0.9;     // cosine similarity above this = too close to an existing idea
@@ -80,9 +94,12 @@ async function ensurePenName(clayUser) {
 }
 
 // Seeds Clay has posted since local midnight — the cadence guard.
-async function seedsToday(clayId) {
+// A rolling seven days, not a calendar week. A calendar boundary would let two land on Sunday night
+// and two more on Monday morning, which is four in twelve hours and exactly the behaviour the cap
+// exists to prevent.
+async function seedsThisWeek(clayId) {
   const r = await query(
-    "SELECT COUNT(*)::int AS n FROM listings WHERE seller_id=$1 AND created_at >= date_trunc('day', now())",
+    "SELECT COUNT(*)::int AS n FROM listings WHERE seller_id=$1 AND created_at >= now() - interval '7 days'",
     [clayId]);
   return r.rows[0].n;
 }
@@ -254,7 +271,7 @@ async function emailStaffSeedFailed({ reason, error }) {
   const REASONS = {
     unavailable: 'Clay’s builder wasn’t connected, so nothing was invented — Clay never makes things up.',
     no_clay_user: 'Clay’s own account is missing, so it couldn’t post a seed.',
-    daily_cap: 'Clay has already reached today’s seed limit.',
+    weekly_cap: 'Clay has already seeded his two for this week.',
     minority_cap: 'Clay held back to keep its share of the marketplace within the set limit.',
     no_novel_idea: 'Clay couldn’t settle on an idea different enough from what already exists.',
     no_baseline: 'Clay built a concept, but it wasn’t complete enough to list — so nothing was published.',
@@ -284,7 +301,7 @@ async function runSeedCore() {
     if (!provider.available()) return { ok: false, reason: 'unavailable' };
     const clayUser = await getClayUser();
     if (!clayUser) return { ok: false, reason: 'no_clay_user' };
-    if (await seedsToday(clayUser.id) >= DAILY_CAP) return { ok: false, reason: 'daily_cap' };
+    if (await seedsThisWeek(clayUser.id) >= WEEKLY_CAP) return { ok: false, reason: 'weekly_cap' };
     if (await overMinority(clayUser.id)) return { ok: false, reason: 'minority_cap' };
     const penName = await ensurePenName(clayUser);
 
@@ -408,4 +425,4 @@ async function recentRuns(limit = 20) {
   return r.rows;
 }
 
-module.exports = { runSeed, recentRuns, getClayUser, ensurePenName, setPenName, chooseNewPenName, emailStaffSeedFailed, CLAY_EMAIL, DAILY_CAP };
+module.exports = { runSeed, recentRuns, getClayUser, ensurePenName, setPenName, chooseNewPenName, emailStaffSeedFailed, CLAY_EMAIL, WEEKLY_CAP };

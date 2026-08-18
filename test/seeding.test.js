@@ -23,7 +23,7 @@ test('a deliberate refusal is reported, not silent', () => {
   // working guardrail got mistaken for a fault for a full day.
   assert.match(sched, /declined: true/);
   assert.match(sched, /minority_cap:/);
-  assert.match(sched, /daily_cap:/);
+  assert.match(sched, /weekly_cap:/);
   assert.match(flat(sched), /A DELIBERATE REFUSAL IS NOT A FAILURE, but it must still be visible/i);
 });
 
@@ -60,4 +60,37 @@ test('a creator can add the kinds of material Clay actually writes', () => {
   ['tech_spec', 'money_flow', 'growth_plan', 'presell_kit'].forEach((tp) => {
     assert.ok(concepts.includes("'" + tp + "'"), 'ASSET_TYPES must include ' + tp);
   });
+});
+
+
+test('the cap is two a week, not three a day', () => {
+  // The old cap was three a day and it worked exactly as written: 43 of the platform's 55 concepts
+  // are Clay's, 21 of them from a single week. The guardrail meant to keep him a minority presence
+  // left him at 78% of the platform.
+  //
+  // Volume was never the constraint. There are 55 concepts here and one recorded customer
+  // conversation. And now that projects can be built on collaboratively, a thin seed is worse than
+  // no seed: it is an invitation somebody might waste an evening accepting.
+  const seedjs = require('../src/services/clay/seed');
+  assert.strictEqual(seedjs.WEEKLY_CAP, 2);
+  assert.strictEqual(seedjs.DAILY_CAP, undefined, 'the old cap must not survive alongside the new one');
+});
+
+test('the window is a rolling seven days, in the gate AND on the screen', () => {
+  // A calendar boundary would let the week's allowance land on Sunday night and the next week's on
+  // Monday morning: four seeds in twelve hours, which is the exact behaviour the cap prevents.
+  //
+  // And both places must count the SAME window. A screen saying "0 today" while the gate refuses on
+  // a seven-day count is the shape of bug this codebase keeps producing — two numbers about the same
+  // thing that disagree.
+  assert.match(seed, /created_at >= now\(\) - interval '7 days'/);
+  assert.match(sched, /created_at >= now\(\) - interval '7 days'/);
+  assert.ok(!/date_trunc\('day', now\(\)\)/.test(seed), 'no calendar-day counting left in the gate');
+  assert.ok(!/date_trunc\('day', now\(\)\)/.test(sched), 'no calendar-day counting left on the screen');
+});
+
+test('the staff target can never exceed the hard cap', () => {
+  const seedjs = require('../src/services/clay/seed');
+  assert.match(sched, /Math\.min\(seed\.WEEKLY_CAP, dailyTarget\)/);
+  assert.strictEqual(seedjs.WEEKLY_CAP, 2);
 });
