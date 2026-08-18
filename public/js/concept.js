@@ -831,6 +831,19 @@
       // Before the danger zone: what a creator most often came here to do is see and change what is
       // for sale, and deleting the project should never be the last thing on the page they read.
       listingBox(id, project);
+      // THE TEAM SPACE. Everything built this week — seats, contributions, agreements — has been
+      // API-only and invisible to a person. This is where it becomes real, and it sits ON the
+      // project rather than in a separate room, because a team space somewhere else is a place
+      // people forget to open. The project IS the team space.
+      if (window.TeamSpace) {
+        var teamHost = document.createElement('div');
+        actionsEl.appendChild(teamHost);
+        // Always the owner here. GET /concepts/:id is owner-only — its lookup is
+        // WHERE id=$1 AND owner_id=$2 — so anybody who reached this page owns this project.
+        // My first version invented a Kiln.me() that does not exist, which would have made the
+        // whole team space render as a stranger's view of somebody else's work.
+        TeamSpace.render(teamHost, id, true).catch(function () { });
+      }
       deleteBox(id, project.title || 'this project');
 
       // ---- keep / unlock, only when something is actually locked ----

@@ -43,9 +43,19 @@ async function conceptOf(id) {
 }
 
 // Everybody with a stake: the owner, whoever holds a seat, and whoever has had work accepted.
+// ONE ROW PER PERSON, not one per way they are involved.
+//
+// Caught by reading the rendered team space: somebody holding a seat who also had work accepted
+// appeared twice — "ts1a holds a seat" AND "ts1a contributed work". Cosmetic on the screen and
+// serious underneath, because this list is what the agreement validator uses to decide who must be
+// named and who must sign. A duplicated person would have been asked to sign twice and had their
+// shares counted twice against the 100%.
+//
+// The DISTINCT did not help: the rows differ by role, so both survived it. Roles are ranked instead
+// and the strongest one wins, owner over seat over contributor.
 async function teamOf(conceptId) {
   const r = await query(
-    `SELECT DISTINCT u.id, COALESCE(u.display_name, u.name, 'no name yet') AS name, r.role
+    `SELECT DISTINCT ON (u.id) u.id, COALESCE(u.display_name, u.name, 'no name yet') AS name, r.role
        FROM (
          SELECT owner_id AS uid, 'owner' AS role FROM concepts WHERE id=$1
          UNION
@@ -54,7 +64,8 @@ async function teamOf(conceptId) {
          UNION
          SELECT contributor_id, 'contributor' FROM contributions
           WHERE concept_id=$1 AND state IN ('accepted','superseded')
-       ) r JOIN users u ON u.id = r.uid`,
+       ) r JOIN users u ON u.id = r.uid
+      ORDER BY u.id, CASE r.role WHEN 'owner' THEN 1 WHEN 'seat' THEN 2 ELSE 3 END`,
     [conceptId]);
   return r.rows;
 }
