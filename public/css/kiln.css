@@ -155,8 +155,22 @@ legend{font-weight:700;padding:0 6px;}
   h2{ font-size:20px; margin:22px 0 10px; }
   h3{ font-size:18px; }
   header.site .bar{ padding:12px 0; gap:10px; }
-  nav.top{ display:flex; flex-wrap:wrap; gap:8px 16px; }
-  nav.top a{ margin-left:0; font-size:16px; }
+  /* THE NAV MUST NOT EAT THE FIRST SCREEN.
+   *
+   * Seven links wrapped onto THREE rows on a 390px phone, pushing 200 pixels of menu above the
+   * headline. This platform has been here before: an accessibility fix once left the nav at 362px
+   * and the idea box below the fold, on the one page whose whole job is getting somebody to type.
+   * Adding "Help build" put it back on that path.
+   *
+   * One row that scrolls sideways, rather than three that stack. The links stay real links in a
+   * real list, keyboard order is unchanged, and a screen reader still walks them normally — it is
+   * only the wrapping that changes. Touch targets stay at 44px. */
+  nav.top{ display:flex; flex-wrap:nowrap; gap:0 18px; overflow-x:auto;
+    -webkit-overflow-scrolling:touch; scrollbar-width:none; padding-bottom:2px; }
+  nav.top::-webkit-scrollbar{ display:none; }
+  nav.top a{ margin-left:0; font-size:16px; white-space:nowrap; padding:10px 0; }
+  nav.top ul{ display:flex; flex-wrap:nowrap; gap:0 18px; margin:0; padding:0; list-style:none; }
+  nav.top li{ flex:0 0 auto; }
   /* Never let a wide child force sideways scrolling on a phone. */
   img, pre, textarea, table, video, iframe{ max-width:100%; }
   body{ overflow-x:hidden; overflow-wrap:break-word; word-break:break-word; }

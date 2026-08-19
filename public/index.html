@@ -238,7 +238,7 @@
         <div class="hero-grid">
           <div id="hero-inner">
           <h1>Bring an idea, or bring what you&rsquo;re good at.</h1>
-          <p class="tag" id="hero-greeting">Describe an idea and Clay turns it into a real business — the plan, the research, the demo — while you watch.</p>
+          <p class="tag" id="hero-greeting">Describe an idea and Clay turns it into a real business — the plan, the research, the demo. Or take a seat on somebody else’s and hold a share of what you help build.</p>
           <div id="hero-demo"></div>
           <p class="hero-reassure">Free. No card. The idea stays yours.</p>
 
@@ -282,7 +282,7 @@
         <li class="how-step">
           <div class="top"><span class="n">1</span><span class="hic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1h6c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2Z"/></svg></span></div>
           <h3>Bring an idea — or start from nothing</h3>
-          <p>Tell Clay the idea you can’t stop thinking about, or ask Clay to find one for you. Half-formed is fine.</p>
+          <p>Tell Clay an idea, or tell Clay what you’re good at and he will point you at a project that needs it. Half-formed is fine.</p>
         </li>
         <li class="how-step">
           <div class="top"><span class="n">2</span><span class="hic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.7 4.6L18 9l-4.3 1.4L12 15l-1.7-4.6L6 9l4.3-1.4L12 3Z"/><path d="M18.5 14l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z"/></svg></span></div>
@@ -474,7 +474,7 @@
   function ideaBox(promptText){
     const wrap=el('div','idea-wrap');
     const label=el('label',null,promptText);label.setAttribute('for','idea-in');
-    const ta=document.createElement('textarea');ta.id='idea-in';ta.rows=2;ta.setAttribute('placeholder','The one you keep coming back to…');
+    const ta=document.createElement('textarea');ta.id='idea-in';ta.rows=2;ta.setAttribute('placeholder','An idea you keep coming back to — or “I can build websites”…');
     const btn=el('button','cta','Show me what you’ve got');btn.type='button';
     const out=el('div','build');out.setAttribute('role','group');out.setAttribute('aria-label','Clay’s reply');
     btn.addEventListener('click',async()=>{
@@ -595,7 +595,7 @@
     if(!demo) return;
     demo.innerHTML='';
 
-    let prompt='What’s the one you can’t stop thinking about?';
+    let prompt='What’s the idea, or what are you good at?';
     if(hello.returning){
       const countable = hello.visits <= 3;
       const nth = ordinalWord(hello.visits);
