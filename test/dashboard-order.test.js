@@ -21,7 +21,15 @@ const dash = fs.readFileSync('public/dashboard.html', 'utf8');
 const order = [...dash.matchAll(/<h2 id="([a-z]+)-h"/g)].map((m) => m[1]);
 
 test('a creator sees their own projects before any coaching', () => {
-  assert.strictEqual(order[0], 'con', 'Your projects must be first');
+  // "Your projects" leads the things that were already here. Only "While you were away" may come
+  // before it, because that panel is the one thing on the page that CHANGED since you last looked —
+  // everything else was here yesterday.
+  //
+  // This assertion originally pinned index 0 and failed when the overnight report landed above it.
+  // That is the test doing its job: it made me check whether I had broken the ordering rule rather
+  // than just moved a section. The rule is that your own work precedes the coaching about it.
+  assert.ok(order[0] === 'con' || (order[0] === 'away' && order[1] === 'con'),
+    'Your projects must lead, after the overnight report at most');
   assert.ok(order.indexOf('con') < order.indexOf('path'));
   assert.ok(order.indexOf('con') < order.indexOf('today'));
   assert.ok(order.indexOf('con') < order.indexOf('proofstep'));
@@ -56,5 +64,6 @@ test('every section is still present after the reorder', () => {
   for (const id of ['con', 'lst', 'ord', 'wat', 'pay', 'path', 'today', 'proofstep', 'board', 'pen', 'sub', 'tune']) {
     assert.ok(order.includes(id), id + ' went missing in the reorder');
   }
-  assert.strictEqual(order.length, 12);
+  assert.ok(order.includes('away'), 'the overnight report must be on the page');
+  assert.strictEqual(order.length, 13);
 });

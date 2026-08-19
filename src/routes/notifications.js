@@ -35,10 +35,17 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
 // something to celebrate is one nobody believes by week three.
 router.get('/overnight', authenticate, asyncHandler(async (req, res) => {
   const hours = Math.min(168, Math.max(1, Number(req.query.hours) || 24));
+  // UNREAD ONLY. Caught by looking at the rendered dashboard: somebody who had already read and
+  // acted on everything was still being shown it under "While you were away". If you have read it,
+  // you were not away.
+  //
+  // Without this the panel repeats itself every morning for a day, which teaches people to skip the
+  // one part of the page whose entire job is being worth reading.
   const r = await query(
     `SELECT kind, headline, body, url, created_at
        FROM notifications
-      WHERE user_id=$1 AND created_at > now() - ($2 || ' hours')::interval
+      WHERE user_id=$1 AND read_at IS NULL
+        AND created_at > now() - ($2 || ' hours')::interval
       ORDER BY created_at DESC LIMIT 20`,
     [req.user.id, String(hours)]);
 
@@ -50,7 +57,7 @@ router.get('/overnight', authenticate, asyncHandler(async (req, res) => {
     // what makes the days something did happen worth reading.
     line: r.rows.length
       ? 'While you were away: ' + r.rows.map((x) => x.headline).slice(0, 4).join('. ') + '.'
-      : 'Nothing happened on your projects in the last ' + (hours === 24 ? 'day' : hours + ' hours') + '.',
+      : 'Nothing new on your projects in the last ' + (hours === 24 ? 'day' : hours + ' hours') + '.',
   });
 }));
 

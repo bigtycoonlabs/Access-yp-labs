@@ -64,7 +64,11 @@ test('nothing happened is a real answer', () => {
   // A digest that always finds something to celebrate is one nobody believes by week three. Verified
   // live on a fresh account: "Nothing happened on your projects in the last day."
   assert.match(route, /No invented encouragement on an empty day/);
-  assert.match(route, /'Nothing happened on your projects in the last '/);
+  assert.match(route, /'Nothing new on your projects in the last '/);
+  // And it counts UNREAD only. Somebody who has read and acted on everything was still being shown
+  // it under "While you were away" — if you have read it, you were not away, and repeating it every
+  // morning teaches people to skip the one panel whose whole job is being worth reading.
+  assert.match(route, /WHERE user_id=\$1 AND read_at IS NULL/);
   assert.match(route, /Nothing has happened on your projects yet/);
   // A bare 0 and a failed read look identical, so the summary is words.
   assert.match(route, /Said in words, because a bare 0 and a failed read look identical/);
@@ -87,4 +91,33 @@ test('it is mounted and the migration is registered', () => {
   assert.match(fs.readFileSync('src/server.js', 'utf8'),
     /app\.use\('\/api\/notifications', require\('\.\/routes\/notifications'\)\)/);
   assert.ok(fs.readFileSync('docs/migrations/ORDER.txt', 'utf8').includes('058_notifications.sql'));
+});
+
+test('the overnight report is on the dashboard, above everything that did not change', () => {
+  // The endpoint existed with no screen in front of it — the same gap the seats board had, and the
+  // reason it kept being the last thing built. An API nobody can see is an API that does not exist.
+  const dash = fs.readFileSync('public/dashboard.html', 'utf8');
+  const js = fs.readFileSync('public/js/dashboard.js', 'utf8');
+  assert.match(dash, /<section aria-labelledby="away-h" id="away-sec"/);
+  assert.match(js, /async function loadAway\(\)/);
+  assert.match(js, /loadAway\(\); loadPath\(\);/);
+  // It leads the page. Everything below it was here yesterday; this is the only thing that changed.
+  const order = [...dash.matchAll(/<h2 id="([a-z]+)-h"/g)].map((m) => m[1]);
+  assert.strictEqual(order[0], 'away');
+  assert.strictEqual(order[1], 'con');
+});
+
+test('a quiet morning is shown, not hidden', () => {
+  // A panel that only appears on good days trains people to read its absence as bad news. Verified
+  // in a browser on an account with everything read: "Nothing new on your projects in the last day."
+  const js = fs.readFileSync('public/js/dashboard.js', 'utf8');
+  assert.match(js, /Nothing happened is a real answer and it is shown, not hidden/);
+  assert.match(js, /sec\.hidden = false;\s*\n\s*host\.innerHTML = '';/);
+});
+
+test('a failed read is not a quiet night', () => {
+  // On the one panel whose entire job is telling you what is true, saying "nothing happened" when
+  // we could not look would be inventing a fact out of a network error.
+  const js = fs.readFileSync('public/js/dashboard.js', 'utf8');
+  assert.match(js, /That is a failed read, '\s*\n?\s*\+ 'not a quiet night/);
 });

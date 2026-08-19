@@ -396,6 +396,64 @@
   }
 
   // ---------- Concepts ----------
+  // WHILE YOU WERE AWAY.
+  //
+  // The idle mechanic, true the whole time and never once said out loud. A listing is live 24 hours
+  // a day and people act on projects while their owner is asleep — somebody offers help, work gets
+  // accepted, a split gets signed — and until now the only way to find out was to go looking.
+  //
+  // It sits above your projects because it is the only thing on this page that CHANGED since you
+  // last looked. Everything below it was here yesterday.
+  async function loadAway() {
+    const sec = document.getElementById('away-sec');
+    const host = document.getElementById('away');
+    if (!sec || !host) return;
+    let d;
+    try {
+      d = await Kiln.api('/notifications/overnight?hours=24');
+    } catch (e) {
+      if (e && e.sessionExpired) return;
+      // A failed read is not a quiet night. Saying "nothing happened" when we could not look would
+      // be the platform inventing a fact out of a network error — and on the one panel whose whole
+      // job is telling you what is true.
+      sec.hidden = false;
+      host.textContent = 'Could not check what happened while you were away. That is a failed read, '
+        + 'not a quiet night — nothing has changed.';
+      return;
+    }
+
+    // Nothing happened is a real answer and it is shown, not hidden. A panel that only appears on
+    // good days trains people to read its absence as bad news, and a digest that always finds
+    // something to celebrate is one nobody believes by week three.
+    sec.hidden = false;
+    host.innerHTML = '';
+
+    if (!d.events || !d.events.length) {
+      host.appendChild(el('p', 'muted', d.line));
+      return;
+    }
+
+    // The line first, because it is the sentence a screen reader should hear before any list.
+    host.appendChild(el('p', null, d.events.length === 1
+      ? 'One thing happened while you were away.'
+      : d.events.length + ' things happened while you were away.'));
+
+    const ul = el('ul');
+    d.events.forEach(function (ev) {
+      const li = el('li');
+      if (ev.url) {
+        const a = el('a', null, ev.headline);
+        a.href = ev.url;
+        li.appendChild(a);
+      } else {
+        li.appendChild(document.createTextNode(ev.headline));
+      }
+      if (ev.body) li.appendChild(el('p', 'muted', ev.body));
+      ul.appendChild(li);
+    });
+    host.appendChild(ul);
+  }
+
   async function loadConcepts() {
     const c = document.getElementById('projects'); c.innerHTML = '';
     try {
@@ -722,7 +780,7 @@
       setTimeout(() => loadSubs(), 8000);
     }
     if (q.get('sub') === 'canceled') announce('Checkout canceled — you were not charged.', true);
-    loadPath(); loadTodaysProjects(); loadProofStep(); loadPayouts(); loadPenName(); loadSubs(); loadConcepts(); loadBoard(); loadListings(); loadOrders(); loadWatches(); loadTuning();
+    loadAway(); loadPath(); loadTodaysProjects(); loadProofStep(); loadPayouts(); loadPenName(); loadSubs(); loadConcepts(); loadBoard(); loadListings(); loadOrders(); loadWatches(); loadTuning();
     document.getElementById('signout').addEventListener('click', (e) => { e.preventDefault(); Kiln.clearTokens(); location.href = '/'; });
   })();
 })();

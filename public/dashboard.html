@@ -36,6 +36,18 @@
        rule the console fold established: nothing about the STATE of your work is hidden, only the
        forms you go and change. <details> so it is keyboard operable and announced as expanded or
        collapsed with no JavaScript, and stays in the document for find-on-page. -->
+  <!-- WHILE YOU WERE AWAY.
+       The idle mechanic, and it has been true the whole time and never once said out loud: a
+       listing is live 24 hours a day, and people act on projects while their owner is asleep.
+       It goes ABOVE your projects because it is the only thing on this page that changed since you
+       last looked. Everything below it was here yesterday.
+       Some mornings it says nothing happened, and it has to be allowed to. That is what makes the
+       mornings it says something worth reading. -->
+  <section aria-labelledby="away-h" id="away-sec" hidden>
+    <h2 id="away-h">While you were away</h2>
+    <div id="away" role="status" aria-live="polite"></div>
+  </section>
+
   <section aria-labelledby="con-h"><h2 id="con-h">Your projects</h2><div id="projects" class="stack"></div></section>
   <section aria-labelledby="lst-h"><h2 id="lst-h">Your Exchange listings</h2><div id="listings" class="stack"></div></section>
   <section aria-labelledby="ord-h"><h2 id="ord-h">Your orders</h2><div id="orders" class="stack"></div></section>
