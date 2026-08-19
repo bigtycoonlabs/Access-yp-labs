@@ -32,7 +32,12 @@
     nav.top{display:block;}
     /* A real gap, not 2px. At 2px the links read as one string — "HomeThe Exchange" — which is
        the same run-together problem the list was meant to fix, just visual instead of spoken. */
-    nav.top .nav-list{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;align-items:center;column-gap:14px;row-gap:0;}
+    /* nowrap: this block loads after kiln.css and was the rule actually winning. Seven links on
+       three rows put 200px of menu above the headline. */
+    nav.top .nav-list{list-style:none;margin:0;padding:0;display:flex;flex-wrap:nowrap;align-items:center;column-gap:14px;row-gap:0;overflow-x:auto;scrollbar-width:none;}
+    nav.top .nav-list::-webkit-scrollbar{display:none;}
+    nav.top .nav-list>li{flex:0 0 auto;}
+    nav.top a{white-space:nowrap;}
     nav.top .nav-list>li{margin:0;padding:0;}
     nav.top a{color:#f2eefb;font-size:17px;font-weight:600;text-decoration:none;padding:11px 12px;display:inline-block;min-height:44px;box-sizing:border-box;line-height:22px;border-radius:8px;}
     @media (max-width:640px){

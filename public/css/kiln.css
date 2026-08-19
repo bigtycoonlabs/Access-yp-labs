@@ -165,12 +165,9 @@ legend{font-weight:700;padding:0 6px;}
    * One row that scrolls sideways, rather than three that stack. The links stay real links in a
    * real list, keyboard order is unchanged, and a screen reader still walks them normally — it is
    * only the wrapping that changes. Touch targets stay at 44px. */
-  nav.top{ display:flex; flex-wrap:nowrap; gap:0 18px; overflow-x:auto;
-    -webkit-overflow-scrolling:touch; scrollbar-width:none; padding-bottom:2px; }
-  nav.top::-webkit-scrollbar{ display:none; }
-  nav.top a{ margin-left:0; font-size:16px; white-space:nowrap; padding:10px 0; }
-  nav.top ul{ display:flex; flex-wrap:nowrap; gap:0 18px; margin:0; padding:0; list-style:none; }
-  nav.top li{ flex:0 0 auto; }
+  /* Sizing only. The no-wrap rule lives in the later media block, so there is one place that
+   * decides how this nav lays out rather than three rules arguing. */
+  nav.top a{ margin-left:0; font-size:16px; }
   /* Never let a wide child force sideways scrolling on a phone. */
   img, pre, textarea, table, video, iframe{ max-width:100%; }
   body{ overflow-x:hidden; overflow-wrap:break-word; word-break:break-word; }
@@ -208,8 +205,21 @@ legend{font-weight:700;padding:0 6px;}
    instead of each becoming 44px tall (which pushed the page content most of a screen down when it
    was tried the other way round). */
 @media (max-width: 879px){
-  nav.top{display:flex;flex-wrap:wrap;gap:2px 16px;line-height:1.2;}
-  nav.top a{display:inline-block;margin-left:0;padding:12px 0;}
+  /* ONE ROW THAT SCROLLS, NOT THREE THAT STACK.
+   *
+   * Seven links wrapped onto three rows on a 390px phone and put 200 pixels of menu above the
+   * headline. This file already carried a comment about the last time the nav ate the first screen;
+   * it happened again the moment a seventh link was added, because wrapping has no ceiling.
+   *
+   * The links stay real links in a real list. Keyboard order, screen-reader order and 44px targets
+   * are all unchanged — only the wrapping is. */
+  nav.top, nav.top .nav-list, nav.top ul{
+    display:flex; flex-wrap:nowrap; gap:0 16px; line-height:1.2;
+    overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;
+  }
+  nav.top::-webkit-scrollbar, nav.top .nav-list::-webkit-scrollbar{ display:none; }
+  nav.top li{ flex:0 0 auto; }
+  nav.top a{display:inline-block;margin-left:0;padding:12px 0;white-space:nowrap;}
   header.site .bar{padding:10px 0;}
   footer.site nav a{display:inline-block;padding:10px 4px;}
 }
