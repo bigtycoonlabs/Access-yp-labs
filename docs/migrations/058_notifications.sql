@@ -30,8 +30,22 @@ CREATE TABLE IF NOT EXISTS yp_labs.notifications (
   read_at       timestamptz,
   -- Email is an attempt, not a fact. NULL means never tried; a row in email_status says what
   -- happened when we did.
-  email_status  text CHECK (email_status IS NULL OR email_status IN ('sent','skipped','failed')),
+  -- 'accepted' rather than 'sent', and the word matters.
+  --
+  -- Resend returning 200 means the provider TOOK the message. It does not mean anybody received it.
+  -- Verified deliverability separately: a real send from clay@accessyplabs.com to a test inbox came
+  -- back "delivered", so the path works — but that was checked in the provider's dashboard, not by
+  -- this platform, and the platform cannot know it.
+  --
+  -- Delivery is only knowable from a provider webhook. The one webhook on this Resend account is
+  -- DISABLED and points at accessyourplace.com, a different platform. So a bounce here is invisible,
+  -- and calling provider acceptance 'sent' would be this codebase's signature defect in its own
+  -- records: reporting success for something it did not verify.
+  email_status  text CHECK (email_status IS NULL OR email_status IN ('accepted','skipped','failed')),
   email_reason  text,
+  -- The provider's own id, kept so a bounce can be traced back to the person it was meant for once
+  -- a webhook exists. Throwing it away is what makes that impossible later.
+  email_provider_id text,
   -- The same real-world event cannot be recorded twice. A retry, a double-click, or a route called
   -- from two places all collapse to one notification.
   dedupe_key    text NOT NULL UNIQUE,

@@ -65,12 +65,12 @@ async function notify({ userId, kind, headline, body, conceptId, listingId, acto
   try {
     if (!(await wantsEmail(userId))) {
       await mark(row.id, 'skipped', 'the person has team emails turned off');
-      return { ok: true, notification: row, emailed: false };
+      return { ok: true, notification: row, handedOff: false };
     }
     const u = await query('SELECT email FROM users WHERE id=$1', [userId]);
     if (!u.rows.length || !u.rows[0].email) {
       await mark(row.id, 'skipped', 'no email address on file');
-      return { ok: true, notification: row, emailed: false };
+      return { ok: true, notification: row, handedOff: false };
     }
 
     const link = url ? SITE() + url : SITE() + '/dashboard.html';
@@ -85,19 +85,27 @@ async function notify({ userId, kind, headline, body, conceptId, listingId, acto
 
     // sendEmail returns { sent: false, reason } when there is no key. That is a real outcome and it
     // is recorded as one — never as a send.
-    if (res && res.sent) await mark(row.id, 'sent', null);
+    //
+    // And 'accepted' rather than 'sent': a 200 from Resend means the provider took the message, not
+    // that anybody received it. This platform has no delivery webhook, so a bounce is invisible to
+    // it, and writing 'sent' would be claiming something it cannot see. The provider's id is kept so
+    // a bounce can be traced back to the right person once a webhook exists.
+    if (res && res.sent) await mark(row.id, 'accepted', null, res.id);
     else await mark(row.id, 'failed', (res && res.reason) || 'unknown');
 
-    return { ok: true, notification: row, emailed: !!(res && res.sent) };
+    // 'handedOff', not 'emailed'. A caller reading `emailed: true` would reasonably believe somebody
+    // received it, and this platform cannot know that.
+    return { ok: true, notification: row, handedOff: !!(res && res.sent) };
   } catch (e) {
     await mark(row.id, 'failed', (e && e.message) || 'threw').catch(function () { });
-    return { ok: true, notification: row, emailed: false };
+    return { ok: true, notification: row, handedOff: false };
   }
 }
 
-async function mark(id, status, reason) {
-  return query('UPDATE notifications SET email_status=$2, email_reason=$3 WHERE id=$1',
-    [id, status, reason]).catch(function () { });
+async function mark(id, status, reason, providerId) {
+  return query(
+    'UPDATE notifications SET email_status=$2, email_reason=$3, email_provider_id=COALESCE($4, email_provider_id) WHERE id=$1',
+    [id, status, reason, providerId || null]).catch(function () { });
 }
 
 function esc(s) {

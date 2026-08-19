@@ -20,9 +20,9 @@ test('in-app is the truth; email is an attempt', () => {
   // no key in the sandbox, every notification recorded email_status 'failed' with the reason
   // 'email_not_configured' — never 'sent'.
   assert.match(svc, /Record the event, then try to email\. In that order, always/);
-  assert.match(svc, /if \(res && res\.sent\) await mark\(row\.id, 'sent', null\);/);
+  assert.match(svc, /if \(res && res\.sent\) await mark\(row\.id, 'accepted', null, res\.id\);/);
   assert.match(svc, /else await mark\(row\.id, 'failed', \(res && res\.reason\) \|\| 'unknown'\);/);
-  assert.match(sql, /email_status\s+text CHECK \(email_status IS NULL OR email_status IN \('sent','skipped','failed'\)\)/);
+  assert.match(sql, /email_status IN \('accepted','skipped','failed'\)/);
 });
 
 test('a notification never breaks the thing it reports', () => {
@@ -120,4 +120,34 @@ test('a failed read is not a quiet night', () => {
   // we could not look would be inventing a fact out of a network error.
   const js = fs.readFileSync('public/js/dashboard.js', 'utf8');
   assert.match(js, /That is a failed read, '\s*\n?\s*\+ 'not a quiet night/);
+});
+
+
+test('"accepted" is not "delivered", and the word is chosen', () => {
+  // A 200 from Resend means the provider TOOK the message. It does not mean anybody received it.
+  //
+  // Deliverability was verified separately and it works: a real send from clay@accessyplabs.com came
+  // back "delivered" in the provider's dashboard. But that was checked THERE, not here, and this
+  // platform cannot know it — the one webhook on the Resend account is disabled and points at
+  // accessyourplace.com, a different platform. So a bounce is invisible here.
+  //
+  // Writing 'sent' would be this codebase's signature defect appearing in its own records:
+  // reporting success for something it never verified.
+  // Checked against CODE, not the comments explaining the choice. My assertion failed on the very
+  // comment saying why 'sent' is wrong — the fourth time this session a test of mine has matched my
+  // own prose instead of the product. The comment strip has to remove inline trailing comments too,
+  // not only whole-line ones.
+  const code = svc.split('\n').map(function (l) { return l.replace(/\/\/.*/, ' '); }).join('\n');
+  assert.ok(!/'sent'/.test(code), 'no status called sent');
+  assert.match(svc, /means the provider took the message, not/);
+  // And the caller cannot misread the return value either.
+  assert.match(svc, /handedOff: !!\(res && res\.sent\)/);
+  assert.ok(!/emailed:/.test(code), 'no caller-facing emailed flag');
+});
+
+test('the provider id is kept so a bounce can be traced later', () => {
+  // sendEmail already returned it and the first version threw it away. Discarding it is what makes
+  // tracing impossible once a webhook exists, and by then the connection to the person is gone.
+  assert.match(sql, /email_provider_id text/);
+  assert.match(svc, /email_provider_id=COALESCE\(\$4, email_provider_id\)/);
 });
