@@ -244,6 +244,35 @@
       }
       return;
     }
+    // YOUR CONVERSATION BACK, BEFORE ANY GREETING.
+    //
+    // Every message has been stored in clay_messages since that table shipped and nothing ever read
+    // it. There was a route to DELETE your history and none to see it, so somebody who spent twenty
+    // minutes with Clay, reloaded, and came back to the greeting had lost the lot — while the whole
+    // conversation sat in the database.
+    //
+    // Restored first, so a returning person sees where they were rather than being welcomed as if
+    // nothing had happened. Greeting a person who was mid-conversation is its own small dishonesty.
+    let restored = 0;
+    try {
+      const h = await Kiln.api('/clay/history?limit=40&surface=laboratory');
+      (h.messages || []).forEach(function (msg) {
+        const who = msg.role === 'user' ? 'you' : 'clay';
+        const node = message(who, who === 'you' ? 'You' : 'Clay');
+        node.appendChild(sayLine(msg.content));
+        log.appendChild(node);
+        restored += 1;
+      });
+    } catch (_) {
+      // A failed read is not an empty history, so nothing is claimed either way — the greeting
+      // simply happens as it would for anybody.
+    }
+    if (restored) {
+      // Say it, once, so a screen-reader user knows the page is not starting fresh.
+      announce('Picking up where you left off. ' + restored + ' earlier messages restored.', false);
+      return;
+    }
+
     // Figure out whether this is a returning builder BEFORE greeting them. Their own projects
     // are the truth — someone with work in progress must never be greeted like a first-timer,
     // even if they never filled in interests.

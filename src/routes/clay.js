@@ -2079,6 +2079,42 @@ router.post('/weekly-prompt/done', authenticate, asyncHandler(async (req, res) =
 
 
 // DELETE /api/clay/history — a creator erasing their own conversations. Theirs to delete.
+// GET /api/clay/history — your conversation back.
+//
+// Every message has been stored in clay_messages since the day that table shipped. Nothing ever read
+// it. There was a route to DELETE your history and none to see it, so a creator who spent twenty
+// minutes with Clay, reloaded, and came back to the greeting had genuinely lost the lot.
+//
+// Found by walking production: two exchanges with Clay, reload the Laboratory, one message on the
+// page — the greeting. The work was in the database the whole time.
+//
+// Newest session, oldest message first, so the page rebuilds in reading order.
+router.get('/history', authenticate, asyncHandler(async (req, res) => {
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 40));
+  const r = await query(
+    `SELECT m.role, m.content, m.created_at
+       FROM clay_messages m
+       JOIN clay_sessions s ON s.id = m.session_id
+      WHERE s.user_id = $1 AND s.surface = COALESCE($2, s.surface)
+        AND s.id = (
+          SELECT id FROM clay_sessions
+           WHERE user_id = $1 AND surface = COALESCE($2, surface)
+           ORDER BY last_at DESC NULLS LAST LIMIT 1)
+      ORDER BY m.created_at ASC
+      LIMIT $3`,
+    [req.user.id, req.query.surface || null, limit]);
+
+  res.json({
+    ok: true,
+    messages: r.rows,
+    // Said in words. An empty array and a failed read look identical to a caller, and only one of
+    // them means this person has never spoken to Clay.
+    summary: r.rows.length
+      ? 'Picking up where you left off.'
+      : 'No earlier conversation to restore.',
+  });
+}));
+
 router.delete('/history', authenticate, asyncHandler(async (req, res) => {
   const out = await conversations.forgetMine(req.user.id);
   if (!out.ok) throw new ApiError(500, 'Could not clear your history just now. Nothing was deleted.');
