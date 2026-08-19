@@ -261,6 +261,17 @@
         const node = message(who, who === 'you' ? 'You' : 'Clay');
         node.appendChild(sayLine(msg.content));
         log.appendChild(node);
+        // AND GIVE IT BACK TO CLAY, not only to the person reading.
+        //
+        // My first version restored the DOM and left chatHistory empty, which is the array actually
+        // sent with the next message. Found on production: the page showed six messages and Clay
+        // answered "I don't have the earlier thread in front of me here, so I don't know what 'keep
+        // going' is attached to."
+        //
+        // He was being honest, which is the only reason it was survivable — but the restore was
+        // cosmetic. The person could read their conversation and the only participant who needed it
+        // could not. A worse-behaved assistant would have guessed.
+        chatHistory.push({ role: msg.role === 'user' ? 'user' : 'assistant', content: msg.content });
         restored += 1;
       });
     } catch (_) {

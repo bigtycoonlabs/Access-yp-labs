@@ -52,3 +52,17 @@ test('restored text goes through the markdown strip like everything else', () =>
   // put literal asterisks back on screen for exactly the conversations people return to.
   assert.match(app, /node\.appendChild\(sayLine\(msg\.content\)\)/);
 });
+
+test('restoring gives the conversation back to CLAY, not only to the reader', () => {
+  // My first version restored the DOM and left chatHistory empty — the array actually sent with the
+  // next message. Found on production: the page showed six messages and Clay answered "I don't have
+  // the earlier thread in front of me here, so I don't know what 'keep going' is attached to."
+  //
+  // He was honest about it, which is the only reason it was survivable. But the restore was
+  // cosmetic: the person could read their conversation and the one participant who needed it could
+  // not. A worse-behaved assistant would have guessed at what "keep going" meant.
+  assert.match(app, /chatHistory\.push\(\{ role: msg\.role === 'user' \? 'user' : 'assistant', content: msg\.content \}\)/);
+  // Rendering and remembering happen in the same loop, so one cannot be added without the other.
+  const block = app.slice(app.indexOf("const h = await Kiln.api('/clay/history"), app.indexOf('restored += 1;'));
+  assert.ok(block.includes('log.appendChild(node)'), 'render and remember must stay together');
+});
