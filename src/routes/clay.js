@@ -1705,7 +1705,24 @@ router.post('/chat', authenticate, [
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   const ctx = await buildChatContext(req);
-  const out = await agent.runChat({ messages: req.body.messages, executors: buildExecutors(req.user), conceptContext: ctx.conceptContext, memoryContext: ctx.memoryContext, allowTools: ctx.allowTools, viewer: { role: req.user.role, name: req.user.name } });
+  // TWELVE, NOT SIX, ON THE ONE SURFACE WHERE PEOPLE BUILD THINGS.
+  //
+  // The default was 6 and this route never overrode it. Reproduced twice on production with a fully
+  // explicit request — "build me a project: weekend dog walking for night shift nurses in Cleveland,
+  // two walks per shift, go ahead and build it now" — and both times Clay ran out of room and saved
+  // nothing. The platform's central action could not complete in a single turn.
+  //
+  // I called this a cost and latency decision last time and that was wrong. A budget that stops the
+  // main thing the product does is a correctness problem.
+  //
+  // 12 rather than a bigger round number because the cost of too high is a slow turn on the rare
+  // occasions it is reached, and the cost of too low is the product not working. stepsUsed is
+  // recorded on every turn now, so the right number comes from data rather than from me guessing a
+  // third time.
+  const out = await agent.runChat({ messages: req.body.messages, executors: buildExecutors(req.user), conceptContext: ctx.conceptContext, memoryContext: ctx.memoryContext, allowTools: ctx.allowTools, maxSteps: 12, viewer: { role: req.user.role, name: req.user.name } });
+  if (out && out.status === 'incomplete') {
+    console.error('clay: ran out of steps at %s/%s for user %s', out.stepsUsed, out.maxSteps, req.user.id);
+  }
   // Record it. Never awaited into the response path in a way that could delay or break the answer —
   // recordTurn swallows its own errors, because analytics must not cost someone the thing they came for.
   recordConversation(req, out).catch(() => {});

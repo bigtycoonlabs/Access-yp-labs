@@ -45,3 +45,23 @@ test('an incomplete turn is kept whole, not chopped into bubbles', () => {
 test('and it is recorded as what it was', () => {
   assert.match(route, /status: out\.status,/);
 });
+
+test('the build surface gets a budget that fits a build', () => {
+  // Reproduced twice on production with a fully explicit request — "build me a project... go ahead
+  // and build it now" — and both times Clay ran out of room and saved nothing. The platform's
+  // central action could not complete in a single turn.
+  //
+  // I called this a cost and latency decision the first time and that was wrong. A budget that
+  // stops the main thing the product does is a correctness problem.
+  assert.match(route, /maxSteps: 12/);
+  assert.match(route, /TWELVE, NOT SIX, ON THE ONE SURFACE WHERE PEOPLE BUILD THINGS/);
+});
+
+test('how many steps a turn used is recorded, so the number stops being a guess', () => {
+  // The budget was 6 for every caller and nobody knew whether that was generous or nowhere near
+  // enough, because it was never measured. Guessing twice is how this stays broken.
+  assert.match(agent, /let stepsUsed = 0;/);
+  assert.match(agent, /stepsUsed = step \+ 1;/);
+  assert.match(agent, /stepsUsed,\s*\n\s*maxSteps,/);
+  assert.match(route, /clay: ran out of steps at %s\/%s for user %s/);
+});

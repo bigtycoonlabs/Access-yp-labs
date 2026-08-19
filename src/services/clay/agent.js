@@ -281,7 +281,12 @@ async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext 
   // that no successful tool backs gets caught before a blind builder is misled.
   const backedActions = new Set();
 
+  // Track what a turn actually costs. The budget was 6 for every caller and nobody knew whether
+  // that was generous or nowhere near enough, because it was never recorded. Guessing twice is how
+  // this stays broken.
+  let stepsUsed = 0;
   for (let step = 0; step < maxSteps; step++) {
+    stepsUsed = step + 1;
     emit('thinking', { step: step + 1,
       note: step === 0 ? 'Reading what you said' : 'Working out what to do next' });
     const resp = await provider.chat({ system, messages: convo, tools });
@@ -397,6 +402,8 @@ async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext 
     ? 'I did get this far: ' + did.join(', ') + '. '
     : 'I have not saved anything yet, so nothing is half-finished. ';
   return {
+    stepsUsed,
+    maxSteps,
     status: 'incomplete',
     reply: 'That turned out to be more work than fits in one go, so I stopped partway rather than '
       + 'rushing the rest. ' + didLine + 'Say "keep going" and I will pick up exactly where I left off.',
