@@ -41,7 +41,12 @@ CREATE TABLE IF NOT EXISTS yp_labs.notifications (
   -- DISABLED and points at accessyourplace.com, a different platform. So a bounce here is invisible,
   -- and calling provider acceptance 'sent' would be this codebase's signature defect in its own
   -- records: reporting success for something it did not verify.
-  email_status  text CHECK (email_status IS NULL OR email_status IN ('accepted','skipped','failed')),
+  --
+  -- 'accepted' is ours: the provider took it. Everything after 'skipped' comes from the provider's
+  -- delivery webhook and is the only way this platform can learn what actually happened.
+  email_status  text CHECK (email_status IS NULL OR email_status IN (
+                  'accepted','skipped','failed',
+                  'delivered','bounced','complained','delayed')),
   email_reason  text,
   -- The provider's own id, kept so a bounce can be traced back to the person it was meant for once
   -- a webhook exists. Throwing it away is what makes that impossible later.

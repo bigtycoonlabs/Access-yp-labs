@@ -57,6 +57,12 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), (req
   Promise.resolve(require('./routes/webhooks').stripeWebhook(req, res)).catch(next);
 });
 
+// Resend signs with Svix over the RAW body, so this mounts before json too. Same reason as Stripe:
+// parsing first would reassemble the body and the signature would never match.
+app.post('/api/webhooks/resend', express.raw({ type: 'application/json' }), (req, res, next) => {
+  Promise.resolve(require('./routes/resendWebhook').resendWebhook(req, res)).catch(next);
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 

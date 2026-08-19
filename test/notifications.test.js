@@ -22,7 +22,16 @@ test('in-app is the truth; email is an attempt', () => {
   assert.match(svc, /Record the event, then try to email\. In that order, always/);
   assert.match(svc, /if \(res && res\.sent\) await mark\(row\.id, 'accepted', null, res\.id\);/);
   assert.match(svc, /else await mark\(row\.id, 'failed', \(res && res\.reason\) \|\| 'unknown'\);/);
-  assert.match(sql, /email_status IN \('accepted','skipped','failed'\)/);
+  // The three statuses this platform can set for itself. Delivery outcomes are added by the
+  // provider webhook and are deliberately not in this list — nothing in notify.js may write them,
+  // because they are things only the provider can know.
+  for (const own of ['accepted', 'skipped', 'failed']) {
+    assert.ok(sql.includes("'" + own + "'"), 'missing status: ' + own);
+  }
+  const code = svc.split('\n').map(function (l) { return l.replace(/\/\/.*/, ' '); }).join('\n');
+  for (const theirs of ['delivered', 'bounced', 'complained']) {
+    assert.ok(!code.includes("'" + theirs + "'"), 'notify.js must never claim ' + theirs);
+  }
 });
 
 test('a notification never breaks the thing it reports', () => {
