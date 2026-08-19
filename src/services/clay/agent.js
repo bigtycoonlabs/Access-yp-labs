@@ -380,7 +380,28 @@ async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext 
       }
     }
   }
-  return { status: 'answered', reply: 'Clay reached its step limit for this turn. Ask me to continue.', messages: convo };
+  // RUNNING OUT OF STEPS IS NOT AN ANSWER, AND IT MUST NOT LOOK LIKE ONE.
+  //
+  // This read "Clay reached its step limit for this turn. Ask me to continue." Found by walking
+  // production: somebody asked Clay to build their project, got that sentence, and it was the last
+  // thing in their Laboratory. It names nothing that happened, admits nothing that did not, and
+  // hands them an instruction they have to work out for themselves.
+  //
+  // Three things wrong with it, and the middle one is the serious one.
+  //   It says "step limit", which means nothing to anybody outside this codebase.
+  //   Its status is 'answered'. It was not an answer, and the honesty audit downstream reads that
+  //   status — a turn that ran out of room must never be able to back a completion claim.
+  //   It does not say what got done, so the person cannot tell whether to redo the work or resume.
+  const did = Array.from(backedActions);
+  const didLine = did.length
+    ? 'I did get this far: ' + did.join(', ') + '. '
+    : 'I have not saved anything yet, so nothing is half-finished. ';
+  return {
+    status: 'incomplete',
+    reply: 'That turned out to be more work than fits in one go, so I stopped partway rather than '
+      + 'rushing the rest. ' + didLine + 'Say "keep going" and I will pick up exactly where I left off.',
+    messages: convo,
+  };
 }
 
 module.exports = { toolSchemas, planToolInvocation, runChat, renderConceptContext };
