@@ -3,9 +3,9 @@
 // on each screen. Renders synchronously (so #signout exists for other page scripts),
 // then reveals a Staff link for staff accounts after checking the session.
 //
-// Logged-in menu:  Laboratory · Dashboard · The Exchange · Affiliate · Profile
+// Logged-in menu:  Laboratory · Dashboard · The Exchange · Help build · Affiliate · Profile
 //                  · Staff (staff only) · Sign out
-// Logged-out menu: Home · The Exchange · Become an Affiliate · The Desk · Sign in · Sign up
+// Logged-out menu: Home · The Exchange · Help build · Become an Affiliate · The Desk · Sign in · Sign up
 //
 // Clay Weekly is NOT a separate entry: it is part of The Desk, reached from there. The Desk and the
 // magazine are the same thing to a reader — writing about what is happening here — and two menu
@@ -66,6 +66,11 @@
       link('/app.html', 'Laboratory'),
       link('/dashboard.html', 'Dashboard'),
       link('/marketplace.html', 'The Exchange'),
+      // HELP BUILD, in BOTH menus. I added this to ten static pages and it never appeared, because
+      // nav.js replaces every page's nav on load — the static markup was dead the whole time. It
+      // matters most for the signed-out menu: somebody who has a skill and no idea of their own is
+      // exactly a stranger, and they could not see the one page built for them.
+      link('/seats.html', 'Help build'),
       link('/movers.html', 'Affiliate'),
       link('/profile.html', 'Profile'),
       so,
@@ -92,6 +97,7 @@
     var out = [
       link('/', 'Home'),
       link('/marketplace.html', 'The Exchange'),
+      link('/seats.html', 'Help build'),
       link('/movers.html', 'Become an Affiliate'),
       link('/desk', 'The Desk'),
       link('/login.html', 'Sign in'),

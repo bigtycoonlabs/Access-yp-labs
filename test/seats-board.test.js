@@ -93,3 +93,33 @@ test('the server sentence is passed through, not replaced', () => {
   // generic failure would throw away.
   assert.match(page, /\(e && e\.status && e\.message\) \|\| 'That did not send/);
 });
+
+test('the board is in the real nav, both signed in and signed out', () => {
+  // I added "Help build" to ten static pages and it never appeared on the live site. nav.js REPLACES
+  // every page's nav on load, so the static markup was dead the whole time — my link existed in the
+  // file and in no rendered page.
+  //
+  // The signed-out menu matters most: somebody who has a skill and no idea of their own is exactly a
+  // stranger, and they could not see the one page built for them.
+  //
+  // Third reachability failure this week on the same feature. "Does the route respond" is not "can
+  // somebody get there", and neither is "is the link in the file".
+  const nav = fs.readFileSync('public/js/nav.js', 'utf8');
+  const links = nav.match(/link\('\/seats\.html', 'Help build'\)/g) || [];
+  assert.strictEqual(links.length, 2, 'both menus must carry it');
+  // Positioned next to the Exchange in both, because they are the two halves of the same market:
+  // one is projects for sale, the other is projects asking for help.
+  assert.match(nav, /link\('\/marketplace\.html', 'The Exchange'\),\s*\n(\s*\/\/[^\n]*\n)*\s*link\('\/seats\.html', 'Help build'\)/);
+});
+
+test('the homepage invites a skill, not only an idea', () => {
+  // "Your idea is worth something" and "what's the one you can't stop thinking about?" asked for the
+  // one thing most visitors do not have. 55 concepts on this platform, 12 people who ever made one.
+  const home = fs.readFileSync('public/index.html', 'utf8');
+  assert.match(home, /<h1>Bring an idea, or bring what you&rsquo;re good at\.<\/h1>/);
+  assert.match(home, /Four ways to play/);
+  assert.match(home, /<a class="door-link" href="\/seats\.html">/);
+  assert.match(home, /hold a real share of what you help build/);
+  // And the search description, which is what a stranger reads before they ever arrive.
+  assert.match(home, /or bring what you are good at and take a seat/);
+});
