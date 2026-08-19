@@ -21,6 +21,7 @@ const { body, validationResult } = require('express-validator');
 const { query } = require('../config/db');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { authenticate } = require('../middleware/auth');
+const { safely } = require('../services/notify');
 
 const router = express.Router();
 
@@ -106,6 +107,20 @@ router.post('/project/:conceptId', authenticate, [
     [req.params.conceptId, req.user.id, req.body.kind.trim(), req.body.note.trim(),
       req.body.asset_id || null]).catch(rethrow);
 
+  // The owner has to learn this without opening the page. Nothing built this week is worth
+  // anything if the person who has to act finds out by chance.
+  safely({
+    userId: concept.owner_id,
+    kind: 'contribution_offered',
+    headline: (req.user.display_name || req.user.name || 'Somebody')
+      + ' offered to help with ' + (concept.title || 'your project'),
+    body: req.body.note.trim().slice(0, 240),
+    conceptId: concept.id,
+    actorId: req.user.id,
+    url: '/concept.html?id=' + concept.id,
+    dedupeKey: 'contrib_offered:' + r.rows[0].id,
+  });
+
   res.status(201).json({ ok: true, contribution: r.rows[0],
     message: 'Offered. ' + (concept.title || 'The owner') + ' will decide whether it fits, and you '
       + 'will see their answer either way.' });
@@ -180,6 +195,18 @@ router.post('/:id/accept', authenticate, [
     [req.params.id, req.body.share_bp, req.user.id]).catch(rethrow);
   if (!r.rows.length) throw new ApiError(409, 'That was decided while you were looking at it.');
 
+  safely({
+    userId: contribution.contributor_id,
+    kind: 'contribution_accepted',
+    headline: (concept.title || 'A project') + ' accepted your ' + contribution.kind,
+    body: 'You hold ' + (Number(req.body.share_bp) / 100) + '% of the seller side. That share is '
+      + 'fixed and will not shrink if other people join later.',
+    conceptId: concept.id,
+    actorId: req.user.id,
+    url: '/concept.html?id=' + concept.id,
+    dedupeKey: 'contrib_accepted:' + r.rows[0].id,
+  });
+
   res.json({ ok: true, contribution: r.rows[0],
     message: 'Accepted at ' + (Number(req.body.share_bp) / 100) + '% of the seller side. That share '
       + 'is fixed now and will not change if other people join later.' });
@@ -205,6 +232,19 @@ router.post('/:id/reject', authenticate, [
     `UPDATE contributions SET state='rejected', decision_reason=$2, decided_by=$3, decided_at=NOW()
       WHERE id=$1 AND state='offered' RETURNING *`,
     [req.params.id, req.body.reason.trim(), req.user.id]);
+
+  // A no has to arrive as reliably as a yes, and carrying the reason is the whole point. Somebody
+  // left wondering why is worse off than somebody told plainly.
+  safely({
+    userId: c.rows[0].contributor_id,
+    kind: 'contribution_declined',
+    headline: (concept.title || 'A project') + ' turned down your ' + c.rows[0].kind,
+    body: req.body.reason.trim() + ' — this costs you nothing, and you can offer something else.',
+    conceptId: concept.id,
+    actorId: req.user.id,
+    url: '/seats.html',
+    dedupeKey: 'contrib_declined:' + r.rows[0].id,
+  });
 
   res.json({ ok: true, contribution: r.rows[0],
     message: 'Turned down, with your reason sent to them. It costs them nothing — no mark, no '

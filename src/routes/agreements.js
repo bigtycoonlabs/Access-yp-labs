@@ -25,6 +25,7 @@ const { body, validationResult } = require('express-validator');
 const { query } = require('../config/db');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { authenticate } = require('../middleware/auth');
+const { safely } = require('../services/notify');
 
 const router = express.Router();
 
@@ -196,6 +197,21 @@ router.post('/project/:conceptId', authenticate, [
     'INSERT INTO agreement_signatures (agreement_id, user_id) VALUES ($1,$2)',
     [r.rows[0].id, req.user.id]);
 
+  // Everyone who has to sign learns it is waiting on them. An agreement nobody knows about is an
+  // agreement that never gets signed, and until it is signed there is no record of who gets what.
+  team.filter(function (m) { return m.id !== req.user.id; }).forEach(function (m) {
+    safely({
+      userId: m.id,
+      kind: 'agreement_proposed',
+      headline: 'A split was proposed for ' + (concept.title || 'a project you are on'),
+      body: 'It takes effect once everybody signs, and it is waiting on you.',
+      conceptId: concept.id,
+      actorId: req.user.id,
+      url: '/concept.html?id=' + concept.id,
+      dedupeKey: 'agreement_proposed:' + r.rows[0].id + ':' + m.id,
+    });
+  });
+
   res.status(201).json({ ok: true, agreement: r.rows[0],
     message: 'Proposed, and you have signed it. It takes effect when everybody else has too. Any '
       + 'earlier version stays readable, so the team can always see what was agreed and when.' });
@@ -229,6 +245,20 @@ router.post('/:id/sign', authenticate, asyncHandler(async (req, res) => {
 
   if (!missing.length) {
     await query(`UPDATE team_agreements SET state='signed' WHERE id=$1`, [agreement.id]);
+    // The moment it becomes real, everybody hears it — including the person who just signed, so
+    // nobody has to work out from a count whether they were the last one.
+    const c = await query('SELECT title FROM concepts WHERE id=$1', [agreement.concept_id]);
+    team.forEach(function (m) {
+      safely({
+        userId: m.id,
+        kind: 'agreement_signed',
+        headline: 'The split for ' + ((c.rows[0] || {}).title || 'your project') + ' is agreed',
+        body: 'Everybody has signed. These are the team\u2019s terms now.',
+        conceptId: agreement.concept_id,
+        url: '/concept.html?id=' + agreement.concept_id,
+        dedupeKey: 'agreement_signed:' + agreement.id + ':' + m.id,
+      });
+    });
   }
 
   res.json({ ok: true,

@@ -21,6 +21,7 @@ const { body, validationResult } = require('express-validator');
 const { query } = require('../config/db');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { authenticate } = require('../middleware/auth');
+const { safely } = require('../services/notify');
 
 const router = express.Router();
 
@@ -150,6 +151,18 @@ router.post('/:id/fill', authenticate, [
       WHERE id=$1 AND status='open' RETURNING *`,
     [req.params.id, req.body.user_id]).catch(rethrow);
   if (!r.rows.length) throw new ApiError(409, 'That seat was taken while you were deciding.');
+
+  safely({
+    userId: req.body.user_id,
+    kind: 'seat_filled',
+    headline: 'You have the ' + seat.kind + ' seat on ' + (concept.title || 'a project'),
+    body: seat.brief,
+    conceptId: seat.concept_id,
+    actorId: req.user.id,
+    url: '/concept.html?id=' + seat.concept_id,
+    dedupeKey: 'seat_filled:' + r.rows[0].id + ':' + req.body.user_id,
+  });
+
   res.json({ ok: true, seat: r.rows[0] });
 }));
 

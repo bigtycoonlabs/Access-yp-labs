@@ -72,3 +72,4 @@
 055_handover_notes.sql
 056_bid_floor_ten_dollars.sql
 057_teams_seats_contributions.sql
+058_notifications.sql
