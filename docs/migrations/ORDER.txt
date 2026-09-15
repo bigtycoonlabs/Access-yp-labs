@@ -73,3 +73,4 @@
 056_bid_floor_ten_dollars.sql
 057_teams_seats_contributions.sql
 058_notifications.sql
+059_obligation_spine.sql
