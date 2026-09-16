@@ -143,6 +143,7 @@ app.use('/preview',           require('./routes/preview'));
 app.use('/api/files',         require('./routes/files'));
 app.use('/f',                 require('./routes/files').opener);
 app.use('/s',                 require('./routes/labsSites'));
+app.use('/api/keys',          require('./routes/keys'));
 app.use('/api/portal',        require('./routes/portal').api);
 app.use('/p',                 require('./routes/portal').pages);
 app.use('/api/contributions', require('./routes/contributions'));

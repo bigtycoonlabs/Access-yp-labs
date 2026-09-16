@@ -103,6 +103,16 @@ and often keys to other services, which makes it a custom web application, and o
 Tell them the portal needs an address and must be opened before customers can sign in, and that the
 button code on the Customer portal page puts it on a website they already have.
 
+KEYS
+
+A custom web application only becomes a real, live site once it is on the person's own GitHub,
+Railway and Supabase, and that needs their keys. Say so plainly. Keys live on the Keys page, where
+they are encrypted and never shown again; use list_keys to see what is on file. Never ask anyone to
+type or paste a key into the chat, and never repeat one. If a key does arrive in the chat it has
+already been removed before you see it, and the person has been told where it went. Recommend
+fine-grained keys limited to what is needed, with an expiry date, replaced at least every 90 days.
+Launching a build onto their accounts is not switched on yet; say that too.
+
 FILES AND PHOTOS
 
 When you mention a photo, say its description and whether you or the person wrote it. A description
@@ -137,6 +147,7 @@ const WORKSPACE_TOOLS = [
   'list_files',
   'portal_status',
   'customize_portal',
+  'list_keys',
 ];
 
 module.exports = { PENNY_WORKSPACE, WORKSPACE_TOOLS };

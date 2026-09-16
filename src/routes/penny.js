@@ -15,6 +15,7 @@ const { authenticate } = require('../middleware/auth');
 const agent = require('../services/clay/agent');
 const { PENNY_WORKSPACE, WORKSPACE_TOOLS } = require('../services/clay/penny');
 const workspace = require('../services/clay/workspace');
+const Keys = require('../services/clay/keys');
 const spine = require('../services/clay/spine');
 
 const router = express.Router();
@@ -36,11 +37,25 @@ router.post('/chat', authenticate, [
   const errs = validationResult(req);
   if (!errs.isEmpty()) throw new ApiError(400, errs.array()[0].msg);
 
+  // KEYS NEVER REACH THE MODEL. Every message is scrubbed before anything else sees it, including
+  // earlier turns the browser resends. A key the person just pasted is checked and stored in Keys
+  // when there is exactly one business it can belong to; either way they are told what happened.
+  const scrubbed = Keys.scrub(req.body.messages);
+  let keyNote = null;
+  if (scrubbed.found.length) {
+    try { keyNote = await Keys.takeFromChat(req.user, scrubbed.found); } catch (e) {
+      keyNote = 'I removed a key from our chat, but I could not store it: ' + e.message + ' Add it on the Keys page.';
+    }
+    scrubbed.messages.push({ role: 'user', content: '[Note from the system, not the person: a key was '
+      + 'removed from this message before you saw it. What happened to it has already been told to the '
+      + 'person. Do not ask them to paste it again; point them to the Keys page if they need to add one.]' });
+  }
+
   const events = [];
   let out;
   try {
     out = await agent.runChat({
-      messages: req.body.messages,
+      messages: scrubbed.messages,
       executors: buildExecutors(req.user),
       allowTools: WORKSPACE_TOOLS,
       systemOverride: PENNY_WORKSPACE,
@@ -72,7 +87,10 @@ router.post('/chat', authenticate, [
     .map((e) => ({ tool: e.tool, ok: e.ok, note: e.note }));
 
   res.json({
-    reply: out.reply,
+    reply: keyNote ? keyNote + (out.reply ? '\n\n' + out.reply : '') : out.reply,
+    // Which of the person's messages had a key taken out, so the page can replace its own copy.
+    keys_removed: scrubbed.found.length
+      ? scrubbed.messages.filter((m) => m.role === 'user').map((m) => m.content) : null,
     // 'answered' | 'incomplete' | 'unavailable' | 'confirmation_required', passed straight through.
     // A turn that ran out of room must never be dressed up as a complete answer, and the agent
     // already refuses to let 'incomplete' back a completion claim downstream.

@@ -1,0 +1,184 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Keys, Access YP Labs</title>
+<meta name="robots" content="noindex, nofollow"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&family=Inter:wght@400;600;700&display=swap"/>
+<link rel="stylesheet" href="/css/penny.css"/>
+<style>
+.field{display:block;font-weight:600;margin:14px 0 6px;}
+.box{width:100%;min-height:44px;padding:10px 12px;font:inherit;border:1px solid var(--line);
+  border-radius:var(--radius);background:var(--panel);color:var(--ink);box-sizing:border-box;}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin:0 0 18px;}
+.key{border-top:1px solid var(--line);padding:12px 0;}
+.key:first-of-type{border-top:0;}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+.row .btn{min-height:44px;display:inline-flex;align-items:center;}
+.due{border-left:3px solid #B54708;padding-left:10px;}
+details summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600;}
+</style>
+</head><body>
+
+<!-- KEYS. The secrets Penny may use for this business. A key goes in here and never comes back out:
+     this page shows only the service, the last four characters, what the check found, and when it
+     was used. -->
+
+<a class="skip" href="#main">Skip to your keys</a>
+
+<header class="site">
+  <div class="bar">
+    <a class="brand" href="/today.html">Access YP Labs<span class="dot" aria-hidden="true">.</span></a>
+    <a class="btn quiet" href="/today.html">Today</a>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <h1>Keys</h1>
+  <p>Keys let Penny put what she builds onto your own GitHub, Railway and Supabase accounts. They are
+    encrypted, never shown again once saved, and Penny uses them without ever seeing them. Never paste a
+    key into a chat; if you do, Penny takes it out and brings it here.</p>
+
+  <label class="field" for="biz">Which business?</label>
+  <select id="biz" class="box"></select>
+
+  <div id="status" role="status" aria-live="polite" class="muted" style="margin-top:12px;"></div>
+
+  <section class="panel" aria-labelledby="have-h" style="margin-top:16px;">
+    <h2 id="have-h" style="margin-top:0;">On file</h2>
+    <p id="summary"></p>
+    <div id="list"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="add-h">
+    <h2 id="add-h" style="margin-top:0;">Add or replace a key</h2>
+    <label class="field" for="service">Which service?</label>
+    <select id="service" class="box">
+      <option value="github">GitHub</option>
+      <option value="railway">Railway</option>
+      <option value="supabase">Supabase</option>
+    </select>
+    <label class="field" for="value">The key</label>
+    <input id="value" class="box" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="value-hint"/>
+    <p class="muted" id="value-hint" style="margin:4px 0 0;">I check it with the service before saving,
+      and tell you what it can reach. Adding a key replaces the one on file for that service.</p>
+    <div style="margin-top:14px;"><button class="btn" type="button" id="save">Check and save it</button></div>
+
+    <details style="margin-top:16px;">
+      <summary>Where do I get each key?</summary>
+      <p><strong>GitHub:</strong> Settings, Developer settings, Personal access tokens, Fine-grained tokens.
+        Give it access to only the repositories Penny should use, with Contents read and write, and an expiry date.</p>
+      <p><strong>Railway:</strong> Account settings, Tokens. An account or workspace token can create new
+        projects; a project token can only deploy to one that exists.</p>
+      <p><strong>Supabase:</strong> Account, Access Tokens. It starts with sbp_. A project's secret key is not the right one.</p>
+      <p>Replace every key at least every 90 days. Penny puts a reminder on Today.</p>
+    </details>
+  </section>
+</main>
+
+<script src="/js/api.js"></script>
+<script src="/js/desk-auth.js"></script>
+<script>
+var $ = function (id) { return document.getElementById(id); };
+var NAMES = { github: 'GitHub', railway: 'Railway', supabase: 'Supabase' };
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function say(t) { $('status').textContent = t; }
+function day(d) { return new Date(d).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }); }
+async function call(url, method, body) {
+  var r = await fetch(url, { method: method || 'GET', headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined });
+  if (r.status === 401) { location.href = '/login.html?next=/keys.html'; throw new Error('signed out'); }
+  var d = {}; try { d = await r.json(); } catch (_) {}
+  if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+  return d;
+}
+
+function describe(k) {
+  var c = k.checked || {};
+  var bits = [];
+  if (c.acts_as) bits.push('acts as ' + c.acts_as);
+  if (c.kind) bits.push(c.kind + ' key');
+  if (c.scopes) bits.push('access to ' + c.scopes);
+  if (c.projects != null) bits.push('can see ' + c.projects + (c.projects === 1 ? ' project' : ' projects'));
+  if (c.expires) bits.push('expires ' + c.expires);
+  return bits.join(', ');
+}
+
+async function loadBusinesses() {
+  try {
+    var d = await call('/api/businesses');
+    var list = d.businesses || [];
+    if (!list.length) { say('Add a business first, then you can keep keys for it.'); $('save').disabled = true; return; }
+    $('biz').innerHTML = list.map(function (b) { return '<option value="' + esc(b.id) + '">' + esc(b.name) + '</option>'; }).join('');
+    load();
+  } catch (e) { if (e.message !== 'signed out') say('I could not read your businesses just now. That is a fault on our side, not an empty list.'); }
+}
+
+async function load() {
+  try {
+    var d = await call('/api/keys?business_id=' + encodeURIComponent($('biz').value));
+    $('summary').textContent = d.says + (d.vault_ready ? '' : ' Key storage is not switched on for this site yet, so keys cannot be saved.');
+    $('save').disabled = !d.vault_ready;
+    var now = new Date();
+    $('list').innerHTML = (d.keys || []).map(function (k) {
+      var due = new Date(k.rotate_after) < now;
+      return '<article class="key' + (due ? ' due' : '') + '"><h3 style="margin:0 0 4px;">' + esc(NAMES[k.service])
+        + ' key ending ' + esc(k.last4) + '</h3>'
+        + '<p style="margin:0 0 4px;">' + esc(describe(k) || 'Checked when saved.') + '.</p>'
+        + '<p class="muted" style="margin:0 0 4px;">Added ' + esc(day(k.created_at))
+        + (k.added_via === 'penny' ? ' by Penny, from the chat' : k.added_by_name ? ' by ' + esc(k.added_by_name) : '')
+        + '. ' + (k.last_used_at ? 'Last used ' + esc(day(k.last_used_at)) + '.' : 'Not used yet.') + '</p>'
+        + '<p style="margin:0 0 8px;">' + (due ? '<strong>Due to be replaced.</strong> ' : '') + 'Replace by ' + esc(day(k.rotate_after)) + '.</p>'
+        + '<div class="row"><button class="btn plain" type="button" data-replace="' + esc(k.service) + '">Replace the ' + esc(NAMES[k.service]) + ' key</button>'
+        + '<button class="btn plain" type="button" data-remove="' + esc(k.id) + '" data-name="' + esc(NAMES[k.service] + ' key ending ' + k.last4) + '">Remove it</button></div>'
+        + '<div id="in-' + esc(k.id) + '"></div></article>';
+    }).join('');
+  } catch (e) {
+    if (e.message !== 'signed out') $('summary').textContent = 'I could not read your keys, so I do not know what is on file.';
+  }
+}
+
+$('save').addEventListener('click', async function () {
+  var v = $('value').value.trim();
+  if (!v) { say('Paste the key first.'); $('value').focus(); return; }
+  var btn = this; btn.disabled = true; btn.textContent = 'Checking with ' + NAMES[$('service').value] + '\u2026';
+  say('Checking the key with ' + NAMES[$('service').value] + '.');
+  try {
+    var d = await call('/api/keys', 'POST', { business_id: $('biz').value, service: $('service').value, value: v });
+    say(d.says); load();
+  } catch (e) { if (e.message !== 'signed out') say('Nothing was saved. ' + e.message); }
+  finally {
+    /* The field is cleared whatever happened, so the key does not sit on screen. */
+    $('value').value = '';
+    btn.disabled = false; btn.textContent = 'Check and save it';
+  }
+});
+
+document.addEventListener('click', async function (ev) {
+  var d = ev.target.dataset;
+  try {
+    if (d.replace) {
+      $('service').value = d.replace; $('value').focus();
+      say('Paste the new ' + NAMES[d.replace] + ' key, then choose Check and save it. The old one stops being used once the new one is saved.');
+    } else if (d.remove) {
+      $('in-' + d.remove).innerHTML = '<p style="font-weight:600;">Remove the ' + esc(d.name) + '? Penny will no longer be able to use it.</p>'
+        + '<div class="row"><button class="btn" type="button" data-removeyes="' + esc(d.remove) + '">Yes, remove it</button>'
+        + '<button class="btn plain" type="button" data-keep="' + esc(d.remove) + '">Keep it</button></div>';
+      $('in-' + d.remove).querySelector('button').focus();
+    } else if (d.removeyes) {
+      var r = await call('/api/keys/' + d.removeyes, 'DELETE'); say(r.says); load();
+    } else if (d.keep) {
+      $('in-' + d.keep).innerHTML = ''; say('Kept.');
+    }
+  } catch (e) { if (e.message !== 'signed out') say('That did not work, so nothing changed. ' + e.message); }
+});
+
+$('biz').addEventListener('change', load);
+loadBusinesses();
+</script>
+</body></html>

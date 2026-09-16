@@ -28,6 +28,7 @@ const C = require('./customers');
 const Bld = require('./builder');
 const Files = require('./files');
 const Portal = require('./portal');
+const Keys = require('./keys');
 
 // Result shapes. Borrowed from Arbo, where they exist because an unread balance once printed as
 // "$0.00" — indistinguishable from the money being gone.
@@ -109,6 +110,11 @@ const TOOLS = {
       + 'kind, required}]}), links ([{label, url}]). Pass the person\'s words as asked_for. Report '
       + 'what the result says it could not apply. If it says the request needs a backend, explain '
       + 'that is a custom web application and offer to build it with start_build.',
+  },
+  list_keys: {
+    irreversible: false, requires_confirmation: false, required: ['business_id'], enums: {},
+    summary: 'Which keys (GitHub, Railway, Supabase) a business has on file, what each was checked to '
+      + 'reach, and when each is due to be replaced. Never the keys themselves. Read-only.',
   },
   list_builds: {
     irreversible: false, requires_confirmation: false, required: ['business_id'], enums: {},
@@ -346,6 +352,14 @@ async function customize_portal(viewer, params = {}) {
   return answered({ ignored: r.ignored, needs_custom_app: r.beyond }, r.says);
 }
 
+async function list_keys(viewer, params = {}) {
+  const r = await Keys.list(viewer, params.business_id);
+  if (!r.ok) return r.kind === 'refused' ? refused(r.says) : unavailable('keys_unreadable', r.says);
+  return answered({ storage_ready: r.vault_ready, keys: r.keys.map((k) => ({
+    service: k.service, ends_in: k.last4, checked: k.checked, replace_by: k.rotate_after, last_used: k.last_used_at,
+  })) }, r.says);
+}
+
 async function list_builds(viewer, params = {}) {
   const r = await Bld.listFor(viewer, params.business_id);
   if (!r.ok) {
@@ -373,6 +387,6 @@ async function list_files(viewer, params = {}) {
 
 const EXECUTORS = { whats_due, whats_coming, list_businesses, record_obligation,
   complete_obligation, whats_missing, whats_outstanding_with_customers, start_build, publish_build, list_builds, list_files,
-  portal_status, customize_portal };
+  portal_status, customize_portal, list_keys };
 
 module.exports = { TOOLS, EXECUTORS, answered, empty, unavailable, refused };

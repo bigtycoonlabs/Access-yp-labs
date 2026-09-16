@@ -136,3 +136,11 @@ test('it lives at team.html, because people.html was already a staff screen', ()
   assert.match(t, /href="\/team\.html"/);
   assert.ok(!/href="\/people\.html"/.test(t));
 });
+
+test('keys, like export, are granted on purpose and never come with a preset', () => {
+  const T = fs.readFileSync('src/routes/team.js', 'utf8');
+  const presets = T.slice(T.indexOf('const PRESETS = {'), T.indexOf('};', T.indexOf('const PRESETS = {')));
+  assert.doesNotMatch(presets, /\bkeys:/);
+  assert.doesNotMatch(presets, /\bexport:/);
+  assert.ok(require('../src/lib/permissions').AREAS.includes('keys'));
+});

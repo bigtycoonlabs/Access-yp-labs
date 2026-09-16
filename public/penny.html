@@ -50,6 +50,7 @@
 <header class="site">
   <div class="bar">
     <a class="brand" href="/today.html">Access YP Labs<span class="dot" aria-hidden="true">.</span></a>
+    <a class="btn quiet" href="/keys.html">Keys</a>
     <a class="btn quiet" href="/today.html">Today</a>
   </div>
 </header>
@@ -176,12 +177,39 @@ async function runConfirmed(c, box) {
   }
 }
 
+/* KEYS NEVER STAY ON SCREEN. The same shapes the server removes are hidden from this page's own copy
+   of the conversation the moment a message is sent. The raw text goes to the server once, so the key
+   can be checked and stored in Keys; after that only the cleaned copy is ever sent again. */
+var KEY_SHAPES = [
+  [/\b(?:gh[pousr]_[A-Za-z0-9]{36,255}|github_pat_[A-Za-z0-9_]{60,255})\b/g, 'GitHub key'],
+  [/\bsbp_[A-Za-z0-9]{40,}\b/g, 'Supabase access token'],
+  [/\bsb_secret_[A-Za-z0-9_-]{16,}\b/g, 'Supabase secret key'],
+  [/\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g, 'service key'],
+  [/\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}\b/g, 'OpenAI key'],
+  [/\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{16,}\b/g, 'Stripe secret key'],
+];
+function hideKeys(text) {
+  var out = text, hit = false;
+  KEY_SHAPES.forEach(function (k) {
+    out = out.replace(k[0], function () { hit = true; return '[' + k[1] + ', removed from the chat]'; });
+  });
+  if (/\brailway\b[\s\S]{0,80}\b(token|key)\b|\b(token|key)\b[\s\S]{0,80}\brailway\b/i.test(out)) {
+    out = out.replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, function () {
+      hit = true; return '[Railway key, removed from the chat]';
+    });
+  }
+  return { text: out, hit: hit };
+}
+
 async function send(text) {
   if (busy || !text.trim()) return;
   busy = true;
   $('send').disabled = true;
-  addTurn('You', text, 'me');
+  var shown = hideKeys(text);
+  addTurn('You', shown.text, 'me');
   messages.push({ role: 'user', content: text });
+  var mine = messages.length - 1;
+  if (shown.hit) announce(['I took a key out of what you typed so it does not stay on screen. Penny will say what happened to it.']);
   $('msg').value = '';
 
   var waiting = addTurn('Penny', 'Thinking…', 'penny');
@@ -198,6 +226,8 @@ async function send(text) {
     if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
 
     waiting.querySelector('.body').textContent = d.reply;
+    /* From now on only the cleaned copy is ever sent. */
+    if (shown.hit) messages[mine].content = shown.text;
     messages.push({ role: 'assistant', content: d.reply });
 
     var spoken = [];
@@ -217,6 +247,8 @@ async function send(text) {
     /* If there is no confirmation to focus, bring the reply itself into view. */
     if (!d.awaiting_confirmation) waiting.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   } catch (e) {
+    /* A key that did not reach the server is not resent either. */
+    if (shown.hit) messages[mine].content = shown.text;
     /* Never leave a blank turn that reads like a considered answer. */
     waiting.querySelector('.body').textContent =
       'I could not get an answer just now, and nothing has been changed. ' + e.message;

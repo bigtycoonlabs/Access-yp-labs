@@ -29,7 +29,7 @@ test('she carries only the workspace tools', () => {
   assert.deepStrictEqual(WORKSPACE_TOOLS,
     ['whats_due', 'whats_coming', 'list_businesses', 'record_obligation', 'complete_obligation',
       'whats_missing', 'whats_outstanding_with_customers', 'start_build', 'publish_build', 'list_builds', 'list_files',
-      'portal_status', 'customize_portal']);
+      'portal_status', 'customize_portal', 'list_keys']);
   // Comment text wraps, so normalise the line breaks rather than guessing where they fall.
   const flat = persona.replace(/\s*\n\s*\/\/\s*/g, ' ');
   assert.match(flat, /A real 429 followed that mistake on Access Your Place/);
@@ -38,7 +38,8 @@ test('she carries only the workspace tools', () => {
 test('the route reads the shape runChat actually returns', () => {
   // The first version read out.text, out.stoppedEarly and out.pending. None exist. runChat returns
   // { status, reply, messages } and surfaces a confirmation as status 'confirmation_required'.
-  assert.match(route, /reply: out\.reply/);
+  // Since 16 Sept 2026 a note about a key taken out of the chat may come first; the reply is still out.reply.
+  assert.match(route, /reply: keyNote \? keyNote \+ \(out\.reply \? '\\n\\n' \+ out\.reply : ''\) : out\.reply,/);
   assert.match(route, /status: out\.status/);
   assert.match(route, /out\.confirmation/);
   // Checked against the CODE rather than the file. The first version of this assertion failed on the

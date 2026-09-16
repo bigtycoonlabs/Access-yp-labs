@@ -20,7 +20,7 @@
 
 const { query } = require('../config/db');
 
-const AREAS = ['compliance', 'money', 'customers', 'team', 'documents', 'projects', 'sites', 'export'];
+const AREAS = ['compliance', 'money', 'customers', 'team', 'documents', 'projects', 'sites', 'export', 'keys'];
 const LEVELS = ['none', 'view', 'act', 'manage'];
 
 // Ordered, so "at least view" is a comparison rather than a list of cases.
@@ -96,6 +96,7 @@ function refusalLine(result, area, businessName, ownerName) {
     compliance: 'the filings and licences', money: 'the financials',
     customers: 'the customers', team: 'the team', documents: 'the documents',
     projects: 'the projects and builds', sites: 'the website', export: 'exporting data',
+    keys: 'the keys to other services',
   }[area] || area;
   return 'That is outside what you can see on ' + (businessName || 'this business')
     + ' — you do not have access to ' + plain + '. ' + who + ' give you access.';

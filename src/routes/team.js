@@ -47,7 +47,7 @@ const PRESETS = {
   office_manager: { customers: 'act', documents: 'act', compliance: 'view', money: 'view' },
   full_admin: { compliance: 'manage', money: 'manage', customers: 'manage', team: 'manage',
     documents: 'manage', projects: 'manage', sites: 'manage' },
-  // Export is in NO preset, on purpose. It is the one capability that removes data from the
+  // Export is in NO preset, on purpose. Neither are keys, for the same reason. It is the one capability that removes data from the
   // building, and it should be a deliberate act rather than something that arrives with a job title.
 };
 
