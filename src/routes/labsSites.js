@@ -70,6 +70,12 @@ router.get('/:slug', async (req, res) => {
   let html = row.html;
   html = /<\/head>/i.test(html) ? html.replace(/<\/head>/i, script + '</head>') : script + html;
   html = /<\/body>/i.test(html) ? html.replace(/<\/body>(?![\s\S]*<\/body>)/i, footer + '</body>') : html + footer;
+  // Cloudflare rewrites every email address into a link that needs its own script to decode, and the
+  // sandbox blocks that script, so the client's email and our report link would both break. Walked
+  // on production 16 Sept 2026. Its documented opt-out is these markers around the content. They go
+  // inside body, never before the doctype, which would switch the page into quirks mode.
+  html = html.replace(/<body([^>]*)>/i, '<body$1><!--email_off-->')
+    .replace(/<\/body>(?![\s\S]*<\/body>)/i, '<!--/email_off--></body>');
   res.status(200).set({
     'Content-Type': 'text/html; charset=utf-8',
     'Content-Security-Policy': [

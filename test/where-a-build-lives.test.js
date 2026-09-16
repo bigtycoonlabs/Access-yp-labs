@@ -89,3 +89,9 @@ test('the Build screen asks where it lives, with nothing picked', () => {
   assert.strictEqual((html.match(/name="tier"[^>]*checked/g) || []).length, 0);
   assert.strictEqual((html.match(/>Put it online<\/button>/g) || []).length, 1, 'no two buttons share a name');
 });
+
+test('hosted pages opt out of Cloudflare email rewriting, inside body', () => {
+  const src = fs.readFileSync('src/routes/labsSites.js', 'utf8');
+  assert.match(src, /'<body\$1><!--email_off-->'/);
+  assert.match(src, /'<!--\/email_off--><\/body>'/);
+});
