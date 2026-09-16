@@ -37,7 +37,10 @@ test('it names what is built without becoming a feature grid', () => {
   // A grid wins the purchase and loses the customer six months later when the workflow does not fit.
   // But the page had gone too far the other way and described a to-do list, while what exists is a
   // back office. Naming the areas is not a grid; hiding them is underselling.
-  assert.match(html, /What she keeps track of/);
+  // Renamed to "What she does today" once a "What is coming" section joined it — the two headings
+  // only work as a pair, and the first has to claim the present tense out loud for the second to be
+  // read as the future.
+  assert.match(html, /What she does today/);
   assert.match(html, /NO FEATURE GRID, DELIBERATELY/);
   assert.match(html, /Naming the areas is not a grid; hiding them is underselling/);
   // No ticks, no columns, no comparison table.
@@ -57,4 +60,37 @@ test('one main, one h1, the demo still runs unauthenticated', () => {
   assert.strictEqual((html.match(/<main/g) || []).length, 1);
   assert.strictEqual((html.match(/<h1/g) || []).length, 1);
   assert.match(html, /\/api\/public\/preview/);
+});
+
+test('the roadmap is on the page, and reads as a roadmap', () => {
+  // A homepage that only lists what shipped undersells a business that is going somewhere. One that
+  // writes the roadmap in the present tense commits the single defect this estate is built against,
+  // and it is the most checkable kind of lie — a visitor can ask to see it.
+  //
+  // Measured: "What she does today" at y=927, "What is coming" at y=2234, and the first sentence
+  // under the second heading is "None of this is built yet."
+  assert.match(html, /<h2 id="next-h">What is coming<\/h2>/);
+  assert.match(html, /None of this is built yet/);
+  assert.ok(html.indexOf('does-h') < html.indexOf('next-h'), 'what runs must come first');
+  assert.match(html, /<h2 id="does-h">What she does today<\/h2>/);
+  assert.match(html, /All of this runs now/);
+});
+
+test('the roadmap carries no dates', () => {
+  // A date on a homepage is a promise to somebody choosing between tools.
+  const coming = html.slice(html.indexOf('next-h'), html.indexOf('who-h'));
+  assert.ok(!/\b(Q[1-4]|20\d\d|January|February|March|April|May|June|July|August|September|October|November|December)\b/.test(coming),
+    'a date crept into the roadmap');
+  assert.match(html, /We will not put a date on any of it/);
+});
+
+test('the builder is only ever described as coming', () => {
+  // clay_builds has 19 rows, 14 done — and site_pages and site_domains are both 0. Builds completed
+  // and no site has ever had a page or a domain. Whatever they produced, nobody can visit it, so
+  // "Penny builds your website" would fail on the most checkable claim on the page.
+  const today = html.slice(html.indexOf('does-h'), html.indexOf('next-h'));
+  assert.ok(!/builds it|website builder|your GitHub/.test(today),
+    'the builder is claimed in the section that says everything runs now');
+  const coming = html.slice(html.indexOf('next-h'));
+  assert.match(coming, /She builds the thing/);
 });
