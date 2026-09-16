@@ -84,3 +84,5 @@
 067_keys.sql
 068_launches.sql
 069_model_usage.sql
+070_compliance_research.sql
+071_compliance_runs.sql

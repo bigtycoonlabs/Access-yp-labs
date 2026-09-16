@@ -1043,8 +1043,10 @@ test('toResponsesInput folds tool history to text — no native function_call it
   ]);
   // Every item is a plain role message; nothing is a structured function_call/output item.
   assert.ok(input.every((i) => i.role && typeof i.content === 'string'), 'only plain role messages');
-  assert.ok(input.some((i) => i.role === 'assistant' && /Called search_marketplace/.test(i.content)), 'the call is described as text');
-  assert.ok(input.some((i) => i.role === 'user' && /Result from search_marketplace: /.test(i.content)), 'the result is attributed to the tool by name');
+  // Since 16 Sept 2026 the call is described with its result rather than in the assistant's own
+  // words, because the model copied "[Called ...]" into replies (test/agent-turn-shapes.test.js).
+  assert.ok(input.some((i) => i.role === 'user' && /the search_marketplace tool, which you used with \{"query":"furnished"\}/.test(i.content)), 'the call is described as text, with its result');
+  assert.ok(!input.some((i) => i.role === 'assistant' && /Called/.test(i.content)), 'never in the assistant\'s words');
 });
 
 test('toResponsesTools emits the flat Responses function shape (no nested function object)', () => {

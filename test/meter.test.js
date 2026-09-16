@@ -55,7 +55,12 @@ test('the context follows the work, and background work carries its own', async 
 });
 
 test('every model call in the provider is metered', () => {
-  const src = fs.readFileSync('src/services/clay/provider.js', 'utf8');
+  const full = fs.readFileSync('src/services/clay/provider.js', 'utf8');
+  // The background search is checked on its own below: it polls, so calls and records do not pair up.
+  const deep = full.slice(full.indexOf('async function deepSearch'), full.indexOf('async function webSearch'));
+  const src = full.replace(deep, '');
+  assert.strictEqual((deep.match(/recordText\(/g) || []).length, 2, 'records when stopped and when finished');
+  assert.ok(deep.indexOf('recordText(') < deep.indexOf("if (resp.status !== 'completed')"), 'records before judging the result');
   const calls = (src.match(/await (openaiClient\(\)|anthropicClient\(\)|call\()/g) || []).length;
   const metered = (src.match(/meter\(\)\.recordText\(/g) || []).length;
   // The probe is the one deliberate exception: it checks the connection, it does no work.

@@ -272,6 +272,8 @@ if (require.main === module) {
     // is the opposite of the point. The person who loses an entity did not check and ignore it; they
     // never looked, because nothing made them.
     // Builds that were queued or mid-build when the process last stopped are picked up, not lost.
+    setTimeout(() => { require('./services/clay/complianceResearch').resume()
+      .then((n) => { if (n > 0) console.log('compliance research resumed: ' + n); }); }, 20000);
     setTimeout(() => { require('./services/clay/buildGen').resume()
       .then((n) => { if (n > 0) console.log('builds resumed: ' + n); }); }, 15000);
     const { sweep: dueSweep } = require('./services/clay/dueSweep');

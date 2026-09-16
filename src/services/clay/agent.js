@@ -304,6 +304,7 @@ async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext 
   // that was generous or nowhere near enough, because it was never recorded. Guessing twice is how
   // this stays broken.
   let stepsUsed = 0;
+  let imitationRetried = false;
   for (let step = 0; step < maxSteps; step++) {
     stepsUsed = step + 1;
     emit('thinking', { step: step + 1,
@@ -323,7 +324,19 @@ async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext 
           : `${who} could not reach the generation service: ${resp.error}. Nothing was fabricated.` };
     }
     const toolCalls = resp.tool_calls || [];
-    const text = (resp.text || '').trim();
+    let text = (resp.text || '').trim();
+
+    // A reply that is only a written-out tool call is not an answer, and the person would hear it read
+    // aloud as gibberish. Ask once for a real call or a real answer; if it happens again, say so.
+    if (!toolCalls.length && /^\[?\s*Called\s+[a-z_]+\s*\(/i.test(text)) {
+      if (!imitationRetried) {
+        imitationRetried = true;
+        convo.push({ role: 'user', content: '[System: your last reply was the written form of a tool call, '
+          + 'which does nothing. Either call the tool properly or answer the person in plain sentences.]' });
+        continue;
+      }
+      text = 'I tried to look that up and it did not work, so I have no answer yet. Please ask me again.';
+    }
 
     if (!toolCalls.length) {
       // HONESTY AUDIT — before this reply reaches a blind builder, make sure it doesn't
@@ -337,7 +350,7 @@ async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext 
       if (issues.length) {
         const scratch = convo.concat([
           { role: 'assistant', text },
-          { role: 'user', text: actionGuard.buildCorrection(issues) },
+          { role: 'user', content: actionGuard.buildCorrection(issues) },
         ]);
         const retry = await provider.chat({ system, messages: scratch, tools });
         const rewritten = retry && retry.ok ? (retry.text || '').trim() : '';
@@ -355,7 +368,7 @@ async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext 
       if (!regenerated && reasoning.recommendsWithoutReasoning(finalText)) {
         const scratch = convo.concat([
           { role: 'assistant', text: finalText },
-          { role: 'user', text: reasoning.NUDGE },
+          { role: 'user', content: reasoning.NUDGE },
         ]);
         const retry = await provider.chat({ system, messages: scratch, tools });
         const rewritten = retry && retry.ok ? (retry.text || '').trim() : '';
@@ -407,7 +420,13 @@ async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext 
         // and never run here, so they can never back a chat-turn completion claim.)
         const cls = actionGuard.actionClassForTool(tc.name);
         if (cls && out && !out.error && out.status !== 'error') backedActions.add(cls);
-        convo.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(out).slice(0, 4000) });
+        // A result cut short is said to be cut short. It used to end mid-JSON with no notice, and the
+        // model kept asking again for data it could never see whole (16 Sept 2026).
+        const whole = JSON.stringify(out);
+        const CAP = 8000;
+        convo.push({ role: 'tool', tool_call_id: tc.id, content: whole.length <= CAP ? whole
+          : whole.slice(0, CAP) + ' [System: this result was cut off at ' + CAP + ' of ' + whole.length
+            + ' characters. Do not ask for the same thing again; ask for a narrower part, or say what you could not see.]' });
       }
     }
   }

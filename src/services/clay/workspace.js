@@ -30,6 +30,7 @@ const Files = require('./files');
 const Portal = require('./portal');
 const Keys = require('./keys');
 const Launcher = require('./launcher');
+const Compliance = require('./complianceResearch');
 
 // Result shapes. Borrowed from Arbo, where they exist because an unread balance once printed as
 // "$0.00" — indistinguishable from the money being gone.
@@ -64,6 +65,18 @@ const TOOLS = {
       cost_basis: ['known', 'estimated', 'unknown'],
     },
     summary: 'Record something the business owes — a filing, a task, a promise, an invoice to send.',
+  },
+  research_compliance: {
+    irreversible: false, requires_confirmation: false, required: ['business_id'],
+    optional: ['action', 'area', 'question', 'fresh'],
+    enums: { action: ['start', 'status'], area: ['all', 'formation', 'state_tax', 'sales_tax', 'employer', 'local_license',
+      'trade_license', 'permits', 'federal'], fresh: ['yes', 'no'] },
+    summary: 'Research a business\'s legal and tax requirements live on the web, with the pages each '
+      + 'answer came from. The only source for compliance answers: never answer them from memory. '
+      + 'action start (default) with area (all for the whole picture) or a question: answers at once '
+      + 'if researched in the last 30 days, otherwise starts research that takes several minutes and '
+      + 'says so. action status: what has been found so far and whether research is still running. '
+      + 'fresh yes searches again.',
   },
   whats_missing: {
     irreversible: false, requires_confirmation: false, required: ['business_id'], enums: {},
@@ -276,6 +289,46 @@ async function complete_obligation(viewer, params = {}) {
 
 // Documents are read under the documents area, not compliance — a bookkeeper with documents:view
 // should be able to see that a W-9 is missing without being shown the filings.
+async function research_compliance(viewer, params = {}) {
+  if (params.action === 'status') {
+    const st = await Compliance.status(viewer, params.business_id);
+    if (!st.ok) return st.kind === 'refused' ? refused(st.says) : unavailable('research_status_failed', st.says);
+    if (!st.research.length) return empty(st.says);
+    const day = (d) => String(d && d.toISOString ? d.toISOString() : d).slice(0, 10);
+    const run = st.run && { status: st.run.status, says: st.run.says };
+    // One area in full, when asked for; otherwise one line per area, so the whole picture fits.
+    if (params.area && params.area !== 'all') {
+      const x = st.research.find((r) => r.area === params.area);
+      if (!x) return empty('Nothing has been found for ' + params.area + ' yet. ' + st.says);
+      return answered({ run, area: x.area, answer: String(x.answer).slice(0, 6000), sources: x.sources,
+        has_government_source: x.official, searched_on: day(x.searched_at) }, st.says);
+    }
+    const found = st.research.map((x) => x.area);
+    return answered({ run,
+      overview: st.research.map((x) => ({ area: x.area,
+        question: x.area === 'question' ? String(x.question).slice(0, 200) : undefined,
+        in_short: Compliance.shortOf(x.answer), has_government_source: x.official,
+        main_source: x.sources[0] && { title: String(x.sources[0].title).slice(0, 100), url: x.sources[0].url },
+        searched_on: day(x.searched_at) })),
+      not_yet_found: Compliance.AREA_NAMES.filter((a) => !found.includes(a)),
+      detail: 'Ask for one area with action status and that area to hear it in full with every source.',
+    }, st.says);
+  }
+  const r = await Compliance.start(viewer, {
+    business_id: params.business_id,
+    areas: params.question ? null : [params.area || 'all'],
+    question: params.question,
+    fresh: params.fresh === 'yes',
+  });
+  if (!r.ok) return r.kind === 'refused' ? refused(r.says) : unavailable('research_failed', r.says);
+  if (!r.ready) return answered({ started: true, business: r.business }, r.says);
+  return answered({
+    business: r.business, missing_facts: r.missing_facts,
+    findings: r.results.map((x) => ({ area: x.area, answer: x.answer, sources: x.sources,
+      has_government_source: x.official, searched_on: String(x.searched_at && x.searched_at.toISOString ? x.searched_at.toISOString() : x.searched_at).slice(0, 10) })),
+  }, r.says);
+}
+
 async function whats_missing(viewer, params = {}) {
   const gate = await P.can(viewer.id, params.business_id, 'documents', 'view');
   if (!gate.ok) return refused(P.refusalLine(gate, 'documents', gate.perms && gate.perms.business.name));
@@ -408,6 +461,6 @@ async function list_files(viewer, params = {}) {
 
 const EXECUTORS = { whats_due, whats_coming, list_businesses, record_obligation,
   complete_obligation, whats_missing, whats_outstanding_with_customers, start_build, publish_build, list_builds, list_files,
-  portal_status, customize_portal, list_keys, launch_build };
+  portal_status, customize_portal, list_keys, launch_build, research_compliance };
 
 module.exports = { TOOLS, EXECUTORS, answered, empty, unavailable, refused };
