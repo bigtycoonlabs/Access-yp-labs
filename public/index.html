@@ -1,717 +1,218 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Access YP Labs</title>
-  <link rel="icon" type="image/svg+xml" href="/img/yp-labs-mark.svg"/>
-  <meta name="description" content="Access YP Labs is where an unlaunched business idea becomes real. Bring an idea and Clay shapes and proves it before you build — or bring what you are good at and take a seat on somebody else's project, holding a real share of what you help build." />
-  <style>
-    :root{
-      --void:#0b0817; --dream:#b8a6ff; --dream2:#8ce0ff; --glow:#ffd9a8;
-      --paper:#0b0817; --ink:#f3f1ff; --muted:#b9b2d8; --line:#2f2857;
-      --accent:#4c3bd4; --accent-dark:#3a2ba6; --accent-text:#c3b5ff; --focus:#8ce0ff;
-    }
-    *{box-sizing:border-box;}
-    body{margin:0;background:var(--paper);color:var(--ink);
-      font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:18px;line-height:1.6;}
-    a{color:var(--accent-text);}
-    a:focus-visible,button:focus-visible,.cta:focus-visible{outline:3px solid var(--focus);outline-offset:3px;border-radius:4px;}
-    .skip{position:absolute;left:-999px;top:0;background:var(--ink);color:#fff;padding:12px 20px;z-index:100;}
-    .skip:focus{left:0;}
-    .wrap{max-width:900px;margin:0 auto;padding:0 24px;}
-    header{color:#f2eefb;background:
-      radial-gradient(120% 80% at 15% -20%, rgba(140,224,255,.18), transparent 55%),
-      radial-gradient(120% 90% at 95% 120%, rgba(184,166,255,.28), transparent 55%), var(--void);}
-    .brand{display:flex;align-items:center;gap:12px;padding:22px 0;}
-    .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
-    /* The menu is a real list now, so these rules have to target the list rather than the nav —
-       otherwise the items stack one per row and six rows of menu push the idea box below the fold
-       on a phone. That box is the single thing this page exists to get somebody to use, and it was
-       sitting at y=828 on a 780px screen: invisible without scrolling. */
-    nav.top{display:block;}
-    /* A real gap, not 2px. At 2px the links read as one string — "HomeThe Exchange" — which is
-       the same run-together problem the list was meant to fix, just visual instead of spoken. */
-    /* nowrap: this block loads after kiln.css and was the rule actually winning. Seven links on
-       three rows put 200px of menu above the headline. */
-    nav.top .nav-list{list-style:none;margin:0;padding:0;display:flex;flex-wrap:nowrap;align-items:center;column-gap:14px;row-gap:0;overflow-x:auto;scrollbar-width:none;}
-    nav.top .nav-list::-webkit-scrollbar{display:none;}
-    nav.top .nav-list>li{flex:0 0 auto;}
-    nav.top a{white-space:nowrap;}
-    nav.top .nav-list>li{margin:0;padding:0;}
-    nav.top a{color:#f2eefb;font-size:17px;font-weight:600;text-decoration:none;padding:11px 12px;display:inline-block;min-height:44px;box-sizing:border-box;line-height:22px;border-radius:8px;}
-    @media (max-width:640px){
-      /* Smaller text and tighter padding, but the 44px target is kept by min-height. */
-      nav.top a{font-size:15px;padding:11px 8px;}
-    }
-    nav.top a:hover{text-decoration:underline;}
-    nav.top a:focus-visible{outline:3px solid var(--dream2);outline-offset:2px;}
-    nav.top a[aria-current="page"]{text-decoration:underline;}
-    .brand strong{font-size:20px;letter-spacing:.02em;}
-    .hero{padding:66px 0 62px;}
-    .hero h1{font-size:clamp(30px,6vw,46px);line-height:1.12;margin:0 0 14px;max-width:20ch;text-wrap:balance;}
-    .hero .tag{font-size:clamp(17px,2.6vw,21px);color:var(--dream2);font-weight:600;margin:0 0 22px;letter-spacing:.01em;}
-    .hero p{font-size:19px;color:#e7e1f7;max-width:60ch;margin:0;}
-    .hero .cta-row{margin-top:26px;}
-    .cta{display:inline-block;min-height:48px;min-width:48px;padding:14px 28px;font-size:18px;font-weight:700;
-      border-radius:12px;text-decoration:none;color:#17122e;
-      background:linear-gradient(180deg,var(--dream),var(--dream2));box-shadow:0 0 40px rgba(140,224,255,.30);}
-    .cta.solid{color:#fff;background:var(--accent);box-shadow:none;}
-    .cta.solid:hover{background:var(--accent-dark);}
-    main{padding:52px 0 72px;}
-    section{margin:0 0 48px;}
-    h2{font-size:27px;margin:0 0 12px;color:var(--accent-text);}
-    .lead{max-width:64ch;}
-    .cards{display:grid;gap:16px;grid-template-columns:1fr;margin:18px 0;}
-    @media(min-width:640px){.cards{grid-template-columns:1fr 1fr;}}
-    .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;}
-    .card h3{margin:0 0 6px;font-size:19px;color:var(--ink);}
-    .card p{margin:0;color:var(--muted);}
-    ul{padding-left:22px;max-width:64ch;}
-    li{margin:8px 0;}
-    .price{font-size:22px;font-weight:700;color:var(--ink);}
-    footer{border-top:1px solid var(--line);color:var(--muted);font-size:15px;padding:28px 0 48px;}
-    .idea-wrap{margin-top:20px;max-width:60ch;}
-    .idea-wrap label{display:block;font-size:18px;color:#f2eefb;margin-bottom:8px;font-weight:600;}
-    .idea-wrap textarea{width:100%;min-height:58px;padding:12px 14px;font-size:17px;border-radius:12px;
-      border:1px solid rgba(184,166,255,.5);background:rgba(255,255,255,.06);color:#f6f3ff;font-family:inherit;line-height:1.5;}
-    .idea-wrap textarea::placeholder{color:#b8a6ff;opacity:.85;}
-    .idea-wrap .cta{margin-top:12px;}
-    .ask-you{color:#c3bce0;font-weight:600;margin:12px 0 2px;}
-    .ask-clay{color:#f2eefb;margin:2px 0 9px;line-height:1.55;}
-    #ask-log{margin-top:14px;}
-    #ask-log:empty{display:none;}
-    .build{margin-top:18px;}
-    .build-lead{color:#8ce0ff;font-weight:700;font-size:18px;margin:0 0 6px;}
-    .build-title{color:#fff;font-size:24px;margin:6px 0;}
-    .build-angle{color:#e7e1f7;margin:0 0 10px;}
-    .build-inside-h{color:#f2eefb;font-weight:600;margin:8px 0 4px;}
-    .build-inside{margin:0 0 12px;padding-left:20px;color:#e7e1f7;}
-    .build-inside li{margin:3px 0;}
-    .build .muted{color:#c3bce0;font-size:15px;}
-    .clay-speaker{display:flex;align-items:center;gap:9px;margin:0 0 10px;}
-    .clay-speaker .nm{color:#fff;font-weight:700;font-size:16px;}
-    .clay-speaker .sub{color:#c3bce0;font-weight:500;font-size:13px;}
-    .clay-ver{color:#8ce0ff;font-weight:700;font-size:14px;margin:2px 0 12px;letter-spacing:.02em;}
-    .clay-ver:empty{display:none;}
-    .clay-mark{display:inline-block;width:28px;height:28px;flex:0 0 auto;line-height:0;}
-    .clay-mark svg{width:100%;height:100%;display:block;overflow:visible;}
-    .cm-light{transform-box:fill-box;transform-origin:center;animation:cm-drift 5.6s ease-in-out infinite;}
-    .cm-glow{transform-box:fill-box;transform-origin:center;animation:cm-breathe 3.2s ease-in-out infinite;}
-    .cm-core{transform-box:fill-box;transform-origin:center;animation:cm-spark 3.2s ease-in-out infinite;}
-    .cm-l{animation:cm-sheenL 4.6s ease-in-out infinite;} .cm-r{animation:cm-sheenR 4.6s ease-in-out infinite;}
-    .clay-mark.thinking .cm-light{animation-duration:2.5s;}
-    .clay-mark.thinking .cm-glow,.clay-mark.thinking .cm-core{animation-duration:1.45s;}
-    .clay-mark.thinking .cm-l,.clay-mark.thinking .cm-r{animation-duration:2.2s;}
-    @keyframes cm-drift{0%{transform:translate(0,0)}25%{transform:translate(1.4px,-1.2px)}50%{transform:translate(.4px,1.4px)}75%{transform:translate(-1.4px,-.5px)}100%{transform:translate(0,0)}}
-    @keyframes cm-breathe{0%,100%{transform:scale(.8);opacity:.66}50%{transform:scale(1.2);opacity:1}}
-    @keyframes cm-spark{0%,100%{fill:#ffd9a8;transform:scale(.92)}50%{fill:#fff4e0;transform:scale(1.06)}}
-    @keyframes cm-sheenL{0%,100%{opacity:.82}50%{opacity:1}}
-    @keyframes cm-sheenR{0%,100%{opacity:1}50%{opacity:.82}}
-    @media (prefers-reduced-motion:reduce){
-      .cm-light,.cm-glow,.cm-core,.cm-l,.cm-r{animation:none!important;}
-      .cm-glow{transform:scale(1);opacity:.9;}
-    }
-    #hero .err{color:#ffb4a8;font-weight:600;}
-    @media (prefers-reduced-motion: no-preference){
-      #hero-inner .build > *{animation:riseIn .38s ease both;}
-    }
-    @keyframes riseIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
-    .liveness{padding:14px 20px 4px;}
-    .liveness .live-row{list-style:none;display:flex;flex-wrap:wrap;gap:10px;margin:0;padding:0;}
-    .liveness .live-row li{background:rgba(140,224,255,.10);border:1px solid rgba(140,224,255,.35);
-      color:#d8f2ff;border-radius:999px;padding:8px 14px;font-size:15px;font-weight:600;}
-    .liveness .live-empty{color:#c3bce0;font-size:15px;margin:0;}
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Penny Desk — the employees you always needed</title>
+<meta name="description" content="Penny keeps track of everything your business owes — filings, licences, renewals, invoices and promises — ranked by what missing each one costs. Free for one business."/>
+<link rel="canonical" href="https://accesspennydesk.com/"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&family=Inter:wght@400;600;700&display=swap"/>
+<link rel="stylesheet" href="/css/penny.css"/>
+<style>
+.hero{padding:44px 0 8px;}
+.hero h1{font-size:2.1rem;margin-bottom:.35em;}
+.hero .sub{font-size:1.15rem;color:var(--muted);margin-bottom:26px;}
+.try{background:var(--accent-soft);border:1px solid #DDD3F8;border-radius:var(--radius);
+  padding:20px;margin:8px 0 34px;}
+.try label{display:block;font-weight:600;margin:12px 0 6px;}
+.try select{width:100%;min-height:44px;padding:11px 14px;font:inherit;border:1px solid var(--line);
+  border-radius:var(--radius);background:var(--panel);color:var(--ink);}
+.try .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
+.out{margin-top:18px;}
+.out .line{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);
+  border-radius:0 8px 8px 0;padding:12px 15px;margin:0 0 10px;}
+.out .line .t{font-weight:600;margin:0 0 3px;}
+.out .line .s{margin:0;color:var(--muted);font-size:.94rem;}
+.out .note{background:#F6FBF6;border:1px solid #CDE6CE;border-left:4px solid #2E7D32;
+  border-radius:0 8px 8px 0;padding:12px 15px;margin:0 0 10px;}
+.out .src{font-size:.82rem;color:var(--muted);margin:4px 0 0;}
+section.block{padding:18px 0;border-top:1px solid var(--line);margin-top:30px;}
+.price{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0 0;}
+.price div{flex:1 1 150px;background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--radius);padding:14px 16px;}
+.price .amt{font-family:"Hanken Grotesk",Inter,sans-serif;font-weight:700;font-size:1.3rem;margin:0 0 6px;}
+.wont{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px 18px;}
+.wont li{margin:0 0 8px;}
+footer{padding:30px 0 60px;color:var(--muted);font-size:.9rem;}
+</style>
+</head><body>
 
-    /* ── Visual layer (additive; decorative pieces are aria-hidden, text stays for VoiceOver) ── */
-    /* One column, on purpose. The hero's job is a single act — say what this is, then let you try
-       it — so nothing sits beside the demo competing for attention. Measure is capped for reading
-       comfort rather than stretched to the viewport. */
-    /* One column, CENTRED. Capping the measure at 62ch keeps it readable, but left-aligning that
-       cap inside a wide page left a dead third on the right and made the hero look unfinished.
-       Centring the column puts the weight where the eye lands. */
-    .hero-grid{display:grid;gap:32px;grid-template-columns:1fr;align-items:start;justify-items:center;}
-    #hero-inner{max-width:62ch;width:100%;}
-    /* This page carries its own styling and doesn't load the shared sheet, so the shared touch-target
-       rules never reach it. Same intent here: a link meant to be tapped gets room to be tapped. */
-    @media (max-width: 879px){
-      main p > a, main li > a, .cta-row a, #hero-inner p > a { padding-top:6px; padding-bottom:6px; display:inline-block; }
-      .brand { display:inline-block; padding:6px 0; }
-    }
-    .hero-doors{list-style:decimal;padding-left:22px;margin:0 0 20px;display:grid;gap:12px;}
-    .hero-doors li{line-height:1.55;}
-    .hero-doors .door-link{display:inline-block;min-height:44px;line-height:44px;color:var(--accent-text);text-decoration:none;}
-    .hero-doors .door-link:hover,.hero-doors .door-link:focus{text-decoration:underline;}
-    .hero-h2{font-size:1.05rem;margin:34px 0 10px;opacity:.95;}
-    .hero-reassure{margin:10px 0 0;font-size:15px;opacity:.8;}
-    /* The line under the headline explains; it should not shout as loudly as the headline itself. */
-    #hero-greeting{font-weight:500;font-size:19px;line-height:1.55;opacity:.92;}
+<a class="skip" href="#try">Skip to the bit that works</a>
 
-    /* Sticky call to action on small screens. Tested guidance is that a sticky bottom CTA carries
-       most of the addressable lift on its own, so this is the one place the page pushes. It is a
-       real link, it never covers content (the body gets padding to match), and it is hidden once
-       the page's own CTA is on screen would require JS — simpler and calmer to just keep it. */
-    .sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:40;padding:8px 12px;
-      background:rgba(12,8,32,.96);border-top:1px solid rgba(255,255,255,.14);
-      display:flex;align-items:center;justify-content:center;}
-    /* Compact on purpose: the first version wrapped onto two lines and covered the very demo the
-       hero exists for. One line, a short label, and the page padded to exactly its height. */
-    .sticky-cta a{display:block;width:100%;max-width:420px;text-align:center;
-      min-height:44px;line-height:44px;padding:0 16px;text-decoration:none;font-weight:700;
-      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:16px;}
-    @media(min-width:880px){.sticky-cta{display:none;}}
-    @media(max-width:879px){body{padding-bottom:68px;}}
+<header class="site">
+  <div class="bar">
+    <a class="brand" href="/">Penny Desk<span class="dot" aria-hidden="true">.</span></a>
+    <a class="btn quiet" href="/login.html">Sign in</a>
+  </div>
+</header>
 
-    /* The menu is long now that every destination is in it. On a phone it was taking four rows
-       before the headline, pushing the whole point of the page below the fold. Tighter and smaller
-       so it reads as a menu rather than a wall — still 44px tall targets for tapping. */
-    @media(max-width:879px){
-      /* The touch target comes from PADDING, not line-height: setting a 44px line-height made every
-         row 44px TALL and pushed the headline most of a screen down. Padding gives the same
-         comfortable target while the rows stay compact. */
-      nav.top{gap:2px 16px;font-size:15px;line-height:1.2;}
-      nav.top a{display:inline-block;padding:12px 0;}
-    }
+<main id="main" class="wrap">
 
-    /* Anyone who has asked their system to reduce motion gets none of it. */
-    @media (prefers-reduced-motion: reduce){
-      *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;
-        transition-duration:.001ms !important;scroll-behavior:auto !important;}
-    }
-    /* A styled preview of a Clay exchange — the product is a conversation, so this IS the
-       "product screenshot." Decorative: the surrounding copy already explains Clay, so the
-       whole card is aria-hidden and never read to VoiceOver. */
+  <!-- NO FEATURE GRID, DELIBERATELY.
+       The research on this category is blunt about where one leads: "most small businesses choose an
+       all-in-one based on a feature comparison chart, then regret it six months later when the
+       workflow does not fit." A grid wins the purchase and loses the customer.
 
-    /* feature icons + a little depth on cards */
-    .card{box-shadow:0 3px 14px rgba(25,22,48,.06);}
-    .ic{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:12px;
-      background:linear-gradient(180deg,#efeaff,#e3f4ff);border:1px solid var(--line);margin-bottom:12px;color:var(--accent-text);}
-    .ic svg{width:23px;height:23px;}
+       So this page does not describe the product. It runs it. -->
+  <div class="hero">
+    <h1>The employees you always needed.</h1>
+    <p class="sub">Penny keeps track of everything your business owes — filings, licences, renewals,
+      invoices, the thing you promised a customer on Tuesday — in one list, ordered by what it
+      actually costs you to miss each one.</p>
+  </div>
 
-    /* "How it works" band — a scannable visual flow instead of a paragraph */
-        /* This band was a pale lilac panel from the old light theme. Left as it was, its text — which
-       now follows the dark theme — sat near-white on near-white and vanished. It is a raised dark
-       surface now, so it still separates the section without changing what colour the words need. */
-    .band{background:linear-gradient(180deg,#171240,#120e30);border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
-    .how{padding:46px 0 40px;}
-    .how h2{text-align:center;color:var(--accent-text);}
-    .how-lead{text-align:center;color:var(--muted);max-width:54ch;margin:0 auto 28px;}
-    .how-steps{list-style:none;display:grid;gap:18px;grid-template-columns:1fr;padding:0;margin:0;}
-    @media(min-width:760px){.how-steps{grid-template-columns:repeat(3,1fr);gap:22px;}}
-    .how-step{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px 22px;box-shadow:0 4px 16px rgba(25,22,48,.06);}
-    .how-step .top{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
-    .how-step .n{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 auto;
-      border-radius:50%;background:var(--accent);color:#fff;font-weight:700;font-size:16px;}
-    .how-step .hic{width:26px;height:26px;color:var(--accent-text);flex:0 0 auto;}
-    .how-step h3{margin:0 0 6px;font-size:19px;color:var(--ink);}
-    .how-step p{margin:0;color:var(--muted);font-size:16px;line-height:1.55;}
-  </style>
-  <link rel="canonical" href="https://accessyplabs.com/"/>
-  <meta property="og:type" content="website"/>
-  <meta property="og:site_name" content="Access YP Labs"/>
-  <meta property="og:title" content="Access YP Labs"/>
-  <meta property="og:description" content="Access YP Labs is where an unlaunched business idea becomes real. Bring an idea and Clay shapes and proves it before you build — or bring what you are good at and take a seat on somebody else's project, holding a real share of what you help build."/>
-  <meta property="og:url" content="https://accessyplabs.com/"/>
-  <meta property="og:image" content="https://accessyplabs.com/img/og-cover.png"/>
-  <meta property="og:image:width" content="1200"/>
-  <meta property="og:image:height" content="630"/>
-  <meta name="twitter:card" content="summary_large_image"/>
-  <meta name="twitter:title" content="Access YP Labs"/>
-  <meta name="twitter:description" content="Access YP Labs is where an unlaunched business idea becomes real. Bring an idea and Clay shapes and proves it before you build — or bring what you are good at and take a seat on somebody else's project, holding a real share of what you help build."/>
-  <meta name="twitter:image" content="https://accessyplabs.com/img/og-cover.png"/>
-  <script type="application/ld+json">
-{"@context":"https://schema.org","@graph":[
-{"@type":"Organization","@id":"https://accessyplabs.com/#org","name":"Access YP Labs","url":"https://accessyplabs.com/","logo":"https://accessyplabs.com/img/yp-labs-logo.svg","description":"Access YP Labs is where an unlaunched business idea becomes real. Clay, our AI partner, shapes and proves it before you build.","parentOrganization":{"@type":"Organization","name":"Set Up Your Place LLC"}},
-{"@type":"WebSite","@id":"https://accessyplabs.com/#site","url":"https://accessyplabs.com/","name":"Access YP Labs","publisher":{"@id":"https://accessyplabs.com/#org"}}
-]}
-</script>
-</head>
-<body>
-  <a class="skip" href="#main">Skip to main content</a>
-  <header>
-    <div class="wrap">
-      <div class="topbar">
-        <div class="brand"><a href="/" aria-label="Access YP Labs — home"><img src="/img/yp-labs-logo.svg" alt="Access YP Labs" width="230" height="55" style="height:52px;width:auto;display:block;"/></a></div>
-        <nav class="top" aria-label="Primary"><a href="/dreamhold.html">The Exchange</a><a href="/seats.html">Help build</a>
-          <a href="/movers.html">Become an Affiliate</a>
-          <a href="/desk">The Desk</a>
-          <a href="/login.html">Sign in</a>
-          <a href="/register.html">Sign up</a>
-        </nav>
-      </div>
-      <div class="hero" id="hero">
-        <div class="hero-grid">
-          <div id="hero-inner">
-          <h1>Bring an idea, or bring what you&rsquo;re good at.</h1>
-          <p class="tag" id="hero-greeting">Describe an idea and Clay turns it into a real business — the plan, the research, the demo. Or take a seat on somebody else’s and hold a share of what you help build.</p>
-          <div id="hero-demo"></div>
-          <p class="hero-reassure">Free. No card. The idea stays yours.</p>
+  <section class="try" id="try" aria-labelledby="try-h">
+    <h2 id="try-h">What does your business owe?</h2>
+    <p class="muted" style="margin:0;">Two questions, no account, nothing saved. These are real
+      filings, from the same rules a paying customer gets.</p>
 
-          <h2 class="hero-h2">Four ways to play</h2>
-          <ol class="hero-doors">
-            <li>
-              <a class="door-link" href="/register.html"><strong>Build your idea.</strong></a>
-              Bring what’s in your head. Clay shapes it into a real business package you own — and can sell in the Exchange.
-            </li>
-            <li>
-              <a class="door-link" href="/dreamhold.html"><strong>Claim one that’s ready.</strong></a>
-              Skip the blank page. Take over a business someone already proved, and launch it as yours.
-            </li>
-            <li>
-              <a class="door-link" href="/seats.html"><strong>Help build somebody else&rsquo;s.</strong></a>
-              Projects here say exactly what they need &mdash; a demo, customers, a brand, funding.
-              Take a seat, and hold a real share of what you help build.
-            </li>
-            <li>
-              <a class="door-link" href="/movers.html"><strong>Promote projects and earn.</strong></a>
-              Become an Affiliate: share the businesses you believe in, and earn a commission every time one sells. No idea of your own required.
-            </li>
-          </ol>
+    <label for="st">Which state is it registered in?</label>
+    <select id="st"><option value="">Choose a state</option></select>
 
-          <p class="cta-row"><a class="cta" href="/register.html">Start free — shape your first idea →</a></p>
-          <p style="margin-top:12px;"><a href="/dreamhold.html" style="color:var(--dream2);font-weight:600;">Or look around the Exchange first →</a></p>
-          <p style="margin-top:16px;"><a href="/values.html" style="color:var(--dream2);font-weight:600;">What we stand for →</a></p>
-          </div>
-        </div>
-      </div>
+    <label for="et">How is it set up?</label>
+    <select id="et">
+      <option value="llc">LLC</option>
+      <option value="sole_proprietor">Just me, nothing registered</option>
+      <option value="s_corp">S-Corp</option>
+      <option value="c_corp">C-Corp</option>
+      <option value="partnership">Partnership</option>
+      <option value="nonprofit">Nonprofit</option>
+    </select>
+
+    <label for="ct" style="display:flex;align-items:center;gap:10px;min-height:44px;">
+      <input id="ct" type="checkbox" style="width:24px;height:24px;accent-color:var(--accent);"/>
+      I pay contractors or freelancers
+    </label>
+
+    <div class="row"><button class="btn" id="go">Show me</button></div>
+    <div id="out" class="out" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="block" aria-labelledby="who-h">
+    <h2 id="who-h">Who it is for</h2>
+    <p>A cleaner. A food truck. A furnished rental operator. An e-commerce brand. A consultant. One
+      person, or up to about twenty.</p>
+    <p>What they have in common is not the trade. It is that the owner is the integration layer — the
+      person holding the books, the bookings, the customers, the filings and the website together in
+      their own head at eleven at night. Everything here exists to take that off them.</p>
+  </section>
+
+  <section class="block" aria-labelledby="price-h">
+    <h2 id="price-h">What it costs</h2>
+    <p>Every plan gets every tool. What changes is how many businesses, how many people, and how much
+      you build.</p>
+    <div class="price">
+      <div><p class="amt">Free</p><p class="muted" style="margin:0;font-size:.92rem;">One business.
+        Everything you owe, tracked, forever. No card.</p></div>
+      <div><p class="amt">$49</p><p class="muted" style="margin:0;font-size:.92rem;">One business,
+        three people, your own site.</p></div>
+      <div><p class="amt">$129</p><p class="muted" style="margin:0;font-size:.92rem;">Up to five
+        businesses, ten people, an application built for you.</p></div>
     </div>
-  </header>
+    <p class="muted" style="margin-top:14px;">Your code lives in your own GitHub and your data comes
+      out whenever you want it, including if you owe us money. Leaving should cost you nothing but
+      the leaving.</p>
+  </section>
 
-  <section id="liveness" class="wrap liveness" aria-label="What’s happening on Access YP Labs right now" hidden></section>
-
-  <section class="band" aria-labelledby="how-h">
-    <div class="wrap how">
-      <h2 id="how-h">How it works</h2>
-      <p class="how-lead">From a spark to a real, ownable business — in three steps.</p>
-      <ol class="how-steps">
-        <li class="how-step">
-          <div class="top"><span class="n">1</span><span class="hic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1h6c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2Z"/></svg></span></div>
-          <h3>Bring an idea — or start from nothing</h3>
-          <p>Tell Clay an idea, or tell Clay what you’re good at and he will point you at a project that needs it. Half-formed is fine.</p>
-        </li>
-        <li class="how-step">
-          <div class="top"><span class="n">2</span><span class="hic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.7 4.6L18 9l-4.3 1.4L12 15l-1.7-4.6L6 9l4.3-1.4L12 3Z"/><path d="M18.5 14l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z"/></svg></span></div>
-          <h3>Clay shapes it and proves it out</h3>
-          <p>A complete project — business plan, real research, a working demo — with regulatory and licensing risk labeled honestly. Never fabricated.</p>
-        </li>
-        <li class="how-step">
-          <div class="top"><span class="n">3</span><span class="hic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 12 22l-9-9V5a2 2 0 0 1 2-2h7l8.6 8.6a1.4 1.4 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.4"/></svg></span></div>
-          <h3>Keep it, or list it in the Exchange</h3>
-          <p>It’s yours and private. Keep building it out, or list it for a founder who’ll launch it — nothing is ever posted automatically.</p>
-        </li>
-      </ol>
+  <!-- CARRIED FROM THE PENNY PAGE ON ACCESS YOUR PLACE.
+       A published list of what she will not do, including things that are not built yet. Every
+       competitor publishes only capabilities. It is the strongest thing in this estate and it
+       belongs on the homepage rather than three clicks in. -->
+  <section class="block" aria-labelledby="wont-h">
+    <h2 id="wont-h">What she will not do</h2>
+    <div class="wont">
+      <ul>
+        <li>She will not invent a filing, a fee or a deadline. Where the rules are confirmed she says
+          the number; where they are not, she says that instead of guessing.</li>
+        <li>She has confirmed figures for twelve states so far. For the rest she has the deadline and
+          tells you the fee is unchecked.</li>
+        <li>She does not do your books. That is Arbo, in YP Flow, and anything about money goes to
+          him rather than being half-answered here.</li>
+        <li>She will not tell you nothing is due when she could not check. A failed look is not a
+          clear day, and she says which it was.</li>
+        <li>She is built for your business, not for everything. Ask her about your dinner and she
+          will point you somewhere better.</li>
+      </ul>
     </div>
   </section>
 
-  <main id="main" class="wrap">
-    <section aria-labelledby="clay-h">
-      <h2 id="clay-h">Meet Clay, your partner</h2>
-      <p class="clay-ver" id="clay-ver" aria-live="polite"></p>
-      <p class="lead">Clay is a conversational AI that shapes an idea into a complete, ownable business project — and stays on as your partner long after. Clay works with you two ways:</p>
-      <div class="cards">
-        <div class="card">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
-          <h3>Shape a new idea</h3>
-          <p>Start from nothing. Clay builds a brand-new project you can run online, remotely, or solo — and proves it out before you commit a dollar.</p>
-        </div>
-        <div class="card">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></span>
-          <h3>Enhance what you have</h3>
-          <p>Bring an idea you’re sitting on, or a business you already run. Clay sharpens the idea toward launch, or helps you grow the operation you’ve got — and can point you to a complementary idea in the Exchange to add on.</p>
-        </div>
-      </div>
-      <p class="lead">Every project comes with a business plan, a marketing strategy, real customer and competitor research, clearly-labeled regulatory and licensing risk, a working demo, and a build path you finish in your own tools. Clay never fabricates data — if something is directional, it says so plainly.</p>
-      <div id="ask-clay"></div>
-    </section>
-
-    <section aria-labelledby="dh-h">
-      <h2 id="dh-h">The Exchange</h2>
-      <p class="lead">The Exchange is a marketplace of unlaunched business ideas — each one shaped into a complete, pre-proven project. Claim one and it’s yours: a clean transfer of ownership. Refine what you claim and re-list it higher; value compounds. Access YP Labs is always a neutral third party — we referee, we never play.</p>
-      <ul>
-        <li>Two kinds of opportunity, in one place: projects <strong>for sale</strong>, and projects <strong>looking for a launch partner</strong> — someone building who wants help rather than a buyer. Those have no price; the currency is the work.</li>
-        <li>Sellers set the price. $10 floor. Flat sale or auction, and every auction has an end date.</li>
-        <li>Escrowed payment; ownership transfers on delivery.</li>
-        <li>Our fee is simple: <strong>20% of any sale made through the Exchange</strong> — that is how the platform is paid, and it applies to every marketplace sale whether we sent the buyer or you did. On the website we build for your project, you sell direct and <strong>we take 0%</strong>. For comparison, Gumroad takes 10% even when you brought the customer yourself, and 30% when they find one for you.</li>
-        <li>Some sellers stay on as your launch partner after the sale, with exactly what they'll help with written into the listing before you pay.</li>
-        <li>The one thing you’ll never find here is a running business. The Exchange sells ideas, not operations.</li>
-        <li>Moderation on policy grounds only — never because a project competes with ours.</li>
-      </ul>
-    </section>
-
-    <section aria-labelledby="earn-h">
-      <h2 id="earn-h">Ways to earn here</h2>
-      <p class="lead">Access YP Labs isn’t one thing you do — it’s an opportunity hub. However you like to work, there’s a way to make money. Building with Clay is always free; you earn when you sell, launch, promote, or partner up.</p>
-      <div class="cards">
-        <div class="card">
-          <h3>Build and sell ideas</h3>
-          <p>Shape a project with Clay and list it in the Exchange. You keep 80% of every sale — we take 20% on anything sold through the Exchange, however the buyer found it. Sell from your own project website instead and we take nothing at all.</p>
-        </div>
-        <div class="card">
-          <h3>Buy, sharpen, and resell</h3>
-          <p>Claim someone’s project, make it more launch-ready, and re-list it higher. Value compounds with every asset you add.</p>
-        </div>
-        <div class="card">
-          <h3>Build it and run it yourself</h3>
-          <p>Love your idea? Take it all the way to launch and keep every dollar. Clay coaches you right up to the line where a project becomes a real business.</p>
-        </div>
-        <div class="card">
-          <h3>Grow a business you already run</h3>
-          <p>Bring what you’ve already got. Clay helps you sharpen the offer, reach more customers, and grow the operation — not only shape something new.</p>
-        </div>
-        <div class="card">
-          <h3>Become an Affiliate</h3>
-          <p>The first place ever built to pay you for helping sell other people’s projects. Promote any listing with your own link and earn a commission when it sells — you never have to own it, and it never costs the seller a cent.</p>
-          <p><a href="/movers.html" style="color:var(--dream2);font-weight:600;">Become an Affiliate →</a></p>
-        </div>
-        <div class="card">
-          <h3>Be someone's launch partner</h3>
-          <p>Good at marketing, building, design, or running things? Join someone who is building and help them get it off the ground. You two agree how you work together — we take no cut of it.</p>
-          <p><a href="/marketplace.html" style="color:var(--dream2);font-weight:600;">See who needs help →</a></p>
-        </div>
-      </div>
-    </section>
-
-    <!-- CLAY WEEKLY, ON THE HOMEPAGE. Reaching a stranger used to require them to register first,
-         which put the one thing capable of bringing people in behind the door it was meant to open.
-         No account, no password — a name and an email, and they get the magazine. -->
-    <section aria-labelledby="weekly-h">
-      <h2 id="weekly-h">Get Clay Weekly</h2>
-      <p>A short magazine about people building small businesses out of ideas they never got around to
-        starting. The five pieces worth reading, one business term explained properly, what changed out
-        there for very small operations, and whoever quietly kept turning up that week.</p>
-      <p>One issue a week. No account needed. Leaving takes one click.</p>
-      <form id="weekly-form" novalidate>
-        <div><label for="wk-first">First name</label>
-          <input id="wk-first" type="text" autocomplete="given-name" required/></div>
-        <div><label for="wk-last">Last name</label>
-          <input id="wk-last" type="text" autocomplete="family-name"/></div>
-        <div><label for="wk-email">Email</label>
-          <input id="wk-email" type="email" autocomplete="email" required autocapitalize="none" spellcheck="false"/></div>
-        <p><button type="button" class="btn" id="wk-go">Send me Clay Weekly</button></p>
-      </form>
-      <p id="wk-said" role="status" aria-live="polite"></p>
-      <p class="muted">We will email once to confirm it was really you. Nothing is sent until you click that.</p>
-    </section>
-
-    <!-- WHAT IS FOR SALE, NOT WHAT IT COSTS TO JOIN.
-         This was a pricing section: two cards, a plan, and a Get started button. Amazon does not
-         open with Prime. The products here are the projects people are selling, and a visitor who
-         can see three real ones understands this place in a way no description achieves. Pricing
-         moved to one line at the bottom, because somebody deciding whether to type an idea does not
-         need to know what a subscription costs — and the plan is not required to use the platform. -->
-    <section aria-labelledby="market-h">
-      <h2 id="market-h">On the Exchange right now</h2>
-      <p class="lead">Businesses somebody researched, packaged and never launched — for sale to
-        whoever wants to start one.</p>
-      <div id="recent-listings" class="cards">
-        <p class="muted">Loading what is for sale…</p>
-      </div>
-      <p class="cta-row"><a class="cta" href="/marketplace.html">See everything on the market</a></p>
-    </section>
-
-    <section aria-labelledby="price-h">
-      <h2 id="price-h">What it costs</h2>
-      <p>Building with Clay is free and unlimited, and your first project is free forever — not a
-        trial. If you want more than one project kept, the website builder, or your own storefront,
-        that is one plan at $19 a month. You never need it to use this place, and nothing asks you
-        for a card to start.</p>
-    </section>
-  </main>
+  <section class="block" aria-labelledby="start-h">
+    <h2 id="start-h">Start</h2>
+    <p>Tell her what you do and where. Under five minutes later you will know what you owe.</p>
+    <p><a class="btn" href="/register.html">Create an account</a></p>
+  </section>
 
   <footer>
-    <div class="wrap">
-      <p><a href="/values.html">What we stand for</a></p>
-      <p>Access YP Labs is a brand of Set Up Your Place LLC. The Exchange is a neutral marketplace; it is not a party to any transaction between members. Projects are pre-proven starting points, not guarantees of income.</p>
-    </div>
-  
-      <nav aria-label="Legal" class="legal-links" style="margin-top:10px">
-        <a href="/terms.html" style="display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Terms of Service</a> ·
-        <a href="/privacy.html" style="display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Privacy Policy</a> ·
-        <a href="/risk.html" style="display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Risk Disclosure</a>
-      </nav>
-    </footer>
-<script src="/js/a11y.js?v=20260808e"></script><script src="/js/api.js?v=20260808e"></script><script src="/js/nav.js?v=20260808e"></script><script src="/js/dreamentry.js?v=20260811b"></script>
+    <p>Penny Desk is built by Set Up Your Place LLC, who also run Access Your Place and YP Flow.
+      Nothing here is legal or tax advice.</p>
+  </footer>
+</main>
+
 <script>
-(function(){
-  const inner=document.getElementById('hero-inner');
-  if(!inner||!window.Kiln) return;
-  function el(t,c,x){const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
-  // A speaker nameplate so every reply on the homepage clearly reads as Clay talking — an
-  // avatar "C", the name, and a subtitle. The pieces are aria-hidden and the whole row carries
-  // one clean accessible name, so VoiceOver says "Clay, your AI partner" rather than spelling
-  // out the avatar letter.
-  let _cmN=0;
-  function clayMark(){
-    const id='cmg'+(++_cmN);const wrap=el('span','clay-mark');wrap.setAttribute('aria-hidden','true');
-    wrap.innerHTML='<svg viewBox="0 0 64 64" focusable="false" aria-hidden="true">'+
-      '<defs><radialGradient id="'+id+'" cx="0.5" cy="0.5" r="0.5">'+
-      '<stop offset="0" stop-color="#fff4e0"/><stop offset="0.34" stop-color="#ffd9a8"/>'+
-      '<stop offset="1" stop-color="#ffb877" stop-opacity="0"/></radialGradient></defs>'+
-      '<g fill="none" stroke-width="4" stroke-linecap="round">'+
-      '<path class="cm-l" stroke="#b8a6ff" d="M31 50 C 20 49, 15 36, 16 18"/>'+
-      '<path class="cm-r" stroke="#8ce0ff" d="M33 50 C 44 49, 49 36, 48 18"/></g>'+
-      '<g class="cm-light"><circle class="cm-glow" cx="32" cy="35" r="7.5" fill="url(#'+id+')"/>'+
-      '<circle class="cm-core" cx="32" cy="35" r="3" fill="#ffd9a8"/></g></svg>';
-    return wrap;
-  }
-  function claySpeaker(working){
-    const h=el('div','clay-speaker');h.setAttribute('aria-label','Clay, your AI partner');
-    const mk=clayMark();if(working)mk.classList.add('thinking');
-    const nm=el('span','nm','Clay');const sub=el('span','sub','your AI partner');
-    [nm,sub].forEach(function(x){x.setAttribute('aria-hidden','true');});
-    h.appendChild(mk);h.appendChild(nm);h.appendChild(sub);return h;
-  }
-  function ordinalWord(n){const w={1:'first',2:'second',3:'third',4:'fourth',5:'fifth',6:'sixth',7:'seventh',8:'eighth',9:'ninth',10:'tenth'};
-    if(w[n])return w[n];const v=n%100,s=['th','st','nd','rd'];return n+(s[(v-20)%10]||s[v]||s[0]);}
-  function cap(s){return s.charAt(0).toUpperCase()+s.slice(1);}
-
-  function dreamholdLink(){
-    const p=el('p');p.style.marginTop='18px';
-    const a=el('a',null,'Or browse the Exchange →');a.href='/dreamhold.html';a.style.color='#8ce0ff';a.style.fontWeight='600';
-    p.appendChild(a);return p;
-  }
-  function deskLink(){
-    const p=el('p');p.style.marginTop='10px';
-    const a=el('a',null,'Visit The Desk →');a.href='/desk.html';a.style.color='#8ce0ff';a.style.fontWeight='600';
-    p.appendChild(a);return p;
-  }
-
-  function ideaBox(promptText){
-    const wrap=el('div','idea-wrap');
-    const label=el('label',null,promptText);label.setAttribute('for','idea-in');
-    const ta=document.createElement('textarea');ta.id='idea-in';ta.rows=2;ta.setAttribute('placeholder','An idea you keep coming back to — or “I can build websites”…');
-    const btn=el('button','cta','Show me what you’ve got');btn.type='button';
-    const out=el('div','build');out.setAttribute('role','group');out.setAttribute('aria-label','Clay’s reply');
-    btn.addEventListener('click',async()=>{
-      const idea=(ta.value||'').trim();
-      if(idea.length<3){announce('Tell me a little more about the idea.',true);ta.focus();return;}
-      btn.disabled=true;out.innerHTML='';out.appendChild(claySpeaker(true));out.appendChild(el('p','muted','Clay is shaping it…'));announce('Clay is shaping your idea.',true);
-      try{
-        const r=await Kiln.api('/spark',{auth:false,method:'POST',body:{idea}});
-        out.innerHTML='';out.appendChild(claySpeaker());
-        if(r.title){
-          out.appendChild(el('p','build-lead','Here’s what I’ve started for you:'));
-          out.appendChild(el('h3','build-title',r.title));
-          if(r.angle)out.appendChild(el('p','build-angle',r.angle));
-          if(r.inside&&r.inside.length){
-            out.appendChild(el('p','build-inside-h','What the full build would include:'));
-            const ul=el('ul','build-inside');r.inside.forEach(i=>ul.appendChild(el('li',null,i)));out.appendChild(ul);
-          }
-          out.appendChild(el('p','muted','This is just a taste. Create a free account and Clay builds the full project for you — that takes a few minutes, so Clay emails it to you the moment it’s ready. That’s what the account is for. Free until you download it.'));
-          announce('Clay shaped your idea into '+r.title+'. Create a free account so Clay can build the full project and email it to you when it’s ready.',true);
-        }else{
-          out.appendChild(el('p','build-lead','I’ve got it — and I’m ready to build it out with you.'));
-          out.appendChild(el('p','muted','Create a free account and Clay builds the whole project. It takes a few minutes, so Clay emails it to you when it’s ready — that’s why an account is needed. Free until you download it.'));
-          announce('Clay has your idea. Create a free account so Clay can build it and email you when it’s ready.',true);
-        }
-        const cta=el('a','cta solid','Create a free account & keep building');cta.href='/register.html';cta.style.marginTop='10px';out.appendChild(cta);
-        const si=el('p','muted');const a=el('a',null,'I already have an account');a.href='/login.html';a.style.color='#8ce0ff';si.appendChild(a);out.appendChild(si);
-        // BRING IT INTO VIEW. Clay's reply renders below the button, which on a phone puts it about
-        // thirty pixels under the fold and the account button two hundred below that — so somebody
-        // types their idea, taps, and the screen does not visibly change. The request succeeded,
-        // the answer was there, and the one moment this whole page exists to produce was invisible.
-        // Announcing it to a screen reader was already handled; showing it to everybody else was not.
-        showResult(out);
-      }catch(e){
-        out.innerHTML='';out.appendChild(claySpeaker());
-        out.appendChild(el('p','err',(e&&e.message)||'Something went sideways — try that again.'));
-        announce((e&&e.message)||'Error',true);
-        // Errors need seeing just as much as answers — arguably more.
-        showResult(out);
-      }
-      finally{btn.disabled=false;}
-    });
-    wrap.appendChild(label);wrap.appendChild(ta);wrap.appendChild(btn);wrap.appendChild(out);
-    return wrap;
-  }
-
-
-  // Scroll a freshly rendered answer into view, and put focus at the top of it so a keyboard or
-  // screen-reader user continues from the answer rather than from where the button used to be.
-  // `smooth` is deliberate: a jump makes people lose their place, and this is the moment somebody
-  // decides whether to keep going.
-  function showResult(node){
-    if(!node) return;
-    try{
-      node.setAttribute('tabindex','-1');
-      node.scrollIntoView({behavior:'smooth',block:'start'});
-      // Focus after the scroll starts, so the browser does not fight its own scrolling.
-      setTimeout(function(){ try{ node.focus({preventScroll:true}); }catch(_){ } }, 250);
-    }catch(_){
-      // Any browser that refuses either of those still gets the answer; it just does not move.
-    }
-  }
-
-  function askClayBox(){
-    const wrap=el('div','idea-wrap');
-    const label=el('label',null,'Ask Clay anything — what this is, how it works, what a term means, or what’s for sale.');
-    label.setAttribute('for','ask-in');
-    const ta=document.createElement('textarea');ta.id='ask-in';ta.rows=2;ta.setAttribute('placeholder','What would you like to know?');
-    const btn=el('button','cta','Ask Clay');btn.type='button';
-    const log=el('div','build');log.id='ask-log';log.setAttribute('role','log');log.setAttribute('aria-live','polite');log.setAttribute('aria-label','Conversation with Clay');
-    let history=[];
-    async function send(){
-      const msg=(ta.value||'').trim();
-      if(msg.length<1){announce('Ask me something.',true);ta.focus();return;}
-      btn.disabled=true;
-      const you=el('p','ask-you');you.textContent='You: '+msg;log.appendChild(you);
-      const thinking=el('p','muted','Clay is thinking…');log.appendChild(thinking);announce('Clay is thinking.',false);
-      ta.value='';
-      try{
-        const r=await Kiln.api('/ask',{auth:false,method:'POST',body:{message:msg,history:history}});
-        thinking.remove();
-        if(r&&r.limited){const p=el('p','muted',r.reply||'');log.appendChild(p);const cta=el('a','cta solid','Create a free account');cta.href='/register.html';cta.style.marginTop='8px';log.appendChild(cta);announce(r.reply||'',true);showResult(p);return;}
-        const bubbles=(r&&Array.isArray(r.bubbles)&&r.bubbles.length)?r.bubbles:[(r&&r.reply)||'…'];
-        bubbles.forEach((b)=>{const p=el('p','ask-clay');p.textContent=b;log.appendChild(p);});
-        announce(bubbles[0]||'',true);
-        // Same reason as the idea box: an answer appended below the fold is an answer nobody sees.
-        showResult(log.lastElementChild);
-        history.push({role:'user',content:msg});history.push({role:'assistant',text:(r&&r.reply)||''});
-        if(history.length>12)history=history.slice(-12);
-      }catch(e){thinking.remove();const p=el('p','err',(e&&e.message)||'Something went sideways — try that again.');log.appendChild(p);announce((e&&e.message)||'Error',true);showResult(p);}
-      finally{btn.disabled=false;ta.focus();}
-    }
-    btn.addEventListener('click',send);
-    wrap.appendChild(label);wrap.appendChild(ta);wrap.appendChild(btn);wrap.appendChild(log);
-    return wrap;
-  }
-
-  async function render(){
-    if(Kiln.isLoggedIn&&Kiln.isLoggedIn()){
-      let name='';
-      try{const me=await Kiln.api('/auth/me');name=(me&&me.user&&(me.user.display_name||me.user.name))||'';}catch(_){}
-      inner.innerHTML='';
-      inner.appendChild(el('h1',null,name?('Welcome back, '+name+'.'):'Welcome back.'));
-      inner.appendChild(el('p','tag','Your workspace missed you. Let’s keep building.'));
-      const row=el('p','cta-row');const cta=el('a','cta','Back into your workspace →');cta.href='/app.html';row.appendChild(cta);inner.appendChild(row);
-      inner.appendChild(dreamholdLink());
-      inner.appendChild(deskLink());
-      announce(name?('Welcome back, '+name):'Welcome back',false);
-      return;
-    }
-    let hello={visits:1,returning:false,has_spark:false};
-    try{hello=await Kiln.api('/hello',{auth:false});}catch(_){}
-    // The hero used to be ERASED here and rebuilt as a greeting plus the box — which meant a real
-    // visitor never saw the headline, what this place is, or the three ways in. Those are the whole
-    // point of the page, so they stay. Clay's greeting and his live demo fill slots INSIDE the hero
-    // instead of replacing it: the promise, the personal welcome, and the working demo all at once.
-    const greet=document.getElementById('hero-greeting');
-    const demo=document.getElementById('hero-demo');
-    if(!demo) return;
-    demo.innerHTML='';
-
-    let prompt='What’s the idea, or what are you good at?';
-    if(hello.returning){
-      const countable = hello.visits <= 3;
-      const nth = ordinalWord(hello.visits);
-      if(hello.has_spark){
-        if(greet) greet.textContent = countable
-          ? ('That idea you told me? Still right here. This is the '+nth+' time you’ve stood at this door — let’s finish it.')
-          : 'That idea you told me? Still right here — let’s finish it.';
-      }else if(greet){
-        greet.textContent = countable
-          ? (cap(nth)+' time you’ve stood at this door. Still turning it over? I dare you to actually do it this time.')
-          : 'Still turning it over? I dare you to actually do it this time.';
-      }
-      prompt='Say it out loud — what’s the idea?';
-    }
-    demo.appendChild(ideaBox(prompt));
-  }
-  render();
-  (function mountAsk(){var h=document.getElementById('ask-clay');if(h)h.appendChild(askClayBox());})();
-
-  (async function liveness(){
-    const box=document.getElementById('liveness');
-    if(!box) return;
-    let d; try{ d=await Kiln.api('/liveness',{auth:false}); }catch(_){ return; }
-    const chips=[];
-    if(d.in_dreamhold>0) chips.push(d.in_dreamhold+(d.in_dreamhold===1?' project':' projects')+' in the Exchange');
-    if(d.waiting>0) chips.push(d.waiting+(d.waiting===1?' person':' people')+' waiting for a builder');
-    if(d.ideas_shaped>0) chips.push(d.ideas_shaped+(d.ideas_shaped===1?' idea':' ideas')+' shaped with Clay');
-    box.innerHTML='';
-    if(!chips.length){
-      const p=el('p','live-empty','The first projects are being shaped right now — yours could be next.');
-      box.appendChild(p);
-    }else{
-      const ul=el('ul','live-row');
-      chips.forEach(c=>ul.appendChild(el('li',null,c)));
-      box.appendChild(ul);
-    }
-    box.hidden=false;
-  })();
-})();
-
-  // Clay's live version — read from the single server source (services/clay/version.js)
-  // so the badge can never drift from what Clay says about himself. Speakable for VoiceOver.
-  (function(){
-    fetch('/api/clay/version').then(function(r){return r.ok?r.json():null;}).then(function(d){
-      if(!d||!d.version)return;
-      var e=document.getElementById('clay-ver');
-      if(!e)return;
-      e.textContent='Version '+d.version+' — live';
-      e.setAttribute('aria-label','Clay is on version '+d.version+', the current live release.');
-    }).catch(function(){});
-  })();
-
-// Clay Weekly signup. Deliberately its own small handler rather than going through Kiln.api: this
-// runs for people with no account and no token, and must never redirect anyone to sign in.
-(function(){
-  var go=document.getElementById('wk-go'); if(!go) return;
-  var said=document.getElementById('wk-said');
-  go.addEventListener('click', async function(){
-    go.disabled=true; said.textContent='Sending…';
-    try{
-      var r=await fetch('/weekly/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({first_name:document.getElementById('wk-first').value,
-          last_name:document.getElementById('wk-last').value,
-          email:document.getElementById('wk-email').value, source:'homepage'})});
-      var d=await r.json();
-      said.textContent=d.message||(d.ok?'Check your email.':'That did not work.');
-      if(typeof announce==='function') announce(said.textContent, true);
-      if(d.ok) document.getElementById('weekly-form').hidden=true;
-    }catch(e){ said.textContent='Could not reach us just now. Please try again in a moment.'; }
-    go.disabled=false;
+var $ = function (id) { return document.getElementById(id); };
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
   });
-})();
+}
 
-// The three most recent things for sale. This is the shop window, and it is the first honest answer
-// to "what is this place" — better than any sentence describing it.
-//
-// Fails silently: a homepage that shouts about a broken sidebar is worse than one that quietly does
-// without it, and the idea box above is what actually matters here.
-(async function(){
-  var host=document.getElementById('recent-listings'); if(!host) return;
-  try{
-    var r=await fetch('/api/listings/recent?limit=3');
-    if(!r.ok) throw new Error('unavailable');
-    var d=await r.json();
-    var items=(d && d.listings) || [];
-    host.innerHTML='';
-    if(!items.length){
-      host.appendChild(Object.assign(document.createElement('p'),{className:'muted',
-        textContent:'Nothing is listed at this moment. The market fills as people finish projects.'}));
-      return;
-    }
-    items.forEach(function(l){
-      var card=document.createElement('div'); card.className='card';
-      var h=document.createElement('h3');
-      var a=document.createElement('a'); a.href='/market/'+encodeURIComponent(l.id); a.textContent=l.title||'Untitled project';
-      h.appendChild(a); card.appendChild(h);
-      var price=document.createElement('p'); price.className='price'; price.textContent=Kiln.priceLabel(l);
-      card.appendChild(price);
-      if(l.line){ var p2=document.createElement('p'); p2.textContent=l.line; card.appendChild(p2); }
-      host.appendChild(card);
+var ST = ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DC', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN',
+  'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA',
+  'WA', 'WV', 'WI', 'WY'];
+ST.forEach(function (s) {
+  var o = document.createElement('option'); o.value = s; o.textContent = s; $('st').appendChild(o);
+});
+
+$('go').addEventListener('click', async function () {
+  var st = $('st').value;
+  if (!st) { $('out').textContent = 'Pick a state first.'; $('st').focus(); return; }
+  this.disabled = true; this.textContent = 'Checking\u2026';
+  try {
+    var r = await fetch('/api/public/preview?state=' + st + '&entity_type=' + $('et').value
+      + '&has_contractors=' + ($('ct').checked ? 'true' : 'false'));
+    var d = await r.json();
+    if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+
+    var html = '';
+    /* Absence first. Six states require no annual report, and telling somebody that is more
+       persuasive than any feature list — people pay for filings they never needed. */
+    (d.notes || []).forEach(function (n) {
+      /* The title and the first sentence of `says` are the same claim — rendering both printed
+         "OH does not require an LLC annual report" directly above "Ohio does not require an LLC
+         annual report — one of only a handful...". Read aloud that is the same sentence twice. */
+      html += '<div class="note"><p class="s">' + esc(n.says) + '</p></div>';
     });
-  }catch(e){
-    host.innerHTML='';
-    var p3=document.createElement('p'); p3.className='muted';
-    p3.textContent='Could not load the market just now. It is at the link below.';
-    host.appendChild(p3);
+    if (!d.items.length && !(d.notes || []).length) {
+      html += '<p class="muted">Nothing on file for that combination yet.</p>';
+    }
+    d.items.forEach(function (i) {
+      html += '<div class="line"><p class="t">' + esc(i.title) + '</p><p class="s">'
+        + esc(i.says) + '</p>'
+        + (i.needs_formation_date ? '<p class="src">' + esc(i.why_no_date) + '</p>' : '')
+        + '<p class="src">' + esc(i.source_ref) + '</p></div>';
+    });
+    if (d.coverage) html += '<p class="src">' + esc(d.coverage) + '</p>';
+    html += '<p style="margin-top:14px;"><a class="btn" href="/register.html">Keep this list</a></p>';
+    $('out').innerHTML = html;
+    /* BROUGHT INTO VIEW AND GIVEN FOCUS.
+       Carried from the marketplace homepage this replaced, where typing an idea and tapping the
+       button changed nothing on screen: the request succeeded and the answer rendered thirty pixels
+       below the fold. The page was working and the person could not tell.
+       Same risk here — a long result on a small phone puts the answer off-screen. */
+    $('out').setAttribute('tabindex', '-1');
+    $('out').focus({ preventScroll: true });
+    $('out').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  } catch (e) {
+    /* A failed look is not a clear day — on the homepage as much as inside the product. */
+    $('out').innerHTML = '<p class="muted">I could not check just now \u2014 that is a failure on '
+      + 'our side, not an empty answer. Try again in a moment.</p>';
+    /* Errors too. An error nobody sees is indistinguishable from nothing happening. */
+    $('out').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  } finally {
+    this.disabled = false; this.textContent = 'Show me';
   }
-})();
+});
 </script>
-<div class="sticky-cta">
-  <a class="cta solid" href="/register.html">Start free</a>
-</div>
-</body>
-</html>
+</body></html>

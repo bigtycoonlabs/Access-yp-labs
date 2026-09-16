@@ -112,14 +112,8 @@ test('the board is in the real nav, both signed in and signed out', () => {
   assert.match(nav, /link\('\/marketplace\.html', 'The Exchange'\),\s*\n(\s*\/\/[^\n]*\n)*\s*link\('\/seats\.html', 'Help build'\)/);
 });
 
-test('the homepage invites a skill, not only an idea', () => {
-  // "Your idea is worth something" and "what's the one you can't stop thinking about?" asked for the
-  // one thing most visitors do not have. 55 concepts on this platform, 12 people who ever made one.
-  const home = fs.readFileSync('public/index.html', 'utf8');
-  assert.match(home, /<h1>Bring an idea, or bring what you&rsquo;re good at\.<\/h1>/);
-  assert.match(home, /Four ways to play/);
-  assert.match(home, /<a class="door-link" href="\/seats\.html">/);
-  assert.match(home, /hold a real share of what you help build/);
-  // And the search description, which is what a stranger reads before they ever arrive.
-  assert.match(home, /or bring what you are good at and take a seat/);
+test('the homepage invites a skill, not only an idea', { skip: 'tested the retired marketplace homepage h1' }, () => {
+  // "Bring an idea, or bring what you're good at" existed because Launch Partners had never received
+  // a single request: people with a skill rather than an idea had no door. The homepage that carried
+  // that line has been replaced, and the marketplace it served is being retired.
 });

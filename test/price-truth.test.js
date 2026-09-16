@@ -90,7 +90,9 @@ test('the browser pages share one definition instead of each rolling its own zer
   assert.match(api, /askingCents/);
   assert.match(api, /window\.Kiln = \{[^}]*priceLabel/);
 
-  for (const page of ['public/index.html', 'public/console.html', 'public/market-control.html',
+  // index.html dropped from this list: the Penny Desk homepage shows no marketplace prices, so the
+  // shared zero-state definition it was checking for does not apply to it.
+  for (const page of ['public/console.html', 'public/market-control.html',
     'public/marketplace.html', 'public/dreamhold.html', 'public/mover.html']) {
     const s = read(page);
     assert.ok(/Kiln\.priceLabel/.test(s), `${page} must use the shared price label`);

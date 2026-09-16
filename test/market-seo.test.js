@@ -5,7 +5,12 @@ const fs = require('fs');
 const flat = (s) => s.replace(/\n\s*(?:\/\/|<!--)\s*/g, ' ').replace(/\s+/g, ' ');
 const market = fs.readFileSync(require.resolve('../src/routes/marketPages.js'), 'utf8');
 const desk = fs.readFileSync(require.resolve('../src/routes/deskPages.js'), 'utf8');
-const home = fs.readFileSync('public/index.html', 'utf8');
+// NOTE: this file's homepage assertions described the Access YP Labs marketplace front page, which
+// has been replaced by the Penny Desk homepage. The marketplace still exists at its own pages for
+// the transition, so those are read here instead of index.html — an assertion pointed at a page that
+// no longer exists tests nothing and fails for the wrong reason.
+const home = fs.existsSync('public/marketplace.html')
+  ? fs.readFileSync('public/marketplace.html', 'utf8') : '';
 const listings = fs.readFileSync(require.resolve('../src/routes/listings.js'), 'utf8');
 
 test('every listing has its own title and its own words in the HTML', () => {
@@ -49,12 +54,13 @@ test('the sitemap carries the things we sell', () => {
   assert.match(flat(desk), /the part of the platform that gives things away was fully indexed/i);
 });
 
-test('the homepage shows what is for sale before what it costs', () => {
-  // Amazon does not open with Prime. The products here are the projects people are selling.
-  assert.match(home, /On the Exchange right now/);
-  assert.match(home, /id="recent-listings"/);
-  assert.ok(home.indexOf('market-h') < home.indexOf('price-h'), 'the market comes before pricing');
-  assert.match(flat(home), /Amazon does not open with Prime/i);
+test('the homepage shows what is for sale before what it costs', { skip: 'the marketplace homepage it tested has been replaced by the Penny Desk homepage' }, () => {
+  // Amazon does not open with Prime. The marketplace homepage replaced its pricing section with
+  // three real listings, and pricing became one honest paragraph at the bottom.
+  //
+  // The lesson carried forward rather than the assertion: the Penny Desk homepage leads with the
+  // product working — pick your state, see your real filings — and states prices plainly below it.
+  // Enforced in homepage.test.js against the page that now exists.
 });
 
 test('the shop window needs no account to see', () => {

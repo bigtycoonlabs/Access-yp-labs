@@ -34,7 +34,11 @@ function collect(dir, ext, acc = []) {
 test('every endpoint the interface calls resolves to a real route', () => {
   const mounts = {};
   const srv = fs.readFileSync('src/server.js', 'utf8');
-  for (const m of srv.matchAll(/app\.use\('(\/api[^']*)',\s*require\('\.\/routes\/([a-zA-Z]+)'\)/g)) {
+  //   * Hyphenated route files. The pattern was [a-zA-Z]+, so 'routes/public-preview' never matched
+  //     its mount and every endpoint inside it was reported missing — a detector blind to a whole
+  //     file, which is exactly the failure mode described above. Found when the first hyphenated
+  //     route file was added.
+  for (const m of srv.matchAll(/app\.use\('(\/api[^']*)',\s*require\('\.\/routes\/([a-zA-Z0-9-]+)'\)/g)) {
     mounts[m[2]] = m[1];
   }
 

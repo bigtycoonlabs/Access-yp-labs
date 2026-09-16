@@ -17,7 +17,9 @@ test('a refusal to sign up is brought on screen', () => {
 test('each missing field is named on its own', () => {
   // One sentence listing every requirement makes somebody re-read all four fields to find the one
   // they missed.
-  assert.match(reg, /Add your name so Clay knows/);
+  // Pinned to Clay's exact wording, which broke when the page moved to Penny. The rule is that each
+  // field gets its OWN sentence — not the words used to say it.
+  assert.match(reg, /Add your name so \w+ knows/);
   assert.match(reg, /Add your email/);
   assert.match(reg, /Add a phone number/);
   assert.match(reg, /Passwords need at least eight characters/);

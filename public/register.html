@@ -1,29 +1,29 @@
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Create account — Access YP Labs</title><link rel="stylesheet" href="/css/kiln.css"/>
+<title>Create account — Penny Desk</title><link rel="stylesheet" href="/css/kiln.css"/>
   <link rel="canonical" href="https://accessyplabs.com/register.html"/>
-  <meta name="description" content="Create your free Access YP Labs account and start building a business project with Clay — free until you keep it."/>
+  <meta name="description" content="Create your free Penny Desk account and find out what your business owes — filings, licences, renewals and promises, in one list."/>
   <meta property="og:type" content="website"/>
-  <meta property="og:site_name" content="Access YP Labs"/>
-  <meta property="og:title" content="Create account — Access YP Labs"/>
-  <meta property="og:description" content="Create your free Access YP Labs account and start building a business project with Clay — free until you keep it."/>
+  <meta property="og:site_name" content="Penny Desk"/>
+  <meta property="og:title" content="Create account — Penny Desk"/>
+  <meta property="og:description" content="Create your free Penny Desk account and find out what your business owes — filings, licences, renewals and promises, in one list."/>
   <meta property="og:url" content="https://accessyplabs.com/register.html"/>
   <meta property="og:image" content="https://accessyplabs.com/img/og-cover.png"/>
   <meta property="og:image:width" content="1200"/>
   <meta property="og:image:height" content="630"/>
   <meta name="twitter:card" content="summary_large_image"/>
-  <meta name="twitter:title" content="Create account — Access YP Labs"/>
-  <meta name="twitter:description" content="Create your free Access YP Labs account and start building a business project with Clay — free until you keep it."/>
+  <meta name="twitter:title" content="Create account — Penny Desk"/>
+  <meta name="twitter:description" content="Create your free Penny Desk account and find out what your business owes — filings, licences, renewals and promises, in one list."/>
   <meta name="twitter:image" content="https://accessyplabs.com/img/og-cover.png"/>
 </head><body>
 <a class="skip" href="#main">Skip to main content</a>
 <header class="site"><div class="wrap bar">
-  <a class="brand" href="/">Access YP Labs</a>
+  <a class="brand" href="/">Penny Desk</a>
   <nav class="top" aria-label="Primary"><a href="/login.html">Sign in</a></nav>
 </div></header>
 <main id="main" class="wrap">
   <h1>Create your account</h1>
-  <p class="muted">Shape a project with Clay, then sell it or launch it. Your first project is free — properly free. Everything after that is $19 a month.</p>
+  <p class="muted">Tell Penny what you do and where. Under five minutes later you will know what you owe, and when. One business is free forever.</p>
   <div id="feedback" role="alert" aria-live="assertive"></div>
   <div class="panel">
     <div class="stack">
@@ -66,8 +66,8 @@ async function submit(){
     const phone = document.getElementById('phone').value.trim();
   // Check each thing separately and name the one that is wrong. A single sentence listing every
   // requirement makes somebody re-read all four fields to find which one they missed.
-  if(!name){ return show('Add your name so Clay knows who he is building for.'); }
-  if(!email){ return show('Add your email — it is how Clay sends your project when it is ready.'); }
+  if(!name){ return show('Add your name so Penny knows who she is working for.'); }
+  if(!email){ return show('Add your email — it is how Penny reaches you when something is due.'); }
   if(!phone){
     // This was not checked here at all, so an empty phone reached the server, failed validation,
     // and surfaced to the person as "Failed to fetch" — a network error about nothing.
