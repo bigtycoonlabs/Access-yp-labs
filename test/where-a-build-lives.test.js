@@ -24,11 +24,12 @@ test('a backend need is named, and the smaller option is still offered', () => {
   assert.match(c.says, /If a smaller start would do/);
 });
 
-test('customers signing in points to the portal, which is said to be unbuilt', () => {
+test('customers signing in points to the portal, which is set up on its own page', () => {
   const c = S.classify('a client portal where customers log in to see their invoices');
   assert.strictEqual(c.recommended, 'labs_portal');
-  assert.match(c.says, /customer portal is not built yet/);
+  assert.match(c.says, /I set the portal up from its own page/);
   assert.strictEqual(S.AVAILABLE.labs_portal.ready, false);
+  assert.match(S.AVAILABLE.labs_portal.says, /Open Customer portal from Today/);
 });
 
 test('a custom app says plainly it is not live until launched on their accounts', () => {
@@ -36,7 +37,7 @@ test('a custom app says plainly it is not live until launched on their accounts'
   assert.match(fs.readFileSync('src/services/clay/penny.js', 'utf8'), /until it is hosted there it is not live/);
 });
 
-test('nothing starts without a home, and the portal is refused while unbuilt', async () => {
+test('nothing starts without a home, and a portal is sent to its own page', async () => {
   const P = require('../src/lib/permissions');
   const can = P.can;
   P.can = async () => ({ ok: true, perms: { business: { name: 'T' } } });
@@ -47,7 +48,7 @@ test('nothing starts without a home, and the portal is refused while unbuilt', a
     assert.match(r.says, /Where should this live/);
     const p = await B.start({ id: 'u' }, { business_id: 'b', asked_for: 'a portal for my clients', tier: 'labs_portal', mock_first: 'no' });
     assert.strictEqual(p.ok, false);
-    assert.match(p.says, /not built yet/);
+    assert.match(p.says, /set up on its own page/);
   } finally { P.can = can; }
 });
 

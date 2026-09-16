@@ -1,0 +1,344 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Customer portal, Access YP Labs</title>
+<meta name="robots" content="noindex, nofollow"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&family=Inter:wght@400;600;700&display=swap"/>
+<link rel="stylesheet" href="/css/penny.css"/>
+<style>
+.field{display:block;font-weight:600;margin:14px 0 6px;}
+.box{width:100%;min-height:44px;padding:10px 12px;font:inherit;border:1px solid var(--line);
+  border-radius:var(--radius);background:var(--panel);color:var(--ink);box-sizing:border-box;}
+textarea.box{min-height:90px;resize:vertical;}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin:0 0 18px;}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+.row .btn{min-height:44px;display:inline-flex;align-items:center;}
+.sec{border-top:1px solid var(--line);padding:10px 0;}
+.sec:first-of-type{border-top:0;}
+.check{display:flex;align-items:center;gap:10px;min-height:44px;font-weight:600;}
+.check input{width:22px;height:22px;}
+.cust{border-top:1px solid var(--line);padding:12px 0;}
+.msg{padding:8px 10px;border-radius:8px;border:1px solid var(--line);margin:0 0 8px;}
+.msg.them{background:#F4F6FA;}
+code.snip{display:block;word-break:break-all;background:#F4F6FA;padding:10px;border-radius:8px;font-size:.85rem;}
+</style>
+</head><body>
+
+<!-- THE CUSTOMER PORTAL, FROM THE OWNER'S SIDE.
+     Everything customisable is on this page, in the same shape Penny edits. What is not here is not
+     something the portal does, and Penny says so and offers a custom web application instead. -->
+
+<a class="skip" href="#main">Skip to your portal</a>
+
+<header class="site">
+  <div class="bar">
+    <a class="brand" href="/today.html">Access YP Labs<span class="dot" aria-hidden="true">.</span></a>
+    <a class="btn quiet" href="/today.html">Today</a>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <h1>Customer portal</h1>
+  <p class="muted">A private page where each of your customers signs in with an emailed link and sees
+    what is theirs. Penny can set it up for you: ask her on the <a href="/penny.html">Ask Penny</a> page.</p>
+
+  <label class="field" for="biz">Which business?</label>
+  <select id="biz" class="box"></select>
+
+  <div id="status" role="status" aria-live="polite" class="muted" style="margin-top:12px;"></div>
+
+  <section class="panel" aria-labelledby="where-h" style="margin-top:16px;">
+    <h2 id="where-h" style="margin-top:0;">Where it lives</h2>
+    <p id="summary"></p>
+    <label class="field" for="addr">Its address</label>
+    <p class="muted" style="margin:0 0 6px;">It will be <span id="host"></span>/p/ followed by what you type.</p>
+    <input id="addr" class="box" type="text" autocapitalize="none" spellcheck="false"/>
+    <div class="row" style="margin-top:12px;">
+      <button class="btn" type="button" id="open">Open the portal</button>
+      <button class="btn plain" type="button" id="close">Close it</button>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="look-h">
+    <h2 id="look-h" style="margin-top:0;">What customers see</h2>
+    <label class="field" for="ptitle">Title</label>
+    <input id="ptitle" class="box" type="text" maxlength="80"/>
+    <label class="field" for="welcome">Welcome message</label>
+    <textarea id="welcome" class="box" maxlength="1000"></textarea>
+    <label class="field" for="accent">Colour</label>
+    <select id="accent" class="box"></select>
+
+    <h3>Sections, in order</h3>
+    <div id="sections"></div>
+
+    <h3>The request form</h3>
+    <label class="field" for="intro">What it says above the fields</label>
+    <input id="intro" class="box" type="text" maxlength="300"/>
+    <div id="fields"></div>
+    <button class="btn plain" type="button" id="addfield">Add a field</button>
+
+    <h3>Links</h3>
+    <div id="links"></div>
+    <button class="btn plain" type="button" id="addlink">Add a link</button>
+
+    <div style="margin-top:18px;"><button class="btn" type="button" id="save">Save these changes</button></div>
+  </section>
+
+  <section class="panel" aria-labelledby="embed-h">
+    <h2 id="embed-h" style="margin-top:0;">Put it on your website</h2>
+    <p>Already have a website? Paste this button onto it, and your customers can sign in from there.
+      Your sites hosted here link to the portal on their own once it is open.</p>
+    <code class="snip" id="snippet">Open the portal first, then the button code appears here.</code>
+    <div class="row"><button class="btn plain" type="button" id="copysnip">Copy the button code</button></div>
+  </section>
+
+  <section class="panel" aria-labelledby="cust-h">
+    <h2 id="cust-h" style="margin-top:0;">Customers</h2>
+    <p id="csummary" class="muted"></p>
+    <label class="field" for="cname">Their name</label>
+    <input id="cname" class="box" type="text" autocomplete="off"/>
+    <label class="field" for="cemail">Their email address</label>
+    <input id="cemail" class="box" type="email" autocapitalize="none" spellcheck="false" autocomplete="off"/>
+    <label class="check"><input type="checkbox" id="cinvite" checked/> Email them a sign-in link now</label>
+    <button class="btn" type="button" id="addc">Add them</button>
+    <div id="clist" style="margin-top:14px;"></div>
+  </section>
+</main>
+
+<script src="/js/api.js"></script>
+<script src="/js/desk-auth.js"></script>
+<script>
+var $ = function (id) { return document.getElementById(id); };
+var state = null;
+var files = [];
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function say(t) { $('status').textContent = t; }
+async function call(url, method, body) {
+  var r = await fetch(url, { method: method || 'GET', headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined });
+  if (r.status === 401) { location.href = '/login.html?next=/portal.html'; throw new Error('signed out'); }
+  var d = {}; try { d = await r.json(); } catch (_) {}
+  if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+  return d;
+}
+var bizQ = function () { return 'business_id=' + encodeURIComponent($('biz').value); };
+$('host').textContent = location.host;
+
+async function loadBusinesses() {
+  try {
+    var d = await call('/api/businesses');
+    var list = d.businesses || [];
+    if (!list.length) { say('Add a business first, then you can set up its portal.'); return; }
+    $('biz').innerHTML = list.map(function (b) { return '<option value="' + esc(b.id) + '">' + esc(b.name) + '</option>'; }).join('');
+    load();
+  } catch (e) { if (e.message !== 'signed out') say('I could not read your businesses just now. That is a fault on our side, not an empty list.'); }
+}
+
+async function load() {
+  try {
+    var d = await call('/api/portal?' + bizQ());
+    state = d;
+    var p = d.portal, c = p.config;
+    $('summary').textContent = d.says;
+    $('addr').value = p.slug || '';
+    $('ptitle').value = c.title; $('welcome').value = c.welcome; $('intro').value = c.request.intro;
+    $('accent').innerHTML = Object.keys(d.accents).map(function (k) {
+      return '<option value="' + k + '"' + (k === c.accent ? ' selected' : '') + '>' + k.charAt(0).toUpperCase() + k.slice(1) + '</option>';
+    }).join('');
+    renderSections(c.sections); renderFields(c.request.fields); renderLinks(c.links);
+    $('snippet').textContent = d.embed && p.is_open ? d.embed : 'Open the portal first, then the button code appears here.';
+    var f = await call('/api/files?' + bizQ()); files = f.files || [];
+    loadCustomers();
+  } catch (e) { if (e.message !== 'signed out') say('I could not read your portal. ' + e.message); }
+}
+
+function renderSections(list) {
+  $('sections').innerHTML = list.map(function (s, i) {
+    var what = state.sections[s.type].what;
+    return '<div class="sec" data-type="' + s.type + '">'
+      + '<label class="check"><input type="checkbox" data-on ' + (s.on ? 'checked' : '') + '/> Show ' + esc(s.title) + '</label>'
+      + '<p class="muted" style="margin:0 0 6px;">Shows ' + esc(what) + '.</p>'
+      + '<label class="field" for="st-' + s.type + '">Heading customers see</label>'
+      + '<input class="box" id="st-' + s.type + '" data-title type="text" maxlength="60" value="' + esc(s.title) + '"/>'
+      + '<div class="row" style="margin-top:8px;">'
+      + (i > 0 ? '<button class="btn plain" type="button" data-move="-1">Move ' + esc(s.title) + ' up</button>' : '')
+      + (i < list.length - 1 ? '<button class="btn plain" type="button" data-move="1">Move ' + esc(s.title) + ' down</button>' : '')
+      + '</div></div>';
+  }).join('');
+}
+function readSections() {
+  return Array.prototype.map.call(document.querySelectorAll('#sections .sec'), function (el) {
+    return { type: el.dataset.type, on: el.querySelector('[data-on]').checked, title: el.querySelector('[data-title]').value };
+  });
+}
+function renderFields(list) {
+  var kinds = state.field_kinds;
+  var names = { text: 'Short answer', long_text: 'Long answer', email: 'Email address', phone: 'Phone number', date: 'Date', number: 'Number' };
+  $('fields').innerHTML = list.map(function (f, i) {
+    return '<div class="sec" data-field>'
+      + '<label class="field" for="fl-' + i + '">Field ' + (i + 1) + ' label</label>'
+      + '<input class="box" id="fl-' + i + '" data-label type="text" maxlength="60" value="' + esc(f.label) + '"/>'
+      + '<label class="field" for="fk-' + i + '">Field ' + (i + 1) + ' kind</label>'
+      + '<select class="box" id="fk-' + i + '" data-kind>' + kinds.map(function (k) {
+        return '<option value="' + k + '"' + (k === f.kind ? ' selected' : '') + '>' + names[k] + '</option>'; }).join('') + '</select>'
+      + '<label class="check"><input type="checkbox" data-req ' + (f.required ? 'checked' : '') + '/> Field ' + (i + 1) + ' is required</label>'
+      + '<button class="btn plain" type="button" data-dropfield="' + i + '">Remove field ' + (i + 1) + '</button></div>';
+  }).join('');
+}
+function readFields() {
+  return Array.prototype.map.call(document.querySelectorAll('[data-field]'), function (el) {
+    return { label: el.querySelector('[data-label]').value, kind: el.querySelector('[data-kind]').value, required: el.querySelector('[data-req]').checked };
+  });
+}
+function renderLinks(list) {
+  $('links').innerHTML = list.length ? list.map(function (l, i) {
+    return '<div class="sec" data-link>'
+      + '<label class="field" for="ll-' + i + '">Link ' + (i + 1) + ' words</label>'
+      + '<input class="box" id="ll-' + i + '" data-label type="text" maxlength="60" value="' + esc(l.label) + '"/>'
+      + '<label class="field" for="lu-' + i + '">Link ' + (i + 1) + ' address, starting https://</label>'
+      + '<input class="box" id="lu-' + i + '" data-url type="url" autocapitalize="none" spellcheck="false" value="' + esc(l.url) + '"/>'
+      + '<button class="btn plain" type="button" data-droplink="' + i + '">Remove link ' + (i + 1) + '</button></div>';
+  }).join('') : '<p class="muted">No links yet.</p>';
+}
+function readLinks() {
+  return Array.prototype.map.call(document.querySelectorAll('[data-link]'), function (el) {
+    return { label: el.querySelector('[data-label]').value, url: el.querySelector('[data-url]').value.trim() };
+  });
+}
+
+document.addEventListener('click', function (ev) {
+  var t = ev.target;
+  if (t.dataset.move) {
+    var list = readSections(); var el = t.closest('.sec');
+    var i = list.findIndex(function (s) { return s.type === el.dataset.type; });
+    var j = i + Number(t.dataset.move);
+    var moved = list.splice(i, 1)[0]; list.splice(j, 0, moved);
+    renderSections(list);
+    say(moved.title + ' is now number ' + (j + 1) + ' of ' + list.length + '. Save to keep it.');
+    var again = document.querySelector('#sections .sec[data-type="' + moved.type + '"] [data-move="' + t.dataset.move + '"]')
+      || document.querySelector('#sections .sec[data-type="' + moved.type + '"] [data-title]');
+    if (again) again.focus();
+  } else if (t.dataset.dropfield) {
+    var fl = readFields(); fl.splice(Number(t.dataset.dropfield), 1); renderFields(fl); say('Field removed. Save to keep it.');
+  } else if (t.dataset.droplink) {
+    var ll = readLinks(); ll.splice(Number(t.dataset.droplink), 1); renderLinks(ll); say('Link removed. Save to keep it.');
+  }
+});
+$('addfield').addEventListener('click', function () {
+  var fl = readFields(); fl.push({ label: '', kind: 'text', required: false }); renderFields(fl);
+  $('fl-' + (fl.length - 1)).focus();
+});
+$('addlink').addEventListener('click', function () {
+  var ll = readLinks(); ll.push({ label: '', url: '' }); renderLinks(ll);
+  $('ll-' + (ll.length - 1)).focus();
+});
+$('save').addEventListener('click', async function () {
+  this.disabled = true;
+  try {
+    var d = await call('/api/portal', 'PATCH', { business_id: $('biz').value, changes: {
+      title: $('ptitle').value, welcome: $('welcome').value, accent: $('accent').value,
+      sections: readSections(), request: { intro: $('intro').value, fields: readFields() }, links: readLinks() } });
+    say(d.says);
+    // If something was refused, leave the form as typed so it can be corrected, not retyped.
+    if (!d.ignored || !d.ignored.length) load();
+  } catch (e) { if (e.message !== 'signed out') say('Nothing was saved. ' + e.message); }
+  finally { this.disabled = false; }
+});
+$('open').addEventListener('click', async function () {
+  try { var d = await call('/api/portal/open', 'POST', { business_id: $('biz').value, open: true, address: $('addr').value }); say(d.says); load(); }
+  catch (e) { if (e.message !== 'signed out') say('The portal is not open. ' + e.message); }
+});
+$('close').addEventListener('click', async function () {
+  try { var d = await call('/api/portal/open', 'POST', { business_id: $('biz').value, open: false }); say(d.says); load(); }
+  catch (e) { if (e.message !== 'signed out') say('Nothing changed. ' + e.message); }
+});
+$('copysnip').addEventListener('click', async function () {
+  try { await navigator.clipboard.writeText($('snippet').textContent); say('Button code copied.'); }
+  catch (_) { say('I could not copy it. The code is written out just above the button.'); }
+});
+$('biz').addEventListener('change', load);
+
+async function loadCustomers() {
+  try {
+    var d = await call('/api/portal/customers?' + bizQ());
+    $('csummary').textContent = d.says;
+    $('clist').innerHTML = (d.customers || []).map(function (c) {
+      return '<article class="cust" data-cust="' + esc(c.id) + '"><h3 style="margin:0 0 4px;">' + esc(c.name) + '</h3>'
+        + '<p class="muted" style="margin:0 0 8px;">' + esc(c.email) + '. '
+        + (c.last_seen_at ? 'Has signed in.' : c.invited_at ? 'Invited, not signed in yet.' : 'Not invited yet.')
+        + ' ' + c.files + (c.files === 1 ? ' file' : ' files') + ' shared, ' + c.open_items + ' open '
+        + (c.open_items === 1 ? 'item' : 'items') + (c.waiting ? '. Waiting for your reply.' : '.') + '</p>'
+        + '<div class="row"><button class="btn" type="button" data-openc="' + esc(c.id) + '">Open ' + esc(c.name) + '</button>'
+        + '<button class="btn plain" type="button" data-invite="' + esc(c.id) + '">Send ' + esc(c.name) + ' a sign-in link</button></div>'
+        + '<div id="c-' + esc(c.id) + '"></div></article>';
+    }).join('');
+  } catch (e) { $('csummary').textContent = 'I could not read your portal customers, so I do not know who is there.'; }
+}
+
+$('addc').addEventListener('click', async function () {
+  this.disabled = true;
+  try {
+    var d = await call('/api/portal/customers', 'POST', { business_id: $('biz').value,
+      name: $('cname').value.trim(), email: $('cemail').value.trim(), invite: $('cinvite').checked });
+    say(d.says); $('cname').value = ''; $('cemail').value = ''; loadCustomers();
+  } catch (e) { if (e.message !== 'signed out') say('They were not added. ' + e.message); }
+  finally { this.disabled = false; }
+});
+
+async function openCustomer(id) {
+  var d = await call('/api/portal/customers/' + id);
+  var c = d.customer;
+  var box = $('c-' + id);
+  box.innerHTML = '<h4>Conversation</h4>'
+    + (d.messages.length ? d.messages.map(function (m) {
+      return '<div class="msg' + (m.from_customer ? ' them' : '') + '"><strong>' + esc(m.from_customer ? c.name : (m.author || 'You'))
+        + '</strong>, ' + esc(new Date(m.created_at).toLocaleString()) + '<p style="margin:4px 0 0;white-space:pre-wrap">' + esc(m.body) + '</p></div>';
+    }).join('') : '<p class="muted">No messages yet.</p>')
+    + '<label class="field" for="r-' + id + '">Reply to ' + esc(c.name) + '</label><textarea class="box" id="r-' + id + '"></textarea>'
+    + '<button class="btn" type="button" data-reply="' + id + '">Send the reply</button>'
+    + '<h4>Shared files</h4>' + (d.files.length ? '<ul>' + d.files.map(function (f) {
+      return '<li>' + esc(f.name) + ' <button class="btn plain" type="button" data-unshare="' + id + '" data-file="' + esc(f.id) + '">Stop sharing ' + esc(f.name) + '</button></li>'; }).join('') + '</ul>' : '<p class="muted">None yet.</p>')
+    + (files.length ? '<label class="field" for="sf-' + id + '">Share a file with ' + esc(c.name) + '</label><select class="box" id="sf-' + id + '">'
+      + files.map(function (f) { return '<option value="' + esc(f.id) + '">' + esc(f.name) + '</option>'; }).join('')
+      + '</select><button class="btn plain" type="button" data-share="' + id + '">Share it</button>'
+      : '<p class="muted">Add files on the <a href="/files.html">Files and photos</a> page to share them here.</p>')
+    + '<h4>What is open between you</h4>' + (d.items.length ? '<ul>' + d.items.map(function (i) {
+      return '<li>' + (i.kind === 'invoice_out' ? 'They owe you: ' : 'You owe them: ') + esc(i.title)
+        + (i.due_at ? ', by ' + esc(new Date(i.due_at).toLocaleDateString()) : '') + (i.status !== 'open' ? ' (done)' : '') + '</li>'; }).join('') + '</ul>' : '<p class="muted">Nothing yet.</p>')
+    + '<fieldset style="border:1px solid var(--line);border-radius:8px;padding:10px 12px;"><legend>Add something open between you</legend>'
+    + '<label class="check"><input type="radio" name="dir-' + id + '" value="they_owe"/> They owe you this</label>'
+    + '<label class="check"><input type="radio" name="dir-' + id + '" value="we_owe"/> You owe them this</label>'
+    + '<label class="field" for="it-' + id + '">What is it?</label><input class="box" id="it-' + id + '" type="text" maxlength="160"/>'
+    + '<label class="field" for="id-' + id + '">By when? (optional)</label><input class="box" id="id-' + id + '" type="date"/>'
+    + '<button class="btn plain" type="button" data-item="' + id + '">Add it</button>'
+    + '<p class="muted">Amounts and payments live in YP Flow, so the portal shows what and when, not how much.</p></fieldset>'
+    + '<button class="btn plain" type="button" data-remove="' + id + '">Remove ' + esc(c.name) + ' from the portal</button>';
+}
+
+document.addEventListener('click', async function (ev) {
+  var d = ev.target.dataset;
+  try {
+    if (d.openc) { await openCustomer(d.openc); say('Showing ' + ev.target.textContent.replace(/^Open /, '') + '.'); }
+    else if (d.invite) { var r = await call('/api/portal/customers/' + d.invite + '/invite', 'POST'); say(r.says); loadCustomers(); }
+    else if (d.reply) { var r2 = await call('/api/portal/customers/' + d.reply + '/messages', 'POST', { body: $('r-' + d.reply).value }); say(r2.says); await openCustomer(d.reply); }
+    else if (d.share) { var r3 = await call('/api/portal/customers/' + d.share + '/files', 'POST', { file_id: $('sf-' + d.share).value }); say(r3.says); await openCustomer(d.share); }
+    else if (d.unshare) { var r4 = await call('/api/portal/customers/' + d.unshare + '/files', 'POST', { file_id: d.file, share: false }); say(r4.says); await openCustomer(d.unshare); }
+    else if (d.item) {
+      var dir = document.querySelector('input[name="dir-' + d.item + '"]:checked');
+      var r5 = await call('/api/portal/customers/' + d.item + '/items', 'POST', { direction: dir ? dir.value : null,
+        title: $('it-' + d.item).value, due_on: $('id-' + d.item).value || undefined });
+      say(r5.says); await openCustomer(d.item);
+    }
+    else if (d.remove) { var r6 = await call('/api/portal/customers/' + d.remove, 'DELETE'); say(r6.says); loadCustomers(); }
+  } catch (e) { if (e.message !== 'signed out') say('That did not work, so nothing changed. ' + e.message); }
+});
+
+loadBusinesses();
+</script>
+</body></html>

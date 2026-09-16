@@ -36,7 +36,7 @@ function notFound(res) {
       + 'site at this address</h1><p>It may have been taken offline by its owner.</p></main></body></html>');
 }
 
-function addOns(slug, businessName, sendUrl) {
+function addOns(slug, businessName, sendUrl, portalUrl) {
   const script = '<script>(function(){var u=' + JSON.stringify(sendUrl) + ';'
     + 'window.labsSend=async function(fields){try{var r=await fetch(u,{method:"POST",'
     + 'headers:{"Content-Type":"text/plain"},body:JSON.stringify({fields:fields||{}})});'
@@ -45,7 +45,9 @@ function addOns(slug, businessName, sendUrl) {
     + '}catch(e){return {ok:false,says:"That did not send, because the connection failed. Please try again."}}};'
     + '})();</script>';
   const footer = '<footer style="font:14px/1.5 system-ui,sans-serif;padding:16px;text-align:center;'
-    + 'color:#475569;border-top:1px solid #e2e8f0;margin-top:24px">' + esc(businessName)
+    + 'color:#475569;border-top:1px solid #e2e8f0;margin-top:24px">'
+    + (portalUrl ? '<p style="margin:0 0 8px"><a style="color:#475569;font-weight:600" href="' + esc(portalUrl)
+      + '" target="_top">Customer sign in</a></p>' : '') + esc(businessName)
     + ', made with Access YP Labs. <a style="color:#475569" href="mailto:success@accessyourplace.com'
     + '?subject=' + encodeURIComponent('Report a site: ' + slug) + '">Report this page</a></footer>';
   return { script, footer };
@@ -57,7 +59,7 @@ router.get('/:slug', async (req, res) => {
   let row;
   try {
     row = (await query(
-      `SELECT b.id, p.html, bz.name AS business_name
+      `SELECT b.id, b.business_id, p.html, bz.name AS business_name
          FROM builds b JOIN build_pages p ON p.build_id=b.id
          JOIN businesses bz ON bz.id=b.business_id
         WHERE b.published_slug=$1`, [slug])).rows[0];
@@ -66,7 +68,12 @@ router.get('/:slug', async (req, res) => {
   }
   if (!row) return notFound(res);
   const here = origin(req);
-  const { script, footer } = addOns(slug, row.business_name, here + '/s/' + slug + '/send');
+  let portalSlug = null;
+  try {
+    portalSlug = ((await query('SELECT slug FROM portals WHERE business_id=$1 AND is_open', [row.business_id])).rows[0] || {}).slug;
+  } catch (_) { /* the site still opens without the portal link */ }
+  const { script, footer } = addOns(slug, row.business_name, here + '/s/' + slug + '/send',
+    portalSlug ? here + '/p/' + portalSlug : null);
   let html = row.html;
   html = /<\/head>/i.test(html) ? html.replace(/<\/head>/i, script + '</head>') : script + html;
   html = /<\/body>/i.test(html) ? html.replace(/<\/body>(?![\s\S]*<\/body>)/i, footer + '</body>') : html + footer;

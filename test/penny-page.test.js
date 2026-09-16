@@ -95,5 +95,5 @@ test('one main, one h1, one live region, labelled input, 44px targets', () => {
 });
 
 test('it has its own title', () => {
-  assert.match(html, /<title>Ask Penny — Penny Desk<\/title>/);
+  assert.match(html, /<title>Ask Penny, Access YP Labs<\/title>/);
 });

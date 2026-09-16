@@ -79,3 +79,4 @@
 062_builds_mock_is_a_choice.sql
 063_files.sql
 064_where_a_build_lives.sql
+065_customer_portal.sql

@@ -16,9 +16,9 @@ const api = fs.readFileSync('src/routes/team.js', 'utf8');
 const html = fs.readFileSync('public/team.html', 'utf8');
 const server = fs.readFileSync('src/server.js', 'utf8');
 
-test('it is mounted and the page is Penny Desk, not the old Labs page', () => {
+test('it is mounted and carries the Access YP Labs name', () => {
   assert.match(server, /app\.use\('\/api\/team'/);
-  assert.match(html, /<title>People — Penny Desk<\/title>/);
+  assert.match(html, /<title>People, Access YP Labs<\/title>/);
   assert.ok(!/\bClay\b/.test(html.replace(/clay-dark/g, '')));
 });
 

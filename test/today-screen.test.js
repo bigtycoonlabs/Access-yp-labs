@@ -51,7 +51,7 @@ test('one main, one h1, one live region, labelled inputs', () => {
 test('the page has its own title', () => {
   // Nine pages on Flow shared the site title, so moving between them announced the same sentence
   // and a screen-reader user could not tell they had gone anywhere.
-  assert.match(html, /<title>Today — Penny Desk<\/title>/);
+  assert.match(html, /<title>Today, Access YP Labs<\/title>/);
 });
 
 test('the question box is not treated as a credential field', () => {

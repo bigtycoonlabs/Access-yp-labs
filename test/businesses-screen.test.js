@@ -92,7 +92,7 @@ test('one main, one h1, a live region, and every input labelled', () => {
   assert.strictEqual((html.match(/<main/g) || []).length, 1);
   assert.strictEqual((html.match(/<h1/g) || []).length, 1);
   assert.match(html, /role="status" aria-live="polite"/);
-  assert.match(html, /<title>Your businesses — Penny Desk<\/title>/);
+  assert.match(html, /<title>Your businesses, Access YP Labs<\/title>/);
 });
 
 test('the result is announced and brought into view', () => {

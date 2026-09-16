@@ -27,6 +27,7 @@ const D = require('./documents');
 const C = require('./customers');
 const Bld = require('./builder');
 const Files = require('./files');
+const Portal = require('./portal');
 
 // Result shapes. Borrowed from Arbo, where they exist because an unread balance once printed as
 // "$0.00" — indistinguishable from the money being gone.
@@ -93,6 +94,21 @@ const TOOLS = {
       + 'offline with online no. Only real builds hosted on Labs; custom apps go live on the '
       + 'client\'s own accounts, which is not switched on yet.',
     ask: 'Put this site online at the address shown, where anyone with the link can open it.',
+  },
+  portal_status: {
+    irreversible: false, requires_confirmation: false, required: ['business_id'], enums: {},
+    summary: 'The customer portal for a business: its address, whether it is open, its current '
+      + 'settings (title, welcome, colour, sections in order, request fields, links), the allowed '
+      + 'sections and colours, and its customers. Read-only. Read this before customize_portal.',
+  },
+  customize_portal: {
+    irreversible: false, requires_confirmation: false,
+    required: ['business_id', 'config_json'], optional: ['asked_for'], enums: {},
+    summary: 'Change the customer portal. config_json is a JSON object with any of: title, welcome, '
+      + 'accent, sections (list of {type, title, on} in order), request ({intro, fields: [{label, '
+      + 'kind, required}]}), links ([{label, url}]). Pass the person\'s words as asked_for. Report '
+      + 'what the result says it could not apply. If it says the request needs a backend, explain '
+      + 'that is a custom web application and offer to build it with start_build.',
   },
   list_builds: {
     irreversible: false, requires_confirmation: false, required: ['business_id'], enums: {},
@@ -308,6 +324,28 @@ async function publish_build(viewer, params = {}) {
   return answered({ url: r.url || null }, r.says);
 }
 
+async function portal_status(viewer, params = {}) {
+  const r = await Portal.get(viewer, params.business_id);
+  if (!r.ok) return r.kind === 'refused' ? refused(r.says) : unavailable('portal_unreadable', r.says);
+  const c = await Portal.customers(viewer, params.business_id);
+  return answered({
+    address: r.portal.url, open: r.portal.is_open, config: r.portal.config,
+    allowed_sections: Object.keys(r.sections), allowed_colours: Object.keys(r.accents),
+    field_kinds: r.field_kinds, limits: r.limits,
+    customers: c.ok ? c.customers.map((x) => ({ name: x.name, signed_in: !!x.last_seen_at, waiting: x.waiting > 0 })) : null,
+  }, r.says + (c.ok ? ' ' + c.says : ' I could not read the customer list.'));
+}
+
+async function customize_portal(viewer, params = {}) {
+  let changes;
+  try { changes = JSON.parse(params.config_json || '{}'); } catch (_) {
+    return { status: 'needs_answer', says: 'That change was not in a form I could read, so nothing was saved.' };
+  }
+  const r = await Portal.customise(viewer, params.business_id, { changes, asked_for: params.asked_for });
+  if (!r.ok) return r.kind === 'refused' ? refused(r.says) : unavailable('portal_not_saved', r.says);
+  return answered({ ignored: r.ignored, needs_custom_app: r.beyond }, r.says);
+}
+
 async function list_builds(viewer, params = {}) {
   const r = await Bld.listFor(viewer, params.business_id);
   if (!r.ok) {
@@ -334,6 +372,7 @@ async function list_files(viewer, params = {}) {
 }
 
 const EXECUTORS = { whats_due, whats_coming, list_businesses, record_obligation,
-  complete_obligation, whats_missing, whats_outstanding_with_customers, start_build, publish_build, list_builds, list_files };
+  complete_obligation, whats_missing, whats_outstanding_with_customers, start_build, publish_build, list_builds, list_files,
+  portal_status, customize_portal };
 
 module.exports = { TOOLS, EXECUTORS, answered, empty, unavailable, refused };

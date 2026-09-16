@@ -26,8 +26,9 @@ const WHAT = {
 // that is not.
 const AVAILABLE = {
   labs_site: { ready: true },
-  labs_portal: { ready: false, says: 'The customer portal is not built yet. I can build your site '
-    + 'now and attach the portal when it is ready.' },
+  labs_portal: { ready: false, says: 'The customer portal is set up on its own page rather than '
+    + 'built here. Open Customer portal from Today, or ask me to set it up for you. If you also want '
+    + 'a site, I can build that now and it will link to the portal.' },
   custom_app: { ready: true, partial: 'I can build a working version of the app to try here now. '
     + 'Launching it on your own accounts is not switched on yet, so it stays a preview until then.' },
 };
@@ -78,7 +79,7 @@ function explain(rec, hits) {
       + ' That would not do ' + list(hits.custom_app) + ', but it would be online today.');
   } else if (rec === 'labs_portal') {
     parts.push('You mentioned ' + list(hits.labs_portal) + '. That fits ' + WHAT.labs_portal);
-    parts.push(AVAILABLE.labs_portal.says);
+    parts.push('I set the portal up from its own page rather than building it from scratch.');
     parts.push('If you need more than the portal offers, the other route is ' + WHAT.custom_app);
   } else {
     parts.push('This sounds like ' + WHAT.labs_site);
