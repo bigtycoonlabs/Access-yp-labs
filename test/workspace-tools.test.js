@@ -96,7 +96,7 @@ test('the tool payload stays inside the hard limits', () => {
 });
 
 test('recurring things come back rather than vanishing', () => {
-  // Driven live: completing the Ohio annual report returned "The next one is due 2027-09-27."
+  // Driven live: completing the Florida annual report returned "The next one is due 2027-09-27."
   assert.match(ws, /due_at \+ recurs_every/);
   assert.match(ws, /The next one is due/);
 });

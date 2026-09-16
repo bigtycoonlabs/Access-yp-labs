@@ -18,7 +18,7 @@ test('every attached component contributes a spoken sentence', () => {
   //
   // Verified live — the announcement with a failure and a confirmation attached read:
   //   "1 step did not work. She needs you to confirm something first. Mark this off as done...
-  //    That is your Ohio annual report..."
+  //    That is your Florida annual report..."
   assert.match(html, /EVERY ATTACHED COMPONENT CONTRIBUTES A SPOKEN SENTENCE/);
   assert.match(html, /function announce\(parts\)/);
   assert.match(html, /spoken\.push\(renderConfirm\(waiting, d\.awaiting_confirmation\)\)/);

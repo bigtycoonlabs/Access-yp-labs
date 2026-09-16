@@ -88,7 +88,7 @@ test('a failed read never looks like a clear day', () => {
 });
 
 test('Coming up excludes what Today already showed', () => {
-  // Seen on the phone render: the Cleveland licence and the Ohio annual report appeared in Today AND
+  // Seen on the phone render: the Cleveland licence and the Florida annual report appeared in Today AND
   // again under Coming up, because Today's horizon is 45 days and that list is 30. The same
   // obligation twice on one screen reads as two obligations.
   assert.match(html, /COMING UP MEANS WHAT IS NOT ALREADY IN TODAY/);

@@ -74,7 +74,7 @@ test('nothing due is a real answer', () => {
 
 test('the ranked list filters by permission AREA, not just by business', () => {
   // THE BUG THIS FILE EXISTS FOR. Found by running the list as a bookkeeper with money:view and
-  // nothing else: she saw five items including the Ohio annual report and the city licence. The
+  // nothing else: she saw five items including the Florida annual report and the city licence. The
   // query filtered by which BUSINESSES she could reach and then showed her everything inside them.
   //
   // Same defect as a screen that hides a number while the assistant reads it out. After the fix she

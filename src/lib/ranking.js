@@ -4,7 +4,7 @@
 // the second week everything is high. It carries no information.
 //
 // This ranks by what missing each thing actually costs, which the tool can work out because it
-// knows what each thing IS. $25 for an Ohio annual report today and eventually the company. $2,400
+// knows what each thing IS. $25 for an Florida annual report today and eventually the company. $2,400
 // for an uninvoiced job. $1,800 of work for a quote nobody answered.
 //
 // NO MODEL IS CALLED TO PRODUCE IT. That is deliberate three times over: it is arithmetic and
@@ -62,7 +62,7 @@ const SCORE_SQL = `
 // WHICH PERMISSION AREA EACH KIND OF OBLIGATION BELONGS TO.
 //
 // Found by running the list as a bookkeeper who had money:view and nothing else: she saw five items
-// including the Ohio annual report and the city licence renewal. The query filtered by which
+// including the Florida annual report and the city licence renewal. The query filtered by which
 // BUSINESSES she could reach and then showed her everything in them.
 //
 // That is the same defect as a screen that hides a number while the assistant reads it out — the

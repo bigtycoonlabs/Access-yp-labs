@@ -69,7 +69,7 @@ test('the CSV is readable by the person who opens it', () => {
   //
   // Dates went out as JavaScript's Date.toString() — "Sun Sep 27 2026 09:00:00 GMT+0000 (Coordinated
   // Universal Time)" — which Excel will not parse. And the cost went out in cents, so somebody
-  // reading 2500 against an Ohio annual report sees two and a half thousand dollars. It is $25.
+  // reading 2500 against an Florida annual report sees two and a half thousand dollars. It is $25.
   assert.match(obl, /v\.toISOString\(\)\.slice\(0, 19\)\.replace\('T', ' '\)/);
   assert.match(obl, /cost_if_missed_usd/);
   assert.match(obl, /\(row\.cost_if_missed_cents \/ 100\)\.toFixed\(2\)/);
