@@ -311,6 +311,8 @@ async function research_compliance(viewer, params = {}) {
         main_source: x.sources[0] && { title: String(x.sources[0].title).slice(0, 100), url: x.sources[0].url },
         searched_on: day(x.searched_at) })),
       not_yet_found: Compliance.AREA_NAMES.filter((a) => !found.includes(a)),
+      note: 'in_short is a summary. An area in not_yet_found was never researched as its own area; a '
+        + 'finding may still mention it, so say "not researched on its own yet", never "not required".',
       detail: 'Ask for one area with action status and that area to hear it in full with every source.',
     }, st.says);
   }

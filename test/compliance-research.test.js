@@ -109,3 +109,9 @@ test('sources are stored without the search tool\'s tracking tags', () => {
   assert.strictEqual(C.cleanUrl('https://x.gov/a?id=4&utm_medium=y'), 'https://x.gov/a?id=4');
   assert.strictEqual(C.cleanUrl('not a url'), 'not a url');
 });
+
+test('the research\'s own summary line is never cut short', () => {
+  const tx = 'In short: Ordinary residential house cleaning does not require a Texas state occupational or trade license, and Texas does not have a general state business license. But the LLC likely needs a Texas sales and use tax permit for maid and house-cleaning charges, and it must keep up with LLC and franchise-tax filings; local permits depend on the city.\n\nDetail.';
+  assert.match(C.shortOf(tx), /sales and use tax permit/);
+  assert.match(C.shortOf(tx), /depend on the city\.$/);
+});

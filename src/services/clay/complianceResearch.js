@@ -54,8 +54,12 @@ function shortOf(answer) {
   const a = String(answer || '').replace(/\*\*/g, '');
   const m = a.match(/In short:\s*([^\n]+)/i);
   let t = m ? m[1] : a.replace(/^#+.*$/gm, '').replace(/\s+/g, ' ').trim();
-  if (t.length > 320) {
-    const cut = t.slice(0, 320);
+  // The "In short:" line is the research's own two-sentence answer, and cutting it drops findings:
+  // a Texas answer lost its sales tax sentence at 320 characters, and Penny then called sales tax
+  // unconfirmed (16 Sept 2026). It is kept whole up to a generous limit.
+  const limit = m ? 900 : 320;
+  if (t.length > limit) {
+    const cut = t.slice(0, limit);
     const end = cut.lastIndexOf('. ');
     t = (end > 120 ? cut.slice(0, end + 1) : cut + '\u2026');
   }
