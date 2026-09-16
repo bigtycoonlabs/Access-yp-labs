@@ -55,6 +55,9 @@ code.snip{display:block;word-break:break-all;background:#F4F6FA;padding:10px;bor
     <label class="field" for="addr">Its address</label>
     <p class="muted" style="margin:0 0 6px;">It will be <span id="host"></span>/p/ followed by what you type.</p>
     <input id="addr" class="box" type="text" autocapitalize="none" spellcheck="false"/>
+    <label class="field" for="signup">Who can create an account</label>
+    <select id="signup" class="box"></select>
+    <p class="muted" style="margin:4px 0 0;">Everyone who signs up confirms their email first. This saves on its own.</p>
     <div class="row" style="margin-top:12px;">
       <button class="btn" type="button" id="open">Open the portal</button>
       <button class="btn plain" type="button" id="close">Close it</button>
@@ -148,6 +151,11 @@ async function load() {
     $('summary').textContent = d.says;
     $('addr').value = p.slug || '';
     $('ptitle').value = c.title; $('welcome').value = c.welcome; $('intro').value = c.request.intro;
+    var modes = { open: 'Anyone can create an account after confirming their email',
+      approve: 'People can sign up, and I approve each one before they get in', off: 'Only customers I add' };
+    $('signup').innerHTML = Object.keys(modes).map(function (k) {
+      return '<option value="' + k + '"' + (k === (c.signup || 'open') ? ' selected' : '') + '>' + modes[k] + '</option>';
+    }).join('');
     $('accent').innerHTML = Object.keys(d.accents).map(function (k) {
       return '<option value="' + k + '"' + (k === c.accent ? ' selected' : '') + '>' + k.charAt(0).toUpperCase() + k.slice(1) + '</option>';
     }).join('');
@@ -263,6 +271,12 @@ $('copysnip').addEventListener('click', async function () {
   catch (_) { say('I could not copy it. The code is written out just above the button.'); }
 });
 $('biz').addEventListener('change', load);
+$('signup').addEventListener('change', async function () {
+  try {
+    var d = await call('/api/portal', 'PATCH', { business_id: $('biz').value, changes: { signup: $('signup').value } });
+    say(d.says);
+  } catch (e) { if (e.message !== 'signed out') say('The sign-up setting did not change. ' + e.message); }
+});
 
 async function loadCustomers() {
   try {
@@ -271,10 +285,17 @@ async function loadCustomers() {
     $('clist').innerHTML = (d.customers || []).map(function (c) {
       return '<article class="cust" data-cust="' + esc(c.id) + '"><h3 style="margin:0 0 4px;">' + esc(c.name) + '</h3>'
         + '<p class="muted" style="margin:0 0 8px;">' + esc(c.email) + '. '
-        + (c.last_seen_at ? 'Has signed in.' : c.invited_at ? 'Invited, not signed in yet.' : 'Not invited yet.')
+        + (c.status === 'pending' ? 'Signed up and confirmed their email, waiting for you to approve them.'
+          + (c.signup_note ? ' They wrote: ' + esc(c.signup_note) : '') + ' '
+          : c.source === 'self' ? 'Created their own account. ' : '')
+        + (c.status === 'pending' ? '' : c.last_seen_at ? 'Has signed in.' : c.invited_at ? 'Invited, not signed in yet.' : 'Not invited yet.')
         + ' ' + c.files + (c.files === 1 ? ' file' : ' files') + ' shared, ' + c.open_items + ' open '
         + (c.open_items === 1 ? 'item' : 'items') + (c.waiting ? '. Waiting for your reply.' : '.') + '</p>'
-        + '<div class="row"><button class="btn" type="button" data-openc="' + esc(c.id) + '">Open ' + esc(c.name) + '</button>'
+        + (c.status === 'pending'
+          ? '<div class="row"><button class="btn" type="button" data-approve="' + esc(c.id) + '">Approve ' + esc(c.name) + '</button>'
+            + '<button class="btn plain" type="button" data-decline="' + esc(c.id) + '">Decline ' + esc(c.name) + '</button></div>'
+          : '')
+        + '<div class="row"' + (c.status === 'pending' ? ' hidden' : '') + '><button class="btn" type="button" data-openc="' + esc(c.id) + '">Open ' + esc(c.name) + '</button>'
         + '<button class="btn plain" type="button" data-invite="' + esc(c.id) + '">Send ' + esc(c.name) + ' a sign-in link</button></div>'
         + '<div id="c-' + esc(c.id) + '"></div></article>';
     }).join('');
@@ -335,6 +356,8 @@ document.addEventListener('click', async function (ev) {
         title: $('it-' + d.item).value, due_on: $('id-' + d.item).value || undefined });
       say(r5.says); await openCustomer(d.item);
     }
+    else if (d.approve) { var ra = await call('/api/portal/customers/' + d.approve + '/approve', 'POST'); say(ra.says); loadCustomers(); }
+    else if (d.decline) { var rd = await call('/api/portal/customers/' + d.decline + '/decline', 'POST'); say(rd.says); loadCustomers(); }
     else if (d.remove) { var r6 = await call('/api/portal/customers/' + d.remove, 'DELETE'); say(r6.says); loadCustomers(); }
   } catch (e) { if (e.message !== 'signed out') say('That did not work, so nothing changed. ' + e.message); }
 });

@@ -8,6 +8,7 @@
 // another site cannot post as the customer.
 
 const express = require('express');
+const crypto = require('crypto');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { authenticate } = require('../middleware/auth');
 const Po = require('../services/clay/portal');
@@ -40,6 +41,8 @@ api.post('/customers', authenticate, asyncHandler(async (req, res) => {
   send(res, await Po.addCustomer(req.user, biz(req), { name: b.name, email: b.email, invite: b.invite !== false }), 201);
 }));
 api.delete('/customers/:id', authenticate, asyncHandler(async (req, res) => send(res, await Po.removeCustomer(req.user, req.params.id))));
+api.post('/customers/:id/approve', authenticate, asyncHandler(async (req, res) => send(res, await Po.decide(req.user, req.params.id, true))));
+api.post('/customers/:id/decline', authenticate, asyncHandler(async (req, res) => send(res, await Po.decide(req.user, req.params.id, false))));
 api.post('/customers/:id/invite', authenticate, asyncHandler(async (req, res) => send(res, await Po.invite(req.user, req.params.id))));
 api.get('/customers/:id', authenticate, asyncHandler(async (req, res) => send(res, await Po.thread(req.user, req.params.id))));
 api.post('/customers/:id/messages', authenticate, asyncHandler(async (req, res) => {
@@ -124,13 +127,39 @@ function closed(res) {
 }
 
 function signInPage(portal, status) {
+  const mode = portal.config.signup || 'open';
+  const join = mode === 'off' ? ''
+    : '<section><h2>New here? Create an account</h2>'
+      + '<p>' + (mode === 'approve'
+        ? 'After you confirm your email, ' + esc(portal.business_name) + ' approves your account before you can see anything.'
+        : 'We will email you a link to confirm your address, and then you are in.') + '</p>'
+      + '<form method="post" action="/p/' + esc(portal.slug) + '/signup">'
+      + '<label for="jname">Your name</label>'
+      + '<input id="jname" name="name" type="text" autocomplete="name" required maxlength="120">'
+      + '<label for="jemail">Your email address</label>'
+      + '<input id="jemail" name="email" type="email" autocomplete="email" autocapitalize="none" spellcheck="false" required>'
+      + (mode === 'approve' ? '<label for="jnote">Anything ' + esc(portal.business_name)
+        + ' should know, such as your address or job (optional)</label>'
+        + '<textarea id="jnote" name="note" maxlength="500"></textarea>' : '')
+      // Hidden from people and from screen readers; only a bot fills it in.
+      + '<div style="display:none"><label for="jsite">Leave this empty</label><input id="jsite" name="website" type="text" tabindex="-1" autocomplete="off"></div>'
+      + '<button type="submit">Create my account</button></form></section>';
   return shell(portal, '<h1>' + esc(portal.config.title) + '</h1>'
     + '<section><h2>Sign in</h2><p>Enter the email address ' + esc(portal.business_name)
     + ' has for you, and we will email you a link to sign in. No password needed.</p>'
     + '<form method="post" action="/p/' + esc(portal.slug) + '/link">'
     + '<label for="email">Your email address</label>'
     + '<input id="email" name="email" type="email" autocomplete="email" autocapitalize="none" spellcheck="false" required>'
-    + '<button type="submit">Email me a sign-in link</button></form></section>', { status, title: 'Sign in' });
+    + '<button type="submit">Email me a sign-in link</button></form></section>' + join,
+  { status, title: 'Sign in' });
+}
+
+function waitingPage(portal, customer, status) {
+  return shell(portal, '<h1>' + esc(portal.config.title) + '</h1>'
+    + '<section><h2>Your account is waiting</h2><p>Thanks, ' + esc(customer.name) + '. Your email is confirmed. '
+    + esc(portal.business_name) + ' approves new accounts before they can see anything, and we will email you when that happens.</p></section>'
+    + '<form method="post" action="/p/' + esc(portal.slug) + '/out"><button type="submit" class="quiet btn">Sign out</button></form>',
+  { status, title: 'Waiting for approval' });
 }
 
 function sectionHtml(sec, portal, view) {
@@ -202,6 +231,12 @@ const NOTES = {
   slow: 'You have sent a lot of messages in the last hour. Please wait a little.',
   off: 'That part of the portal is switched off.',
   out: 'You are signed out.',
+  joined: 'Thanks. Check your email for a link to confirm your address. It works for '
+    + Po.LINK_MINUTES + ' minutes.',
+  nosignup: 'This portal does not take new accounts. Ask the business to add you.',
+  badsignup: 'Please give your name and a working email address.',
+  slowsignup: 'Too many accounts were started from here in the last hour. Please try again later.',
+  waiting: 'Your account is waiting for the business to approve it.',
 };
 const go = (res, slug, code, hash) => res.redirect(303, '/p/' + encodeURIComponent(slug) + '?n=' + code + (hash || ''));
 
@@ -210,6 +245,7 @@ pages.get('/:slug', asyncHandler(async (req, res) => {
   if (!portal) return closed(res);
   const note = NOTES[String(req.query.n || '')] || null;
   if (!customer) return page(res, 200, signInPage(portal, note));
+  if (customer.status !== 'active') return page(res, 200, waitingPage(portal, customer, note));
   page(res, 200, await portalPage(portal, customer, note));
 }));
 
@@ -218,6 +254,18 @@ pages.post('/:slug/link', express.urlencoded({ extended: false, limit: '4kb' }),
   const r = await Po.requestLink(req.params.slug, (req.body || {}).email);
   if (!r.ok) return closed(res);
   go(res, req.params.slug, 'link');
+}));
+
+pages.post('/:slug/signup', express.urlencoded({ extended: false, limit: '8kb' }), asyncHandler(async (req, res) => {
+  if (!sameOrigin(req)) return res.status(403).send('Forbidden');
+  const b = req.body || {};
+  // A bot fills the hidden field. It is told what a person would be told, and nothing is created.
+  if (b.website) return go(res, req.params.slug, 'joined');
+  const sender = crypto.createHash('sha256')
+    .update(String(req.ip || '') + '|' + (process.env.JWT_SECRET || '')).digest('hex').slice(0, 32);
+  const r = await Po.signup(req.params.slug, { name: b.name, email: b.email, note: b.note, sender });
+  if (r.code === 'closed') return closed(res);
+  go(res, req.params.slug, r.code);
 }));
 
 pages.get('/:slug/in', asyncHandler(async (req, res) => {
@@ -235,6 +283,7 @@ async function asCustomer(req, res) {
     go(res, req.params.slug, 'first');
     return null;
   }
+  if (who.customer.status !== 'active') { go(res, req.params.slug, 'waiting'); return null; }
   return who;
 }
 
@@ -262,6 +311,7 @@ pages.get('/:slug/file/:fileId', asyncHandler(async (req, res) => {
   const who = await Po.whoIs(req.params.slug, cookie(req));
   if (!who.portal) return closed(res);
   if (!who.customer) return go(res, req.params.slug, 'first');
+  if (who.customer.status !== 'active') return go(res, req.params.slug, 'waiting');
   const on = who.portal.config.sections.find((s) => s.type === 'files' && s.on);
   const f = on ? await Po.customerFile(who.customer, req.params.fileId) : null;
   if (!f) return page(res, 404, shell(who.portal, '<h1>File not available</h1><p><a href="/p/' + esc(who.portal.slug) + '">Back to your portal</a></p>'));

@@ -118,27 +118,38 @@ async function customers(viewer, business_id) {
   if (!gate.ok) return refuse(gate);
   try {
     const r = await query(
-      `SELECT c.id, c.name, c.email, c.invited_at, c.last_seen_at, c.created_at,
+      `SELECT c.id, c.name, c.email, c.invited_at, c.last_seen_at, c.created_at, c.source, c.status,
+              c.signup_note,
               (SELECT count(*)::int FROM portal_messages m WHERE m.customer_id=c.id AND m.from_customer
                  AND m.created_at > coalesce((SELECT max(created_at) FROM portal_messages x
                    WHERE x.customer_id=c.id AND NOT x.from_customer), 'epoch')) AS waiting,
               (SELECT count(*)::int FROM portal_files f WHERE f.customer_id=c.id) AS files,
-              (SELECT count(*)::int FROM obligations o WHERE o.portal_customer_id=c.id AND o.status='open') AS open_items
+              (SELECT count(*)::int FROM obligations o WHERE o.portal_customer_id=c.id AND o.status='open'
+                  AND o.id IS DISTINCT FROM c.approval_obligation_id) AS open_items
          FROM portal_customers c
-        WHERE c.business_id=$1 AND c.removed_at IS NULL ORDER BY c.name`, [business_id]);
+        WHERE c.business_id=$1 AND c.removed_at IS NULL AND c.status <> 'declined'
+          AND NOT (c.source = 'self' AND c.verified_at IS NULL)
+        ORDER BY c.status = 'pending' DESC, c.name`, [business_id]);
     const waiting = r.rows.filter((x) => x.waiting > 0).length;
+    const pending = r.rows.filter((x) => x.status === 'pending').length;
     return { ok: true, customers: r.rows, says: !r.rows.length
       ? 'No customers in the portal yet. Add one and I will email them a sign-in link.'
       : r.rows.length + (r.rows.length === 1 ? ' customer' : ' customers')
+        + (pending ? ', ' + pending + ' waiting for you to approve their account' : '')
         + (waiting ? ', ' + waiting + ' waiting for your reply.' : '.') };
   } catch (e) {
     return { ok: false, kind: 'unavailable', says: 'I could not read your portal customers, so I do not know who is there. ' + e.message };
   }
 }
 
-async function customerFor(viewer, id, level) {
+async function customerFor(viewer, id, level, { activeOnly = true } = {}) {
   const c = (await query('SELECT * FROM portal_customers WHERE id=$1 AND removed_at IS NULL', [id])).rows[0];
   if (!c) return { ok: false, kind: 'unavailable', says: 'I cannot find that customer.' };
+  if (activeOnly && c.status !== 'active') {
+    return { ok: false, kind: 'refused', says: c.name + (c.status === 'pending'
+      ? '\u2019s account is waiting for your approval. Approve it first.'
+      : '\u2019s account was declined.') };
+  }
   const gate = await P.can(viewer.id, c.business_id, 'customers', level);
   if (!gate.ok) return refuse(gate);
   return { ok: true, customer: c };
@@ -168,11 +179,35 @@ async function addCustomer(viewer, business_id, { name, email, invite }) {
 }
 
 async function removeCustomer(viewer, id) {
-  const g = await customerFor(viewer, id, 'act');
+  const g = await customerFor(viewer, id, 'act', { activeOnly: false });
   if (!g.ok) return g;
   await query('UPDATE portal_customers SET removed_at=now() WHERE id=$1', [id]);
   await query(`DELETE FROM portal_tokens WHERE customer_id=$1`, [id]);
   return { ok: true, says: g.customer.name + ' is removed and can no longer sign in.' };
+}
+
+// A self-made account in a portal that approves first.
+async function decide(viewer, id, approve) {
+  const g = await customerFor(viewer, id, 'act', { activeOnly: false });
+  if (!g.ok) return g;
+  const c = g.customer;
+  if (c.status !== 'pending') {
+    return { ok: false, kind: 'refused', says: c.name + '\u2019s account is not waiting for a decision.' };
+  }
+  await query('UPDATE portal_customers SET status=$2 WHERE id=$1', [id, approve ? 'active' : 'declined']);
+  if (c.approval_obligation_id) {
+    await query(`UPDATE obligations SET status='done', completed_at=now(), updated_at=now()
+      WHERE id=$1 AND status='open'`, [c.approval_obligation_id]);
+  }
+  if (!approve) {
+    await query(`DELETE FROM portal_tokens WHERE customer_id=$1`, [id]);
+    return { ok: true, says: c.name + '\u2019s account is declined. They cannot sign in, and I did not email them.' };
+  }
+  const p = await load(c.business_id);
+  const sent = p.slug && p.is_open ? await notify(c, p, 'Your account with ' + p.business_name + ' is ready',
+    p.business_name + ' has approved your account. Sign in here: ' + p.url) : false;
+  return { ok: true, says: c.name + ' is approved and can use the portal now.'
+    + (sent ? ' I emailed them.' : ' I could not email them, so let them know yourself.') };
 }
 
 async function invite(viewer, id) {
@@ -214,7 +249,7 @@ async function addItem(viewer, id, { direction, title, due_on, detail }) {
 }
 
 async function thread(viewer, id) {
-  const g = await customerFor(viewer, id, 'view');
+  const g = await customerFor(viewer, id, 'view', { activeOnly: false });
   if (!g.ok) return g;
   const r = await query(
     `SELECT m.id, m.from_customer, m.body, m.fields, m.created_at, u.name AS author
@@ -224,7 +259,7 @@ async function thread(viewer, id) {
     `SELECT f.id, f.name, f.kind FROM portal_files pf JOIN files f ON f.id=pf.file_id
       WHERE pf.customer_id=$1 AND f.deleted_at IS NULL ORDER BY pf.shared_at DESC`, [id]);
   const items = await query(
-    `SELECT id, kind, title, due_at, status FROM obligations WHERE portal_customer_id=$1
+    `SELECT id, kind, title, due_at, status FROM obligations WHERE portal_customer_id=$1 AND kind <> 'task'
       ORDER BY status='open' DESC, due_at NULLS LAST`, [id]);
   return { ok: true, customer: g.customer, messages: r.rows, files: files.rows, items: items.rows };
 }
@@ -265,7 +300,7 @@ async function notify(customer, portal, subject, text) {
 
 // ------------------------------------------------------------------ customer side
 
-async function sendLink(customer, { invite }) {
+async function sendLink(customer, { invite, verify }) {
   const p = await load(customer.business_id);
   if (!p.slug || !p.is_open) {
     return { sent: false, says: 'The portal is not open yet, so I did not send a sign-in link. Open it first.' };
@@ -276,13 +311,84 @@ async function sendLink(customer, { invite }) {
      VALUES ($1,$2,'link', now() + make_interval(mins => $3))`, [hash(t), customer.id, LINK_MINUTES]);
   const link = p.url + '/in?t=' + t;
   const ok = await notify(customer, p,
-    invite ? p.business_name + ' has set up a portal for you' : 'Your sign-in link for ' + p.business_name,
-    (invite ? p.business_name + ' has set up a customer portal for you. ' : '')
+    invite ? p.business_name + ' has set up a portal for you'
+      : verify ? 'Confirm your email for ' + p.business_name : 'Your sign-in link for ' + p.business_name,
+    (invite ? p.business_name + ' has set up a customer portal for you. '
+      : verify ? 'Someone, hopefully you, created an account with this address in the ' + p.business_name
+        + ' customer portal. ' : '')
       + 'Open this link to sign in. It works once and for ' + LINK_MINUTES + ' minutes:\n\n' + link
       + '\n\nIf you did not expect this, you can ignore it.');
   if (invite && ok) await query('UPDATE portal_customers SET invited_at=now() WHERE id=$1', [customer.id]);
   return { sent: ok, says: ok ? 'I emailed ' + customer.email + ' a sign-in link.'
     : 'I could not email ' + customer.email + ' just now, so no link was sent.' };
+}
+
+const FLOOD_SIGNUPS_PER_HOUR = 5;
+
+// A customer creating their own account. The answer never reveals whether the address was known.
+async function signup(slug, { name, email, note, sender }) {
+  const same = 'Thanks. Check your email for a link to confirm your address. It works for '
+    + LINK_MINUTES + ' minutes.';
+  const p = await openPortal(slug);
+  if (!p) return { ok: false, code: 'closed' };
+  if (p.config.signup === 'off') return { ok: false, code: 'nosignup' };
+  const n = String(name || '').trim().slice(0, 120);
+  const e = String(email || '').trim().toLowerCase();
+  if (!n || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e) || e.length > 254) return { ok: false, code: 'badsignup' };
+
+  const flood = await query(
+    `SELECT count(*)::int AS n FROM portal_signup_attempts
+      WHERE portal_id=$1 AND sender_hash=$2 AND created_at > now() - interval '1 hour'`, [p.id, sender]);
+  if (flood.rows[0].n >= FLOOD_SIGNUPS_PER_HOUR) return { ok: false, code: 'slowsignup' };
+  await query('INSERT INTO portal_signup_attempts (portal_id, sender_hash) VALUES ($1,$2)', [p.id, sender]);
+
+  const existing = (await query(
+    'SELECT * FROM portal_customers WHERE business_id=$1 AND lower(email)=$2 AND removed_at IS NULL',
+    [p.business_id, e])).rows[0];
+  if (existing) {
+    // Already known: send them a way in, unless the business declined them. Same answer either way.
+    if (existing.status !== 'declined') await sendLink(existing, { invite: false, verify: existing.source === 'self' && !existing.verified_at });
+    return { ok: true, code: 'joined', says: same };
+  }
+  let c;
+  try {
+    c = (await query(
+      `INSERT INTO portal_customers (business_id, name, email, source, status, signup_note)
+       VALUES ($1,$2,$3,'self','pending',$4) RETURNING *`,
+      [p.business_id, n, e, note ? String(note).trim().slice(0, 500) || null : null])).rows[0];
+  } catch (err) {
+    if (err.code === '23505') return { ok: true, code: 'joined', says: same };
+    throw err;
+  }
+  await sendLink(c, { invite: false, verify: true });
+  return { ok: true, code: 'joined', says: same };
+}
+
+// Confirming the email of a self-made account. In an open portal that is enough; in one that
+// approves first, it puts the decision on the owner's Today.
+async function confirmSelf(customerId, portal) {
+  const c = (await query(
+    `UPDATE portal_customers SET verified_at=now(),
+            status = CASE WHEN $2 = 'open' THEN 'active' ELSE status END
+      WHERE id=$1 AND source='self' AND verified_at IS NULL RETURNING *`,
+    [customerId, portal.config.signup])).rows[0];
+  if (!c || c.status !== 'pending') return;
+  const ob = await query(
+    `INSERT INTO obligations (business_id, kind, title, detail, counterparty, counterparty_kind, due_at,
+        cost_basis, consequence, source, portal_customer_id)
+     VALUES ($1,'task',$2,$3,$4,'customer', now() + interval '2 days','unknown',
+        'They signed up and cannot see anything until you decide.','portal',$5) RETURNING id`,
+    [c.business_id, 'Approve or decline ' + c.name + '\u2019s portal account',
+      c.email + (c.signup_note ? '. They wrote: ' + c.signup_note : ''), c.name, c.id]);
+  await query('UPDATE portal_customers SET approval_obligation_id=$2 WHERE id=$1', [c.id, ob.rows[0].id]);
+  const owner = (await query(
+    'SELECT u.email FROM businesses b JOIN users u ON u.id=b.owner_id WHERE b.id=$1', [c.business_id])).rows[0];
+  if (owner) {
+    sendEmail({ to: owner.email, subject: c.name + ' wants an account in your customer portal',
+      text: c.name + ' (' + c.email + ') signed up for your customer portal and confirmed their email.'
+        + (c.signup_note ? '\n\nThey wrote: ' + c.signup_note : '')
+        + '\n\nApprove or decline them from ' + site() + '/portal.html\n\nPenny' }).catch(() => {});
+  }
 }
 
 async function openPortal(slug) {
@@ -301,7 +407,8 @@ async function requestLink(slug, email) {
   if (!p) return { ok: false, says: 'This portal is not open.' };
   const e = String(email || '').trim().toLowerCase();
   const c = (await query(
-    'SELECT * FROM portal_customers WHERE business_id=$1 AND lower(email)=$2 AND removed_at IS NULL',
+    `SELECT * FROM portal_customers WHERE business_id=$1 AND lower(email)=$2 AND removed_at IS NULL
+        AND status <> 'declined'`,
     [p.business_id, e])).rows[0];
   if (c) {
     const recent = await query(
@@ -320,8 +427,10 @@ async function consumeLink(slug, t) {
        FROM portal_customers c
       WHERE pt.token_hash=$1 AND pt.kind='link' AND pt.used_at IS NULL AND pt.expires_at > now()
         AND c.id=pt.customer_id AND c.business_id=$2 AND c.removed_at IS NULL
+        AND c.status <> 'declined'
       RETURNING c.id`, [hash(t), p.business_id]);
   if (!r.rows.length) return { ok: false };
+  await confirmSelf(r.rows[0].id, p);
   const s = token();
   await query(
     `INSERT INTO portal_tokens (token_hash, customer_id, kind, expires_at)
@@ -336,7 +445,8 @@ async function whoIs(slug, session) {
   const c = (await query(
     `SELECT c.* FROM portal_tokens pt JOIN portal_customers c ON c.id=pt.customer_id
       WHERE pt.token_hash=$1 AND pt.kind='session' AND pt.expires_at > now()
-        AND c.business_id=$2 AND c.removed_at IS NULL`, [hash(session), p.business_id])).rows[0];
+        AND c.business_id=$2 AND c.removed_at IS NULL AND c.status <> 'declined'`,
+    [hash(session), p.business_id])).rows[0];
   return { portal: p, customer: c || null };
 }
 
@@ -350,7 +460,8 @@ async function signOut(session) {
 async function customerView(customer) {
   const items = await query(
     `SELECT kind, title, detail, due_at, status FROM obligations
-      WHERE portal_customer_id=$1 AND status='open' ORDER BY due_at NULLS LAST`, [customer.id]);
+      WHERE portal_customer_id=$1 AND status='open' AND kind <> 'task'
+      ORDER BY due_at NULLS LAST`, [customer.id]);
   const files = await query(
     `SELECT f.id, f.name, f.kind, f.description FROM portal_files pf JOIN files f ON f.id=pf.file_id
       WHERE pf.customer_id=$1 AND f.deleted_at IS NULL ORDER BY pf.shared_at DESC`, [customer.id]);
@@ -427,7 +538,7 @@ async function portalForBusiness(business_id) {
 }
 
 module.exports = {
-  get, customise, setOpen, customers, addCustomer, removeCustomer, invite, shareFile, addItem, thread,
+  get, customise, setOpen, customers, addCustomer, removeCustomer, invite, decide, signup, confirmSelf, shareFile, addItem, thread,
   reply, requestLink, consumeLink, whoIs, signOut, customerView, customerFile, fromCustomer,
   openPortal, portalForBusiness, embedSnippet, LINK_MINUTES, SESSION_DAYS, hash,
 };

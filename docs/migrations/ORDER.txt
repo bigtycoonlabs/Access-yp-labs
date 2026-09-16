@@ -80,3 +80,4 @@
 063_files.sql
 064_where_a_build_lives.sql
 065_customer_portal.sql
+066_portal_signup.sql

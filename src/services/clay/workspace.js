@@ -105,7 +105,7 @@ const TOOLS = {
     irreversible: false, requires_confirmation: false,
     required: ['business_id', 'config_json'], optional: ['asked_for'], enums: {},
     summary: 'Change the customer portal. config_json is a JSON object with any of: title, welcome, '
-      + 'accent, sections (list of {type, title, on} in order), request ({intro, fields: [{label, '
+      + 'accent, signup (open, approve or off: who can create their own account), sections (list of {type, title, on} in order), request ({intro, fields: [{label, '
       + 'kind, required}]}), links ([{label, url}]). Pass the person\'s words as asked_for. Report '
       + 'what the result says it could not apply. If it says the request needs a backend, explain '
       + 'that is a custom web application and offer to build it with start_build.',

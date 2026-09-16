@@ -23,6 +23,12 @@ const ACCENTS = {
   violet: '#5B3FC9', blue: '#2C49B8', green: '#1F7A4D', teal: '#0F6E75', orange: '#B54708', slate: '#334155',
 };
 const FIELD_KINDS = ['text', 'long_text', 'email', 'phone', 'date', 'number'];
+// Who can create an account. Every self-made account confirms its email first.
+const SIGNUP = {
+  open: 'Anyone can create an account after confirming their email',
+  approve: 'People can sign up, and you approve each one before they get in',
+  off: 'Only customers you add',
+};
 const LIMITS = { title: 80, welcome: 1000, intro: 300, label: 60, fields: 8, links: 10, url: 300 };
 
 function clip(v, n) { return String(v == null ? '' : v).replace(/\u2014/g, ', ').trim().slice(0, n); }
@@ -32,6 +38,7 @@ function defaults(businessName) {
     title: clip((businessName || 'Our') + ' customer portal', LIMITS.title),
     welcome: 'Welcome. Here you can see what is open between us, get your files and send us a message.',
     accent: 'violet',
+    signup: 'open',
     sections: ORDER.map((type) => ({ type, title: SECTIONS[type].title,
       on: ['welcome', 'owed', 'files', 'messages'].includes(type) })),
     request: { intro: 'Tell us what you need and we will get back to you.',
@@ -45,7 +52,7 @@ function normalise(input, base) {
   const src = input && typeof input === 'object' ? input : {};
   const out = JSON.parse(JSON.stringify(base));
   const ignored = [];
-  const known = ['title', 'welcome', 'accent', 'sections', 'request', 'links'];
+  const known = ['title', 'welcome', 'accent', 'signup', 'sections', 'request', 'links'];
   Object.keys(src).forEach((k) => {
     if (!known.includes(k)) ignored.push('"' + k + '" is not something the portal has');
   });
@@ -58,6 +65,11 @@ function normalise(input, base) {
   if (src.accent !== undefined) {
     if (ACCENTS[src.accent]) out.accent = src.accent;
     else ignored.push('the colour "' + clip(src.accent, 20) + '" (choose ' + Object.keys(ACCENTS).join(', ') + ')');
+  }
+
+  if (src.signup !== undefined) {
+    if (SIGNUP[src.signup]) out.signup = src.signup;
+    else ignored.push('the sign-up setting "' + clip(src.signup, 20) + '" (choose ' + Object.keys(SIGNUP).join(', ') + ')');
   }
 
   if (src.sections !== undefined) {
@@ -133,7 +145,9 @@ function beyond(askedFor) {
 
 function describe(config) {
   const on = config.sections.filter((s) => s.on).map((s) => s.title);
-  return config.title + ' shows ' + (on.length ? on.join(', ') : 'nothing yet') + ', in that order.';
+  return config.title + ' shows ' + (on.length ? on.join(', ') : 'nothing yet') + ', in that order. '
+    + 'New accounts: ' + SIGNUP[config.signup || 'open'].charAt(0).toLowerCase()
+    + SIGNUP[config.signup || 'open'].slice(1) + '.';
 }
 
-module.exports = { SECTIONS, ORDER, ACCENTS, FIELD_KINDS, LIMITS, defaults, normalise, beyond, describe };
+module.exports = { SECTIONS, ORDER, ACCENTS, FIELD_KINDS, SIGNUP, LIMITS, defaults, normalise, beyond, describe };
