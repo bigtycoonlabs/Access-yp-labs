@@ -85,10 +85,18 @@ const STATES = {
       counterparty: 'California Franchise Tax Board',
     } },
   TX: { report: 'franchise', due: { month: 5, day: 15 }, fee_cents: 0, confidence: 'verified',
+    // No filing fee, so the fee is NOT the cost of missing it. The Comptroller charges $50 for each
+    // late report even with no tax due (comptroller.texas.gov/taxes/file-pay/penalties.php, checked
+    // 2026-09-16). Estimated rather than known because an entity under the no-tax-due threshold that
+    // files only the Public Information Report may not be charged the $50, while still facing
+    // forfeiture. Walked 16 Sept 2026: this said "missing it costs $0".
+    late_cents: 5000, late_basis: 'estimated',
     consequence: 'Skipping the franchise filing forfeits the entity\u2019s right to do business in '
       + 'Texas.',
-    note: 'No fee to file, but the franchise tax report itself is required. Most LLCs under the '
-      + 'revenue threshold owe $0 and must still file.' },
+    note: 'No fee to file. A late franchise tax report is charged $50 even with no tax due, per the '
+      + 'Texas Comptroller. Most small LLCs are under the no-tax-due threshold and file only the '
+      + 'Public Information Report, which may not carry the $50, but leaving it unfiled can still '
+      + 'lead to forfeiture.' },
   NV: { report: 'annual', due: 'anniversary', fee_cents: 35000, late_cents: 17500,
     confidence: 'verified',
     consequence: 'Late filing adds penalties and the entity falls out of good standing.',
@@ -104,7 +112,10 @@ const STATES = {
       + 'pay the $300 minimum.' },
   MN: { report: 'annual', due: { month: 12, day: 31 }, fee_cents: 0, confidence: 'verified',
     consequence: 'Missing it means administrative dissolution, even though filing is free.',
-    note: 'No fee, and still compulsory. The free ones are the easiest to forget.' },
+    // Free to file and no dollar late fee: the cost is dissolution, which has no honest number.
+    late_basis: 'unknown',
+    note: 'No fee, and still compulsory. The free ones are the easiest to forget. There is no late '
+      + 'fee; the cost of missing it is the company being dissolved.' },
   MD: { report: 'annual', due: { month: 4, day: 15 }, fee_cents: 30000, confidence: 'unconfirmed',
     consequence: 'Late filing brings penalties and eventual forfeiture of the charter.',
     note: 'Maryland also assesses personal property tax for some businesses, filed alongside.' },
@@ -226,8 +237,15 @@ function stateRule(code, business) {
     recurs_every: st.report === 'biennial' ? '2 years' : '1 year',
     // Only a verified entry carries a confident number. Everything else ranks on the typical
     // penalty and SAYS that is what it is.
-    cost_if_missed_cents: verified ? (st.late_cents ?? st.fee_cents ?? null) : TYPICAL_LATE_CENTS,
-    cost_basis: verified ? 'known' : 'estimated',
+    // A filing fee is only a stand-in for the cost of missing it when there IS a fee. A free filing
+    // is not free to miss, so a zero fee never becomes a zero cost.
+    cost_if_missed_cents: verified
+      ? (st.late_cents ?? (st.fee_cents > 0 ? st.fee_cents : null))
+      : TYPICAL_LATE_CENTS,
+    cost_basis: verified
+      ? (st.late_basis || ((st.late_cents ?? (st.fee_cents > 0 ? st.fee_cents : null)) == null
+        ? 'unknown' : 'known'))
+      : 'estimated',
     cost_note: verified
       ? (st.note || null)
       : 'I have not confirmed ' + name + '\u2019s current figures — fees in several states moved in '

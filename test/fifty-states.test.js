@@ -39,7 +39,11 @@ test('only a verified entry states a confident figure', () => {
     if (S.STATES[code].report === 'none') continue;
     const got = [].concat(S.stateRule(code, { formed_on: '2020-01-15' }));
     for (const r of got) {
-      if (r.confidence === 'verified') assert.strictEqual(r.cost_basis, 'known', code);
+      // A verified entry is known unless it declares less certainty (Texas's $50 is estimated,
+      // Minnesota has no dollar figure). It may never claim more.
+      if (r.confidence === 'verified') {
+        assert.strictEqual(r.cost_basis, S.STATES[code].late_basis || 'known', code);
+      }
       else {
         assert.strictEqual(r.cost_basis, 'estimated', code);
         assert.match(r.cost_note, /have not confirmed/, code + ' should admit the gap');
