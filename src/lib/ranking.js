@@ -192,7 +192,10 @@ function summarise(rows) {
   const amount = money(top.cost_if_missed_cents);
 
   let s = rows.length === 1 ? 'One thing needs you' : rows.length + ' things need you';
-  if (overdue) s += ', ' + overdue + ' of them overdue';
+  // "One thing needs you, 1 of them overdue" — wrong for a single item, and this line is spoken.
+  if (overdue && rows.length === 1) s += ', and it is overdue';
+  else if (overdue === rows.length) s += ', all of them overdue';
+  else if (overdue) s += ', ' + overdue + ' of them overdue';
   s += '. The one that costs most is ' + top.title;
   if (amount) s += ' at ' + amount + (top.cost_basis === 'estimated' ? ', estimated' : '');
   return s + '.';
