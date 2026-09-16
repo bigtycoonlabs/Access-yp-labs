@@ -33,7 +33,9 @@ test('customers signing in points to the portal, which is set up on its own page
 });
 
 test('a custom app says plainly it is not live until launched on their accounts', () => {
-  assert.match(S.AVAILABLE.custom_app.partial, /stays a preview until then/);
+  // Since 16 Sept 2026 the code can go to their GitHub; it is still not live until hosted.
+  assert.match(S.AVAILABLE.custom_app.partial, /put the code on your own GitHub/);
+  assert.match(S.AVAILABLE.custom_app.partial, /it is not live until then/);
   assert.match(fs.readFileSync('src/services/clay/penny.js', 'utf8'), /until it is hosted there it is not live/);
 });
 

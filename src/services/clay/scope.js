@@ -30,7 +30,8 @@ const AVAILABLE = {
     + 'built here. Open Customer portal from Today, or ask me to set it up for you. If you also want '
     + 'a site, I can build that now and it will link to the portal.' },
   custom_app: { ready: true, partial: 'I can build a working version of the app to try here now. '
-    + 'Launching it on your own accounts is not switched on yet, so it stays a preview until then.' },
+    + 'When it is ready I can put the code on your own GitHub. Starting it on your own hosting is '
+    + 'not switched on yet, so it is not live until then.' },
 };
 
 // Signals, each with the words that trigger it and the plain reason it matters.

@@ -94,7 +94,7 @@ const TOOLS = {
     required: ['build_id', 'address'], optional: ['online'], enums: { online: ['yes', 'no'] },
     summary: 'Put a finished Labs-hosted site online at accessyplabs.com/s/<address>, or take it '
       + 'offline with online no. Only real builds hosted on Labs; custom apps go live on the '
-      + 'client\'s own accounts, which is not switched on yet.',
+      + 'client\'s own accounts with launch_build.',
     ask: 'Put this site online at the address shown, where anyone with the link can open it.',
   },
   portal_status: {
