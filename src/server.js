@@ -136,6 +136,7 @@ app.use('/api/obligations',   require('./routes/obligations'));
 app.use('/api/penny',         require('./routes/penny'));
 app.use('/api/onboard',       require('./routes/onboard'));
 app.use('/api/public',        require('./routes/public-preview'));
+app.use('/api/team',          require('./routes/team'));
 app.use('/api/contributions', require('./routes/contributions'));
 app.use('/api/agreements',    require('./routes/agreements'));
 app.use('/api/notifications', require('./routes/notifications'));

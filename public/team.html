@@ -1,0 +1,334 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>People — Penny Desk</title>
+<meta name="robots" content="noindex, nofollow"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&family=Inter:wght@400;600;700&display=swap"/>
+<link rel="stylesheet" href="/css/penny.css"/>
+<style>
+.person{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px 18px;margin:0 0 14px;}
+.person h3{margin:0 0 2px;}
+.person .rel{color:var(--muted);font-size:.9rem;margin:0 0 12px;}
+.person.gone{opacity:.62;}
+.perms{display:flex;flex-direction:column;gap:10px;margin:0 0 12px;}
+.perm{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.perm span{font-size:.94rem;}
+.perm select{min-height:44px;padding:8px 10px;font:inherit;border:1px solid var(--line);
+  border-radius:8px;background:var(--panel);color:var(--ink);min-width:110px;}
+.seat{font-size:.86rem;color:var(--muted);margin:0 0 10px;}
+.sees{font-weight:600;margin:0 0 10px;cursor:pointer;min-height:44px;display:flex;
+  align-items:center;}
+details[open] .sees{margin-bottom:14px;}
+summary::-webkit-details-marker{display:none;}
+summary.sees::before{content:'\25B8';margin-right:8px;color:var(--accent);}
+details[open] summary.sees::before{content:'\25BE';}
+.add{background:var(--accent-soft);border:1px solid #DDD3F8;border-radius:var(--radius);
+  padding:18px;margin:26px 0;}
+.add label{display:block;font-weight:600;margin:14px 0 6px;}
+.add input,.add select{width:100%;min-height:44px;padding:11px 14px;font:inherit;
+  border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);color:var(--ink);}
+.raised{border-left:3px solid #B54708;background:#FFFAF0;padding:12px 16px;margin:14px 0 0;
+  border-radius:0 8px 8px 0;}
+.hint{color:var(--muted);font-size:.88rem;margin:4px 0 0;}
+.confirm-row{background:#FFF8F5;border:1px solid #F3C9BC;border-radius:var(--radius);
+  padding:14px 16px;margin:12px 0 0;}
+.confirm-row p{margin:0 0 12px;font-weight:600;}
+.confirm-row button{margin-right:10px;}
+</style>
+</head><body>
+
+<a class="skip" href="#main">Skip to your people</a>
+
+<header class="site">
+  <div class="bar">
+    <a class="brand" href="/today.html">Penny Desk<span class="dot" aria-hidden="true">.</span></a>
+    <a class="btn quiet" href="/today.html">Today</a>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <h1>People</h1>
+
+  <!-- NOT EVERY RELATIONSHIP IS A LOGIN.
+       A landlord is a record. A vendor is a record and a thread. A customer gets the portal. Only
+       the people who work in the business take a seat, which is what makes counting seats fair.
+
+       And fixed roles break immediately on real teams: somebody who does compliance AND development
+       is not admin and not staff. So the presets are a first click and every area can be changed
+       afterwards, one at a time. -->
+  <label for="biz" style="display:block;font-weight:600;margin:0 0 6px;">Which business?</label>
+  <select id="biz" style="width:100%;min-height:44px;padding:11px 14px;font:inherit;
+    border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);color:var(--ink);">
+  </select>
+
+  <div id="status" role="status" aria-live="polite" class="muted" style="margin-top:12px;"></div>
+  <section id="list" aria-label="People" style="margin-top:20px;"></section>
+
+  <section class="add" aria-labelledby="add-h">
+    <h2 id="add-h">Add somebody</h2>
+    <label for="pname">Their name</label>
+    <input id="pname" type="text" autocomplete="name" placeholder="Dana Brooks"/>
+
+    <label for="pkind">What are they to the business?</label>
+    <select id="pkind">
+      <option value="employee">Employee</option>
+      <option value="contractor">Contractor</option>
+      <option value="assistant">Virtual assistant</option>
+      <option value="partner">Partner</option>
+      <option value="professional">Bookkeeper, accountant or attorney</option>
+      <option value="vendor">Vendor or supplier</option>
+      <option value="landlord">Landlord</option>
+      <option value="customer">Customer</option>
+    </select>
+
+    <label for="ppreset">What should they be able to see?</label>
+    <select id="ppreset">
+      <option value="">Nothing yet — I will choose</option>
+      <option value="bookkeeper">Bookkeeper — the financials</option>
+      <option value="accountant">Accountant — financials, documents and filings</option>
+      <option value="compliance_manager">Compliance — filings and documents</option>
+      <option value="developer">Developer — projects and the website</option>
+      <option value="operations">Operations — customers and projects</option>
+      <option value="office_manager">Office manager — most things, read-heavy</option>
+      <option value="full_admin">Full admin — everything except export</option>
+    </select>
+    <p class="hint">A starting point, not a role. Change any of it afterwards. Exporting data is
+      never included in a preset — it is the one that takes data out of the building, so it is always
+      a deliberate choice.</p>
+
+    <label for="pemail">Their email (only if they need to sign in)</label>
+    <input id="pemail" type="email" autocomplete="email" autocapitalize="none" spellcheck="false"
+           placeholder="dana@example.com"/>
+    <p class="hint">A landlord or a vendor usually does not need one.</p>
+
+    <div style="margin-top:16px;"><button class="btn" id="addp">Add them</button></div>
+    <div id="result"></div>
+  </section>
+</main>
+
+<script>
+var $ = function (id) { return document.getElementById(id); };
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+var AREAS = [
+  ['compliance', 'Filings and licences'],
+  ['money', 'Financials'],
+  ['customers', 'Customers'],
+  ['team', 'People'],
+  ['documents', 'Documents'],
+  ['projects', 'Projects and builds'],
+  ['sites', 'The website'],
+  ['export', 'Exporting data'],
+];
+var LEVELS = [['none', 'Nothing'], ['view', 'Can see'], ['act', 'Can do'], ['manage', 'Can manage']];
+
+var KIND_WORDS = {
+  owner: 'Owner', partner: 'Partner', employee: 'Employee', contractor: 'Contractor',
+  assistant: 'Virtual assistant', vendor: 'Vendor', landlord: 'Landlord',
+  customer: 'Customer', professional: 'Bookkeeper, accountant or attorney',
+};
+
+/* One line instead of eight rows. Names what they CAN see rather than listing what they cannot,
+   because a list of eight "Nothing"s is not information. */
+function summarise(areas) {
+  var held = AREAS.filter(function (a) {
+    return areas && areas[a[0]] && areas[a[0]] !== 'none';
+  });
+  if (!held.length) return 'Sees nothing yet';
+  if (held.length === AREAS.length) return 'Sees everything';
+  return 'Sees ' + held.map(function (a) { return a[1].toLowerCase(); }).join(', ');
+}
+
+async function loadBusinesses() {
+  var r = await fetch('/api/businesses', { credentials: 'include' });
+  if (r.status === 401) { location.href = '/login.html?next=/team.html'; return; }
+  var d = await r.json();
+  if (!d.businesses.length) {
+    $('status').textContent = 'Add a business first and then you can add people to it.';
+    return;
+  }
+  $('biz').innerHTML = d.businesses.map(function (b) {
+    return '<option value="' + esc(b.id) + '">' + esc(b.name) + '</option>';
+  }).join('');
+  loadPeople();
+}
+
+function permRow(relId, area, label, level, isOwner) {
+  if (isOwner) {
+    return '<div class="perm"><span>' + esc(label) + '</span><span class="muted">Everything</span></div>';
+  }
+  return '<div class="perm"><label for="p-' + relId + '-' + area + '"><span>' + esc(label)
+    + '</span></label><select id="p-' + relId + '-' + area + '" data-rel="' + relId
+    + '" data-area="' + area + '">'
+    + LEVELS.map(function (l) {
+      return '<option value="' + l[0] + '"' + (l[0] === (level || 'none') ? ' selected' : '') + '>'
+        + l[1] + '</option>';
+    }).join('') + '</select></div>';
+}
+
+async function loadPeople() {
+  var id = $('biz').value;
+  if (!id) return;
+  try {
+    var r = await fetch('/api/businesses/' + id + '/people', { credentials: 'include' });
+    if (!r.ok) {
+      var err = await r.json();
+      /* A refusal names what exists and who can grant it, rather than pretending it is not there. */
+      $('list').innerHTML = '<p class="muted">' + esc(err.error || 'You cannot see the team here.')
+        + '</p>';
+      return;
+    }
+    var d = await r.json();
+    $('list').innerHTML = d.people.map(function (p) {
+      var gone = !!p.ended_on;
+      var isOwner = p.kind === 'owner';
+      return '<article class="person' + (gone ? ' gone' : '') + '">'
+        + '<h3>' + esc(p.display_name) + '</h3>'
+        + '<p class="rel">' + esc(KIND_WORDS[p.kind] || p.kind)
+        + (gone ? ' · left ' + esc(String(p.ended_on).slice(0, 10)) : '') + '</p>'
+        /* Whether they can sign in is stated, not left to be discovered when they try. */
+        + (gone ? '' : '<p class="seat">' + (p.has_login
+          ? 'Has a login and takes a seat.'
+          : 'A record rather than a login — they cannot sign in.') + '</p>')
+        /* WHAT THEY CAN SEE, AS A SENTENCE FIRST.
+           Rendering eight dropdowns per person made a five-person team into a wall: three of them
+           showed "Nothing" in all eight rows, which is a lot of interface carrying no information.
+           Density reads as complexity, and this product's whole argument is that it does not have
+           to. So: one line saying what they can actually see, and the controls behind a disclosure
+           for the moment somebody wants to change it. */
+        + (gone ? '' : (isOwner
+          ? '<p class="sees">Can see and do everything.</p>'
+          : '<details><summary class="sees">' + esc(summarise(p.areas))
+            + '+ ' <span class="muted">— change</span></summary>nbsp;<span class="muted">&mdash; change</span></summary><div class="perms">'
+            + AREAS.map(function (a) {
+              return permRow(p.id, a[0], a[1], (p.areas || {})[a[0]], isOwner);
+            }).join('') + '</div></details>'))
+        + (gone || isOwner ? '' : '<button class="btn plain" data-end="' + esc(p.id)
+          + '" data-name="' + esc(p.display_name) + '">They have left</button>')
+        + '</article>';
+    }).join('');
+  } catch (e) {
+    $('status').textContent = 'I could not read the team just now. That is a failure on our side '
+      + 'rather than an empty list.';
+  }
+}
+
+document.addEventListener('change', async function (ev) {
+  var sel = ev.target.closest('select[data-rel]');
+  if (!sel) return;
+  var prev = sel.dataset.prev || 'none';
+  try {
+    var r = await fetch('/api/team/' + sel.dataset.rel + '/permissions', {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ area: sel.dataset.area, level: sel.value }),
+    });
+    var d = await r.json();
+    if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+    /* Export is named every time it is granted, because it is the one that leaves the building. */
+    $('status').textContent = d.note || 'Saved.';
+  } catch (e) {
+    sel.value = prev;
+    $('status').textContent = 'That did not save, so nothing has changed. ' + e.message;
+  }
+});
+
+document.addEventListener('click', async function (ev) {
+  var b = ev.target.closest('[data-end]');
+  if (!b) return;
+  /* INLINE, WITH FOCUS ON THE SAFE OPTION.
+     Native confirm() puts focus on OK and hands a keyboard user the destructive choice by default.
+     The house pattern asks in the page, defaults to the safe answer, and returns focus to the row
+     afterwards — because removing the prompt without restoring focus drops somebody at the top of
+     the document and they have to find their place again. */
+  var host = b.closest('.person');
+  if (host.querySelector('.confirm-row')) return;
+  var row = document.createElement('div');
+  row.className = 'confirm-row';
+  row.setAttribute('role', 'group');
+  row.setAttribute('aria-label', 'Remove access for ' + b.dataset.name);
+  row.innerHTML = '<p>Remove ' + esc(b.dataset.name) + '\u2019s access? Their record stays, and the '
+    + 'rest of the offboarding goes on your list.</p>';
+  var yes = document.createElement('button');
+  yes.className = 'btn'; yes.textContent = 'Yes, remove access';
+  var no = document.createElement('button');
+  no.className = 'btn plain'; no.textContent = 'No, leave it alone';
+  var opener = document.activeElement;
+  var restore = function () {
+    try { if (opener && opener.focus && document.contains(opener)) opener.focus(); } catch (e) {}
+  };
+  no.addEventListener('click', function () {
+    row.remove(); restore(); $('status').textContent = 'Okay — nothing was changed.';
+  });
+  row.appendChild(yes); row.appendChild(no); host.appendChild(row);
+  no.focus();
+  await new Promise(function (go) { yes.addEventListener('click', function () { go(); }); });
+  row.remove();
+  b.disabled = true;
+  try {
+    var r = await fetch('/api/team/' + b.dataset.end + '/end',
+      { method: 'POST', credentials: 'include' });
+    var d = await r.json();
+    if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+    $('status').textContent = d.says + ' ' + (d.raised ? d.raised.title + ' is on your list.' : '');
+    loadPeople();
+  } catch (e) {
+    b.disabled = false;
+    $('status').textContent = 'That did not work, so their access is unchanged. ' + e.message;
+  }
+});
+
+$('biz').addEventListener('change', loadPeople);
+
+$('addp').addEventListener('click', async function () {
+  var name = $('pname').value.trim();
+  if (!name) { $('status').textContent = 'They need a name.'; $('pname').focus(); return; }
+  this.disabled = true; this.textContent = 'Adding\u2026';
+  try {
+    var r = await fetch('/api/team', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        business_id: $('biz').value,
+        display_name: name,
+        kind: $('pkind').value,
+        preset: $('ppreset').value || undefined,
+        email: $('pemail').value.trim() || undefined,
+      }),
+    });
+    var d = await r.json();
+    if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+
+    var html = '';
+    if (d.seat_note) html += '<p class="hint">' + esc(d.seat_note) + '</p>';
+    /* WHAT ADDING THEM MEANS, BEYOND ACCESS. Adding an employee is one of the genuinely dangerous
+       moments in a small business and almost nothing warns you about it. */
+    (d.raised || []).forEach(function (x) {
+      html += '<div class="raised"><p style="margin:0 0 6px;"><strong>' + esc(x.title)
+        + '</strong></p><p style="margin:0;">' + esc(x.consequence || '') + '</p></div>';
+    });
+    $('result').innerHTML = html;
+    $('status').textContent = name + ' added.'
+      + (d.raised && d.raised.length ? ' ' + d.raised.length + ' thing'
+        + (d.raised.length === 1 ? '' : 's') + ' went on your list because of it.' : '');
+    $('result').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    $('pname').value = ''; $('pemail').value = '';
+    loadPeople();
+  } catch (e) {
+    $('result').innerHTML = '';
+    $('status').textContent = 'I could not add them, so nothing was saved. ' + e.message;
+  } finally {
+    this.disabled = false; this.textContent = 'Add them';
+  }
+});
+
+loadBusinesses();
+</script>
+</body></html>
