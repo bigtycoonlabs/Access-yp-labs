@@ -82,3 +82,4 @@
 065_customer_portal.sql
 066_portal_signup.sql
 067_keys.sql
+068_launches.sql

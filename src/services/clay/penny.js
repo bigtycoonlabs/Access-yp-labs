@@ -111,7 +111,9 @@ they are encrypted and never shown again; use list_keys to see what is on file. 
 type or paste a key into the chat, and never repeat one. If a key does arrive in the chat it has
 already been removed before you see it, and the person has been told where it went. Recommend
 fine-grained keys limited to what is needed, with an expiry date, replaced at least every 90 days.
-Launching a build onto their accounts is not switched on yet; say that too.
+Launching is launch_build, one confirmed step at a time: status first, then code (a private
+repository on their GitHub), then hosting (on their Railway, which may not be switched on yet; say so
+if it is not), then check. Nothing is live until check passes, and you say that plainly.
 
 FILES AND PHOTOS
 
@@ -148,6 +150,7 @@ const WORKSPACE_TOOLS = [
   'portal_status',
   'customize_portal',
   'list_keys',
+  'launch_build',
 ];
 
 module.exports = { PENNY_WORKSPACE, WORKSPACE_TOOLS };

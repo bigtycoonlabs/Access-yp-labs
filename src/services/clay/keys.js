@@ -242,6 +242,36 @@ async function logUse(keyId, action, actorId, via, ok) {
   } catch (e) { console.error('key use not logged:', e.message); }
 }
 
+// ------------------------------------------------------------------ using a key, server side only
+//
+// The only place a key is ever decrypted. It is handed to `fn` for one job and never returned; the use
+// is logged whether the job works or not. Nothing a person or Penny can call reaches this directly:
+// only a confirmed launch step does.
+async function withKey(business_id, service, { action, actor_id, via }, fn) {
+  const k = (await query(
+    `SELECT * FROM business_keys WHERE business_id=$1 AND service=$2 AND removed_at IS NULL`,
+    [business_id, service])).rows[0];
+  if (!k) return { ok: false, missing: true, says: 'There is no ' + SERVICES[service] + ' key on file. Add one on the Keys page.' };
+  let value;
+  try {
+    value = V.open({ ciphertext: k.ciphertext, iv: k.iv, tag: k.tag, version: k.key_version });
+  } catch (e) {
+    await logUse(k.id, action + ' (could not unlock)', actor_id, via, false);
+    return { ok: false, says: 'I could not unlock the ' + SERVICES[service] + ' key, so nothing was done. Add it again on the Keys page.' };
+  }
+  let out;
+  try {
+    out = await fn(value, { checked: k.checked || {}, last4: k.last4 });
+  } catch (e) {
+    out = { ok: false, says: SERVICES[service] + ' did not complete that: ' + e.message };
+  } finally {
+    value = null;
+  }
+  await logUse(k.id, action, actor_id, via, !!(out && out.ok));
+  await query('UPDATE business_keys SET last_used_at=now() WHERE id=$1', [k.id]).catch(() => {});
+  return out;
+}
+
 // ------------------------------------------------------------------ keys pasted into the chat
 
 // Takes keys out of every message before anything else sees them. Returns the cleaned messages and
@@ -286,4 +316,4 @@ async function takeFromChat(viewer, found) {
   return lines.join(' ');
 }
 
-module.exports = { SERVICES, ROTATE_DAYS, detect, redact, scrub, save, list, remove, takeFromChat, logUse };
+module.exports = { SERVICES, ROTATE_DAYS, detect, redact, scrub, save, list, remove, takeFromChat, logUse, withKey };

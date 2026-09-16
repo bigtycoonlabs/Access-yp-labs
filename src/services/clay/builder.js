@@ -311,7 +311,7 @@ async function listFor(viewer, business_id) {
     const r = await query(
       `SELECT id, business_id, stage, asked_for, kind, status, says, mock_of, attempt_of, edit_of,
               approved_at, mock_declined_at, chargeable, preview_url, repo_url, created_at,
-              tier, published_slug, published_at,
+              tier, published_slug, published_at, handed_over_at,
               updated_at
          FROM builds WHERE business_id=$1 AND status <> 'discarded'
         ORDER BY created_at DESC LIMIT 50`, [business_id]);

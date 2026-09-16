@@ -160,6 +160,10 @@ function buildHtml(b) {
       ? '<button class="btn plain" type="button" data-offline="' + esc(b.id) + '">Take it offline</button>'
       : '<button class="btn" type="button" data-online="' + esc(b.id) + '">Put it online</button>';
   }
+  if (b.status === 'ready' && b.stage === 'real' && b.tier === 'custom_app') {
+    h += '<button class="btn" type="button" data-launch="' + esc(b.id) + '">'
+      + (b.repo_url ? 'See the launch' : 'Launch on your own accounts') + '</button>';
+  }
   if (b.status === 'ready') {
     h += '<button class="btn plain" type="button" data-edit="' + esc(b.id) + '">Change something</button>';
   }
@@ -412,6 +416,55 @@ document.addEventListener('click', async function (ev) {
       var d2 = await post('/api/builds/' + t.dataset.offline + '/unpublish');
       say(d2.says); $('list').dataset.key = ''; loadBuilds();
     } catch (e) { t.disabled = false; say('Nothing changed. ' + e.message); }
+  }
+});
+
+async function showLaunch(id) {
+  var box = $('inline-' + id);
+  box.innerHTML = '<p class="muted">Reading where this stands.</p>';
+  var r = await fetch('/api/launches/' + id); var s = await r.json();
+  if (!r.ok) { box.innerHTML = '<p>' + esc(s.error || 'I could not read the launch.') + '</p>'; return; }
+  var steps = (s.launch && s.launch.steps) || [];
+  var done = function (k) { return steps.some(function (x) { return x.step === k && x.status === 'done'; }); };
+  var h = '<h4 style="margin:10px 0 6px;">Launch on your own accounts</h4><p>' + esc(s.says) + '</p>';
+  if (steps.length) {
+    h += '<ul>' + steps.map(function (x) {
+      return '<li>' + esc({ code: 'Code', hosting: 'Hosting', check: 'Check' }[x.step]) + ': '
+        + esc(x.status === 'done' ? 'done. ' : x.status === 'failed' ? 'did not work. ' : 'running. ') + esc(x.says) + '</li>';
+    }).join('') + '</ul>';
+  }
+  if (!done('code')) {
+    h += '<label class="field" for="repo-' + esc(id) + '">Name for the repository on your GitHub</label>'
+      + '<input class="box" id="repo-' + esc(id) + '" type="text" autocapitalize="none" spellcheck="false" value="' + esc(s.suggested_repo_name) + '"/>'
+      + '<p class="muted">It will be private. Nothing is created until you choose the button.</p>'
+      + '<button class="btn" type="button" data-pushcode="' + esc(id) + '"' + (s.keys.indexOf('github') < 0 ? ' disabled' : '') + '>Put the code on my GitHub</button>'
+      + (s.keys.indexOf('github') < 0 ? '<p>Add a GitHub key on the <a href="/keys.html">Keys</a> page first.</p>' : '');
+  } else if (!done('hosting')) {
+    h += s.hosting_available
+      ? '<p>This creates a project on your Railway account, which may cost money there.</p><button class="btn" type="button" data-host="' + esc(id) + '">Start it on my Railway</button>'
+      : '<p>Starting it on Railway is not switched on yet.</p>';
+  } else if (!done('check')) {
+    h += '<button class="btn" type="button" data-checklive="' + esc(id) + '">Check the live address</button>';
+  }
+  box.innerHTML = h;
+}
+
+document.addEventListener('click', async function (ev) {
+  var t = ev.target, d = t.dataset;
+  try {
+    if (d.launch) { await showLaunch(d.launch); say('Showing the launch.'); }
+    else if (d.pushcode) {
+      t.disabled = true; say('Creating the repository and putting the code in it. This takes a few seconds.');
+      var r = await post('/api/launches/' + d.pushcode + '/code', { repo_name: $('repo-' + d.pushcode).value.trim() });
+      say(r.says); $('list').dataset.key = ''; await loadBuilds(); await showLaunch(d.pushcode);
+    } else if (d.host) {
+      t.disabled = true; var r2 = await post('/api/launches/' + d.host + '/hosting'); say(r2.says); await showLaunch(d.host);
+    } else if (d.checklive) {
+      t.disabled = true; var r3 = await post('/api/launches/' + d.checklive + '/check'); say(r3.says); await showLaunch(d.checklive);
+    }
+  } catch (e) {
+    t.disabled = false; say('That did not work. ' + e.message);
+    var id = d.pushcode || d.host || d.checklive; if (id) showLaunch(id);
   }
 });
 

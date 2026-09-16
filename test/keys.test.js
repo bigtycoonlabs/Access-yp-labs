@@ -73,7 +73,11 @@ test('nothing that lists keys can return the value', () => {
   const src = fs.readFileSync('src/services/clay/keys.js', 'utf8');
   const list = src.slice(src.indexOf('async function list'), src.indexOf('async function remove'));
   assert.doesNotMatch(list, /ciphertext|V\.open/);
-  assert.doesNotMatch(src, /V\.open\(/, 'nothing in this service decrypts yet');
+  // Decryption happens in exactly one place, and nothing a person or Penny calls imports it.
+  assert.strictEqual((src.match(/V\.open\(/g) || []).length, 1);
+  for (const f of ['src/routes/keys.js', 'src/services/clay/workspace.js', 'src/routes/penny.js']) {
+    assert.doesNotMatch(fs.readFileSync(f, 'utf8'), /withKey/, f + ' must not reach withKey');
+  }
   const route = fs.readFileSync('src/routes/keys.js', 'utf8');
   assert.match(route, /'Cache-Control', 'no-store'/);
 });

@@ -29,6 +29,7 @@ const Bld = require('./builder');
 const Files = require('./files');
 const Portal = require('./portal');
 const Keys = require('./keys');
+const Launcher = require('./launcher');
 
 // Result shapes. Borrowed from Arbo, where they exist because an unread balance once printed as
 // "$0.00" — indistinguishable from the money being gone.
@@ -115,6 +116,15 @@ const TOOLS = {
     irreversible: false, requires_confirmation: false, required: ['business_id'], enums: {},
     summary: 'Which keys (GitHub, Railway, Supabase) a business has on file, what each was checked to '
       + 'reach, and when each is due to be replaced. Never the keys themselves. Read-only.',
+  },
+  launch_build: {
+    irreversible: false, requires_confirmation: true,
+    required: ['build_id', 'step'], optional: ['repo_name'], enums: { step: ['status', 'code', 'hosting', 'check'] },
+    summary: 'Take a finished custom web application onto the person\'s own accounts, one step at a '
+      + 'time. status says where it stands and what is next. code creates a private repository on '
+      + 'their GitHub with the app. hosting starts it on their Railway (may not be switched on). '
+      + 'check opens the live address. Until check passes, it is not live; say so.',
+    ask: 'Go ahead with this step. It creates something in your own account.',
   },
   list_builds: {
     irreversible: false, requires_confirmation: false, required: ['business_id'], enums: {},
@@ -360,6 +370,16 @@ async function list_keys(viewer, params = {}) {
   })) }, r.says);
 }
 
+async function launch_build(viewer, params = {}) {
+  const fn = { status: Launcher.status, code: (v, id) => Launcher.pushCode(v, id, { repo_name: params.repo_name }),
+    hosting: Launcher.host, check: Launcher.check }[params.step];
+  if (!fn) return { status: 'needs_answer', says: 'Which step: status, code, hosting or check?' };
+  const r = await fn(viewer, params.build_id);
+  if (!r.ok) return r.kind === 'refused' ? refused(r.says) : unavailable('launch_step_failed', r.says);
+  return answered({ repo_url: r.repo_url || (r.launch && r.launch.repo_url) || null,
+    live_url: r.live_url || (r.launch && r.launch.live_url) || null }, r.says);
+}
+
 async function list_builds(viewer, params = {}) {
   const r = await Bld.listFor(viewer, params.business_id);
   if (!r.ok) {
@@ -370,6 +390,7 @@ async function list_builds(viewer, params = {}) {
     id: b.id, stage: b.stage, status: b.status, asked_for: b.asked_for,
     open_at: b.status === 'ready' ? b.preview_url : null,
     home: b.tier, online_at: b.published_slug ? '/s/' + b.published_slug : null,
+    code_on_github: b.repo_url || null,
     why_not_ready: b.status === 'failed' ? b.says : null,
   })) }, r.says);
 }
@@ -387,6 +408,6 @@ async function list_files(viewer, params = {}) {
 
 const EXECUTORS = { whats_due, whats_coming, list_businesses, record_obligation,
   complete_obligation, whats_missing, whats_outstanding_with_customers, start_build, publish_build, list_builds, list_files,
-  portal_status, customize_portal, list_keys };
+  portal_status, customize_portal, list_keys, launch_build };
 
 module.exports = { TOOLS, EXECUTORS, answered, empty, unavailable, refused };
