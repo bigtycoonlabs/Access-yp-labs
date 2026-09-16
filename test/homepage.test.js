@@ -94,6 +94,9 @@ test('one main, one h1, labelled controls, its own title', () => {
   // at its intended 24.
   assert.strictEqual((home.match(/<main/g) || []).length, 1);
   assert.strictEqual((home.match(/<h1/g) || []).length, 1);
-  assert.match(home, /<title>Penny Desk — the employees you always needed<\/title>/);
+  // Branding is Access YP Labs for now, by the owner's call: Penny Desk is not a live domain, and a
+  // homepage should not sell a name nobody can reach. Penny keeps her name; the product does not
+  // have one on this page yet.
+  assert.match(home, /<title>Access YP Labs — the employees you always needed<\/title>/);
   assert.match(home, /role="status" aria-live="polite"/);
 });

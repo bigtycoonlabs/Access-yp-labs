@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Penny Desk — the employees you always needed</title>
+<title>Access YP Labs — the employees you always needed</title>
 <meta name="description" content="Penny keeps track of everything your business owes — filings, licences, renewals, invoices and promises — ranked by what missing each one costs. Free for one business."/>
 <link rel="canonical" href="https://accesspennydesk.com/"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -35,6 +35,11 @@ section.block{padding:18px 0;border-top:1px solid var(--line);margin-top:30px;}
   padding:16px 18px;}
 .wont li{margin:0 0 8px;}
 footer{padding:30px 0 60px;color:var(--muted);font-size:.9rem;}
+
+.does{margin:0;}
+.does dt{font-weight:700;margin:18px 0 4px;font-size:1.02rem;}
+.does dt:first-child{margin-top:0;}
+.does dd{margin:0;color:var(--muted);}
 </style>
 </head><body>
 
@@ -42,7 +47,7 @@ footer{padding:30px 0 60px;color:var(--muted);font-size:.9rem;}
 
 <header class="site">
   <div class="bar">
-    <a class="brand" href="/">Penny Desk<span class="dot" aria-hidden="true">.</span></a>
+    <a class="brand" href="/">Access YP Labs<span class="dot" aria-hidden="true">.</span></a>
     <a class="btn quiet" href="/login.html">Sign in</a>
   </div>
 </header>
@@ -57,9 +62,9 @@ footer{padding:30px 0 60px;color:var(--muted);font-size:.9rem;}
        So this page does not describe the product. It runs it. -->
   <div class="hero">
     <h1>The employees you always needed.</h1>
-    <p class="sub">Penny keeps track of everything your business owes — filings, licences, renewals,
-      invoices, the thing you promised a customer on Tuesday — in one list, ordered by what it
-      actually costs you to miss each one.</p>
+    <p class="sub">Penny runs the back office. Filings in every state you operate in, licences,
+      renewals, documents, customers, your team — one list, ordered by what it costs you to miss
+      each thing.</p>
   </div>
 
   <section class="try" id="try" aria-labelledby="try-h">
@@ -81,12 +86,53 @@ footer{padding:30px 0 60px;color:var(--muted);font-size:.9rem;}
     </select>
 
     <label for="ct" style="display:flex;align-items:center;gap:10px;min-height:44px;">
-      <input id="ct" type="checkbox" style="width:24px;height:24px;accent-color:var(--accent);"/>
+      <input id="ct" type="checkbox" style="width:24px;height:24px;accent-color:var(--accent);
+      margin:10px 8px 10px 0;"/>
       I pay contractors or freelancers
     </label>
 
     <div class="row"><button class="btn" id="go">Show me</button></div>
     <div id="out" class="out" role="status" aria-live="polite"></div>
+  </section>
+
+  <!-- WHAT IS ACTUALLY BUILT.
+       Not a feature grid — no ticks, no columns, no comparison. The research is blunt about where a
+       grid leads: it wins the purchase and loses the customer six months later when the workflow
+       does not fit. But the page was going too far the other way and describing a to-do list, while
+       what exists is a back office. Naming the areas is not a grid; hiding them is underselling.
+
+       Every line here is something that runs today. Where something is not built, the page says so
+       further down rather than leaving it to be discovered after signing up. -->
+  <section class="block" aria-labelledby="does-h">
+    <h2 id="does-h">What she keeps track of</h2>
+    <p>Several businesses, several states, one place. She works from your record rather than a
+      checklist, and she tells you where every answer came from.</p>
+    <dl class="does">
+      <dt>Filings, licences and renewals</dt>
+      <dd>Fifty states and DC. Every rule carries the source it came from and the date it was
+        checked, and where the fee is not confirmed she says it is not confirmed rather than
+        guessing. Ohio does not require an LLC annual report — most tools tell you it does.</dd>
+
+      <dt>Documents, including the ones that are not there</dt>
+      <dd>Storing files is the easy half. She works out what should be on file from what your
+        business actually is — a contractor means a W-9, a partner means an operating agreement —
+        and an expired certificate leads, because nobody believes they are covered by one they
+        never collected.</dd>
+
+      <dt>Customers, as promises and money</dt>
+      <dd>What you owe them and what they owe you, kept apart, ordered by what is late. Not a CRM.
+        There is nothing to keep up to date — people appear when something is outstanding and leave
+        when it is settled.</dd>
+
+      <dt>Your team, and exactly what each person can see</dt>
+      <dd>A bookkeeper sees the money and not the filings. Adding a contractor raises a W-9; adding
+        your first employee raises workers comp before their first day, which is one of the
+        genuinely dangerous moments in a small business that almost nothing warns you about.</dd>
+
+      <dt>And she tells you before it is late</dt>
+      <dd>An expensive filing is raised at thirty days, fourteen, seven and the day before. By
+        email, so it reaches you when you are not looking at this.</dd>
+    </dl>
   </section>
 
   <section class="block" aria-labelledby="who-h">
@@ -144,7 +190,7 @@ footer{padding:30px 0 60px;color:var(--muted);font-size:.9rem;}
   </section>
 
   <footer>
-    <p>Penny Desk is built by Set Up Your Place LLC, who also run Access Your Place and YP Flow.
+    <p>Access YP Labs is built by Set Up Your Place LLC, who also run Access Your Place and YP Flow.
       Nothing here is legal or tax advice.</p>
   </footer>
 </main>
