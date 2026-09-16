@@ -29,6 +29,8 @@
 
 const { query } = require('../../config/db');
 const P = require('../../lib/permissions');
+const Scope = require('./scope');
+const Domains = require('./domains');
 
 // A brief has to say what the thing DOES. Not a length rule: "booking page" is four words and
 // perfectly clear, while a long paragraph about wanting more customers says nothing buildable.
@@ -66,7 +68,7 @@ function mockChoice(v) {
 }
 
 // Starting anything. Asks the mock-up question until it has an answer, then does what was chosen.
-async function start(viewer, { business_id, asked_for, kind, mock_first, edit_of }) {
+async function start(viewer, { business_id, asked_for, kind, mock_first, edit_of, tier }) {
   const gate = await P.can(viewer.id, business_id, 'projects', 'act');
   if (!gate.ok) {
     return { ok: false, kind: 'refused',
@@ -88,30 +90,47 @@ async function start(viewer, { business_id, asked_for, kind, mock_first, edit_of
     }
   }
 
+  // WHERE IT LIVES comes first, because it changes what gets built. An edit keeps the home of the
+  // thing it changes, so it is not asked again.
+  let home = Scope.tierChoice(tier);
+  if (base && !home) {
+    home = (await query('SELECT tier FROM builds WHERE id=$1', [edit_of])).rows[0].tier;
+  }
+  if (!home) {
+    const c = Scope.classify(asked_for);
+    return { ok: true, needs: 'tier_choice', recommended: c.recommended, signals: c.signals,
+      question: Scope.TIER_QUESTION, explanation: c.says,
+      says: c.says + ' ' + Scope.TIER_QUESTION };
+  }
+  if (!Scope.AVAILABLE[home].ready) {
+    return { ok: false, kind: 'refused', says: Scope.AVAILABLE[home].says };
+  }
+
   const choice = mockChoice(mock_first);
   if (!choice) {
     // Not an error and not a refusal: nothing happens until they answer.
     return { ok: true, needs: 'mock_choice', question: MOCK_QUESTION, says: MOCK_QUESTION };
   }
-  if (choice === 'yes') return requestMock(viewer, { business_id, asked_for, kind, edit_of }, gate);
+  if (choice === 'yes') return requestMock(viewer, { business_id, asked_for, kind, edit_of, tier: home }, gate);
 
   try {
     const r = await query(
       `INSERT INTO builds (business_id, requested_by, asked_for, kind, stage, status,
-          approved_at, mock_declined_at, chargeable, edit_of)
-       VALUES ($1,$2,$3,$4,'real','queued',now(),now(),true,$5) RETURNING *`,
-      [business_id, viewer.id, String(asked_for).trim(), kind || null, edit_of || null]);
+          approved_at, mock_declined_at, chargeable, edit_of, tier)
+       VALUES ($1,$2,$3,$4,'real','queued',now(),now(),true,$5,$6) RETURNING *`,
+      [business_id, viewer.id, String(asked_for).trim(), kind || null, edit_of || null, home]);
     return { ok: true, build: r.rows[0],
       says: edit_of
         ? 'Making that change now, without a mock-up, as you asked. I will tell you when it is ready.'
-        : 'Building it now, without a mock-up, as you asked. I will tell you when it is ready to open.' };
+        : 'Building it now, without a mock-up, as you asked. I will tell you when it is ready to open.'
+          + (home === 'custom_app' ? ' ' + Scope.AVAILABLE.custom_app.partial : '') };
   } catch (e) {
     return { ok: false, kind: 'unavailable',
       says: 'I could not start that build, so nothing was started and nothing is owed. ' + e.message };
   }
 }
 
-async function requestMock(viewer, { business_id, asked_for, kind, edit_of }, checked) {
+async function requestMock(viewer, { business_id, asked_for, kind, edit_of, tier }, checked) {
   if (!checked) {
     const gate = await P.can(viewer.id, business_id, 'projects', 'act');
     if (!gate.ok) {
@@ -124,9 +143,10 @@ async function requestMock(viewer, { business_id, asked_for, kind, edit_of }, ch
 
   try {
     const r = await query(
-      `INSERT INTO builds (business_id, requested_by, asked_for, kind, stage, status, edit_of)
-       VALUES ($1,$2,$3,$4,'mock','queued',$5) RETURNING *`,
-      [business_id, viewer.id, String(asked_for).trim(), kind || null, edit_of || null]);
+      `INSERT INTO builds (business_id, requested_by, asked_for, kind, stage, status, edit_of, tier)
+       VALUES ($1,$2,$3,$4,'mock','queued',$5,$6) RETURNING *`,
+      [business_id, viewer.id, String(asked_for).trim(), kind || null, edit_of || null,
+        Scope.tierChoice(tier)]);
     return { ok: true, build: r.rows[0],
       // Said plainly every time, because "free" that has to be discovered is not free in the way
       // that matters — somebody who is unsure whether this costs money does not ask for the second
@@ -164,9 +184,9 @@ async function approve(viewer, { build_id }) {
   try {
     const r = await query(
       `INSERT INTO builds (business_id, requested_by, asked_for, kind, stage, status,
-          mock_of, approved_at, chargeable, edit_of)
-       VALUES ($1,$2,$3,$4,'real','queued',$5,now(),true,$6) RETURNING *`,
-      [m.business_id, viewer.id, m.asked_for, m.kind, m.id, m.edit_of || null]);
+          mock_of, approved_at, chargeable, edit_of, tier)
+       VALUES ($1,$2,$3,$4,'real','queued',$5,now(),true,$6,$7) RETURNING *`,
+      [m.business_id, viewer.id, m.asked_for, m.kind, m.id, m.edit_of || null, m.tier]);
     return { ok: true, build: r.rows[0],
       // No price is set and no charge is taken yet (metering and invoicing are not built), so this
       // says what is true today rather than promising a charge that does not happen.
@@ -192,10 +212,10 @@ async function fix(viewer, { build_id, whats_wrong }) {
   try {
     const r = await query(
       `INSERT INTO builds (business_id, requested_by, asked_for, kind, stage, status,
-          mock_of, attempt_of, edit_of)
-       VALUES ($1,$2,$3,$4,$5,'queued',$6,$7,$8) RETURNING *`,
+          mock_of, attempt_of, edit_of, tier)
+       VALUES ($1,$2,$3,$4,$5,'queued',$6,$7,$8,$9) RETURNING *`,
       [prev.business_id, viewer.id, String(whats_wrong || prev.asked_for).trim(), prev.kind,
-        prev.stage, prev.mock_of, prev.id, prev.edit_of || null]);
+        prev.stage, prev.mock_of, prev.id, prev.edit_of || null, prev.tier]);
     return { ok: true, build: r.rows[0], says: 'Fixing that now. This one is not charged for.' };
   } catch (e) {
     return { ok: false, kind: 'unavailable', says: 'I could not start that fix. ' + e.message };
@@ -229,6 +249,58 @@ async function failed(build_id, why) {
   return { ok: !!r.rows.length, build: r.rows[0] || null };
 }
 
+// PUTTING A LABS SITE ONLINE. Only a finished, real Labs site: a mock-up is a draft, and a custom app
+// goes live on the client's own accounts. The database refuses anything else as well.
+async function publish(viewer, { build_id, address, origin }) {
+  const b = (await query('SELECT * FROM builds WHERE id=$1', [build_id])).rows[0];
+  if (!b) return { ok: false, kind: 'unavailable', says: 'I cannot find that build.' };
+  const gate = await P.can(viewer.id, b.business_id, 'sites', 'act');
+  if (!gate.ok) {
+    return { ok: false, kind: 'refused',
+      says: P.refusalLine(gate, 'sites', gate.perms && gate.perms.business.name) };
+  }
+  if (b.tier === 'custom_app') {
+    return { ok: false, kind: 'refused', says: 'This one is a custom web application, which goes '
+      + 'live on your own GitHub and Railway rather than here. ' + Scope.AVAILABLE.custom_app.partial };
+  }
+  if (b.stage !== 'real' || b.status !== 'ready') {
+    return { ok: false, kind: 'refused', says: b.stage === 'mock'
+      ? 'That is a mock-up. Build the real one first, then put that online.'
+      : 'That one is not finished yet, so there is nothing to put online.' };
+  }
+  const label = Domains.normalizeLabel(address || '');
+  if (!Domains.validLabel(label)) {
+    return { ok: false, kind: 'unclear', says: 'Choose an address of letters, numbers and dashes, '
+      + 'such as rivera-landscaping. Some short words are kept for our own use.' };
+  }
+  try {
+    const r = await query(
+      `UPDATE builds SET published_slug=$2, published_at=now(), tier='labs_site', updated_at=now()
+        WHERE id=$1 RETURNING published_slug`, [b.id, label]);
+    const url = (origin || 'https://accessyplabs.com').replace(/\/+$/, '') + '/s/' + r.rows[0].published_slug;
+    return { ok: true, url, says: 'It is online at ' + url + '. Anyone with the address can open it, '
+      + 'and messages from its forms will come to you and appear on Today.' };
+  } catch (e) {
+    if (e.code === '23505') {
+      return { ok: false, kind: 'refused', says: 'Someone already has ' + label + '. Try another address.' };
+    }
+    return { ok: false, kind: 'unavailable', says: 'I could not put it online, so it is not. ' + e.message };
+  }
+}
+
+async function unpublish(viewer, { build_id }) {
+  const b = (await query('SELECT * FROM builds WHERE id=$1', [build_id])).rows[0];
+  if (!b) return { ok: false, kind: 'unavailable', says: 'I cannot find that build.' };
+  const gate = await P.can(viewer.id, b.business_id, 'sites', 'act');
+  if (!gate.ok) {
+    return { ok: false, kind: 'refused',
+      says: P.refusalLine(gate, 'sites', gate.perms && gate.perms.business.name) };
+  }
+  if (!b.published_slug) return { ok: true, says: 'It was not online.' };
+  await query('UPDATE builds SET published_slug=NULL, published_at=NULL, updated_at=now() WHERE id=$1', [b.id]);
+  return { ok: true, says: 'It is offline now. The address ' + b.published_slug + ' stops working straight away.' };
+}
+
 async function listFor(viewer, business_id) {
   const gate = await P.can(viewer.id, business_id, 'projects', 'view');
   if (!gate.ok) {
@@ -239,6 +311,7 @@ async function listFor(viewer, business_id) {
     const r = await query(
       `SELECT id, business_id, stage, asked_for, kind, status, says, mock_of, attempt_of, edit_of,
               approved_at, mock_declined_at, chargeable, preview_url, repo_url, created_at,
+              tier, published_slug, published_at,
               updated_at
          FROM builds WHERE business_id=$1 AND status <> 'discarded'
         ORDER BY created_at DESC LIMIT 50`, [business_id]);
@@ -273,4 +346,4 @@ function summarise(rows) {
   return s.charAt(0).toUpperCase() + s.slice(1) + '.';
 }
 
-module.exports = { start, MOCK_QUESTION, mockChoice, requestMock, approve, fix, ready, failed, listFor, understand, summarise };
+module.exports = { start, publish, unpublish, MOCK_QUESTION, mockChoice, requestMock, approve, fix, ready, failed, listFor, understand, summarise };

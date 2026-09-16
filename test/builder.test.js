@@ -70,7 +70,7 @@ test('approval records the yes, and promises no charge that does not exist yet',
   // Approval writes approved_at and chargeable in the same insert, so there is no state where
   // somebody agreed and it was not recorded. No price or invoicing exists yet (16 Sept 2026), so the
   // words must not announce a charge.
-  assert.match(src, /mock_of, approved_at, chargeable, edit_of\)/);
+  assert.match(src, /mock_of, approved_at, chargeable, edit_of, tier\)/);
   assert.match(src, /This is the version you keep/);
   assert.doesNotMatch(src, /charged for, once/);
 });

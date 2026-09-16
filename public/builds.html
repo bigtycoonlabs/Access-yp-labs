@@ -74,6 +74,17 @@ summary.show{min-height:44px;display:flex;align-items:center;cursor:pointer;font
     <option value="other">Something else</option>
   </select>
 
+  <div id="advice" class="editing" role="status" aria-live="polite" hidden>
+    <p style="margin:0;" id="advice-text"></p>
+  </div>
+
+  <fieldset class="choice" id="tier-q">
+    <legend>Where should this live?</legend>
+    <label class="opt"><input type="radio" name="tier" value="labs_site"/> <span id="t-labs_site">A site hosted here on Access YP Labs, such as a landing page, wedding site or quote form. Online in one step, no other accounts needed.</span></label>
+    <label class="opt"><input type="radio" name="tier" value="labs_portal"/> <span id="t-labs_portal">The Labs customer portal, attached to your site, where customers sign in to see what is theirs. Not built yet.</span></label>
+    <label class="opt"><input type="radio" name="tier" value="custom_app"/> <span id="t-custom_app">A custom web application on your own GitHub, Railway and Supabase accounts, for payments, logins or your own data. I can build a version to try here now; launching it on your accounts is not switched on yet.</span></label>
+  </fieldset>
+
   <fieldset class="choice" id="mock-q">
     <legend id="mock-legend">Do you want me to create a mock-up first, so you can make sure
       everything is to your liking before I start building? Or I can go straight to building it.</legend>
@@ -83,6 +94,12 @@ summary.show{min-height:44px;display:flex;align-items:center;cursor:pointer;font
 
   <div style="margin-top:18px;"><button class="btn" id="go" type="button">Start</button></div>
   <div id="status" role="status" aria-live="polite" class="muted" style="margin-top:12px;"></div>
+
+  <section aria-labelledby="msg-h" style="margin-top:30px;">
+    <h2 id="msg-h">Messages from your sites</h2>
+    <p id="msg-summary" class="muted"></p>
+    <div id="messages"></div>
+  </section>
 
   <section aria-labelledby="list-h" style="margin-top:30px;">
     <h2 id="list-h">What I have built</h2>
@@ -123,15 +140,25 @@ function stateLine(b) {
   return what + '. ' + b.status + '.';
 }
 
+var HOME = { labs_site: 'Hosted on Labs', labs_portal: 'Labs portal', custom_app: 'Custom web application' };
+
 function buildHtml(b) {
   var h = '<article class="build' + (b.status === 'failed' ? ' failed' : '') + '" data-id="' + esc(b.id) + '">'
     + '<h3>' + esc(b.asked_for) + '</h3>'
-    + '<p class="state">' + esc(stateLine(b)) + '</p><div class="row">';
+    + '<p class="state">' + esc((b.tier ? HOME[b.tier] + '. ' : '') + stateLine(b)) + '</p>'
+    + (b.published_slug ? '<p class="state"><strong>Online at</strong> <a href="/s/' + esc(b.published_slug)
+      + '" target="_blank" rel="noopener">' + esc(location.host + '/s/' + b.published_slug) + '</a></p>' : '')
+    + '<div class="row">';
   if (b.status === 'ready' && b.preview_url) {
     h += '<a class="btn" href="' + esc(b.preview_url) + '" target="_blank" rel="noopener">Open it in a new tab</a>';
   }
   if (b.status === 'ready' && b.stage === 'mock') {
     h += '<button class="btn" type="button" data-approve="' + esc(b.id) + '">Build the real one</button>';
+  }
+  if (b.status === 'ready' && b.stage === 'real' && b.tier !== 'custom_app') {
+    h += b.published_slug
+      ? '<button class="btn plain" type="button" data-offline="' + esc(b.id) + '">Take it offline</button>'
+      : '<button class="btn" type="button" data-online="' + esc(b.id) + '">Put it online</button>';
   }
   if (b.status === 'ready') {
     h += '<button class="btn plain" type="button" data-edit="' + esc(b.id) + '">Change something</button>';
@@ -210,6 +237,7 @@ async function loadBuilds(announceChanges) {
 function setEditing(b) {
   editOf = b ? b.id : null;
   $('editing').hidden = !b;
+  $('tier-q').hidden = !!b;
   if (b) {
     $('editing-line').textContent = 'Changing: ' + b.asked_for;
     $('ask-label').textContent = 'What should change?';
@@ -234,6 +262,12 @@ async function post(url, body) {
 $('go').addEventListener('click', async function () {
   var ask = $('ask').value.trim();
   if (!ask) { say('Tell me what it should do first.'); $('ask').focus(); return; }
+  var tierEl = document.querySelector('input[name=tier]:checked');
+  if (!editOf && !tierEl) {
+    say('Before I start: where should this live? ' + ($('advice-text').textContent || ''));
+    document.querySelector('input[name=tier]').focus();
+    return;
+  }
   var chosen = document.querySelector('input[name=mock]:checked');
   if (!chosen) {
     say('Before I start: ' + $('mock-legend').textContent.replace(/\s+/g, ' ').trim());
@@ -244,10 +278,12 @@ $('go').addEventListener('click', async function () {
   btn.disabled = true; btn.textContent = 'Starting\u2026';
   try {
     var d = await post('/api/builds', { business_id: $('biz').value, asked_for: ask,
-      kind: $('kind').value || undefined, mock_first: chosen.value, edit_of: editOf || undefined });
+      kind: $('kind').value || undefined, mock_first: chosen.value, edit_of: editOf || undefined,
+      tier: editOf ? undefined : tierEl.value });
     say(d.says || 'Started.');
     $('ask').value = '';
-    document.querySelectorAll('input[name=mock]').forEach(function (x) { x.checked = false; });
+    document.querySelectorAll('input[name=mock],input[name=tier]').forEach(function (x) { x.checked = false; });
+    $('advice').hidden = true;
     setEditing(null);
     loadBuilds(true);
   } catch (e) {
@@ -312,6 +348,74 @@ document.addEventListener('click', async function (ev) {
   }
 });
 
-loadBusinesses();
+var adviceTimer = null;
+$('ask').addEventListener('input', function () {
+  clearTimeout(adviceTimer);
+  var text = $('ask').value.trim();
+  if (editOf || text.length < 12) { $('advice').hidden = true; return; }
+  adviceTimer = setTimeout(async function () {
+    try {
+      var r = await fetch('/api/builds/scope?asked_for=' + encodeURIComponent(text));
+      var d = await r.json();
+      if (!r.ok) return;
+      $('advice-text').textContent = 'My suggestion: ' + d.says;
+      $('advice').hidden = false;
+      ['labs_site', 'labs_portal', 'custom_app'].forEach(function (t) {
+        var span = $('t-' + t);
+        span.dataset.base = span.dataset.base || span.textContent;
+        span.textContent = span.dataset.base + (t === d.recommended ? ' This is what I suggest.' : '');
+      });
+    } catch (_) { /* the choice still works without a suggestion */ }
+  }, 900);
+});
+
+async function loadMessages() {
+  var biz = $('biz').value; if (!biz) return;
+  try {
+    var r = await fetch('/api/builds/messages?business_id=' + encodeURIComponent(biz));
+    var d = await r.json();
+    if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+    $('msg-summary').textContent = d.says;
+    $('messages').innerHTML = (d.messages || []).map(function (m) {
+      var when = new Date(m.created_at).toLocaleString(undefined, { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      return '<article class="build"><h3>From ' + esc(m.published_slug || 'your site') + ', ' + esc(when) + '</h3>'
+        + '<p class="state">' + (m.reply_status === 'open' ? 'Waiting for your reply. It is on Today.' : 'Answered.') + '</p>'
+        + Object.keys(m.fields || {}).map(function (k) {
+          return '<p style="margin:0 0 4px;"><strong>' + esc(k) + ':</strong> ' + esc(m.fields[k]) + '</p>';
+        }).join('') + '</article>';
+    }).join('');
+  } catch (e) {
+    $('msg-summary').textContent = 'I could not read your site messages, so I do not know whether any came in.';
+  }
+}
+
+document.addEventListener('click', async function (ev) {
+  var t = ev.target;
+  if (t.dataset.online) {
+    var box = $('inline-' + t.dataset.online);
+    box.innerHTML = '<label class="field" for="addr-' + esc(t.dataset.online) + '">Choose its address</label>'
+      + '<p class="muted" style="margin:0 0 6px;">It will be ' + esc(location.host) + '/s/ followed by what you type. Letters, numbers and dashes.</p>'
+      + '<input class="box" id="addr-' + esc(t.dataset.online) + '" type="text" autocapitalize="none" spellcheck="false"/>'
+      + '<div class="row" style="margin-top:10px;"><button class="btn" type="button" data-golive="' + esc(t.dataset.online)
+      + '">Put it online at this address</button><button class="btn plain" type="button" data-cancel="' + esc(t.dataset.online)
+      + '">Not yet</button></div>';
+    $('addr-' + t.dataset.online).focus();
+  } else if (t.dataset.golive) {
+    t.disabled = true;
+    try {
+      var d = await post('/api/builds/' + t.dataset.golive + '/publish', { address: $('addr-' + t.dataset.golive).value });
+      say(d.says); $('list').dataset.key = ''; loadBuilds();
+    } catch (e) { t.disabled = false; say('It is not online. ' + e.message); }
+  } else if (t.dataset.offline) {
+    t.disabled = true;
+    try {
+      var d2 = await post('/api/builds/' + t.dataset.offline + '/unpublish');
+      say(d2.says); $('list').dataset.key = ''; loadBuilds();
+    } catch (e) { t.disabled = false; say('Nothing changed. ' + e.message); }
+  }
+});
+
+$('biz').addEventListener('change', loadMessages);
+loadBusinesses().then(loadMessages);
 </script>
 </body></html>

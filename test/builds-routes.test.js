@@ -60,7 +60,9 @@ test('a client can tell "you cannot" from "not yet" from "we broke"', () => {
 test('one translation, used by every endpoint', () => {
   // So a caller never has to guess which endpoint reports how.
   assert.match(src, /function send\(res, r, okCode = 200\)/);
-  assert.strictEqual((src.match(/send\(res,/g) || []).length, 5); // definition + four routes
+  // Every response goes through send: the only direct res.status / res.json are inside it.
+  assert.strictEqual((src.match(/res\.status\(/g) || []).length, 2);
+  assert.strictEqual((src.match(/res\.json\(/g) || []).length, 0);
 });
 
 test('the routes re-implement no rule', () => {

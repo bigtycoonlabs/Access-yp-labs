@@ -73,17 +73,26 @@ const TOOLS = {
       + 'first. Read-only.',
   },
   start_build: {
-    // The mock-up question is enforced here, not only in the prompt. Without mock_first the
-    // executor starts nothing and hands back the question for Penny to ask.
+    // Both questions are enforced here, not only in the prompt. Without tier the executor starts
+    // nothing and returns a recommendation with reasons; without mock_first it returns that question.
     irreversible: false, requires_confirmation: false,
-    required: ['business_id', 'asked_for'], optional: ['kind', 'mock_first', 'edit_of'],
+    required: ['business_id', 'asked_for'], optional: ['kind', 'tier', 'mock_first', 'edit_of'],
     enums: { kind: ['page', 'site', 'portal', 'form', 'tool', 'automation', 'other'],
-      mock_first: ['yes', 'no'] },
-    summary: 'Build or change a page, site, form, portal or tool for a business. BEFORE calling '
-      + 'with mock_first, ask the person: do they want a mock-up first so they can check it is to '
-      + 'their liking, or should you go straight to building? Never assume either answer. '
-      + 'mock_first yes starts a free mock-up; no builds it directly. edit_of is the id of a '
-      + 'finished build to change. Building takes about a minute or two; say so.',
+      tier: ['labs_site', 'labs_portal', 'custom_app'], mock_first: ['yes', 'no'] },
+    summary: 'Build or change a site, page, form or app. Call first without tier: it returns a '
+      + 'recommendation and reasons. Explain the homes: labs_site is hosted here (landing page, '
+      + 'wedding site, quote form); labs_portal is the customer portal (not built yet); custom_app '
+      + 'is a web app with its own backend on their own accounts. Suggest the smallest that works, '
+      + 'then ask which they want. Then ask if they want a mock-up first. Never assume either. '
+      + 'edit_of changes a finished build and keeps its home. Takes a minute or two.',
+  },
+  publish_build: {
+    irreversible: false, requires_confirmation: true,
+    required: ['build_id', 'address'], optional: ['online'], enums: { online: ['yes', 'no'] },
+    summary: 'Put a finished Labs-hosted site online at accessyplabs.com/s/<address>, or take it '
+      + 'offline with online no. Only real builds hosted on Labs; custom apps go live on the '
+      + 'client\'s own accounts, which is not switched on yet.',
+    ask: 'Put this site online at the address shown, where anyone with the link can open it.',
   },
   list_builds: {
     irreversible: false, requires_confirmation: false, required: ['business_id'], enums: {},
@@ -266,6 +275,11 @@ async function whats_outstanding_with_customers(viewer, params = {}) {
 
 async function start_build(viewer, params = {}) {
   const r = await Bld.start(viewer, params);
+  if (r.ok && r.needs === 'tier_choice') {
+    return { status: 'needs_answer', recommended: r.recommended,
+      says: 'Nothing has started. Explain this to them in your own words and ask where it should '
+        + 'live: ' + r.says };
+  }
   if (r.ok && r.needs === 'mock_choice') {
     return { status: 'needs_answer', question: r.question,
       says: 'Nothing has started. Ask them this, word for word, and wait for the answer: '
@@ -281,6 +295,19 @@ async function start_build(viewer, params = {}) {
   return answered({ build_id: r.build.id, stage: r.build.stage, status: r.build.status }, r.says);
 }
 
+async function publish_build(viewer, params = {}) {
+  const r = params.online === 'no'
+    ? await Bld.unpublish(viewer, { build_id: params.build_id })
+    : await Bld.publish(viewer, { build_id: params.build_id, address: params.address,
+      origin: (process.env.CLIENT_URL || 'https://accessyplabs.com') });
+  if (!r.ok) {
+    if (r.kind === 'refused') return refused(r.says);
+    if (r.kind === 'unclear') return { status: 'needs_answer', says: r.says };
+    return unavailable('publish_failed', r.says);
+  }
+  return answered({ url: r.url || null }, r.says);
+}
+
 async function list_builds(viewer, params = {}) {
   const r = await Bld.listFor(viewer, params.business_id);
   if (!r.ok) {
@@ -290,6 +317,7 @@ async function list_builds(viewer, params = {}) {
   return answered({ builds: r.builds.map((b) => ({
     id: b.id, stage: b.stage, status: b.status, asked_for: b.asked_for,
     open_at: b.status === 'ready' ? b.preview_url : null,
+    home: b.tier, online_at: b.published_slug ? '/s/' + b.published_slug : null,
     why_not_ready: b.status === 'failed' ? b.says : null,
   })) }, r.says);
 }
@@ -306,6 +334,6 @@ async function list_files(viewer, params = {}) {
 }
 
 const EXECUTORS = { whats_due, whats_coming, list_businesses, record_obligation,
-  complete_obligation, whats_missing, whats_outstanding_with_customers, start_build, list_builds, list_files };
+  complete_obligation, whats_missing, whats_outstanding_with_customers, start_build, publish_build, list_builds, list_files };
 
 module.exports = { TOOLS, EXECUTORS, answered, empty, unavailable, refused };

@@ -20,6 +20,9 @@ const { asyncHandler, ApiError } = require('../lib/http');
 const { authenticate } = require('../middleware/auth');
 const B = require('../services/clay/builder');
 const Gen = require('../services/clay/buildGen');
+const Scope = require('../services/clay/scope');
+const { query } = require('../config/db');
+const Perm = require('../lib/permissions');
 
 const router = express.Router();
 
@@ -58,6 +61,8 @@ router.post('/', authenticate, [
   body('mock_first').optional({ values: 'null' }).isIn(['yes', 'no', true, false])
     .withMessage('Answer yes or no to the mock-up question.'),
   body('edit_of').optional({ values: 'falsy' }).isUUID(),
+  body('tier').optional({ values: 'falsy' }).isIn(Scope.TIERS)
+    .withMessage('Choose where it should live.'),
   body('kind').optional({ values: 'falsy' })
     .isIn(['page', 'site', 'portal', 'form', 'tool', 'automation', 'other'])
     .withMessage('That is not a kind of thing I build.'),
@@ -65,10 +70,56 @@ router.post('/', authenticate, [
   bad(req);
   const r = await B.start(req.user, {
     business_id: req.body.business_id, asked_for: req.body.asked_for, kind: req.body.kind,
-    mock_first: req.body.mock_first, edit_of: req.body.edit_of,
+    mock_first: req.body.mock_first, edit_of: req.body.edit_of, tier: req.body.tier,
   });
   if (r.ok && r.build) Gen.kick(r.build.id);
   send(res, r, r.build ? 201 : 200);
+}));
+
+// Penny's recommendation for where something should live, before anything is started. Read-only.
+router.get('/scope', authenticate, asyncHandler(async (req, res) => {
+  const c = Scope.classify(String(req.query.asked_for || ''));
+  send(res, { ok: true, recommended: c.recommended, signals: c.signals, says: c.says,
+    homes: Scope.TIERS.map((t) => ({ tier: t, what: Scope.WHAT[t], ready: Scope.AVAILABLE[t].ready,
+      note: Scope.AVAILABLE[t].says || Scope.AVAILABLE[t].partial || null })) });
+}));
+
+// Messages sent from this business's hosted sites, newest first.
+router.get('/messages', authenticate, asyncHandler(async (req, res) => {
+  const biz = String(req.query.business_id || '');
+  if (!biz) throw new ApiError(400, 'Which business?');
+  const gate = await Perm.can(req.user.id, biz, 'customers', 'view');
+  if (!gate.ok) {
+    return send(res, { ok: false, kind: 'refused',
+      says: Perm.refusalLine(gate, 'customers', gate.perms && gate.perms.business.name) });
+  }
+  try {
+    const r = await query(
+      `SELECT m.id, m.fields, m.created_at, b.published_slug, b.asked_for,
+              o.status AS reply_status
+         FROM site_messages m JOIN builds b ON b.id=m.build_id
+         LEFT JOIN obligations o ON o.id=m.obligation_id
+        WHERE m.business_id=$1 ORDER BY m.created_at DESC LIMIT 100`, [biz]);
+    const open = r.rows.filter((m) => m.reply_status === 'open').length;
+    send(res, { ok: true, messages: r.rows, says: !r.rows.length ? 'No messages from your sites yet.'
+      : r.rows.length + (r.rows.length === 1 ? ' message' : ' messages') + ' from your sites'
+        + (open ? ', ' + open + ' still waiting for a reply.' : ', all answered.') });
+  } catch (e) {
+    send(res, { ok: false, kind: 'unavailable', says: 'I could not read your site messages, so I do '
+      + 'not know whether any came in. ' + e.message });
+  }
+}));
+
+// Put a finished Labs site online, or take it offline.
+router.post('/:id/publish', authenticate, asyncHandler(async (req, res) => {
+  const host = req.get('host');
+  const proto = req.secure || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
+  send(res, await B.publish(req.user, { build_id: req.params.id, address: (req.body || {}).address,
+    origin: proto + '://' + host }));
+}));
+
+router.post('/:id/unpublish', authenticate, asyncHandler(async (req, res) => {
+  send(res, await B.unpublish(req.user, { build_id: req.params.id }));
 }));
 
 // Approve a finished mock. This is the only endpoint in the product that creates a charge, and it

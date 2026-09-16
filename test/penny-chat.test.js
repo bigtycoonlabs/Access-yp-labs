@@ -28,7 +28,7 @@ test('she carries only the workspace tools', () => {
   // decision, and this assertion is where that decision has to be made on purpose.
   assert.deepStrictEqual(WORKSPACE_TOOLS,
     ['whats_due', 'whats_coming', 'list_businesses', 'record_obligation', 'complete_obligation',
-      'whats_missing', 'whats_outstanding_with_customers', 'start_build', 'list_builds', 'list_files']);
+      'whats_missing', 'whats_outstanding_with_customers', 'start_build', 'publish_build', 'list_builds', 'list_files']);
   // Comment text wraps, so normalise the line breaks rather than guessing where they fall.
   const flat = persona.replace(/\s*\n\s*\/\/\s*/g, ' ');
   assert.match(flat, /A real 429 followed that mistake on Access Your Place/);

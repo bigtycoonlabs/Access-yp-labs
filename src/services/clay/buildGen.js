@@ -17,7 +17,7 @@
 // page served normally could read them. The preview route serves it inside a CSP sandbox with an
 // opaque origin. See routes/preview.js.
 
-const { query } = require('../../config/db');
+const { query, getClient } = require('../../config/db');
 const provider = require('./provider');
 const B = require('./builder');
 
@@ -39,8 +39,11 @@ It is used by people who are blind, so accessibility is the structure, not decor
 - Linear, speakable wording. Meaning never carried by colour alone.
 - Never use the em-dash character. Use commas or full stops.
 
-Forms cannot send anything anywhere in this preview. Handle submit in JavaScript with
-preventDefault, and say plainly in the status region that this is a preview and nothing was sent.
+Forms: handle submit in JavaScript with preventDefault. If window.labsSend exists, send the fields
+with: await window.labsSend(Object.fromEntries(new FormData(form))). It resolves to an object with
+ok true or false and a says sentence; put that sentence in the status region, and clear the form only
+when ok is true. If window.labsSend does not exist, this is a preview: say plainly in the status
+region that this is a preview and nothing was sent. Never send form data anywhere else.
 
 Never invent facts about the business: no made-up prices, addresses, phone numbers, reviews or
 awards. Where a real detail is needed and you do not have it, write a clearly marked placeholder in
@@ -166,6 +169,34 @@ async function write(build, attemptProblems) {
   return { ok: c.ok, html, problems: c.problems, model: r.fallback_model || provider.modelName() };
 }
 
+// A live site follows its edits: clear the old row first (the address is unique), then set the new
+// one, in one transaction. Walked 16 Sept 2026: a single statement using RETURNING handed over the
+// cleared value, so the old version lost its address and the new one never got it.
+async function moveAddress(fromId, toId) {
+  const client = await getClient();
+  try {
+    await client.query('BEGIN');
+    const prev = await client.query(
+      'SELECT published_slug FROM builds WHERE id=$1 AND published_slug IS NOT NULL FOR UPDATE', [fromId]);
+    if (!prev.rows.length) { await client.query('ROLLBACK'); return { moved: false }; }
+    const slug = prev.rows[0].published_slug;
+    await client.query(
+      'UPDATE builds SET published_slug=NULL, published_at=NULL, updated_at=now() WHERE id=$1', [fromId]);
+    await client.query(
+      `UPDATE builds SET published_slug=$2, published_at=now(), tier='labs_site', updated_at=now()
+        WHERE id=$1`, [toId, slug]);
+    await client.query('COMMIT');
+    return { moved: true, slug };
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    // The old version stays online rather than the site going dark.
+    console.error('moving a live address failed, the old version stays online:', e.message);
+    return { moved: false, error: e.message };
+  } finally {
+    client.release();
+  }
+}
+
 const running = new Set();
 
 // Build one. Claims it first so two processes, or a double click, never write the same build twice.
@@ -209,6 +240,10 @@ async function run(buildId) {
       [build.id, out.html, JSON.stringify({ passed: true, first_attempt_problems: first || [],
         bytes: out.html.length })]);
     await query('UPDATE builds SET model=$2 WHERE id=$1', [build.id, out.model || null]);
+    // The address moves BEFORE the build is announced ready, so whoever hears "ready" and opens the
+    // live site sees the new version. The public route needs only a stored page, not the status.
+    const from = build.edit_of || build.attempt_of;
+    if (build.stage === 'real' && from) await moveAddress(from, build.id);
     const url = SITE() + '/preview/' + build.preview_token;
     const done = await B.ready(build.id, { preview_url: url });
     return { ok: done.ok, url };
@@ -244,4 +279,4 @@ async function resume() {
   }
 }
 
-module.exports = { run, kick, resume, check, extractHtml, briefFor, SYSTEM };
+module.exports = { run, kick, resume, moveAddress, check, extractHtml, briefFor, SYSTEM };
