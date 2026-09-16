@@ -103,3 +103,9 @@ test('the overview is one short line per area, so the whole picture fits in one 
   const agent = fs.readFileSync('src/services/clay/agent.js', 'utf8');
   assert.match(agent, /this result was cut off at/);
 });
+
+test('sources are stored without the search tool\'s tracking tags', () => {
+  assert.strictEqual(C.cleanUrl('https://comptroller.texas.gov/taxes/sales/?utm_source=openai'), 'https://comptroller.texas.gov/taxes/sales/');
+  assert.strictEqual(C.cleanUrl('https://x.gov/a?id=4&utm_medium=y'), 'https://x.gov/a?id=4');
+  assert.strictEqual(C.cleanUrl('not a url'), 'not a url');
+});

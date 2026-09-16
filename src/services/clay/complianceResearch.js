@@ -62,6 +62,15 @@ function shortOf(answer) {
   return t.trim();
 }
 
+// Links are stored and read to people as the pages they are, without the search tool's tracking tags.
+function cleanUrl(url) {
+  try {
+    const u = new URL(url);
+    for (const k of [...u.searchParams.keys()]) if (/^utm_/i.test(k)) u.searchParams.delete(k);
+    return u.toString();
+  } catch (_) { return url; }
+}
+
 function isOfficial(url) {
   try {
     const h = new URL(url).hostname.toLowerCase();
@@ -132,7 +141,7 @@ async function researchOne(viewer, b, p, area, question, fresh) {
     return { ok: false, area, says: 'Web research is not available on this site right now, so I have not answered this. I will not answer compliance from memory.' };
   }
   const sources = (found.results || []).filter((s) => s && /^https?:\/\//.test(s.url))
-    .map((s) => ({ title: String(s.title || s.url).slice(0, 200), url: s.url, official: isOfficial(s.url) }));
+    .map((s) => ({ title: String(s.title || s.url).slice(0, 200), url: cleanUrl(s.url), official: isOfficial(s.url) }));
   const answer = String(found.answer || '').trim();
   if (!answer || !sources.length) {
     return { ok: false, area, says: 'I searched but could not find a source I can point you to'
@@ -301,4 +310,4 @@ async function history(viewer, business_id) {
   return { ok: true, research: r.rows };
 }
 
-module.exports = { shortOf, start, runJob, status, resume, AREAS, AREA_NAMES, INSTRUCTION, FRESH_DAYS, research, history, isOfficial, profileOf, profileKey, describe, missingFacts };
+module.exports = { cleanUrl, shortOf, start, runJob, status, resume, AREAS, AREA_NAMES, INSTRUCTION, FRESH_DAYS, research, history, isOfficial, profileOf, profileKey, describe, missingFacts };
