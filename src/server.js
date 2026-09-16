@@ -255,6 +255,17 @@ if (require.main === module) {
     setTimeout(sweep, 60 * 1000); // once, a minute after boot
     setInterval(sweep, DAY_MS);   // then daily
 
+    // DUE-DATE SWEEP. Obligations carried due dates from the day the spine was built and nothing
+    // acted on them, so a compliance ledger only warned somebody who remembered to open it — which
+    // is the opposite of the point. The person who loses an entity did not check and ignore it; they
+    // never looked, because nothing made them.
+    const { sweep: dueSweep } = require('./services/clay/dueSweep');
+    const runDue = () => dueSweep({ send: null })
+      .then((r) => console.log('due sweep:', JSON.stringify(r)))
+      .catch((e) => console.error('due sweep error:', e && e.message));
+    setTimeout(runDue, 90 * 1000);
+    setInterval(runDue, DAY_MS);
+
     // Stale-build sweep: fail builds orphaned in 'building' by a restart and email the person
     // the honest outcome, so no one is left waiting on a concept that will never arrive.
     const { sweepStaleBuilds } = require('./services/builds');
