@@ -138,6 +138,7 @@ app.use('/api/onboard',       require('./routes/onboard'));
 app.use('/api/public',        require('./routes/public-preview'));
 app.use('/api/team',          require('./routes/team'));
 app.use('/api/builds',        require('./routes/builds'));
+app.use('/preview',           require('./routes/preview'));
 app.use('/api/contributions', require('./routes/contributions'));
 app.use('/api/agreements',    require('./routes/agreements'));
 app.use('/api/notifications', require('./routes/notifications'));
@@ -260,6 +261,9 @@ if (require.main === module) {
     // acted on them, so a compliance ledger only warned somebody who remembered to open it — which
     // is the opposite of the point. The person who loses an entity did not check and ignore it; they
     // never looked, because nothing made them.
+    // Builds that were queued or mid-build when the process last stopped are picked up, not lost.
+    setTimeout(() => { require('./services/clay/buildGen').resume()
+      .then((n) => { if (n > 0) console.log('builds resumed: ' + n); }); }, 15000);
     const { sweep: dueSweep } = require('./services/clay/dueSweep');
     const { makeSender } = require('./services/clay/pennyMail');
     // No key means no send, and the sweep records nothing rather than marking reminders as given.

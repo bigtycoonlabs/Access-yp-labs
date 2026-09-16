@@ -66,11 +66,13 @@ test('nothing unfinished can be approved', () => {
   assert.match(src, /so there is nothing to approve/);
 });
 
-test('approval and the charge are the same moment', () => {
-  // There is no state where somebody has agreed to pay and does not know it. Walked: approving said
-  // "This is the one that is charged for, once" and returned chargeable true.
-  assert.match(src, /The approval and the charge are the same moment on\n\/\/ purpose/);
-  assert.match(src, /This is the one that is charged for, once/);
+test('approval records the yes, and promises no charge that does not exist yet', () => {
+  // Approval writes approved_at and chargeable in the same insert, so there is no state where
+  // somebody agreed and it was not recorded. No price or invoicing exists yet (16 Sept 2026), so the
+  // words must not announce a charge.
+  assert.match(src, /mock_of, approved_at, chargeable, edit_of\)/);
+  assert.match(src, /This is the version you keep/);
+  assert.doesNotMatch(src, /charged for, once/);
 });
 
 test('fixing our own mistake says it is not charged for', () => {
@@ -89,16 +91,18 @@ test('a failed read is not a business with no builds', () => {
   assert.match(src, /That is not the same as you having '/);
 });
 
-test('an empty list invites the free thing', () => {
+test('an empty list says the mock-up is offered, not assumed', () => {
   const s = B.summarise([]);
-  assert.match(s, /I will make you a working \n?version to look at, free|working version to look at, free/);
+  assert.match(s, /I will ask whether you want a free mock-up first/);
 });
 
 test('the summary counts what is waiting on the person', () => {
-  // Walked: "One version is ready for you to look at, 2 are still building."
+  // Walked 16 Sept 2026: a finished real build went unmentioned. Now every state is said.
   const s = B.summarise([
     { stage: 'mock', status: 'ready' }, { stage: 'real', status: 'queued' },
-    { stage: 'real', status: 'building' },
+    { stage: 'real', status: 'building' }, { stage: 'real', status: 'ready' },
+    { stage: 'mock', status: 'failed' },
   ]);
-  assert.match(s, /One version is ready for you to look at, 2 are still building\./);
+  assert.strictEqual(s, 'One mock-up is ready for you to look at, one build is finished and ready '
+    + 'to open, 2 are still building, one did not finish.');
 });

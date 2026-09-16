@@ -24,15 +24,15 @@ test('it is mounted', () => {
 });
 
 test('a crafted request cannot buy anything', () => {
-  // Walked: POST with stage "real" and chargeable true returned HTTP 201 and a FREE MOCK. The
-  // request body is not consulted for either field — the expensive path cannot be reached by
-  // accident or by hand.
+  // The body is never read for stage or chargeable. Since 16 Sept 2026 a real build can be started
+  // directly, but only by answering the mock-up question with no, which is validated to yes or no
+  // and recorded as mock_declined_at. Walked: stage "real" with chargeable true and no answer
+  // started nothing and returned the question.
   assert.ok(!/req\.body\.chargeable/.test(src));
   assert.ok(!/req\.body\.stage/.test(src));
-  assert.match(src, /Always a mock, always free/);
-  // Matched on a phrase, not across a line break. Fifth time today I have written an assertion that
-  // failed on where a comment happened to wrap rather than on anything the code does.
-  assert.match(src, /cannot be reached by accident or by a crafted request/);
+  assert.match(src, /isIn\(\['yes', 'no', true, false\]\)/);
+  assert.match(src, /mock_first: req\.body\.mock_first/);
+  assert.match(src, /cannot be set by a request/);
 });
 
 test('the one endpoint that creates a charge takes no price', () => {

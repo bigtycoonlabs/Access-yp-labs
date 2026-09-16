@@ -19,6 +19,7 @@ const { body, validationResult } = require('express-validator');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { authenticate } = require('../middleware/auth');
 const B = require('../services/clay/builder');
+const Gen = require('../services/clay/buildGen');
 
 const router = express.Router();
 
@@ -46,21 +47,36 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
   send(res, await B.listFor(req.user, req.query.business_id));
 }));
 
-// Ask for something. Always a mock, always free — there is no parameter that makes this cost money,
-// which is the point: the expensive path cannot be reached by accident or by a crafted request.
+// Ask for something. Nothing starts until the person has said whether they want a mock-up first:
+// without mock_first this answers 200 with the question and starts nothing. With 'yes' it starts a
+// free mock. With 'no' it starts the real build and records that they chose to skip the mock-up.
+// No amount, price or plan is read from the body, so what a build costs cannot be set by a request.
 router.post('/', authenticate, [
   body('business_id').isUUID().withMessage('Which business?'),
   body('asked_for').isString().trim().isLength({ min: 1 })
     .withMessage('Tell me what you want it to do.'),
+  body('mock_first').optional({ values: 'null' }).isIn(['yes', 'no', true, false])
+    .withMessage('Answer yes or no to the mock-up question.'),
+  body('edit_of').optional({ values: 'falsy' }).isUUID(),
+  body('kind').optional({ values: 'falsy' })
+    .isIn(['page', 'site', 'portal', 'form', 'tool', 'automation', 'other'])
+    .withMessage('That is not a kind of thing I build.'),
 ], asyncHandler(async (req, res) => {
   bad(req);
-  send(res, await B.requestMock(req.user, req.body), 201);
+  const r = await B.start(req.user, {
+    business_id: req.body.business_id, asked_for: req.body.asked_for, kind: req.body.kind,
+    mock_first: req.body.mock_first, edit_of: req.body.edit_of,
+  });
+  if (r.ok && r.build) Gen.kick(r.build.id);
+  send(res, r, r.build ? 201 : 200);
 }));
 
 // Approve a finished mock. This is the only endpoint in the product that creates a charge, and it
 // takes no amount, no price and no plan — what it costs is not something a request can influence.
 router.post('/:id/approve', authenticate, asyncHandler(async (req, res) => {
-  send(res, await B.approve(req.user, { build_id: req.params.id }), 201);
+  const r = await B.approve(req.user, { build_id: req.params.id });
+  if (r.ok && r.build) Gen.kick(r.build.id);
+  send(res, r, 201);
 }));
 
 // Tell us what we got wrong. Never chargeable — refused by the database, named by the service.
@@ -68,8 +84,9 @@ router.post('/:id/fix', authenticate, [
   body('whats_wrong').optional({ values: 'falsy' }).isString().trim(),
 ], asyncHandler(async (req, res) => {
   bad(req);
-  send(res, await B.fix(req.user, { build_id: req.params.id, whats_wrong: req.body.whats_wrong }),
-    201);
+  const r = await B.fix(req.user, { build_id: req.params.id, whats_wrong: req.body.whats_wrong });
+  if (r.ok && r.build) Gen.kick(r.build.id);
+  send(res, r, 201);
 }));
 
 module.exports = router;

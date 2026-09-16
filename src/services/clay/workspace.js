@@ -25,6 +25,7 @@ const P = require('../../lib/permissions');
 const R = require('../../lib/ranking');
 const D = require('./documents');
 const C = require('./customers');
+const Bld = require('./builder');
 
 // Result shapes. Borrowed from Arbo, where they exist because an unread balance once printed as
 // "$0.00" — indistinguishable from the money being gone.
@@ -69,6 +70,24 @@ const TOOLS = {
     irreversible: false, requires_confirmation: false, required: ['business_id'], enums: {},
     summary: 'What you owe customers and what customers owe you, by person, with anything late '
       + 'first. Read-only.',
+  },
+  start_build: {
+    // The mock-up question is enforced here, not only in the prompt. Without mock_first the
+    // executor starts nothing and hands back the question for Penny to ask.
+    irreversible: false, requires_confirmation: false,
+    required: ['business_id', 'asked_for'], optional: ['kind', 'mock_first', 'edit_of'],
+    enums: { kind: ['page', 'site', 'portal', 'form', 'tool', 'automation', 'other'],
+      mock_first: ['yes', 'no'] },
+    summary: 'Build or change a page, site, form, portal or tool for a business. BEFORE calling '
+      + 'with mock_first, ask the person: do they want a mock-up first so they can check it is to '
+      + 'their liking, or should you go straight to building? Never assume either answer. '
+      + 'mock_first yes starts a free mock-up; no builds it directly. edit_of is the id of a '
+      + 'finished build to change. Building takes about a minute or two; say so.',
+  },
+  list_builds: {
+    irreversible: false, requires_confirmation: false, required: ['business_id'], enums: {},
+    summary: 'What has been built for a business, what is still building, and the address to open '
+      + 'each finished one. Read-only.',
   },
   complete_obligation: {
     // Reversible in the sense that it can be reopened, but it moves a real thing off the list and a
@@ -239,7 +258,37 @@ async function whats_outstanding_with_customers(viewer, params = {}) {
   return answered({ customers: r.customers }, r.says);
 }
 
+async function start_build(viewer, params = {}) {
+  const r = await Bld.start(viewer, params);
+  if (r.ok && r.needs === 'mock_choice') {
+    return { status: 'needs_answer', question: r.question,
+      says: 'Nothing has started. Ask them this, word for word, and wait for the answer: '
+        + r.question };
+  }
+  if (!r.ok) {
+    if (r.kind === 'refused') return refused(r.says);
+    if (r.kind === 'unclear') return { status: 'needs_answer', says: r.says };
+    return unavailable('build_not_started', r.says);
+  }
+  // Generation runs in the background; required lazily so the tool list loads without a model.
+  require('./buildGen').kick(r.build.id);
+  return answered({ build_id: r.build.id, stage: r.build.stage, status: r.build.status }, r.says);
+}
+
+async function list_builds(viewer, params = {}) {
+  const r = await Bld.listFor(viewer, params.business_id);
+  if (!r.ok) {
+    return r.kind === 'refused' ? refused(r.says) : unavailable('builds_unreadable', r.says);
+  }
+  if (!r.builds.length) return empty(r.says);
+  return answered({ builds: r.builds.map((b) => ({
+    id: b.id, stage: b.stage, status: b.status, asked_for: b.asked_for,
+    open_at: b.status === 'ready' ? b.preview_url : null,
+    why_not_ready: b.status === 'failed' ? b.says : null,
+  })) }, r.says);
+}
+
 const EXECUTORS = { whats_due, whats_coming, list_businesses, record_obligation,
-  complete_obligation, whats_missing, whats_outstanding_with_customers };
+  complete_obligation, whats_missing, whats_outstanding_with_customers, start_build, list_builds };
 
 module.exports = { TOOLS, EXECUTORS, answered, empty, unavailable, refused };
