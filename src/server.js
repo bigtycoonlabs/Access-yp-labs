@@ -260,7 +260,11 @@ if (require.main === module) {
     // is the opposite of the point. The person who loses an entity did not check and ignore it; they
     // never looked, because nothing made them.
     const { sweep: dueSweep } = require('./services/clay/dueSweep');
-    const runDue = () => dueSweep({ send: null })
+    const { makeSender } = require('./services/clay/pennyMail');
+    // No key means no send, and the sweep records nothing rather than marking reminders as given.
+    const pennySend = process.env.RESEND_API_KEY ? makeSender() : null;
+    if (!pennySend) console.warn('due sweep: no RESEND_API_KEY, reminders will be in-app only');
+    const runDue = () => dueSweep({ send: pennySend })
       .then((r) => console.log('due sweep:', JSON.stringify(r)))
       .catch((e) => console.error('due sweep error:', e && e.message));
     setTimeout(runDue, 90 * 1000);
