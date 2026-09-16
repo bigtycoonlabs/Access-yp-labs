@@ -177,7 +177,13 @@ function explain(row) {
   }
 
   let s = parts.join(' ') + '.';
-  if (row.consequence) s += ' ' + row.consequence + '.';
+  // The consequence often already ends in a full stop, and appending another produced
+  // "...on the fourth Friday.." — which a screen reader reads as a stumble and a sighted reader
+  // reads as sloppiness. Add one only if it is missing.
+  if (row.consequence) {
+    const c = row.consequence.trim();
+    s += ' ' + c + (/[.!?]$/.test(c) ? '' : '.');
+  }
   return s;
 }
 
