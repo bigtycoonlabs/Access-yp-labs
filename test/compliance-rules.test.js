@@ -43,9 +43,11 @@ test('Ohio has no LLC annual report, and the engine says so', () => {
   const r = C.rulesFor({ entity_type: 'llc', formation_state: 'OH', operating_states: ['OH'] });
   assert.ok(!r.obligations.some((o) => /annual report/i.test(o.title)),
     'Ohio must never be given an annual report');
-  const note = r.notes.find((n) => /does not require an annual report/i.test(n.title));
+  const note = r.notes.find((n) => /does not require an LLC annual report/i.test(n.title));
   assert.ok(note, 'the absence should be stated, not left silent');
-  assert.match(note.says, /one of about four states/);
+  // Moved into the fifty-state table; the wording now names what Ohio DOES require instead.
+  assert.match(note.says, /statutory agent/);
+  assert.match(note.says, /600 municipalities/);
 });
 
 test('absence is an answer worth stating', () => {
@@ -61,13 +63,13 @@ test('Florida is exact, and the ranked number is the penalty not the fee', () =>
   // The $400 is what goes in cost_if_missed_cents, because the fee is owed either way — what missing
   // it costs is the penalty.
   const r = C.rulesFor({ entity_type: 'llc', formation_state: 'FL', operating_states: ['FL'] });
-  const ar = r.obligations.find((o) => /Florida annual report/.test(o.title));
+  const ar = r.obligations.find((o) => /FL annual report/.test(o.title));
   assert.ok(ar);
   assert.strictEqual(ar.cost_if_missed_cents, 40000);
   assert.strictEqual(ar.cost_basis, 'known');
   assert.match(ar.cost_note, /\$138\.75/);
-  assert.match(ar.consequence, /dissolves the company/);
-  assert.match(ar.source_ref, /https:\/\//);
+  assert.match(ar.consequence, /third Friday in September/);
+  assert.match(ar.source_ref, /checked \d{4}-\d{2}-\d{2}/);
 });
 
 test('a standing condition gets no invented deadline', () => {
@@ -87,16 +89,28 @@ test('contractor rules only apply when there are contractors', () => {
 test('what is NOT covered is said out loud', () => {
   // Silence reads as "nothing else applies". A person who thinks the list is complete is worse off
   // than one who knows it is a start.
-  const note = C.coverageNote({ formation_state: 'OH', operating_states: ['OH', 'TN'] });
-  assert.match(note, /not yet\s*\n?.*for TN|not yet for TN/);
-  assert.match(note, /treat\s*\n?.*this as a start|treat this as a start/);
-  assert.strictEqual(C.coverageNote({ formation_state: 'FL', operating_states: ['FL'] }), null);
+  // Every state is in the table now, so the note is no longer about missing states — it is about
+  // which figures are confirmed, which is the honest remaining gap.
+  // Georgia is unconfirmed, so the gap is named. OH and TN would NOT produce that clause — Ohio has
+  // no report at all and Tennessee is verified — and the first version of this test asserted it
+  // anyway. The note has to be true of the states actually asked about.
+  const gap = C.coverageNote({ formation_state: 'GA', operating_states: ['GA'] });
+  assert.match(gap, /deadline but not a confirmed fee/);
+  const solid = C.coverageNote({ formation_state: 'OH', operating_states: ['OH', 'TN'] });
+  assert.ok(!/not a confirmed fee/.test(solid), 'do not warn about states that are known');
+  // The local caveat is always true, so it is always said.
+  assert.match(solid, /city and county licences sit on top/);
 });
 
-test('coverage is small on purpose', () => {
-  // A rule engine that covers fifty states badly is worse than one that covers two honestly.
-  assert.deepStrictEqual(C.COVERED_STATES, ['FL', 'OH']);
-  assert.match(src, /COVERAGE IS SMALL ON PURPOSE/);
+test('coverage is now every state, with confidence attached', () => {
+  // The earlier version of this test asserted two states, which was true and honest at the time.
+  // Covering fifty badly would be worse than covering two well — so the table covers fifty and each
+  // entry says how well it is known, rather than all fifty pretending to equal certainty.
+  assert.strictEqual(C.COVERED_STATES.length, 51);
+  const S = require('../src/services/clay/states');
+  assert.ok(S.VERIFIED_STATES.length >= 10);
+  assert.ok(S.VERIFIED_STATES.length < S.ALL_STATES.length,
+    'if everything claims to be verified, the label means nothing');
 });
 
 test('the invented filing is gone from the codebase', () => {

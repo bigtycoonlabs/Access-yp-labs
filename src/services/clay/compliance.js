@@ -27,54 +27,17 @@
 // COVERAGE IS SMALL ON PURPOSE. Two states and the federal basics, verified. A rule engine that
 // covers fifty states badly is worse than one that covers two states honestly and says so.
 
+const states = require('./states');
+
 const VERIFIED = '2026-09-15';
 
 // Each rule: who imposes it, what it costs to miss, what happens beyond the money, and where that
 // was read. `applies` decides whether it is this business's problem.
 const RULES = [
-  // ---------------------------------------------------------------- Florida
-  {
-    id: 'fl-llc-annual-report',
-    scope: { states: ['FL'], entity_types: ['llc'] },
-    kind: 'filing',
-    title: 'Florida annual report',
-    counterparty: 'Florida Division of Corporations',
-    counterparty_kind: 'government',
-    // Due 1 May every year, filing opens 1 January. No extensions and no grace period.
-    due: { month: 5, day: 1 },
-    recurs_every: '1 year',
-    // The $400 is the LATE PENALTY, not the fee. That is the number that matters for ranking,
-    // because the fee is owed either way and the penalty is what missing it costs.
-    cost_if_missed_cents: 40000,
-    cost_basis: 'known',
-    cost_note: 'The filing itself is $138.75. The $400 is the late penalty on top, and it is '
-      + 'non-waivable — the state does not reduce it for any reason.',
-    consequence: 'A day late costs $400 on top of the $138.75 fee. Not filed by the third Friday '
-      + 'in September and the state dissolves the company on the fourth Friday, which ends the '
-      + 'liability protection the LLC exists for.',
-    source: 'Florida Division of Corporations, Sunbiz',
-    source_url: 'https://dos.fl.gov/sunbiz/manage-business/annual-report/',
-    verified_on: VERIFIED,
-  },
-
-  // ---------------------------------------------------------------- Ohio
-  {
-    // NOT AN OBLIGATION. A correction, raised once, because the wrong belief is expensive and
-    // extremely common — and because I held it myself while building this.
-    id: 'oh-no-annual-report',
-    scope: { states: ['OH'], entity_types: ['llc'] },
-    kind: 'note',
-    title: 'Ohio does not require an annual report',
-    counterparty: 'Ohio Secretary of State',
-    counterparty_kind: 'government',
-    consequence: 'Ohio is one of about four states with no LLC annual report at all. There is '
-      + 'nothing to file and nothing to pay each year. What you do have to keep is a statutory '
-      + 'agent on file, and municipal income tax in every city you work in — Ohio has over 600 '
-      + 'municipalities that levy their own.',
-    source: 'Ohio Secretary of State business FAQ',
-    source_url: 'https://www.ohiosos.gov/businesses/information-on-starting-and-maintaining-a-business/',
-    verified_on: VERIFIED,
-  },
+  // State annual reports are no longer hand-written here. They live in states.js, one entry per
+  // state, each declaring its own confidence — because fixing one state is worthless if the other
+  // forty-nine are guesses. Ohio's statutory agent stays below: it is a standing condition rather
+  // than an annual filing, which the state table does not model.
   {
     id: 'oh-statutory-agent',
     scope: { states: ['OH'], entity_types: ['llc', 's_corp', 'c_corp'] },
@@ -82,8 +45,6 @@ const RULES = [
     title: 'Keep a statutory agent on file in Ohio',
     counterparty: 'Ohio Secretary of State',
     counterparty_kind: 'government',
-    // No recurring date — it is a standing condition, not a deadline. Giving it a fake annual date
-    // would put a made-up deadline on the ranked list, which is the thing this file exists to stop.
     due: null,
     cost_if_missed_cents: 2500,
     cost_basis: 'known',
@@ -162,10 +123,46 @@ function nextDue(due, from = new Date()) {
 }
 
 // What this business owes, and what it notably does NOT.
+// Every state the business touches, not only where it was formed. An LLC formed in Delaware and
+// operating in California owes in both, and that is precisely the person who loses an entity.
+function stateObligations(business) {
+  const codes = [...new Set([business.formation_state, ...(business.operating_states || [])]
+    .filter(Boolean).map((x) => String(x).toUpperCase()))];
+  const out = { obligations: [], notes: [], unknown: [] };
+  for (const code of codes) {
+    const got = states.stateRule(code, business);
+    if (!got) { out.unknown.push(code); continue; }
+    // A state may return more than one thing — California's franchise tax is separate from its
+    // Statement of Information and is the one people actually miss.
+    for (const r of [].concat(got)) {
+    if (r.kind === 'note') { out.notes.push({ title: r.title, says: r.says, source_ref: r.source_ref }); continue; }
+    out.obligations.push({
+      rule_id: 'state-' + code.toLowerCase() + '-report',
+      kind: r.kind,
+      title: r.title,
+      counterparty: r.counterparty || (code + ' Secretary of State'),
+      counterparty_kind: 'government',
+      due_at: nextDue(r.due),
+      due_note: r.due_note,
+      recurs_every: r.recurs_every,
+      cost_if_missed_cents: r.cost_if_missed_cents,
+      cost_basis: r.cost_basis,
+      cost_note: r.cost_note,
+      consequence: r.consequence,
+      confidence: r.confidence,
+      source: 'rule_engine',
+      source_ref: r.source_ref,
+    });
+    }
+  }
+  return out;
+}
+
 function rulesFor(business, facts = {}) {
   const hit = RULES.filter((r) => applies(r, business, facts));
+  const st = stateObligations(business);
   return {
-    obligations: hit.filter((r) => r.kind !== 'note').map((r) => ({
+    obligations: st.obligations.concat(hit.filter((r) => r.kind !== 'note').map((r) => ({
       rule_id: r.id,
       kind: r.kind,
       title: r.title,
@@ -179,27 +176,41 @@ function rulesFor(business, facts = {}) {
       consequence: r.consequence,
       source: 'rule_engine',
       source_ref: r.source + ' — ' + r.source_url + ' (checked ' + r.verified_on + ')',
-    })),
-    notes: hit.filter((r) => r.kind === 'note').map((r) => ({
+    }))),
+    notes: st.notes.concat(hit.filter((r) => r.kind === 'note').map((r) => ({
       title: r.title, says: r.consequence,
       source_ref: r.source + ' — ' + r.source_url + ' (checked ' + r.verified_on + ')',
-    })),
+    }))),
+    unknown_states: st.unknown,
   };
 }
 
 // WHAT WE DO NOT COVER, said out loud rather than left as silence. A person who thinks the list is
 // complete is worse off than one who knows it is a start — silence reads as "nothing else applies".
-const COVERED_STATES = ['FL', 'OH'];
+const COVERED_STATES = states.ALL_STATES;
 
+// WHAT IS STILL NOT KNOWN, said plainly. Every state is now in the table, but only some are verified
+// down to the fee — and a person who believes the list is complete is worse off than one who knows
+// which parts are solid.
 function coverageNote(business) {
-  const states = [business.formation_state, ...(business.operating_states || [])]
-    .filter(Boolean).map((x) => String(x).toUpperCase());
-  const uncovered = [...new Set(states)].filter((s) => !COVERED_STATES.includes(s));
-  if (!uncovered.length) return null;
-  return 'I have checked state rules for ' + COVERED_STATES.join(' and ') + ' so far, and not yet '
-    + 'for ' + uncovered.join(', ') + '. Anything I have not checked is not on your list, so treat '
-    + 'this as a start rather than the whole picture. Local city and county rules are almost always '
-    + 'on top of the state ones.';
+  const codes = [...new Set([business.formation_state, ...(business.operating_states || [])]
+    .filter(Boolean).map((x) => String(x).toUpperCase()))];
+  const unverified = codes.filter((c) => states.STATES[c]
+    && states.STATES[c].confidence !== 'verified');
+  const missing = codes.filter((c) => !states.STATES[c]);
+  const parts = [];
+  if (missing.length) {
+    parts.push('I do not have rules for ' + missing.join(', ') + ' at all, so nothing from there is '
+      + 'on your list.');
+  }
+  if (unverified.length) {
+    parts.push('For ' + unverified.join(', ') + ' I have the deadline but not a confirmed fee — '
+      + 'several states changed theirs in 2025 and 2026, so check the exact figure before paying.');
+  }
+  parts.push('And state rules are never the whole picture: city and county licences sit on top of '
+    + 'them, and I do not have those yet.');
+  return parts.join(' ');
 }
 
-module.exports = { RULES, rulesFor, applies, nextDue, coverageNote, COVERED_STATES, VERIFIED };
+module.exports = { RULES, rulesFor, applies, nextDue, coverageNote, stateObligations,
+  COVERED_STATES, VERIFIED, states };
