@@ -133,6 +133,7 @@ app.use('/', require('./routes/marketPages'));
 app.use('/api/seats',         require('./routes/seats'));
 app.use('/api/businesses',    require('./routes/businesses'));
 app.use('/api/obligations',   require('./routes/obligations'));
+app.use('/api/penny',         require('./routes/penny'));
 app.use('/api/contributions', require('./routes/contributions'));
 app.use('/api/agreements',    require('./routes/agreements'));
 app.use('/api/notifications', require('./routes/notifications'));

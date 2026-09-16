@@ -254,15 +254,34 @@ const prettify = (name) => String(name || '').replace(/_/g, ' ');
 function describeTool(name) { return (TOOL_WORDS[name] && TOOL_WORDS[name][0]) || ('Working on ' + prettify(name)); }
 function describeToolDone(name) { return (TOOL_WORDS[name] && TOOL_WORDS[name][1]) || (prettify(name) + ' done'); }
 
-async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext = null, memoryContext = null, systemOverride = null, allowTools = null, viewer = null, onEvent = null }) {
+// WHOSE VOICE A DEGRADED TURN IS IN.
+//
+// This sentence was hardcoded to Clay and to the marketplace in seven places. Asked "what do I owe?"
+// in the workspace, a person was told "your idea is saved exactly as you wrote it" — right shape,
+// wrong product, wrong assistant, and reassurance about something they never mentioned, which reads
+// as not having been listened to.
+//
+// One function now, because seven copies is how the first fix changed nothing: the guard that fires
+// when there is no model key at all was a different copy from the one I edited.
+//
+// The honest part is unchanged. Nothing ran, nothing was invented, nothing they saved has moved.
+function unavailableLine(assistantName) {
+  const who = assistantName || 'Clay';
+  return who + ' could not run just now, so nothing happened and nothing was invented. This is a '
+    + 'problem on our side rather than anything you did, and nothing you have saved has changed. '
+    + 'Try again in a few minutes.';
+}
+
+async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext = null, memoryContext = null, systemOverride = null, allowTools = null, viewer = null, onEvent = null, assistantName = null }) {
   // A broken listener must never take down the work it is only watching.
   const emit = (type, data) => {
     if (typeof onEvent !== 'function') return;
     try { onEvent({ type, ...data }); } catch (e) { console.error('stream listener error:', e && e.message); }
   };
   if (!provider.available()) {
-    return { status: 'unavailable',
-      reply: 'Clay could not run just now, so nothing was built and nothing was invented. This is a problem on our side, not anything you did — your idea is saved exactly as you wrote it, and it will still be here. Try again in a few minutes.' };
+    // Same sentence, same voice rule as the failure below. This guard fires FIRST when there is no
+    // model key at all, which is why fixing only the other one changed nothing in the walk.
+    return { status: 'unavailable', reply: unavailableLine(assistantName) };
   }
   // Public surface hands the model ONLY the account-free tools; the authenticated surface gets all.
   const tools = Array.isArray(allowTools) ? toolSchemas().filter((t) => allowTools.includes(t.name)) : toolSchemas();
@@ -291,10 +310,17 @@ async function runChat({ messages, executors = {}, maxSteps = 6, conceptContext 
       note: step === 0 ? 'Reading what you said' : 'Working out what to do next' });
     const resp = await provider.chat({ system, messages: convo, tools });
     if (!resp.ok) {
+      // WHOSE VOICE THIS IS IN. The message was hardcoded to Clay and to the marketplace: asked
+      // "what do I owe?" in the workspace, a person was told "your idea is saved exactly as you
+      // wrote it". Right shape, wrong product and wrong assistant — and reassurance about something
+      // the person never mentioned reads as not having been listened to.
+      //
+      // The honest part stays exactly as it was: nothing ran, nothing was invented, nothing changed.
+      const who = assistantName || 'Clay';
       return { status: 'unavailable',
         reply: resp.reason === 'unavailable'
-          ? 'Clay could not run just now, so nothing was built and nothing was invented. This is a problem on our side, not anything you did — your idea is saved exactly as you wrote it, and it will still be here. Try again in a few minutes.'
-          : `Clay could not reach the generation service: ${resp.error}. Nothing was fabricated.` };
+          ? unavailableLine(assistantName)
+          : `${who} could not reach the generation service: ${resp.error}. Nothing was fabricated.` };
     }
     const toolCalls = resp.tool_calls || [];
     const text = (resp.text || '').trim();
