@@ -1,0 +1,260 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Files and photos, Access YP Labs</title>
+<meta name="robots" content="noindex, nofollow"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&family=Inter:wght@400;600;700&display=swap"/>
+<link rel="stylesheet" href="/css/penny.css"/>
+<style>
+.field{display:block;font-weight:600;margin:16px 0 6px;}
+.box{width:100%;min-height:44px;padding:11px 14px;font:inherit;border:1px solid var(--line);
+  border-radius:var(--radius);background:var(--panel);color:var(--ink);box-sizing:border-box;}
+textarea.box{min-height:90px;resize:vertical;}
+.drop{background:var(--accent-soft);border:1px solid #DDD3F8;border-radius:var(--radius);padding:18px;margin:18px 0;}
+.file{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin:0 0 14px;}
+.file h3{margin:0 0 4px;font-size:1.02rem;line-height:1.4;word-break:break-word;}
+.meta{color:var(--muted);margin:0 0 8px;font-size:.92rem;}
+.desc{margin:0 0 12px;}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+.row .btn{min-height:44px;display:inline-flex;align-items:center;}
+.thumb{max-width:100%;max-height:220px;border-radius:8px;margin:0 0 10px;display:block;}
+.inline{margin-top:12px;}
+.link{word-break:break-all;background:#F4F6FA;padding:8px 10px;border-radius:8px;font-size:.9rem;}
+</style>
+</head><body>
+
+<!-- FILES AND PHOTOS.
+     Each file is one article with its name as a heading, so a screen reader can move file to file.
+     A photo's description is read before its buttons, and says who wrote it. -->
+
+<a class="skip" href="#main">Skip to files</a>
+
+<header class="site">
+  <div class="bar">
+    <a class="brand" href="/today.html">Access YP Labs<span class="dot" aria-hidden="true">.</span></a>
+    <a class="btn quiet" href="/today.html">Today</a>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <h1>Files and photos</h1>
+
+  <label class="field" for="biz">Which business?</label>
+  <select id="biz" class="box"></select>
+
+  <section class="drop" aria-labelledby="add-h">
+    <h2 id="add-h" style="margin-top:0;">Add files</h2>
+    <p class="muted" style="margin:0 0 8px;">Photos, PDFs, Word and Excel files, and plain text.
+      Up to 10 MB each. I describe every photo so you can hear what is in it.</p>
+    <label class="field" for="pick">Choose files</label>
+    <input id="pick" type="file" multiple class="box"
+      accept="image/jpeg,image/png,image/gif,image/webp,image/heic,.heic,application/pdf,.docx,.xlsx,.pptx,.csv,.txt"/>
+    <label class="field" for="desc">Describe them yourself (optional)</label>
+    <textarea id="desc" class="box" aria-describedby="desc-hint"></textarea>
+    <p class="muted" id="desc-hint" style="margin:4px 0 0;">Leave this empty and I will describe
+      any photos for you.</p>
+    <div style="margin-top:14px;"><button class="btn" id="up" type="button">Upload</button></div>
+  </section>
+
+  <div id="status" role="status" aria-live="polite" class="muted"></div>
+
+  <section aria-labelledby="list-h" style="margin-top:24px;">
+    <h2 id="list-h">What is here</h2>
+    <p id="summary" class="muted"></p>
+    <div id="list"></div>
+  </section>
+</main>
+
+<script src="/js/api.js"></script>
+<script src="/js/desk-auth.js"></script>
+<script>
+var $ = function (id) { return document.getElementById(id); };
+var blobs = [];
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function say(t) { $('status').textContent = t; }
+function size(n) {
+  return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+}
+var KIND = { photo: 'Photo', document: 'Document', spreadsheet: 'Spreadsheet', text: 'Text', other: 'File' };
+
+async function json(r) { var d = {}; try { d = await r.json(); } catch (_) {} return d; }
+function out(r) {
+  if (r.status === 401) { location.href = '/login.html?next=/files.html'; throw new Error('signed out'); }
+}
+
+async function loadBusinesses() {
+  try {
+    var r = await fetch('/api/businesses'); out(r);
+    var d = await json(r);
+    if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+    var list = d.businesses || [];
+    if (!list.length) { say('Add a business first, then you can keep files for it.'); $('up').disabled = true; return; }
+    $('biz').innerHTML = list.map(function (b) {
+      return '<option value="' + esc(b.id) + '">' + esc(b.name) + '</option>';
+    }).join('');
+    loadFiles();
+  } catch (e) {
+    if (e.message !== 'signed out') say('I could not read your businesses just now. That is a fault on our side, not an empty list.');
+  }
+}
+
+function fileHtml(f) {
+  var when = new Date(f.created_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+  var h = '<article class="file" data-id="' + esc(f.id) + '"><h3>' + esc(f.name) + '</h3>'
+    + '<p class="meta">' + esc(KIND[f.kind] || 'File') + ', ' + size(f.bytes) + ', added ' + esc(when)
+    + (f.uploaded_by_name ? ' by ' + esc(f.uploaded_by_name) : '') + '.</p>';
+  if (f.kind === 'photo') {
+    h += '<img class="thumb" data-thumb="' + esc(f.id) + '" alt="' + esc(f.description || 'A photo with no description yet') + '"/>';
+    h += '<p class="desc">' + (f.description
+      ? (f.description_by === 'penny' ? 'Penny describes it: ' : 'Your description: ') + esc(f.description)
+      : 'No description yet.') + '</p>';
+  }
+  (f.shares || []).forEach(function (s) {
+    var ends = new Date(s.expires_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
+    h += '<p class="meta">Shared' + (s.shared_with ? ' with ' + esc(s.shared_with) : '') + ' until ' + esc(ends)
+      + ', opened ' + s.opens + (s.opens === 1 ? ' time' : ' times') + '. '
+      + '<button class="btn plain" type="button" data-revoke="' + esc(s.id) + '">Stop this link</button></p>';
+  });
+  h += '<div class="row">'
+    + '<button class="btn" type="button" data-open="' + esc(f.id) + '">Download</button>'
+    + '<button class="btn plain" type="button" data-share="' + esc(f.id) + '">Share a link</button>'
+    + (f.kind === 'photo' ? '<button class="btn plain" type="button" data-edesc="' + esc(f.id) + '">Change the description</button>' : '')
+    + '<button class="btn plain" type="button" data-del="' + esc(f.id) + '">Delete</button>'
+    + '</div><div class="inline" id="in-' + esc(f.id) + '"></div></article>';
+  return h;
+}
+
+async function authedBlob(id) {
+  var r = await fetch('/api/files/' + id + '/download'); out(r);
+  if (!r.ok) { var d = await json(r); throw new Error(d.error || ('HTTP ' + r.status)); }
+  return r.blob();
+}
+
+async function loadFiles() {
+  var biz = $('biz').value; if (!biz) return;
+  try {
+    var r = await fetch('/api/files?business_id=' + encodeURIComponent(biz)); out(r);
+    var d = await json(r);
+    if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+    blobs.forEach(function (u) { URL.revokeObjectURL(u); }); blobs = [];
+    $('summary').textContent = d.says || '';
+    $('list').innerHTML = (d.files || []).map(fileHtml).join('');
+    document.querySelectorAll('img[data-thumb]').forEach(async function (img) {
+      try { var u = URL.createObjectURL(await authedBlob(img.dataset.thumb)); blobs.push(u); img.src = u; }
+      catch (_) { img.remove(); }
+    });
+  } catch (e) {
+    if (e.message !== 'signed out') $('summary').textContent = 'I could not read your files, so I do not know what is here. That is not the same as there being nothing.';
+  }
+}
+
+$('up').addEventListener('click', async function () {
+  var files = Array.prototype.slice.call($('pick').files || []);
+  if (!files.length) { say('Choose at least one file first.'); $('pick').focus(); return; }
+  var btn = this; btn.disabled = true;
+  var said = [];
+  for (var i = 0; i < files.length; i++) {
+    var f = files[i];
+    btn.textContent = 'Uploading ' + (i + 1) + ' of ' + files.length + '\u2026';
+    say('Uploading ' + f.name + '.');
+    try {
+      var headers = { 'Content-Type': 'application/octet-stream', 'X-File-Name': encodeURIComponent(f.name) };
+      if ($('desc').value.trim()) headers['X-File-Description'] = encodeURIComponent($('desc').value.trim());
+      var r = await fetch('/api/files?business_id=' + encodeURIComponent($('biz').value),
+        { method: 'POST', headers: headers, body: f }); out(r);
+      var d = await json(r);
+      said.push(r.ok ? d.says : (d.error || ('Could not save ' + f.name + '.')));
+    } catch (e) {
+      if (e.message === 'signed out') return;
+      said.push('Could not save ' + f.name + '. ' + e.message);
+    }
+  }
+  say(said.join(' '));
+  $('pick').value = ''; $('desc').value = '';
+  btn.disabled = false; btn.textContent = 'Upload';
+  loadFiles();
+});
+
+$('biz').addEventListener('change', loadFiles);
+
+async function send(url, method, body) {
+  var r = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined }); out(r);
+  var d = await json(r);
+  if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+  return d;
+}
+
+document.addEventListener('click', async function (ev) {
+  var t = ev.target; var d = t.dataset;
+  try {
+    if (d.open) {
+      var art = t.closest('.file'); var name = art.querySelector('h3').textContent;
+      var u = URL.createObjectURL(await authedBlob(d.open)); blobs.push(u);
+      var a = document.createElement('a'); a.href = u; a.download = name; a.rel = 'noopener';
+      document.body.appendChild(a); a.click(); a.remove();
+      say('Opening ' + name + '.');
+    } else if (d.share) {
+      $('in-' + d.share).innerHTML =
+        '<label class="field" for="sw-' + esc(d.share) + '">Who is it for? (optional)</label>'
+        + '<input class="box" id="sw-' + esc(d.share) + '" type="text"/>'
+        + '<label class="field" for="sd-' + esc(d.share) + '">How long should the link work?</label>'
+        + '<select class="box" id="sd-' + esc(d.share) + '"><option value="1">One day</option>'
+        + '<option value="7" selected>One week</option><option value="30">30 days</option></select>'
+        + '<div class="row" style="margin-top:10px;"><button class="btn" type="button" data-mkshare="' + esc(d.share)
+        + '">Make the link</button><button class="btn plain" type="button" data-close="' + esc(d.share)
+        + '">Never mind</button></div>';
+      $('sw-' + d.share).focus();
+    } else if (d.mkshare) {
+      var s = await send('/api/files/' + d.mkshare + '/share', 'POST',
+        { days: $('sd-' + d.mkshare).value, shared_with: $('sw-' + d.mkshare).value.trim() || undefined });
+      $('in-' + d.mkshare).innerHTML = '<p>' + esc(s.says) + '</p><p class="link" id="lk-' + esc(d.mkshare) + '">'
+        + esc(s.share.url) + '</p><div class="row"><button class="btn" type="button" data-copy="'
+        + esc(s.share.url) + '">Copy the link</button></div>';
+      say(s.says + ' The link is shown below the file, with a copy button.');
+    } else if (d.copy) {
+      try { await navigator.clipboard.writeText(d.copy); say('Link copied.'); }
+      catch (_) { say('I could not copy it. The link is written out just above the button.'); }
+    } else if (d.revoke) {
+      var rv = await send('/api/files/shares/' + d.revoke, 'DELETE'); say(rv.says); loadFiles();
+    } else if (d.edesc) {
+      var cur = t.closest('.file').querySelector('.desc').textContent.replace(/^(Penny describes it|Your description): /, '');
+      $('in-' + d.edesc).innerHTML = '<label class="field" for="ed-' + esc(d.edesc) + '">Description</label>'
+        + '<textarea class="box" id="ed-' + esc(d.edesc) + '">' + esc(cur === 'No description yet.' ? '' : cur) + '</textarea>'
+        + '<div class="row" style="margin-top:10px;"><button class="btn" type="button" data-savedesc="' + esc(d.edesc)
+        + '">Save it</button><button class="btn plain" type="button" data-again="' + esc(d.edesc)
+        + '">Ask Penny to describe it again</button><button class="btn plain" type="button" data-close="'
+        + esc(d.edesc) + '">Never mind</button></div>';
+      $('ed-' + d.edesc).focus();
+    } else if (d.savedesc) {
+      var sv = await send('/api/files/' + d.savedesc, 'PATCH', { description: $('ed-' + d.savedesc).value });
+      say('Description saved.'); loadFiles();
+    } else if (d.again) {
+      t.disabled = true; say('Looking at the photo again.');
+      var ag = await send('/api/files/' + d.again + '/describe', 'POST'); say(ag.says); loadFiles();
+    } else if (d.del) {
+      $('in-' + d.del).innerHTML = '<p style="font-weight:600;">Delete this file? Any links to it will stop working. This cannot be undone.</p>'
+        + '<div class="row"><button class="btn" type="button" data-delyes="' + esc(d.del)
+        + '">Yes, delete it</button><button class="btn plain" type="button" data-close="' + esc(d.del)
+        + '">Keep it</button></div>';
+      $('in-' + d.del).querySelector('button').focus();
+    } else if (d.delyes) {
+      var dl = await send('/api/files/' + d.delyes, 'DELETE'); say(dl.says); loadFiles();
+    } else if (d.close) {
+      $('in-' + d.close).innerHTML = ''; say('Left as it is.');
+    }
+  } catch (e) {
+    if (e.message !== 'signed out') say('That did not work, so nothing changed. ' + e.message);
+  }
+});
+
+loadBusinesses();
+</script>
+</body></html>

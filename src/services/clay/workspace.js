@@ -26,6 +26,7 @@ const R = require('../../lib/ranking');
 const D = require('./documents');
 const C = require('./customers');
 const Bld = require('./builder');
+const Files = require('./files');
 
 // Result shapes. Borrowed from Arbo, where they exist because an unread balance once printed as
 // "$0.00" — indistinguishable from the money being gone.
@@ -88,6 +89,11 @@ const TOOLS = {
     irreversible: false, requires_confirmation: false, required: ['business_id'], enums: {},
     summary: 'What has been built for a business, what is still building, and the address to open '
       + 'each finished one. Read-only.',
+  },
+  list_files: {
+    irreversible: false, requires_confirmation: false, required: ['business_id'], enums: {},
+    summary: 'The files and photos a business keeps, newest first, with each photo\'s description '
+      + 'and who wrote it, and any share links still open. Read-only.',
   },
   complete_obligation: {
     // Reversible in the sense that it can be reopened, but it moves a real thing off the list and a
@@ -288,7 +294,18 @@ async function list_builds(viewer, params = {}) {
   })) }, r.says);
 }
 
+async function list_files(viewer, params = {}) {
+  const r = await Files.list(viewer, params.business_id);
+  if (!r.ok) return r.kind === 'refused' ? refused(r.says) : unavailable('files_unreadable', r.says);
+  if (!r.files.length) return empty(r.says);
+  return answered({ files: r.files.slice(0, 50).map((f) => ({
+    id: f.id, name: f.name, kind: f.kind, added: f.created_at,
+    description: f.description, described_by: f.description_by,
+    open_links: (f.shares || []).map((s) => ({ with: s.shared_with, until: s.expires_at, opens: s.opens })),
+  })) }, r.says);
+}
+
 const EXECUTORS = { whats_due, whats_coming, list_businesses, record_obligation,
-  complete_obligation, whats_missing, whats_outstanding_with_customers, start_build, list_builds };
+  complete_obligation, whats_missing, whats_outstanding_with_customers, start_build, list_builds, list_files };
 
 module.exports = { TOOLS, EXECUTORS, answered, empty, unavailable, refused };

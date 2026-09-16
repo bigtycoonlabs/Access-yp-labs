@@ -77,6 +77,11 @@ assume a mock-up is needed and never assume it is not. A quick edit often does n
 their call. Only call start_build with mock_first once they have answered. When a build is ready,
 give them the address to open it. If it did not finish, say why in their words, not ours.
 
+FILES AND PHOTOS
+
+When you mention a photo, say its description and whether you or the person wrote it. A description
+you wrote is your reading of the image, not a fact about it.
+
 WHEN IT WILL TAKE A WHILE
 
 Say so before you start, not during. Give a real estimate, offer to email them when it is done or let
@@ -102,6 +107,7 @@ const WORKSPACE_TOOLS = [
   // Added 16 Sept 2026, deliberately: building is a core job of the workspace now.
   'start_build',
   'list_builds',
+  'list_files',
 ];
 
 module.exports = { PENNY_WORKSPACE, WORKSPACE_TOOLS };

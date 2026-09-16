@@ -40,7 +40,8 @@ app.use(helmet({
       // from fonts.gstatic.com. Without BOTH, the page still renders — in the system font — and
       // looks completely fine, which is how a brand typeface silently fails review.
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-      imgSrc: ["'self'", 'data:', 'https:'],          // generated + stored images arrive over https
+      // blob: so the Files screen can show a photo it fetched with the session. Images only.
+      imgSrc: ["'self'", 'data:', 'blob:', 'https:'],          // generated + stored images arrive over https
       connectSrc: ["'self'", 'https:'],
       fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
       objectSrc: ["'none'"],
@@ -139,6 +140,8 @@ app.use('/api/public',        require('./routes/public-preview'));
 app.use('/api/team',          require('./routes/team'));
 app.use('/api/builds',        require('./routes/builds'));
 app.use('/preview',           require('./routes/preview'));
+app.use('/api/files',         require('./routes/files'));
+app.use('/f',                 require('./routes/files').opener);
 app.use('/api/contributions', require('./routes/contributions'));
 app.use('/api/agreements',    require('./routes/agreements'));
 app.use('/api/notifications', require('./routes/notifications'));
