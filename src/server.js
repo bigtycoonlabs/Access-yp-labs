@@ -36,10 +36,13 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      // Google Fonts serves the stylesheet from fonts.googleapis.com and the font files themselves
+      // from fonts.gstatic.com. Without BOTH, the page still renders — in the system font — and
+      // looks completely fine, which is how a brand typeface silently fails review.
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       imgSrc: ["'self'", 'data:', 'https:'],          // generated + stored images arrive over https
       connectSrc: ["'self'", 'https:'],
-      fontSrc: ["'self'", 'data:'],
+      fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"],                      // nobody may frame this site
       formAction: ["'self'"],

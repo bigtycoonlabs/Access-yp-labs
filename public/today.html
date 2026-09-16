@@ -1,0 +1,191 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<!-- Its own title. Nine pages once shared the site title on Flow, so moving between them announced
+     the same sentence every time and a screen-reader user could not tell they had gone anywhere. -->
+<title>Today — Penny Desk</title>
+<meta name="robots" content="noindex, nofollow"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&family=Inter:wght@400;600;700&display=swap"/>
+<link rel="stylesheet" href="/css/penny.css"/>
+</head><body>
+
+<!-- ONE SCREEN.
+     A dashboard of cards is the visual signature of software nobody reads, and it is also the thing
+     a screen reader cannot navigate: eleven regions, none of them the point. So: one column, Today
+     taking most of it, everything else below or behind a question.
+
+     And sentences rather than metrics. "Your Ohio report is due in 11 days and costs $25 today"
+     beats a tile reading 11 with a label under it — for somebody glancing at a phone as much as for
+     somebody listening to it. -->
+
+<a class="skip" href="#main">Skip to today</a>
+
+<header class="site">
+  <div class="bar">
+    <a class="brand" href="/today.html">Penny Desk<span class="dot" aria-hidden="true">.</span></a>
+    <a class="btn quiet" href="/penny.html">Ask Penny</a>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <h1 class="today">Today</h1>
+
+  <!-- The summary is generated once, server-side, and read here. A client that assembles it from
+       four fields will assemble it differently in three places, and one of them will round. -->
+  <p class="summary" id="summary">Reading what you owe…</p>
+
+  <!-- Live region so an update is spoken rather than only appearing. On Flow a go-live checklist
+       rendered perfectly and was announced to nobody, because the live region only ever carried the
+       message text. "It is in the payload" is not "the person received it". -->
+  <div id="status" role="status" aria-live="polite" class="muted"></div>
+
+  <section id="items" aria-labelledby="items-h">
+    <h2 id="items-h" class="visually-hidden" style="position:absolute;left:-9999px;">What needs you</h2>
+  </section>
+
+  <section class="ask" aria-labelledby="ask-h">
+    <h2 id="ask-h">Ask Penny</h2>
+    <p class="muted" style="margin-bottom:12px;">Anything about the business. She answers from your
+      own records and says where each answer came from.</p>
+    <label for="q">What do you want to know?</label>
+    <!-- No autocapitalize="none" here, deliberately. That rule is for credential fields, where iOS
+         silently inserts a capital and the person is told their password is wrong. This is a
+         question in English: the first letter SHOULD be capitalised, and suppressing it would make
+         the box behave worse than every other text field on the phone. -->
+    <input id="q" type="text" autocomplete="off"
+           placeholder="When is my annual report due?"/>
+    <div style="margin-top:12px;"><a class="btn" href="/penny.html" id="askgo">Open Penny</a></div>
+  </section>
+
+  <section id="coming-wrap" aria-labelledby="coming-h" hidden>
+    <h2 id="coming-h">Coming up</h2>
+    <ul class="coming" id="coming" style="list-style:none;padding:0;"></ul>
+  </section>
+
+  <!-- Quiet links. Everything else in the product lives here rather than in a navigation bar,
+       because a nav bar full of sections is how a small tool starts feeling like an ERP. Nothing
+       appears here until the business actually has one. -->
+  <nav class="quiet-links" aria-label="Everything else">
+    <a href="/businesses.html">Your businesses</a>
+    <a href="/documents.html" data-when="documents">Documents</a>
+    <a href="/people.html" data-when="team">People</a>
+    <a href="/customers.html" data-when="customers">Customers</a>
+  </nav>
+</main>
+
+<script>
+/* No badge counts anywhere on this page, deliberately. A red 7 on a section nobody needs today is
+   an anxiety generator rather than information. What needs you is in Today; the rest waits. */
+
+var $ = function (id) { return document.getElementById(id); };
+var shownToday = [];
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function itemHtml(it) {
+  return '<article class="item' + (it.overdue ? ' is-overdue' : '') + '">'
+    + (it.overdue ? '<p class="flag">Overdue</p>' : '')
+    + '<h3>' + esc(it.title) + '</h3>'
+    + '<p class="says">' + esc(it.says) + '</p>'
+    + '<p class="who">' + esc(it.business_name || it.business || '')
+    + (it.counterparty ? ' · owed to ' + esc(it.counterparty) : '') + '</p>'
+    + '<div class="actions">'
+    + '<button class="btn quiet" data-done="' + esc(it.id) + '">Mark it done</button>'
+    + '<a class="btn plain" href="/penny.html?about=' + encodeURIComponent(it.id) + '">Ask Penny about this</a>'
+    + '</div></article>';
+}
+
+function dayLabel(iso) {
+  var d = new Date(iso);
+  return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+async function load() {
+  try {
+    var r = await fetch('/api/obligations/today', { credentials: 'include' });
+    if (r.status === 401) { location.href = '/login.html?next=/today.html'; return; }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var d = await r.json();
+
+    $('summary').textContent = d.summary;
+    $('items').insertAdjacentHTML('beforeend', d.items.map(itemHtml).join(''));
+    /* Remember what Today already showed. See the filter below. */
+    shownToday = d.items.map(function (i) { return i.id; });
+
+    /* A failed read is never an empty list. If this throws, the catch below says so rather than
+       leaving the page looking like a clear day. */
+    if (!d.items.length) {
+      $('items').insertAdjacentHTML('beforeend',
+        '<p class="muted">Nothing needs you today. That is the whole list, not a loading state.</p>');
+    }
+  } catch (e) {
+    $('summary').textContent = 'I could not read what you owe.';
+    $('status').textContent = 'Something went wrong on our side, so this is not a clear day — it is '
+      + 'an unknown one. Try again in a moment.';
+    return;
+  }
+
+  try {
+    var c = await fetch('/api/obligations/coming?days=30', { credentials: 'include' });
+    if (c.ok) {
+      var cd = await c.json();
+      /* COMING UP MEANS WHAT IS NOT ALREADY IN TODAY.
+         Seen on the phone render: the Cleveland licence and the Ohio annual report appeared in
+         Today AND again under Coming up, because Today's horizon is 45 days and this list is 30.
+         The same obligation twice on one screen reads as two obligations, and it makes the page
+         longer for nothing. Today is what needs you; this is what is behind it. */
+      var rest = cd.items.filter(function (i) { return shownToday.indexOf(i.id) === -1; });
+      if (rest.length) {
+        $('coming').innerHTML = rest.map(function (i) {
+          return '<li><span class="when">' + esc(dayLabel(i.due_at)) + '</span> — ' + esc(i.title)
+            + ' <span class="muted">' + esc(i.business_name || '') + '</span></li>';
+        }).join('');
+        $('coming-wrap').hidden = false;
+      }
+    }
+  } catch (e) { /* Coming up is secondary; Today already loaded and stands on its own. */ }
+}
+
+document.addEventListener('click', async function (ev) {
+  var b = ev.target.closest('[data-done]');
+  if (!b) return;
+  /* Confirmed before it happens, because it moves a real thing off the list and a recurring one
+     forward a year. The sentence is the one written for a person, not the one written for a model. */
+  if (!confirm('Mark this off as done? If it is something that repeats, the next one will be set up '
+    + 'with its new date.')) return;
+  b.disabled = true;
+  b.textContent = 'Marking…';
+  try {
+    var r = await fetch('/api/obligations/' + b.dataset.done + '/done',
+      { method: 'POST', credentials: 'include' });
+    var d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
+    /* Spoken, not just shown. */
+    $('status').textContent = d.note || 'Done.';
+    b.closest('.item').remove();
+  } catch (e) {
+    b.disabled = false;
+    b.textContent = 'Mark it done';
+    $('status').textContent = 'I could not mark that done, so it is still open. ' + e.message;
+  }
+});
+
+$('q').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' && this.value.trim()) {
+    location.href = '/penny.html?q=' + encodeURIComponent(this.value.trim());
+  }
+});
+$('askgo').addEventListener('click', function (e) {
+  var v = $('q').value.trim();
+  if (v) { e.preventDefault(); location.href = '/penny.html?q=' + encodeURIComponent(v); }
+});
+
+load();
+</script>
+</body></html>

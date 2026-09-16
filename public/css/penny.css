@@ -1,0 +1,132 @@
+/* PENNY DESK — the shared shell.
+ *
+ * One shell across three products, one accent each. Read from the live sites rather than invented:
+ *
+ *   Access Your Place   bg #F8FAFC   ink #020817   accent #D4A574  warm tan
+ *   YP Flow             bg #F5F8FE   ink #101A2E   accent #2C49B8  blue
+ *   Penny Desk          bg #F8FAFC   ink #101A2E   accent #5B3FC9  violet
+ *
+ * The two existing brands already shared a near-navy ink, a very pale cool background, generous
+ * space and linear text-first pages. What differed was the accent. So the accent becomes the thing
+ * that says WHO IS SPEAKING — and when Arbo appears inside Penny Desk, his room is blue, carried
+ * from the product he belongs to. The brand system answers "who am I talking to" with no interface
+ * furniture at all.
+ *
+ * Kiln (the old Labs stylesheet) was a dark theme and is left alone, because the pages still using
+ * it have not moved yet. This is additive.
+ */
+
+:root{
+  --bg:#F8FAFC;
+  --panel:#FFFFFF;
+  --ink:#101A2E;
+  --muted:#5A6478;
+  --line:#E2E8F0;
+  --accent:#5B3FC9;         /* Penny */
+  --accent-soft:#EFEAFD;
+  --accent-ink:#FFFFFF;
+  --flow:#2C49B8;           /* Arbo, when he is in the room */
+  --ayp:#D4A574;            /* Access Your Place */
+  --overdue:#B42318;
+  --focus:#5B3FC9;
+  --radius:12px;
+  --measure:38rem;          /* one column, and a readable line length */
+}
+
+*{box-sizing:border-box;}
+html{-webkit-text-size-adjust:100%;}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font-size:17px; line-height:1.55;
+}
+h1,h2,h3{
+  font-family:"Hanken Grotesk",Inter,-apple-system,"Segoe UI",Roboto,sans-serif;
+  line-height:1.2; margin:0 0 .4em;
+}
+h1{font-size:1.8rem;font-weight:700;}
+h2{font-size:1.25rem;font-weight:700;}
+h3{font-size:1.05rem;font-weight:600;}
+p{margin:0 0 1em;}
+a{color:var(--accent);}
+
+/* Focus is never removed, only restyled. A keyboard user who cannot see where they are is lost. */
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:4px;}
+
+.skip{
+  position:absolute;left:-9999px;top:0;background:var(--accent);color:#fff;
+  padding:12px 16px;z-index:100;text-decoration:none;
+}
+.skip:focus{left:0;}
+
+.wrap{max-width:var(--measure);margin:0 auto;padding:0 20px;}
+
+header.site{background:var(--panel);border-bottom:1px solid var(--line);}
+header.site .bar{
+  max-width:var(--measure);margin:0 auto;padding:14px 20px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+}
+.brand{font-family:"Hanken Grotesk",Inter,sans-serif;font-weight:700;font-size:1.05rem;
+  color:var(--ink);text-decoration:none;
+  /* 44px like every other target. Measured at 26px on a phone: it is a link, and a link somebody
+     has to aim at is a link somebody with a tremor or a moving van cannot hit. */
+  min-height:44px;display:inline-flex;align-items:center;}
+.brand .dot{color:var(--accent);}
+
+/* Targets are 44px, because this is used one-handed in a van as often as at a desk. */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:44px;padding:11px 18px;border-radius:var(--radius);
+  border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);
+  font:inherit;font-weight:600;text-decoration:none;cursor:pointer;
+}
+.btn.quiet{background:transparent;color:var(--accent);}
+.btn.plain{background:transparent;color:var(--muted);border-color:var(--line);}
+.btn:hover{filter:brightness(1.06);}
+
+/* TODAY. The reason anybody opens this, so it gets the space that says so. */
+.today{margin:28px 0 8px;}
+.summary{
+  font-family:"Hanken Grotesk",Inter,sans-serif;
+  font-size:1.35rem;line-height:1.35;font-weight:600;margin:0 0 22px;
+}
+
+/* One item. Not a card in a grid — a paragraph you can read aloud, with the action under it. */
+.item{
+  background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--line);
+  border-radius:var(--radius);padding:16px 18px;margin:0 0 14px;
+}
+.item.is-overdue{border-left-color:var(--overdue);}
+.item h3{margin:0 0 4px;}
+.item .says{margin:0;color:var(--muted);}
+.item .who{font-size:.86rem;color:var(--muted);margin:8px 0 0;}
+.item .actions{margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;}
+
+/* Meaning is never carried by colour alone — overdue says the word as well as changing the rule. */
+.flag{
+  display:inline-block;font-size:.78rem;font-weight:700;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--overdue);margin:0 0 6px;
+}
+
+.quiet-links{
+  margin:34px 0 60px;padding-top:20px;border-top:1px solid var(--line);
+  display:flex;flex-wrap:wrap;gap:8px 22px;
+}
+.quiet-links a{color:var(--muted);text-decoration:none;font-size:.95rem;min-height:44px;
+  display:inline-flex;align-items:center;}
+.quiet-links a:hover{color:var(--accent);text-decoration:underline;}
+
+.ask{
+  background:var(--accent-soft);border:1px solid #DDD3F8;border-radius:var(--radius);
+  padding:18px;margin:26px 0;
+}
+.ask label{display:block;font-weight:600;margin-bottom:8px;}
+.ask input{
+  width:100%;min-height:44px;padding:11px 14px;font:inherit;
+  border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);color:var(--ink);
+}
+.muted{color:var(--muted);}
+.coming li{margin:0 0 10px;}
+.coming .when{font-variant-numeric:tabular-nums;color:var(--muted);}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
