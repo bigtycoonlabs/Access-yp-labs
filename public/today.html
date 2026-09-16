@@ -67,11 +67,15 @@
   <!-- Quiet links. Everything else in the product lives here rather than in a navigation bar,
        because a nav bar full of sections is how a small tool starts feeling like an ERP. Nothing
        appears here until the business actually has one. -->
+  <!-- NOTHING IS LINKED UNTIL IT EXISTS.
+       Three of the four links here pointed at pages that were never built. They did not 404 — the
+       server's catch-all served the retired Access YP Labs marketplace with HTTP 200, so no status
+       check would ever have caught it. A person clicking "Documents" landed in a different product.
+       Access Your Place carries eighteen dead front-end actions for the same reason, and I had just
+       created three more. -->
   <nav class="quiet-links" aria-label="Everything else">
     <a href="/businesses.html">Your businesses</a>
-    <a href="/documents.html" data-when="documents">Documents</a>
-    <a href="/people.html" data-when="team">People</a>
-    <a href="/customers.html" data-when="customers">Customers</a>
+    <a href="/people.html">People</a>
   </nav>
 </main>
 

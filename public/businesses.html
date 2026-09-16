@@ -1,0 +1,228 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Your businesses — Penny Desk</title>
+<meta name="robots" content="noindex, nofollow"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&family=Inter:wght@400;600;700&display=swap"/>
+<link rel="stylesheet" href="/css/penny.css"/>
+<style>
+.biz{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px 18px;margin:0 0 14px;}
+.biz h2{margin:0 0 4px;font-size:1.1rem;}
+.biz .where{color:var(--muted);font-size:.92rem;margin:0 0 10px;}
+.biz .owes{margin:0;}
+.biz .owes.none{color:var(--muted);}
+.add{background:var(--accent-soft);border:1px solid #DDD3F8;border-radius:var(--radius);
+  padding:18px;margin:26px 0;}
+.add label{display:block;font-weight:600;margin:14px 0 6px;}
+.add input,.add select{width:100%;min-height:44px;padding:11px 14px;font:inherit;
+  border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);color:var(--ink);}
+/* The row is 44px so a tap anywhere in it works, but the box itself rendered at 13px — which is
+   findable by touch and hard to SEE. The target was fine; the affordance was not. */
+.add input[type=checkbox]{width:24px;height:24px;min-height:24px;flex:none;accent-color:var(--accent);}
+.add .hint{color:var(--muted);font-size:.88rem;margin:4px 0 0;}
+.found{border-left:3px solid var(--accent);background:#FBFAFF;padding:12px 16px;margin:14px 0 0;
+  border-radius:0 8px 8px 0;}
+.found ul{margin:8px 0 0;padding-left:18px;}
+.found li{margin:4px 0;}
+.note{border-left:3px solid #2E7D32;background:#F6FBF6;padding:12px 16px;margin:12px 0 0;
+  border-radius:0 8px 8px 0;}
+</style>
+</head><body>
+
+<a class="skip" href="#main">Skip to your businesses</a>
+
+<header class="site">
+  <div class="bar">
+    <a class="brand" href="/today.html">Penny Desk<span class="dot" aria-hidden="true">.</span></a>
+    <a class="btn quiet" href="/today.html">Today</a>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <h1>Your businesses</h1>
+
+  <!-- MULTI-BUSINESS IS THE POINT, NOT A SETTING.
+       Somebody running a cleaning company in Ohio, a rental LLC in Tennessee and a consulting entity
+       in Delaware has three sets of filings in three jurisdictions. Every tool they can buy models
+       one business per account, so they run three subscriptions or keep two in their head. They are
+       the likeliest person to lose an entity to administrative dissolution, and they are who this
+       screen exists for. -->
+  <div id="status" role="status" aria-live="polite" class="muted"></div>
+  <section id="list" aria-label="Businesses"></section>
+
+  <section class="add" aria-labelledby="add-h">
+    <h2 id="add-h">Add a business</h2>
+    <p class="muted" style="margin:0;">Tell me the basics and I will work out what it owes. Only the
+      name is required — I can fill the rest in later.</p>
+
+    <label for="name">What is it called?</label>
+    <input id="name" type="text" autocomplete="organization" placeholder="Night Rounds"/>
+
+    <label for="entity">How is it set up?</label>
+    <select id="entity">
+      <option value="">I am not sure yet</option>
+      <option value="sole_proprietor">Just me, no company registered</option>
+      <option value="llc">LLC</option>
+      <option value="s_corp">S-Corp</option>
+      <option value="c_corp">C-Corp</option>
+      <option value="partnership">Partnership</option>
+      <option value="nonprofit">Nonprofit</option>
+    </select>
+
+    <label for="state">Which state is it registered in?</label>
+    <input id="state" type="text" maxlength="2" autocapitalize="characters" spellcheck="false"
+           placeholder="OH"/>
+    <p class="hint">Two letters. If you also work in other states, tell me after — each one has its
+      own rules.</p>
+
+    <label for="formed">When was it formed? (if you know)</label>
+    <input id="formed" type="date"/>
+    <p class="hint">About twenty states set your filing date from this. Without it I will not guess
+      one.</p>
+
+    <label for="trade">What does it do?</label>
+    <input id="trade" type="text" placeholder="cleaning"/>
+
+    <label for="contractors" style="display:flex;align-items:center;gap:10px;min-height:44px;">
+      <input id="contractors" type="checkbox"/>
+      I pay contractors or freelancers
+    </label>
+
+    <div style="margin-top:16px;"><button class="btn" id="save">Add it</button></div>
+    <div id="result"></div>
+  </section>
+</main>
+
+<script>
+var $ = function (id) { return document.getElementById(id); };
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+async function load() {
+  try {
+    var r = await fetch('/api/businesses', { credentials: 'include' });
+    if (r.status === 401) { location.href = '/login.html?next=/businesses.html'; return; }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var d = await r.json();
+
+    if (!d.businesses.length) {
+      $('list').innerHTML = '<p class="muted">You have not told me about a business yet. '
+        + 'Add one below and I will tell you what it owes.</p>';
+      return;
+    }
+
+    /* What each one OWES, not how many records it has. A count is a receipt; the thing a person
+       wants to know at a glance is which of their businesses is about to cost them money. */
+    var today = await fetch('/api/obligations/today?horizon_days=365', { credentials: 'include' })
+      .then(function (x) { return x.ok ? x.json() : { items: [] }; })
+      .catch(function () { return null; });
+
+    $('list').innerHTML = d.businesses.map(function (b) {
+      var where = [b.entity_type ? b.entity_type.replace('_', '-').toUpperCase() : null,
+        b.formation_state, b.trade].filter(Boolean).join(' · ');
+      var line;
+      if (today === null) {
+        /* A failed read is not a clear day. */
+        line = '<p class="owes none">I could not check what this one owes just now.</p>';
+      } else {
+        var mine = today.items.filter(function (i) { return i.business_id === b.id; });
+        line = mine.length
+          ? '<p class="owes">' + esc(mine[0].says) + (mine.length > 1
+            ? ' <span class="muted">and ' + (mine.length - 1) + ' more.</span>' : '') + '</p>'
+          : '<p class="owes none">Nothing on the list for this one.</p>';
+      }
+      return '<article class="biz"><h2>' + esc(b.name) + '</h2>'
+        + (where ? '<p class="where">' + esc(where) + '</p>' : '') + line + '</article>';
+    }).join('');
+  } catch (e) {
+    $('status').textContent = 'I could not read your businesses just now. That is a failure on our '
+      + 'side rather than an empty list.';
+  }
+}
+
+$('save').addEventListener('click', async function () {
+  var name = $('name').value.trim();
+  if (!name) { $('status').textContent = 'It needs a name to start with.'; $('name').focus(); return; }
+  this.disabled = true; this.textContent = 'Working it out…';
+  $('status').textContent = 'Checking what ' + name + ' owes.';
+
+  var st = $('state').value.trim().toUpperCase();
+  var body = {
+    name: name,
+    entity_type: $('entity').value || undefined,
+    formation_state: st || undefined,
+    operating_states: st ? [st] : undefined,
+    formed_on: $('formed').value || undefined,
+    trade: $('trade').value.trim() || undefined,
+    has_contractors: $('contractors').checked,
+  };
+
+  try {
+    var r = await fetch('/api/onboard', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    var d = await r.json();
+    /* A duplicate is a question, not an error. Somebody may genuinely run two entities with the same
+       name, and refusing outright would be wrong — but silently creating a second set of the same
+       filings is worse than both. */
+    if (r.status === 409 && d.duplicate) {
+      $('result').innerHTML = '<div class="note"><p>' + esc(d.says) + '</p></div>';
+      $('status').textContent = d.says;
+      if (confirm(d.says + '\n\nAdd it as a separate business?')) {
+        body.confirm_duplicate = true;
+        r = await fetch('/api/onboard', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+        });
+        d = await r.json();
+      } else { return; }
+    }
+    if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+
+    /* THE ANSWER, NOT A RECEIPT. "Added" tells them nothing. This is the first true thing the
+       product says about their own business, and it is the whole claim. */
+    var html = '<div class="found"><p><strong>' + esc(d.summary) + '</strong></p>';
+    if (d.found.length) {
+      html += '<ul>' + d.found.map(function (f) {
+        return '<li>' + esc(f.title) + ' — ' + esc(f.says) + '</li>';
+      }).join('') + '</ul>';
+    }
+    html += '</div>';
+
+    /* What they do NOT owe is an answer too, and people pay for filings they never needed. */
+    (d.notes || []).forEach(function (n) {
+      html += '<div class="note"><p><strong>' + esc(n.title) + '</strong></p><p>'
+        + esc(n.says) + '</p></div>';
+    });
+    if (d.missing && d.missing.length) {
+      html += '<p class="hint">To finish the picture I still need: ' + esc(d.missing.join('; '))
+        + '.</p>';
+    }
+    if (d.coverage) html += '<p class="hint">' + esc(d.coverage) + '</p>';
+
+    $('result').innerHTML = html;
+    /* Announced and brought into view — a result rendered below the fold is a result nobody saw. */
+    $('status').textContent = d.summary;
+    $('result').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    ['name', 'state', 'formed', 'trade'].forEach(function (i) { $(i).value = ''; });
+    $('contractors').checked = false;
+    load();
+  } catch (e) {
+    $('result').innerHTML = '';
+    $('status').textContent = 'I could not add that, so nothing was saved. ' + e.message;
+  } finally {
+    this.disabled = false; this.textContent = 'Add it';
+  }
+});
+
+load();
+</script>
+</body></html>

@@ -47,6 +47,28 @@ router.post('/', authenticate, [
     ? b.operating_states : (formation ? [formation] : []))
     .map((s) => String(s).toUpperCase());
 
+  // DUPLICATES ARE A REAL MISTAKE, NOT A HYPOTHETICAL.
+  //
+  // Seen on the phone render: "Sunshine Cleaning" listed twice, because a double submit created two
+  // businesses with two full sets of obligations. The person then owes the Florida annual report
+  // twice, which is worse than not tracking it at all — a list that cries wolf stops being read.
+  //
+  // Not a database constraint: somebody may legitimately run two entities with similar names, and
+  // refusing outright would be wrong. So it is checked here and ASKED about.
+  const dupe = await query(
+    `SELECT id, name FROM businesses
+      WHERE owner_id=$1 AND archived_at IS NULL AND lower(name)=lower($2) LIMIT 1`,
+    [req.user.id, b.name.trim()]);
+  if (dupe.rows.length && !b.confirm_duplicate) {
+    return res.status(409).json({
+      duplicate: true,
+      existing: dupe.rows[0],
+      says: 'You already have one called ' + dupe.rows[0].name + '. If this is a second, separate '
+        + 'business with the same name, tell me and I will add it — otherwise you would end up '
+        + 'owing everything twice.',
+    });
+  }
+
   const biz = await query(
     `INSERT INTO businesses (owner_id, name, legal_name, entity_type, formation_state,
         operating_states, trade, formed_on, headcount, stage)

@@ -182,6 +182,18 @@ app.get('/desk', (req, res) => res.sendFile(path.join(__dirname, '../public/desk
 app.get('/p/:slug', (req, res) => res.sendFile(path.join(__dirname, '../public/launch.html')));
 app.get('/p/:slug/:page', (req, res) => res.sendFile(path.join(__dirname, '../public/launch.html')));
 const siteHostDomains = require('./services/clay/domains');
+// A REQUEST FOR A PAGE THAT DOES NOT EXIST MUST NOT RETURN 200.
+//
+// The catch-all below serves the single-page app, which is right for app routes and wrong for a
+// mistyped or unbuilt .html page: /documents.html returned 200 with the retired marketplace, so
+// nothing — not a status check, not a link checker, not a person glancing — could tell it was
+// broken. Silent success is this estate's dominant defect and this was a fresh instance of it.
+app.get(/\.html$/, (req, res) => {
+  res.status(404).sendFile(path.join(__dirname, '../public/404.html'), (err) => {
+    if (err) res.status(404).type('text/plain').send('That page does not exist.');
+  });
+});
+
 app.get('*', (req, res) => {
   if (siteHostDomains.isSiteHost(siteHostDomains.hostOf(req))) {
     return res.sendFile(path.join(__dirname, '../public/launch.html'));
