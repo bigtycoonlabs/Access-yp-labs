@@ -90,6 +90,7 @@ const WORKSPACE_TOOLS = [
   'record_obligation',
   'complete_obligation',
   'whats_missing',
+  'whats_outstanding_with_customers',
 ];
 
 module.exports = { PENNY_WORKSPACE, WORKSPACE_TOOLS };

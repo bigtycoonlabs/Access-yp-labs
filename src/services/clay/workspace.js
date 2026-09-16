@@ -24,6 +24,7 @@ const { query } = require('../../config/db');
 const P = require('../../lib/permissions');
 const R = require('../../lib/ranking');
 const D = require('./documents');
+const C = require('./customers');
 
 // Result shapes. Borrowed from Arbo, where they exist because an unread balance once printed as
 // "$0.00" — indistinguishable from the money being gone.
@@ -63,6 +64,11 @@ const TOOLS = {
     irreversible: false, requires_confirmation: false, required: ['business_id'], enums: {},
     summary: 'What documents should be on file for a business and are not, plus anything expired or '
       + 'expiring. Read-only.',
+  },
+  whats_outstanding_with_customers: {
+    irreversible: false, requires_confirmation: false, required: ['business_id'], enums: {},
+    summary: 'What you owe customers and what customers owe you, by person, with anything late '
+      + 'first. Read-only.',
   },
   complete_obligation: {
     // Reversible in the sense that it can be reopened, but it moves a real thing off the list and a
@@ -218,7 +224,22 @@ async function whats_missing(viewer, params = {}) {
     on_file: r.on_file }, r.says);
 }
 
+async function whats_outstanding_with_customers(viewer, params = {}) {
+  const gate = await P.can(viewer.id, params.business_id, 'customers', 'view');
+  if (!gate.ok) {
+    return refused(P.refusalLine(gate, 'customers', gate.perms && gate.perms.business.name));
+  }
+  const r = await C.forBusiness(params.business_id);
+  if (!r.ok) {
+    return unavailable(r.reason,
+      'I could not read what is outstanding with customers, so I do not know. That is different '
+      + 'from there being nothing outstanding.');
+  }
+  if (!r.customers.length) return empty(r.says);
+  return answered({ customers: r.customers }, r.says);
+}
+
 const EXECUTORS = { whats_due, whats_coming, list_businesses, record_obligation,
-  complete_obligation, whats_missing };
+  complete_obligation, whats_missing, whats_outstanding_with_customers };
 
 module.exports = { TOOLS, EXECUTORS, answered, empty, unavailable, refused };
