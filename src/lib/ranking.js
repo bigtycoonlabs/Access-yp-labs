@@ -202,9 +202,26 @@ function summarise(rows) {
   if (overdue && rows.length === 1) s += ', and it is overdue';
   else if (overdue === rows.length) s += ', all of them overdue';
   else if (overdue) s += ', ' + overdue + ' of them overdue';
-  s += '. The one that costs most is ' + top.title;
-  if (amount) s += ' at ' + amount + (top.cost_basis === 'estimated' ? ', estimated' : '');
-  return s + '.';
+  // THE TOP OF THIS LIST IS WHAT TO DO FIRST, NOT NECESSARILY WHAT COSTS MOST. Rows are ranked by
+  // urgency and cost together, so a $25 thing with no date can sit above a $60 thing due next week.
+  // This used to say "the one that costs most is" the top row, which was false whenever urgency won,
+  // and it contradicted the Businesses screen, which really does name the costliest. So: say what
+  // the ranking means, and name the costliest separately only when it is a different item.
+  s += '. Start with ' + top.title;
+  if (amount) {
+    s += ', which costs ' + amount + (top.cost_basis === 'estimated' ? ', roughly,' : '')
+      + ' if missed';
+  }
+  s += '.';
+  const priced = rows.filter((r) => r.cost_if_missed_cents != null);
+  const dearest = priced.reduce((a, r) =>
+    (!a || Number(r.cost_if_missed_cents) > Number(a.cost_if_missed_cents) ? r : a), null);
+  if (dearest && dearest !== top
+      && Number(dearest.cost_if_missed_cents) > Number(top.cost_if_missed_cents || 0)) {
+    s += ' The costliest is ' + dearest.title + ' at ' + money(dearest.cost_if_missed_cents)
+      + (dearest.cost_basis === 'estimated' ? ', roughly' : '') + '.';
+  }
+  return s;
 }
 
 module.exports = {

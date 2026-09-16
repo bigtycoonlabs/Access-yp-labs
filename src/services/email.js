@@ -4,6 +4,12 @@
 // hit again: if EMAIL_FROM isn't a shape Resend accepts — a bare address or "Name <address>" —
 // we fall back to this default rather than let one bad env var break all email.
 const DEFAULT_FROM = 'Clay at Access YP Labs <clay@accessyplabs.com>';
+
+// WHERE EVERY REPLY GOES. Receiving is disabled on every domain on the Resend account, so a reply to
+// any from-address here vanishes silently. Every email this platform sends carries this reply-to, set
+// by the owner on 16 Sept 2026: the Success Team mailbox, which a person actually reads. One constant,
+// used by every sender, so no email can be added later that quietly drops replies.
+const REPLY_TO = 'success@accessyourplace.com';
 function resolveFrom() {
   const raw = String(process.env.EMAIL_FROM || '').trim();
   if (!raw) return DEFAULT_FROM;
@@ -37,7 +43,7 @@ async function sendEmail({ to, subject, html, text }) {
     const resp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, to, subject, html, text }),
+      body: JSON.stringify({ from, to, subject, html, text, reply_to: REPLY_TO }),
     });
     if (!resp.ok) {
       // Keep Resend's own explanation (e.g. "The from address is not verified", "domain
@@ -60,7 +66,8 @@ async function sendBatch(emails) {
   const batch = (emails || []).slice(0, 100);
   if (!key) return { sent: 0, failed: batch.length, reason: 'email_not_configured', results: [] };
   if (!batch.length) return { sent: 0, failed: 0, results: [] };
-  const payload = batch.map((e) => ({ from, to: e.to, subject: e.subject, html: e.html, text: e.text, headers: e.headers }));
+  const payload = batch.map((e) => ({ from, to: e.to, subject: e.subject, html: e.html, text: e.text, headers: e.headers,
+    reply_to: REPLY_TO }));
   try {
     const resp = await fetch('https://api.resend.com/emails/batch', {
       method: 'POST',
@@ -79,4 +86,4 @@ async function sendBatch(emails) {
   }
 }
 
-module.exports = { sendEmail, sendBatch, resendErrorDetail, resolveFrom, DEFAULT_FROM };
+module.exports = { sendEmail, sendBatch, resendErrorDetail, resolveFrom, DEFAULT_FROM, REPLY_TO };

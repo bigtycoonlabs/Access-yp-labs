@@ -109,6 +109,8 @@ details[open] summary.sees::before{content:'\25BE';}
   </section>
 </main>
 
+<script src="/js/api.js"></script>
+<script src="/js/desk-auth.js"></script>
 <script>
 var $ = function (id) { return document.getElementById(id); };
 function esc(s) {
@@ -206,7 +208,7 @@ async function loadPeople() {
         + (gone ? '' : (isOwner
           ? '<p class="sees">Can see and do everything.</p>'
           : '<details><summary class="sees">' + esc(summarise(p.areas))
-            + '+ ' <span class="muted">— change</span></summary>nbsp;<span class="muted">&mdash; change</span></summary><div class="perms">'
+            + ' <span class="muted">(change)</span></summary><div class="perms">'
             + AREAS.map(function (a) {
               return permRow(p.id, a[0], a[1], (p.areas || {})[a[0]], isOwner);
             }).join('') + '</div></details>'))

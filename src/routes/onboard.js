@@ -137,6 +137,10 @@ router.post('/', authenticate, [
         + (byCost[0].cost_if_missed_cents
           ? ' at ' + R.money(byCost[0].cost_if_missed_cents)
             + (byCost[0].cost_basis === 'estimated' ? ', roughly' : '') : '')
+        // The date explains why Today may lead with something cheaper: Today ranks what needs you
+        // now, and the costliest thing is often months away.
+        + (byCost[0].due_at ? ', due ' + new Date(byCost[0].due_at).toLocaleDateString('en-US',
+          { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '')
         + '.'
       : 'I did not find anything you owe yet, which is either good news or a sign I do not know '
         + 'enough about the business. Tell me more and I will check again.',

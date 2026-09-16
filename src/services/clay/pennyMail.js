@@ -8,9 +8,10 @@
 // accesspennydesk.com is not live yet, so this is deliberate and temporary: the retired brand is in
 // the envelope address but nowhere in the words, and the domain moves when the new one verifies.
 //
-// RECEIVING IS DISABLED ON EVERY DOMAIN ON THIS ACCOUNT. That means a reply to this address goes
-// nowhere, silently. An email that invites a reply it cannot receive is worse than one that does
-// not, so this says plainly where to go instead rather than pretending the address is a mailbox.
+// REPLIES GO TO A PERSON. Receiving is disabled on every domain on this Resend account, so a reply
+// to the from-address alone would vanish silently. Every email carries a reply-to pointing at the
+// Success Team mailbox, which somebody reads, and the email says so in words, because a person who
+// is unsure whether replying reaches anyone will not reply.
 //
 // AND IT THROWS ON FAILURE, ON PURPOSE. The sweep records a reminder as given only after delivery
 // returns cleanly. A sender that swallows its own errors would let somebody believe they were warned
@@ -18,8 +19,8 @@
 
 const FROM = 'Penny <penny@accessyplabs.com>';
 
-// Where a reply should actually go, since the from-address cannot receive one.
-const REPLY_TO = 'support@accessyplabs.com';
+// Where a reply actually goes. Shared with every other sender so the two can never disagree.
+const { REPLY_TO } = require('../email');
 
 function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({
@@ -37,7 +38,7 @@ function compose({ name, headline, body, businessName, dueAt }) {
   const text = [
     hello,
     '',
-    headline + (businessName ? ' — ' + businessName : '') + '.',
+    headline + (businessName ? ', for ' + businessName : '') + '.',
     '',
     body,
     '',
@@ -46,7 +47,7 @@ function compose({ name, headline, body, businessName, dueAt }) {
     'You can see everything you owe, in the order it costs you, at:',
     'https://accessyplabs.com/today.html',
     '',
-    'This address does not take replies. If you need a person, write to ' + REPLY_TO + '.',
+    'Reply to this email and it reaches the Success Team at ' + REPLY_TO + '.',
     '',
     'Penny',
   ].filter((l) => l !== null).join('\n');
@@ -58,7 +59,7 @@ function compose({ name, headline, body, businessName, dueAt }) {
     + 'border-radius:12px;padding:24px;">'
     + '<p style="margin:0 0 16px;">' + escapeHtml(hello) + '</p>'
     + '<p style="margin:0 0 8px;font-size:18px;font-weight:600;">' + escapeHtml(headline)
-    + (businessName ? ' <span style="font-weight:400;color:#5A6478;">— '
+    + (businessName ? '<span style="font-weight:400;color:#5A6478;">, for '
       + escapeHtml(businessName) + '</span>' : '') + '</p>'
     + '<p style="margin:0 0 16px;color:#5A6478;">' + escapeHtml(body) + '</p>'
     + (when ? '<p style="margin:0 0 16px;">The date is <strong>' + escapeHtml(when)
@@ -68,8 +69,8 @@ function compose({ name, headline, body, businessName, dueAt }) {
     + 'style="display:inline-block;min-height:44px;line-height:44px;padding:0 20px;'
     + 'background:#5B3FC9;color:#fff;text-decoration:none;border-radius:12px;font-weight:600;">'
     + 'See everything you owe</a></p>'
-    + '<p style="margin:0;font-size:13px;color:#5A6478;">This address does not take replies. '
-    + 'If you need a person, write to <a href="mailto:' + REPLY_TO + '" style="color:#5B3FC9;">'
+    + '<p style="margin:0;font-size:13px;color:#5A6478;">Reply to this email and it reaches the '
+    + 'Success Team at <a href="mailto:' + REPLY_TO + '" style="color:#5B3FC9;">'
     + REPLY_TO + '</a>.</p>'
     + '</div></body></html>';
 

@@ -18,14 +18,20 @@ test('it sends from a domain that is actually verified', () => {
   assert.match(src, /accesspennydesk\.com is not live yet/);
 });
 
-test('it does not invite a reply it cannot receive', () => {
-  // Receiving is disabled on every domain on this Resend account, so a reply to the from-address
-  // goes nowhere, silently. An email that invites one is worse than one that does not.
-  assert.match(src, /RECEIVING IS DISABLED ON EVERY DOMAIN/);
+test('a reply reaches a person, and the email says so', () => {
+  // Receiving is disabled on every Resend domain, so replies go to the Success Team mailbox, set by
+  // the owner. The email names it, because nobody replies to an address they suspect is dead.
+  assert.strictEqual(M.REPLY_TO, 'success@accessyourplace.com');
   const { text, html } = M.compose({ name: 'Sam', headline: 'x', body: 'y' });
-  assert.match(text, /This address does not take replies/);
-  assert.match(html, /does not take replies/);
-  assert.match(M.REPLY_TO, /@/);
+  assert.match(text, /reaches the Success Team at success@accessyourplace\.com/);
+  assert.match(html, /mailto:success@accessyourplace\.com/);
+  assert.doesNotMatch(text + html, /does not take replies/);
+});
+
+test('no em-dash in what Penny sends', () => {
+  const { text, html } = M.compose({ name: 'Sam', headline: 'x', body: 'y', businessName: 'Rivera' });
+  assert.doesNotMatch(text + html, /\u2014|&mdash;/);
+  assert.match(text, /x, for Rivera\./);
 });
 
 test('plain text is written first, not degraded out of HTML', () => {
@@ -35,7 +41,7 @@ test('plain text is written first, not degraded out of HTML', () => {
   const { text } = M.compose({ name: 'Sam Rivera', headline: 'FL annual report is due in 14 days',
     body: 'Missing it costs $400.', businessName: 'Night Rounds', dueAt: '2027-05-01T09:00:00Z' });
   assert.match(text, /^Hi Sam,/);
-  assert.match(text, /FL annual report is due in 14 days — Night Rounds\./);
+  assert.match(text, /FL annual report is due in 14 days, for Night Rounds\./);
   assert.match(text, /The date is 2027-05-01\./);
   assert.ok(!/<[a-z]/i.test(text), 'no markup leaked into the text part');
 });
