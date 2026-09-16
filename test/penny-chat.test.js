@@ -24,8 +24,11 @@ test('she carries only the workspace tools', () => {
   // The concept and marketplace tools belong to a product being retired. Sending their schemas
   // spends the token budget describing work this person cannot do, and a real 429 followed that
   // mistake on Access Your Place: 75 schemas were ~10,700 tokens against a 30,000/minute limit.
+  // Pinned deliberately rather than loosely: this list is the token budget. Adding to it is a
+  // decision, and this assertion is where that decision has to be made on purpose.
   assert.deepStrictEqual(WORKSPACE_TOOLS,
-    ['whats_due', 'whats_coming', 'list_businesses', 'record_obligation', 'complete_obligation']);
+    ['whats_due', 'whats_coming', 'list_businesses', 'record_obligation', 'complete_obligation',
+      'whats_missing']);
   // Comment text wraps, so normalise the line breaks rather than guessing where they fall.
   const flat = persona.replace(/\s*\n\s*\/\/\s*/g, ' ');
   assert.match(flat, /A real 429 followed that mistake on Access Your Place/);

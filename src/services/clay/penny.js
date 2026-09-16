@@ -89,6 +89,7 @@ const WORKSPACE_TOOLS = [
   'list_businesses',
   'record_obligation',
   'complete_obligation',
+  'whats_missing',
 ];
 
 module.exports = { PENNY_WORKSPACE, WORKSPACE_TOOLS };

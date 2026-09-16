@@ -23,6 +23,7 @@
 const { query } = require('../../config/db');
 const P = require('../../lib/permissions');
 const R = require('../../lib/ranking');
+const D = require('./documents');
 
 // Result shapes. Borrowed from Arbo, where they exist because an unread balance once printed as
 // "$0.00" — indistinguishable from the money being gone.
@@ -57,6 +58,11 @@ const TOOLS = {
       cost_basis: ['known', 'estimated', 'unknown'],
     },
     summary: 'Record something the business owes — a filing, a task, a promise, an invoice to send.',
+  },
+  whats_missing: {
+    irreversible: false, requires_confirmation: false, required: ['business_id'], enums: {},
+    summary: 'What documents should be on file for a business and are not, plus anything expired or '
+      + 'expiring. Read-only.',
   },
   complete_obligation: {
     // Reversible in the sense that it can be reopened, but it moves a real thing off the list and a
@@ -196,6 +202,23 @@ async function complete_obligation(viewer, params = {}) {
   }
 }
 
-const EXECUTORS = { whats_due, whats_coming, list_businesses, record_obligation, complete_obligation };
+// Documents are read under the documents area, not compliance — a bookkeeper with documents:view
+// should be able to see that a W-9 is missing without being shown the filings.
+async function whats_missing(viewer, params = {}) {
+  const gate = await P.can(viewer.id, params.business_id, 'documents', 'view');
+  if (!gate.ok) return refused(P.refusalLine(gate, 'documents', gate.perms && gate.perms.business.name));
+  const r = await D.missingFor(params.business_id);
+  if (!r.ok) {
+    return unavailable(r.reason,
+      'I could not check what is on file, so I do not know what is missing. Treat that as unknown '
+      + 'rather than as nothing missing — an empty shelf and a failed look are different things.');
+  }
+  if (!r.missing.length && !r.expired.length && !r.expiring.length) return empty(r.says);
+  return answered({ missing: r.missing, expired: r.expired, expiring: r.expiring,
+    on_file: r.on_file }, r.says);
+}
+
+const EXECUTORS = { whats_due, whats_coming, list_businesses, record_obligation,
+  complete_obligation, whats_missing };
 
 module.exports = { TOOLS, EXECUTORS, answered, empty, unavailable, refused };
