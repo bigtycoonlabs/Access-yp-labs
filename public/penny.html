@@ -1,0 +1,243 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Ask Penny — Penny Desk</title>
+<meta name="robots" content="noindex, nofollow"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&family=Inter:wght@400;600;700&display=swap"/>
+<link rel="stylesheet" href="/css/penny.css"/>
+<style>
+.turn{margin:0 0 20px;}
+.turn .who{font-size:.8rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--muted);margin:0 0 6px;}
+.turn.penny .who{color:var(--accent);}
+.turn .body{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:14px 16px;white-space:pre-wrap;}
+.turn.me .body{background:transparent;border-color:transparent;padding:0;color:var(--ink);}
+
+/* WHAT THE TOOLS ACTUALLY DID. Shown, not summarised. If Penny's prose and this disagree, this is
+   true — and the person can see the difference rather than having to trust her. */
+.did{margin:10px 0 0;padding:10px 14px;border-left:3px solid var(--line);background:#FBFCFE;
+  font-size:.9rem;color:var(--muted);border-radius:0 8px 8px 0;}
+.did .no{color:var(--overdue);font-weight:600;}
+
+/* A CONFIRMATION IS A DECISION, so it looks like one. */
+.confirm{background:var(--accent-soft);border:1px solid #DDD3F8;border-radius:var(--radius);
+  padding:16px 18px;margin:12px 0 0;}
+.confirm p{margin:0 0 14px;font-weight:600;}
+.confirm .row{display:flex;gap:10px;flex-wrap:wrap;}
+
+.incomplete{border-left:3px solid #B54708;background:#FFFAF0;padding:10px 14px;margin:10px 0 0;
+  font-size:.92rem;border-radius:0 8px 8px 0;}
+
+.composer{position:sticky;bottom:0;background:var(--bg);padding:16px 0 24px;
+  border-top:1px solid var(--line);margin-top:24px;}
+.did ul{margin:0;padding-left:18px;}
+.did li{margin:2px 0;}
+.did li.no{color:var(--overdue);font-weight:600;}
+/* Room under the thread so the last turn is never trapped behind the composer. */
+#thread{padding-bottom:12px;}
+.composer .row{display:flex;gap:10px;align-items:flex-end;}
+.composer textarea{flex:1;min-height:52px;max-height:200px;padding:14px;font:inherit;
+  border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);
+  color:var(--ink);resize:vertical;}
+</style>
+</head><body>
+
+<a class="skip" href="#composer">Skip to the message box</a>
+
+<header class="site">
+  <div class="bar">
+    <a class="brand" href="/today.html">Penny Desk<span class="dot" aria-hidden="true">.</span></a>
+    <a class="btn quiet" href="/today.html">Today</a>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <h1>Ask Penny</h1>
+  <p class="muted" id="intro">She answers from your own records, and says where each answer came
+    from. Anything about money goes to Arbo, and anything about finding property goes to Access
+    Your Place.</p>
+
+  <!-- EVERY ATTACHED COMPONENT CONTRIBUTES A SPOKEN SENTENCE.
+       On Flow a go-live checklist rendered perfectly and was announced to nobody, because the live
+       region only ever carried the message text. The card was there; for somebody listening it did
+       not exist. So this region is fed by the turn AND by whatever arrived with it — the tool list,
+       the confirmation, the step-limit notice — with the outcome leading. -->
+  <div id="live" role="status" aria-live="polite" class="visually-hidden"
+       style="position:absolute;left:-9999px;"></div>
+
+  <section id="thread" aria-label="Conversation"></section>
+
+  <div class="composer" id="composer">
+    <label for="msg" style="display:block;font-weight:600;margin-bottom:8px;">Your message</label>
+    <div class="row">
+      <textarea id="msg" rows="2" placeholder="What is due this month?"></textarea>
+      <button class="btn" id="send">Send</button>
+    </div>
+    <p class="muted" style="margin:8px 0 0;font-size:.86rem;">Enter sends. Shift and Enter starts a
+      new line.</p>
+  </div>
+</main>
+
+<script>
+var $ = function (id) { return document.getElementById(id); };
+var thread = $('thread');
+var messages = [];   /* the whole conversation, sent every turn — she has no memory between calls */
+var busy = false;
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+/* One place that speaks, so nothing can render without being announced. Takes the outcome first,
+   because "she needs you to confirm something" matters more than the paragraph before it. */
+function announce(parts) {
+  $('live').textContent = parts.filter(Boolean).join(' ');
+}
+
+function addTurn(who, text, cls) {
+  var el = document.createElement('article');
+  el.className = 'turn ' + cls;
+  el.innerHTML = '<p class="who">' + esc(who) + '</p><div class="body">' + esc(text) + '</div>';
+  thread.appendChild(el);
+  return el;
+}
+
+/* The list is the truth. A tool that failed says so here even if the prose above sounds confident,
+   which is the whole point of surfacing it separately. */
+function renderDid(el, tools) {
+  if (!tools || !tools.length) return '';
+  /* A real list rather than lines joined with <br/>. A screen reader announces "list, two items"
+     and lets somebody move between them; br-separated text is one run-on sentence. */
+  var lines = tools.map(function (t) {
+    return t.ok ? '<li>' + esc(t.note || t.tool) + '</li>'
+      : '<li class="no">' + esc(t.note || (t.tool + ' did not work')) + '</li>';
+  }).join('');
+  el.insertAdjacentHTML('beforeend',
+    '<div class="did"><ul>' + lines + '</ul></div>');
+  var failed = tools.filter(function (t) { return !t.ok; });
+  return failed.length
+    ? failed.length + (failed.length === 1 ? ' step did not work.' : ' steps did not work.')
+    : '';
+}
+
+function renderConfirm(el, c) {
+  if (!c) return '';
+  var box = document.createElement('div');
+  box.className = 'confirm';
+  /* The sentence written for a person, handed down from the tool's `ask`. Never the model-facing
+     summary — that is prompt engineering addressed to somebody else, arriving at the exact moment
+     a decision is being asked for, and read out in full by a screen reader. */
+  box.innerHTML = '<p>' + esc(c.ask) + '</p><div class="row">'
+    + '<button class="btn" data-yes>Yes, go ahead</button>'
+    + '<button class="btn plain" data-no>No</button></div>';
+  el.appendChild(box);
+  /* SEEN ON THE PHONE RENDER: the card was behind the sticky composer. It existed, it was announced,
+     and a sighted person could not see it or reach the buttons.
+     This is the same defect Flow had — an answer rendered thirty pixels below the fold and the
+     person said "nothing happened". "It is in the DOM" is not "somebody can get to it". So it
+     scrolls into view and takes focus, which also puts a keyboard user on the decision. */
+  requestAnimationFrame(function () {
+    box.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    box.querySelector('[data-yes]').focus({ preventScroll: true });
+  });
+  box.querySelector('[data-yes]').addEventListener('click', function () { runConfirmed(c, box); });
+  box.querySelector('[data-no]').addEventListener('click', function () {
+    box.innerHTML = '<p class="muted">Left alone. Nothing was changed.</p>';
+    announce(['Left alone. Nothing was changed.']);
+  });
+  return 'She needs you to confirm something first. ' + c.ask;
+}
+
+async function runConfirmed(c, box) {
+  box.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
+  try {
+    var r = await fetch('/api/penny/confirm', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tool: c.tool, params: c.params }),
+    });
+    var d = await r.json();
+    if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+    var says = (d.result && d.result.says) || 'Done.';
+    box.innerHTML = '<p>' + esc(says) + '</p>';
+    announce([says]);
+  } catch (e) {
+    /* A failed confirmation must not look like a completed one. */
+    box.innerHTML = '<p class="no">That did not go through, so nothing has changed. '
+      + esc(e.message) + '</p>';
+    announce(['That did not go through, so nothing has changed.']);
+  }
+}
+
+async function send(text) {
+  if (busy || !text.trim()) return;
+  busy = true;
+  $('send').disabled = true;
+  addTurn('You', text, 'me');
+  messages.push({ role: 'user', content: text });
+  $('msg').value = '';
+
+  var waiting = addTurn('Penny', 'Thinking…', 'penny');
+  announce(['Sent. Penny is thinking.']);
+
+  try {
+    var r = await fetch('/api/penny/chat', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: messages }),
+    });
+    if (r.status === 401) { location.href = '/login.html?next=/penny.html'; return; }
+    var d = await r.json();
+    if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+
+    waiting.querySelector('.body').textContent = d.reply;
+    messages.push({ role: 'assistant', content: d.reply });
+
+    var spoken = [];
+    /* STATUS FIRST, because a turn that ran out of room must never read as a finished answer. */
+    if (d.status === 'incomplete') {
+      waiting.insertAdjacentHTML('beforeend',
+        '<div class="incomplete">She stopped partway rather than rushing the rest. '
+        + 'Say “keep going” and she will pick up where she left off.</div>');
+      spoken.push('She stopped partway and did not finish.');
+    }
+    if (d.status === 'unavailable') spoken.push('She could not run. Nothing was changed.');
+
+    spoken.push(renderDid(waiting, d.tools_used));
+    spoken.push(renderConfirm(waiting, d.awaiting_confirmation));
+    spoken.push(d.reply);
+    announce(spoken);
+    /* If there is no confirmation to focus, bring the reply itself into view. */
+    if (!d.awaiting_confirmation) waiting.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  } catch (e) {
+    /* Never leave a blank turn that reads like a considered answer. */
+    waiting.querySelector('.body').textContent =
+      'I could not get an answer just now, and nothing has been changed. ' + e.message;
+    announce(['That did not work. Nothing has been changed.']);
+  } finally {
+    busy = false;
+    $('send').disabled = false;
+    $('msg').focus();
+  }
+}
+
+$('send').addEventListener('click', function () { send($('msg').value); });
+$('msg').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(this.value); }
+});
+
+/* Arriving from Today with a question already typed, or about a specific thing. */
+(function () {
+  var p = new URLSearchParams(location.search);
+  var q = p.get('q');
+  var about = p.get('about');
+  if (q) { send(q); return; }
+  if (about) { send('Tell me about this one and what happens if I miss it. Its id is ' + about + '.'); }
+}());
+</script>
+</body></html>
