@@ -12,11 +12,12 @@
 
 const { CATEGORIES, PLATFORMS, SOCIAL_GOALS, MARKETPLACE_FORMATS } = require('./tools');
 const { classifySection, assessCoverage, STATUSES } = require('./interpreter');
+const workspace = require('./workspace');
 
 // Typed tool registry. Each tool declares its required params, the enum
 // guardrails on those params, whether it is irreversible, and whether it needs
 // explicit human confirmation before Clay may act.
-const TOOLS = {
+const CONCEPT_TOOLS = {
   list_my_concepts: {
     irreversible: false, requires_confirmation: false, required: [], enums: {},
     summary: 'List the projects the current user owns (read-only).',
@@ -287,6 +288,12 @@ const TOOLS = {
     summary: "Owners only (master_staff — Vission and Rel), consequential for changes — confirm first. Onboard and manage the team. action='list' shows current staff and their roles (read-only). action='promote' makes an existing account (by email) a staff member — default role staff, or pass new_role. action='set_role' changes an existing member's role. The person must already have an account (they sign up first, then you bring them onto the team). Setting someone to master_staff makes them a platform owner — do that only on explicit owner instruction. Every change is logged.",
   },
 };
+
+// Penny's workspace tools live beside the concept tools rather than in a separate registry, so
+// planToolInvocation gates them with the same confirmation rules and toolSchemas() carries the
+// same enum guardrails into the model's input schema. A tool declared somewhere the planner
+// does not read is a tool with no safety on it.
+const TOOLS = Object.assign({}, CONCEPT_TOOLS, workspace.TOOLS);
 
 function getTool(name) { return TOOLS[name] || null; }
 
