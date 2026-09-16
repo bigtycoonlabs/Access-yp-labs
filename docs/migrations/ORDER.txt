@@ -83,3 +83,4 @@
 066_portal_signup.sql
 067_keys.sql
 068_launches.sql
+069_model_usage.sql

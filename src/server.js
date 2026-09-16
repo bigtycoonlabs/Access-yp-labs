@@ -67,6 +67,8 @@ app.post('/api/webhooks/resend', express.raw({ type: 'application/json' }), (req
   Promise.resolve(require('./routes/resendWebhook').resendWebhook(req, res)).catch(next);
 });
 
+// Opens the metering context for the request, so every model call it makes is recorded against it.
+app.use(require('./services/meter').middleware);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 

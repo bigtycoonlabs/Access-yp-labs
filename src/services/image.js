@@ -95,6 +95,7 @@ async function renderImage({ prompt }) {
       || (data.data && data.data[0] && data.data[0].url)
       || (Array.isArray(data.images) ? (data.images[0] && (data.images[0].url || data.images[0])) : null) || null;
     if (!b64 && !url) return { status: 'empty', message: 'The image provider returned no image.' };
+    await require('./meter').recordImages(prov.model || 'unknown', 1);
     return { status: 'answered', image_base64: b64, url, media_type: data.media_type || 'image/png' };
   } catch (err) {
     return { status: 'unavailable', message: `Could not reach the image provider: ${err.message}. Nothing was fabricated.` };

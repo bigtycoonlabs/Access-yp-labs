@@ -28,6 +28,7 @@ const authenticate = async (req, res, next) => {
     // verified token rather than locking everyone out.
   }
   req.user = decoded;
+  require('../services/meter').setUser(decoded && decoded.id);
   next();
 };
 

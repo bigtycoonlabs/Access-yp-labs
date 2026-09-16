@@ -10,6 +10,8 @@ try { OpenAI = require('openai'); } catch (_) { /* optional */ }
 try { Anthropic = require('@anthropic-ai/sdk'); } catch (_) { /* optional */ }
 
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5.5';
+// Every call is metered here, so nothing reaches a model without its cost being recorded.
+const meter = () => require('../meter');
 const ANTHROPIC_MODEL = process.env.CLAY_MODEL || 'claude-sonnet-4-5';
 // GPT-5 / o-series reasoning models require max_completion_tokens (they reject the
 // older max_tokens) and accept an optional reasoning_effort; gpt-4o-class models use
@@ -95,6 +97,7 @@ async function complete({ system, user, json = false, maxTokens = 6000, model = 
       });
       try {
         const resp = await call(oaModel);
+        await meter().recordText(resp.model || oaModel, resp.usage, 'chat');
         return { ok: true, text: resp.choices?.[0]?.message?.content || '' };
       } catch (err) {
         // A mistyped/unavailable OPENAI_MODEL shouldn't fully break Clay: if the
@@ -104,6 +107,7 @@ async function complete({ system, user, json = false, maxTokens = 6000, model = 
         if (fallback && !model && notFound && oaModel !== OPENAI_FALLBACK) {
           console.error(`OPENAI_MODEL "${oaModel}" is unavailable (${err.message}); falling back to ${OPENAI_FALLBACK}.`);
           const resp = await call(OPENAI_FALLBACK);
+          await meter().recordText(resp.model || OPENAI_FALLBACK, resp.usage, 'chat');
           return { ok: true, text: resp.choices?.[0]?.message?.content || '', fallback_model: OPENAI_FALLBACK, requested_model: oaModel };
         }
         throw err;
@@ -113,6 +117,7 @@ async function complete({ system, user, json = false, maxTokens = 6000, model = 
       model: ANTHROPIC_MODEL, max_tokens: maxTokens, system,
       messages: [{ role: 'user', content: user }],
     });
+    await meter().recordText(ANTHROPIC_MODEL, resp.usage, 'anthropic');
     return { ok: true, text: (resp.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n') };
   } catch (err) {
     return { ok: false, reason: 'error', error: err.message, text: '' };
@@ -135,6 +140,7 @@ async function describeImage({ imageBase64, mediaType = 'image/png', system, pro
           ] },
         ],
       });
+      await meter().recordText(resp.model || OPENAI_MODEL, resp.usage, 'chat');
       return { ok: true, text: resp.choices?.[0]?.message?.content || '' };
     }
     const resp = await anthropicClient().messages.create({
@@ -144,6 +150,7 @@ async function describeImage({ imageBase64, mediaType = 'image/png', system, pro
         { type: 'text', text: prompt },
       ] }],
     });
+    await meter().recordText(ANTHROPIC_MODEL, resp.usage, 'anthropic');
     return { ok: true, text: (resp.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n') };
   } catch (err) {
     return { ok: false, reason: 'error', error: err.message, text: '' };
@@ -195,6 +202,14 @@ function shouldUseResponses(model, env = process.env) {
   return true;
 }
 
+// What an earlier assistant turn said. Turns the agent writes itself carry `text`; turns the chat
+// page resends carry `content`. Reading only `text` silently dropped every earlier reply, so Penny
+// saw a row of questions with none of her answers and kept answering the first (found 16 Sept 2026).
+function assistantText(m) {
+  const t = m.text != null && m.text !== '' ? m.text : m.content;
+  return t == null ? '' : String(t);
+}
+
 // Pure: normalized messages → Responses `input`. Folds each prior tool call and its result to
 // text so no native function_call items appear in the replayed input (see fact #1 above).
 function toResponsesInput(messages) {
@@ -205,7 +220,7 @@ function toResponsesInput(messages) {
       input.push({ role: 'user', content: String(m.content == null ? '' : m.content) });
     } else if (m.role === 'assistant') {
       const parts = [];
-      if (m.text) parts.push(String(m.text));
+      if (assistantText(m)) parts.push(assistantText(m));
       if (Array.isArray(m.tool_calls) && m.tool_calls.length) {
         for (const t of m.tool_calls) nameById[t.id] = t.name;
         parts.push('[Called ' + m.tool_calls.map((t) => `${t.name}(${JSON.stringify(t.input || {})})`).join(', ') + ']');
@@ -262,6 +277,7 @@ async function openaiChatResponses({ system, messages, tools, maxTokens }) {
     reasoning: { effort: resolveEffort({ maxTokens, inputChars }) }, // real reasoning — never 'none' here
     max_output_tokens: maxTokens,
   });
+  await meter().recordText(resp.model || OPENAI_MODEL, resp.usage, 'responses');
   const { text, tool_calls } = parseResponsesOutput(resp);
   if (!text && !tool_calls.length) return { ok: false, reason: 'empty' }; // nothing usable → fall back
   return { ok: true, text, tool_calls };
@@ -289,7 +305,7 @@ async function openaiChatCompletions({ system, messages, tools, maxTokens }) {
   for (const m of messages) {
     if (m.role === 'user') oaMessages.push({ role: 'user', content: m.content });
     else if (m.role === 'assistant') {
-      const msg = { role: 'assistant', content: m.text || '' };
+      const msg = { role: 'assistant', content: assistantText(m) };
       if (m.tool_calls && m.tool_calls.length) {
         msg.tool_calls = m.tool_calls.map((t) => ({ id: t.id, type: 'function', function: { name: t.name, arguments: JSON.stringify(t.input || {}) } }));
       }
@@ -300,6 +316,7 @@ async function openaiChatCompletions({ system, messages, tools, maxTokens }) {
   }
   const oaTools = tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } }));
   const resp = await openaiClient().chat.completions.create({ model: OPENAI_MODEL, ...openaiToolTokenParams(maxTokens), messages: oaMessages, tools: oaTools });
+  await meter().recordText(resp.model || OPENAI_MODEL, resp.usage, 'chat');
   const choice = resp.choices?.[0]?.message || {};
   const tool_calls = (choice.tool_calls || []).map((tc) => {
     let input = {};
@@ -315,7 +332,7 @@ async function anthropicChat({ system, messages, tools, maxTokens }) {
     if (m.role === 'user') anMessages.push({ role: 'user', content: m.content });
     else if (m.role === 'assistant') {
       const blocks = [];
-      if (m.text) blocks.push({ type: 'text', text: m.text });
+      if (assistantText(m)) blocks.push({ type: 'text', text: assistantText(m) });
       (m.tool_calls || []).forEach((t) => blocks.push({ type: 'tool_use', id: t.id, name: t.name, input: t.input || {} }));
       anMessages.push({ role: 'assistant', content: blocks });
     } else if (m.role === 'tool') {
@@ -324,6 +341,7 @@ async function anthropicChat({ system, messages, tools, maxTokens }) {
   }
   const anTools = tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.input_schema }));
   const resp = await anthropicClient().messages.create({ model: ANTHROPIC_MODEL, max_tokens: maxTokens, system, tools: anTools, messages: anMessages });
+  await meter().recordText(ANTHROPIC_MODEL, resp.usage, 'anthropic');
   const text = (resp.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
   const tool_calls = (resp.content || []).filter((b) => b.type === 'tool_use').map((b) => ({ id: b.id, name: b.name, input: b.input || {} }));
   return { ok: true, text, tool_calls };
@@ -394,6 +412,8 @@ async function webSearch(query, { maxResults = 5, model = null } = {}) {
       max_output_tokens: 8192, // gpt-5.x burns reasoning tokens; too small returns status:incomplete
       input: 'Research the open web for current, factual information to answer the following, then give a concise sourced summary with real citations. Search at most twice. If the web has little on it, say so plainly rather than guessing.\n\n' + q.slice(0, 500),
     }, { timeout: 90000 });
+    // Tokens only: OpenAI also charges per web search call, which this does not yet include.
+    await meter().recordText(resp.model || OPENAI_MODEL, resp.usage, 'responses');
     const parsed = parseOpenAISearch(resp);
     parsed.results = parsed.results.slice(0, maxResults);
     return parsed;
@@ -402,4 +422,4 @@ async function webSearch(query, { maxResults = 5, model = null } = {}) {
   }
 }
 
-module.exports = { available, providerName, modelName, complete, describeImage, chat, probe, autoEffort, resolveEffort, openaiToolTokenParams, webSearch, _parseOpenAISearch: parseOpenAISearch, shouldUseResponses, toResponsesInput, toResponsesTools, parseResponsesOutput };
+module.exports = { assistantText, available, providerName, modelName, complete, describeImage, chat, probe, autoEffort, resolveEffort, openaiToolTokenParams, webSearch, _parseOpenAISearch: parseOpenAISearch, shouldUseResponses, toResponsesInput, toResponsesTools, parseResponsesOutput };

@@ -201,6 +201,14 @@ const running = new Set();
 
 // Build one. Claims it first so two processes, or a double click, never write the same build twice.
 async function run(buildId) {
+  // Builds run in the background, outside any request, so they carry their own metering context.
+  const who = (await query('SELECT business_id, requested_by FROM builds WHERE id=$1', [buildId])).rows[0] || {};
+  return require('../meter').within(
+    { user_id: who.requested_by || null, business_id: who.business_id || null, purpose: 'build' },
+    () => runMetered(buildId));
+}
+
+async function runMetered(buildId) {
   if (running.has(buildId)) return { ok: false, reason: 'already running' };
   running.add(buildId);
   try {
