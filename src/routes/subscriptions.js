@@ -78,7 +78,7 @@ router.post('/', authenticate, [
       ? (billing === 'yearly' ? bundleYearlyCents(bundle) : BUNDLES[bundle].cents)
       : (billing === 'yearly' ? yearlyCents(plan) : planCents(plan)),
     planName: bundle
-      ? 'Access YP Labs ' + PLANS[plan].name + ' and Access YP Flow ' + BUNDLES[bundle].flow.charAt(0).toUpperCase() + BUNDLES[bundle].flow.slice(1) + (billing === 'yearly' ? ', yearly' : ', monthly')
+      ? BUNDLES[bundle].name + ' bundle: Access YP Labs and Access YP Flow' + (billing === 'yearly' ? ', yearly' : ', monthly')
       : 'Access YP Labs ' + PLANS[plan].name + (billing === 'yearly' ? ', yearly' : ', monthly'), plan,
     conceptId, userId: req.user.id, email: req.user.email,
     successUrl: `${base}/plans.html?sub=done`,

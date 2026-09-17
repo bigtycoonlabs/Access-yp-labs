@@ -122,7 +122,7 @@ function render() {
       var saving = dollars(b.separate_cents - b.cents);
       h += '<h3 id="b-' + b.key + '">' + esc(b.name) + '</h3>'
         + '<p class="price">' + price + '</p>'
-        + '<p>' + esc(b.labs === 'office' ? 'Office' : 'Desk') + ' on Labs and ' + esc(flowName) + ' on Flow, '
+        + '<p>The ' + esc(b.labs === 'office' ? 'Office' : 'Desk') + ' plan on YP Labs and the ' + esc(flowName) + ' plan on YP Flow, '
         + saving + ' a month less than the two bought apart (' + dollars(b.separate_cents) + ').</p><div class="row">'
         + (held ? '<p>You already have a plan. To add Flow, email success@accessyourplace.com and we will set it up without charging you twice.</p>'
           : '<button class="btn" type="button" data-bundle="' + b.key + '">Choose ' + esc(b.name) + ', ' + price + '</button>')
