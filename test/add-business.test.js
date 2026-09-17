@@ -29,3 +29,22 @@ test('states are recognised by name or code, never guessed, and duplicates are n
   assert.match(src, /Number\.isFinite\(employees\) \? employees : 0\]\);/);
   assert.match(src, /I have noted no employees besides the owner for now/);
 });
+
+test('a reminder is never lost over a cost nobody can explain', () => {
+  // The live walk lost a real reminder: a missed cost with no basis was refused outright.
+  const src = fs.readFileSync('src/services/clay/workspace.js', 'utf8');
+  assert.match(src, /const costUnreadable = cost !== null && !Number\.isFinite\(cost\)/);
+  assert.match(src, /BASES\.includes\(params\.cost_basis\) \? params\.cost_basis : 'unknown'/);
+  assert.match(src, /I left the missed cost off, because what you gave me was not an amount/);
+  assert.match(src, /basis as unknown, because nobody has said where that figure comes from/);
+});
+
+test('Penny can give a portal its address and open it, and changing the address does not close it', () => {
+  const W2 = require('../src/services/clay/workspace');
+  assert.ok(W2.TOOLS.customize_portal.optional.includes('address'));
+  assert.deepStrictEqual(W2.TOOLS.customize_portal.enums.open, ['yes', 'no']);
+  assert.ok(W2.TOOLS.customize_portal.summary.length < 1024);
+  const portal = fs.readFileSync('src/services/clay/portal.js', 'utf8');
+  assert.match(portal, /const nextOpen = open === undefined \? !!p\.is_open : !!open/);
+  assert.match(portal, /is_open=\$3, updated_at=now\(\) WHERE id=\$1', \[p\.id, slug, nextOpen\]/);
+});

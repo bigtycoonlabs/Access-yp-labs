@@ -100,9 +100,12 @@ async function setOpen(viewer, business_id, { open, address }) {
       return { ok: false, kind: 'unclear', says: 'Choose an address of letters, numbers and dashes, such as rivera-landscaping.' };
     }
   }
-  if (open && !slug) return { ok: false, kind: 'unclear', says: 'Choose an address for the portal first.' };
+  // Leaving the switch alone keeps the portal as it is: changing only the address used to close it,
+  // because an unset switch read as "closed" (found 17 Sept 2026).
+  const nextOpen = open === undefined ? !!p.is_open : !!open;
+  if (nextOpen && !slug) return { ok: false, kind: 'unclear', says: 'Choose an address for the portal first.' };
   try {
-    await query('UPDATE portals SET slug=$2, is_open=$3, updated_at=now() WHERE id=$1', [p.id, slug, !!open]);
+    await query('UPDATE portals SET slug=$2, is_open=$3, updated_at=now() WHERE id=$1', [p.id, slug, nextOpen]);
   } catch (e) {
     if (e.code === '23505') return { ok: false, kind: 'refused', says: 'Someone already has ' + slug + '. Try another address.' };
     return { ok: false, kind: 'unavailable', says: 'I could not change that. ' + e.message };

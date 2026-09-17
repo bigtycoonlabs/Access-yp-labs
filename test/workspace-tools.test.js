@@ -46,9 +46,13 @@ test('Penny inherits the permissions of whoever she is talking to', () => {
   assert.match(ws, /return refused\(P\.refusalLine\(gate/);
 });
 
-test('a number with no basis is refused before the database has to', () => {
-  // Penny should never learn a constraint by throwing. Driven live: refused with a sentence.
-  assert.match(ws, /A cost I cannot explain is one you should not trust/);
+test('a number with no basis is handled before the database has to', () => {
+  // Penny should never learn a constraint by throwing. Until 17 Sept 2026 an unexplained cost was
+  // refused outright, which lost a real reminder in the live walk; now the cost is recorded with its
+  // basis as unknown, and said to be unknown, while the reminder itself is kept.
+  assert.match(ws, /The database refuses a cost with no basis/);
+  assert.match(ws, /: 'unknown'\);/);
+  assert.match(ws, /basis as unknown, because nobody has said where that figure comes from/);
 });
 
 test('she reports what was saved, never what she was told', () => {

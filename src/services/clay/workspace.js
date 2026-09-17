@@ -127,12 +127,15 @@ const TOOLS = {
   },
   customize_portal: {
     irreversible: false, requires_confirmation: false,
-    required: ['business_id', 'config_json'], optional: ['asked_for'], enums: {},
+    required: ['business_id'], optional: ['config_json', 'asked_for', 'address', 'open'],
+    enums: { open: ['yes', 'no'] },
     summary: 'Change the customer portal. config_json is a JSON object with any of: title, welcome, '
       + 'accent, signup (open, approve or off: who can create their own account), sections (list of {type, title, on} in order), request ({intro, fields: [{label, '
       + 'kind, required}]}), links ([{label, url}]). Pass the person\'s words as asked_for. Report '
       + 'what the result says it could not apply. If it says the request needs a backend, explain '
-      + 'that is a custom web application and offer to build it with start_build.',
+      + 'that is a custom web application and offer to build it with start_build. address gives the '
+      + 'portal its web address (letters, numbers and dashes); open yes lets customers reach it, open '
+      + 'no takes it down. A portal with no address or not open cannot be reached, so say which is missing.',
   },
   list_keys: {
     irreversible: false, requires_confirmation: false, required: ['business_id'], enums: {},
@@ -235,11 +238,16 @@ async function record_obligation(viewer, params = {}) {
   if (!gate.ok) {
     return refused(P.refusalLine(gate, area, gate.perms && gate.perms.business.name));
   }
-  // A cost without a basis is refused by the database. Penny should never learn this by throwing.
-  if (params.cost_if_missed_cents != null && !params.cost_basis) {
-    return refused('I can record that, but not with a number on it unless you tell me whether that '
-      + 'is a known figure or your estimate. A cost I cannot explain is one you should not trust.');
-  }
+  // The database refuses a cost with no basis. Rather than refuse the whole reminder, an unexplained
+  // cost is recorded as unknown and said to be unknown, and a cost that is not a number is dropped
+  // and said to be dropped. Refusing outright lost a real reminder in the live walk (17 Sept 2026).
+  let cost = params.cost_if_missed_cents == null || params.cost_if_missed_cents === '' ? null
+    : Number(params.cost_if_missed_cents);
+  const costUnreadable = cost !== null && !Number.isFinite(cost);
+  if (costUnreadable) cost = null;
+  const BASES = ['known', 'estimated', 'unknown'];
+  const basis = cost === null ? (BASES.includes(params.cost_basis) ? params.cost_basis : null)
+    : (BASES.includes(params.cost_basis) ? params.cost_basis : 'unknown');
   try {
     const r = await query(
       `INSERT INTO obligations (business_id, kind, title, detail, counterparty, counterparty_kind,
@@ -247,13 +255,15 @@ async function record_obligation(viewer, params = {}) {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'penny') RETURNING *`,
       [params.business_id, params.kind, String(params.title).trim(), params.detail || null,
         params.counterparty || null, params.counterparty_kind || null, params.due_at || null,
-        params.recurs_every || null, params.cost_if_missed_cents ?? null,
-        params.cost_basis || null, params.consequence || null]);
+        params.recurs_every || null, cost, basis, params.consequence || null]);
     const row = Object.assign({}, r.rows[0],
       { overdue: r.rows[0].due_at && new Date(r.rows[0].due_at) < new Date() });
     // Report what the tool SAVED, never what it was told. Penny once confirmed an $8,000 deal that
     // was never written, because the tool had no field for the asking price and dropped it silently.
-    return answered({ obligation: row }, 'Recorded: ' + row.title + '. ' + R.explain(row));
+    let note = '';
+    if (costUnreadable) note = ' I left the missed cost off, because what you gave me was not an amount.';
+    else if (cost !== null && !BASES.includes(params.cost_basis)) note = ' The cost is recorded with its basis as unknown, because nobody has said where that figure comes from.';
+    return answered({ obligation: row }, 'Recorded: ' + row.title + '. ' + R.explain(row) + note);
   } catch (e) {
     return unavailable(e.message, 'I could not save that. It is not recorded — please do not assume it is.');
   }
@@ -474,9 +484,29 @@ async function customize_portal(viewer, params = {}) {
   try { changes = JSON.parse(params.config_json || '{}'); } catch (_) {
     return { status: 'needs_answer', says: 'That change was not in a form I could read, so nothing was saved.' };
   }
-  const r = await Portal.customise(viewer, params.business_id, { changes, asked_for: params.asked_for });
-  if (!r.ok) return r.kind === 'refused' ? refused(r.says) : unavailable('portal_not_saved', r.says);
-  return answered({ ignored: r.ignored, needs_custom_app: r.beyond }, r.says);
+  const said = [];
+  if (Object.keys(changes).length) {
+    const r = await Portal.customise(viewer, params.business_id, { changes, asked_for: params.asked_for });
+    if (!r.ok) return r.kind === 'refused' ? refused(r.says) : unavailable('portal_not_saved', r.says);
+    said.push({ says: r.says, ignored: r.ignored, beyond: r.beyond });
+  }
+  // The address and the open switch are how a portal becomes reachable at all.
+  let reach = null;
+  if (params.address || params.open) {
+    reach = await Portal.setOpen(viewer, params.business_id, {
+      address: params.address || undefined,
+      open: params.open === undefined ? undefined : params.open === 'yes',
+    });
+    if (!reach.ok) return reach.kind === 'refused' ? refused(reach.says) : unavailable('portal_not_opened', reach.says);
+    said.push({ says: reach.says });
+  }
+  if (!said.length) {
+    const st = await Portal.status(viewer, params.business_id);
+    return st.ok ? answered({ portal: st.portal }, st.says) : unavailable('portal_unreadable', st.says);
+  }
+  const last = said[said.length - 1];
+  return answered({ ignored: last.ignored, needs_custom_app: last.beyond, address: reach && reach.address },
+    said.map((x) => x.says).join(' '));
 }
 
 async function list_keys(viewer, params = {}) {
