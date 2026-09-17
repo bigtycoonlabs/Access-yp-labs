@@ -254,6 +254,9 @@ async function runMetered(buildId) {
     if (build.stage === 'real' && from) await moveAddress(from, build.id);
     const url = SITE() + '/preview/' + build.preview_token;
     const done = await B.ready(build.id, { preview_url: url });
+    // Counted against the month only now that it exists. A failed build costs the person nothing.
+    const who = (await query('SELECT id, role, billing_test FROM users WHERE id=$1', [build.requested_by])).rows[0];
+    if (who) await require('../allowance').record(who, 'build', build.id);
     return { ok: done.ok, url };
   } catch (e) {
     try {

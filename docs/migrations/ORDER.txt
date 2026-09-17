@@ -88,3 +88,4 @@
 071_compliance_runs.sql
 072_desk_office_plans.sql
 073_bundles.sql
+074_allowances.sql

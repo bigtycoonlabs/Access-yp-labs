@@ -39,7 +39,8 @@ test('the route reads the shape runChat actually returns', () => {
   // The first version read out.text, out.stoppedEarly and out.pending. None exist. runChat returns
   // { status, reply, messages } and surfaces a confirmation as status 'confirmation_required'.
   // Since 16 Sept 2026 a note about a key taken out of the chat may come first; the reply is still out.reply.
-  assert.match(route, /reply: keyNote \? keyNote \+ \(out\.reply \? '\\n\\n' \+ out\.reply : ''\) : out\.reply,/);
+  // And since the same day a note when the month's messages are nearly used up may come last.
+  assert.match(route, /reply: \(keyNote \? keyNote \+ \(out\.reply \? '\\n\\n' \+ out\.reply : ''\) : out\.reply\) \+ \(low \? '\\n\\n' \+ low : ''\),/);
   assert.match(route, /status: out\.status/);
   assert.match(route, /out\.confirmation/);
   // Checked against the CODE rather than the file. The first version of this assertion failed on the

@@ -29,6 +29,7 @@
 
 const { query } = require('../../config/db');
 const P = require('../../lib/permissions');
+const Allowance = require('../allowance');
 const Scope = require('./scope');
 const Domains = require('./domains');
 
@@ -76,6 +77,9 @@ async function start(viewer, { business_id, asked_for, kind, mock_first, edit_of
   }
   const u = understand(asked_for);
   if (!u.ok) return { ok: false, kind: 'unclear', says: u.says };
+  // A mock-up, a real build and a fix each use one build from the month's allowance.
+  const allowed = await Allowance.check(viewer, 'build');
+  if (!allowed.ok) return allowed;
 
   let base = null;
   if (edit_of) {
@@ -164,6 +168,8 @@ async function requestMock(viewer, { business_id, asked_for, kind, edit_of, tier
 async function approve(viewer, { build_id }) {
   const m = (await query('SELECT * FROM builds WHERE id=$1', [build_id])).rows[0];
   if (!m) return { ok: false, kind: 'unavailable', says: 'I cannot find that build.' };
+  const allowedA = await Allowance.check(viewer, 'build');
+  if (!allowedA.ok) return allowedA;
 
   const gate = await P.can(viewer.id, m.business_id, 'projects', 'act');
   if (!gate.ok) {
@@ -204,6 +210,8 @@ async function approve(viewer, { build_id }) {
 async function fix(viewer, { build_id, whats_wrong }) {
   const prev = (await query('SELECT * FROM builds WHERE id=$1', [build_id])).rows[0];
   if (!prev) return { ok: false, kind: 'unavailable', says: 'I cannot find that build.' };
+  const allowedF = await Allowance.check(viewer, 'build');
+  if (!allowedF.ok) return allowedF;
   const gate = await P.can(viewer.id, prev.business_id, 'projects', 'act');
   if (!gate.ok) {
     return { ok: false, kind: 'refused',

@@ -60,6 +60,11 @@ legend{font-weight:600;padding:0 6px;}
     <label class="choice"><input type="radio" name="billing" value="yearly"/> Yearly, which is ten months' price for twelve</label>
   </fieldset>
 
+  <section id="usage" class="panel" aria-labelledby="usage-h" hidden>
+    <h2 id="usage-h" style="margin-top:0;">This month</h2>
+    <div id="usage-body"></div>
+  </section>
+
   <div id="plans"><p class="muted">Loading the plans.</p></div>
 
   <p class="muted" id="note"></p>
@@ -131,8 +136,36 @@ function render() {
     h += '<p class="muted">Your Flow account uses the same email as this one. If you do not have one yet, Flow creates it and emails you how to sign in.</p></section>';
   }
   $('plans').innerHTML = h;
-  $('note').textContent = catalog.allowances_enforced ? ''
-    : 'Top-ups are coming: $10 for 150 more messages, 25 more builds, or 8 more compliance questions.';
+  $('note').textContent = 'When an allowance runs out, only new work pauses. Your sites, portal and files keep working.';
+}
+
+var NAMES = { penny_message: 'Messages with Penny', build: 'Builds', compliance_review: 'Full compliance reviews',
+  compliance_question: 'Compliance questions' };
+async function loadUsage() {
+  if (!signedIn) return;
+  try {
+    var r = await fetch('/api/subscriptions/allowance'); if (!r.ok) return;
+    var d = await r.json();
+    var h = '';
+    if (d.unlimited) {
+      h = '<p>Your account has no monthly limits.</p>';
+    } else {
+      h = '<ul>' + Object.keys(NAMES).map(function (k) {
+        var u = d.usage[k];
+        if (!u || !u.included && !u.topup) return '';
+        return '<li>' + NAMES[k] + ': ' + u.used + ' of ' + u.included + ' used'
+          + (u.topup ? ', plus ' + u.topup + ' from top-ups' : '') + '.</li>';
+      }).join('') + '</ul>';
+      if (catalog && catalog.topups) {
+        h += '<h3>Top-ups</h3><p>$10 each. They last until you use them.</p><div class="row">'
+          + catalog.topups.map(function (t) {
+            return '<button class="btn" type="button" data-topup="' + t.key + '">Add ' + esc(t.label) + ', $10</button>';
+          }).join('') + '</div>';
+      }
+    }
+    $('usage-body').innerHTML = h;
+    $('usage').hidden = false;
+  } catch (_) { /* usage is a convenience; the plans still show */ }
 }
 
 async function load() {
@@ -155,13 +188,28 @@ async function load() {
   var p = new URLSearchParams(location.search).get('sub');
   if (p === 'done') say('Thank you. Your plan starts as soon as the payment is confirmed, usually within a minute.');
   if (p === 'canceled') say('Checkout was cancelled, and nothing was charged.');
+  if (new URLSearchParams(location.search).get('topup') === 'done') say('Thank you. Your top-up is added as soon as the payment is confirmed, usually within a minute.');
   render();
+  loadUsage();
 }
 
 document.addEventListener('change', function (e) { if (e.target.name === 'billing') { render(); say(billing() === 'yearly' ? 'Showing yearly prices.' : 'Showing monthly prices.'); } });
 document.addEventListener('click', async function (e) {
   var plan = e.target.dataset && e.target.dataset.plan;
   var bundle = e.target.dataset && e.target.dataset.bundle;
+  var topup = e.target.dataset && e.target.dataset.topup;
+  if (topup) {
+    e.target.disabled = true; say('Opening secure checkout.');
+    try {
+      var tr = await fetch('/api/subscriptions/topup', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: topup }) });
+      var td = {}; try { td = await tr.json(); } catch (_) {}
+      if (td.ok && td.url) { location.href = td.url; return; }
+      say(td.message || td.error || 'Checkout did not open, and nothing was charged.');
+    } catch (err) { say('Checkout did not open, and nothing was charged.'); }
+    e.target.disabled = false;
+    return;
+  }
   if (!plan && !bundle) return;
   if (!signedIn) { location.href = '/login.html?next=/plans.html'; return; }
   e.target.disabled = true; say('Opening secure checkout.');

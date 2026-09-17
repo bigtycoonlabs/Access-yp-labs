@@ -346,5 +346,28 @@ async function refundPayment({ paymentIntent, sessionId, reason = 'requested_by_
   }
 }
 
+// A $10 top-up: a one-time payment that adds units which last until used.
+async function createTopupCheckout({ userId, email, kind, units, label, priceCents, successUrl, cancelUrl }) {
+  const s = stripe();
+  if (!s) return { ok: false, reason: 'stripe_not_configured' };
+  try {
+    const session = await s.checkout.sessions.create({
+      mode: 'payment',
+      customer_email: email || undefined,
+      line_items: [{ price_data: { currency: 'usd', unit_amount: priceCents,
+        product_data: { name: 'Access YP Labs top-up: ' + label } }, quantity: 1 }],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: { kind: 'topup', user_id: userId, topup_kind: kind, units: String(units) },
+      managed_payments: { enabled: false },
+    });
+    return { ok: true, url: session.url, sessionId: session.id };
+  } catch (err) {
+    console.error('createTopupCheckout FAILED:', err && err.message);
+    return { ok: false, reason: 'stripe_error' };
+  }
+}
+
 module.exports = {
+  createTopupCheckout,
   refundPayment, configured, constructEvent, createPlanCheckout, cancelSubscription, createConnectedAccount, createAccountLink, retrieveAccount, createEscrowCheckout, createImagePackCheckout, createTransfer, ensureCardPayments, createStoreCheckout, retrieveStoreSession };

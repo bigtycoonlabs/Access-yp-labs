@@ -69,6 +69,15 @@ function bundleSeparateCents(key) {
 }
 function bundleYearlyCents(key) { return BUNDLES[key] ? BUNDLES[key].cents * YEARLY_MONTHS_CHARGED : null; }
 
+// TOP-UPS, $10 each, units that last until used. They cost us less than they sell for at the measured
+// rates (4.5c a message, 18c a build, 85c a compliance search).
+const TOPUP_CENTS = 1000;
+const TOPUPS = {
+  penny_message:       { units: 150, label: '150 more messages with Penny' },
+  build:               { units: 25,  label: '25 more builds' },
+  compliance_question: { units: 8,   label: '8 more compliance questions' },
+};
+
 // Every plan that counts as paid, current or retired. Checks for "is this person on a plan" read
 // this list, so a new plan cannot be forgotten in one of them.
 const PAID_PLANS = ['desk', 'office', 'builder', 'sculptor'];
@@ -119,7 +128,7 @@ function recordedPlanCents(plan, billing, bundle) {
 
 module.exports = {
   PLATFORM_RATE, PRICE_FLOOR_CENTS, MIN_BID_CENTS, isValidBid,
-  BUNDLES, FLOW_TIER_CENTS, bundleSeparateCents, bundleYearlyCents,
+  TOPUP_CENTS, TOPUPS, BUNDLES, FLOW_TIER_CENTS, bundleSeparateCents, bundleYearlyCents,
   BUILDER_CENTS, DESK_CENTS, OFFICE_CENTS, YEARLY_MONTHS_CHARGED, yearlyCents, FREE_ALLOWANCE, PAID_PLANS,
   FREE_PROJECTS, LEGACY_PLANS, LEGACY_PLAN_CENTS, recordedPlanCents, CONCEPT_ACCESS_DAYS, PLANS, planCents,
   platformFeeCents, sellerNetCents, isAboveFloor,

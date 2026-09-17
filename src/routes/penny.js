@@ -16,6 +16,7 @@ const agent = require('../services/clay/agent');
 const { PENNY_WORKSPACE, WORKSPACE_TOOLS } = require('../services/clay/penny');
 const workspace = require('../services/clay/workspace');
 const Keys = require('../services/clay/keys');
+const Allowance = require('../services/allowance');
 const spine = require('../services/clay/spine');
 
 const router = express.Router();
@@ -49,6 +50,13 @@ router.post('/chat', authenticate, [
     scrubbed.messages.push({ role: 'user', content: '[Note from the system, not the person: a key was '
       + 'removed from this message before you saw it. What happened to it has already been told to the '
       + 'person. Do not ask them to paste it again; point them to the Keys page if they need to add one.]' });
+  }
+
+  // THE MONTH'S ALLOWANCE. Checked before the model is asked anything; counted only if she answered.
+  const allowed = await Allowance.check(req.user, 'penny_message');
+  if (!allowed.ok) {
+    return res.json({ reply: (keyNote ? keyNote + '\n\n' : '') + allowed.says, status: 'refused',
+      allowance: 'used_up', tools_used: [], keys_removed: null, awaiting_confirmation: null });
   }
 
   const events = [];
@@ -86,8 +94,14 @@ router.post('/chat', authenticate, [
     .filter((e) => e.type === 'tool_done')
     .map((e) => ({ tool: e.tool, ok: e.ok, note: e.note }));
 
+  let low = null;
+  if (out.status !== 'unavailable') {
+    await Allowance.record(req.user, 'penny_message');
+    if (!allowed.unread) low = Allowance.lowNote(await Allowance.status(req.user, 'penny_message').catch(() => null));
+  }
+
   res.json({
-    reply: keyNote ? keyNote + (out.reply ? '\n\n' + out.reply : '') : out.reply,
+    reply: (keyNote ? keyNote + (out.reply ? '\n\n' + out.reply : '') : out.reply) + (low ? '\n\n' + low : ''),
     // Which of the person's messages had a key taken out, so the page can replace its own copy.
     keys_removed: scrubbed.found.length
       ? scrubbed.messages.filter((m) => m.role === 'user').map((m) => m.content) : null,

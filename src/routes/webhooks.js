@@ -74,6 +74,10 @@ async function stripeWebhook(req, res) {
       // can create such a session any more (the routes 410 and the checkout function is gone), and
       // no engagement was ever paid for, so there is no in-flight event this could still be needed
       // for. An unreachable branch that writes money is worth deleting rather than keeping.
+      } else if (md.kind === 'topup' && md.user_id && md.topup_kind) {
+        // Added once per checkout session; a redelivered event adds nothing.
+        await require('../services/allowance').addTopup({ sessionId: event.data.object.id, userId: md.user_id,
+          kind: md.topup_kind, priceCents: event.data.object.amount_total || 0 });
       } else if (md.kind === 'image_pack' && md.concept_id && md.images) {
         // Extras image pack. Grant the credits to the concept exactly once, keyed by the Stripe
         // session id: the purchase row is inserted first, and credits are added only if that

@@ -243,6 +243,11 @@ async function start(viewer, { business_id, areas, question, fresh } = {}) {
     }
   }
 
+  // A full review of all eight areas uses a review; anything narrower uses a question.
+  const unit = !q && want.length === AREA_NAMES.length ? 'compliance_review' : 'compliance_question';
+  const allowed = await require('../allowance').check(viewer, unit);
+  if (!allowed.ok) return { ok: false, kind: 'refused', says: allowed.says };
+
   const running = (await query(
     `SELECT id, created_at FROM compliance_runs WHERE business_id=$1 AND status IN ('queued','running')
        AND created_at > now() - interval '30 minutes' ORDER BY created_at DESC LIMIT 1`, [b.id])).rows[0];
@@ -277,6 +282,12 @@ async function runJob(runId) {
   }
   await query(`UPDATE compliance_runs SET status=$2, says=$3, finished_at=now() WHERE id=$1`,
     [runId, out.ok ? 'done' : 'failed', out.says || 'It ended without saying why.']);
+  // Counted only when something was found. Reused findings never reach here, so they are free.
+  if (out.ok && run.requested_by) {
+    const who = (await query('SELECT id, role, billing_test FROM users WHERE id=$1', [run.requested_by])).rows[0];
+    const full = !run.question && (run.areas || []).length === AREA_NAMES.length;
+    if (who) await require('../allowance').record(who, full ? 'compliance_review' : 'compliance_question', runId);
+  }
 }
 
 async function status(viewer, business_id) {

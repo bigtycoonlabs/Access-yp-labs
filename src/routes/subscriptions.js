@@ -118,9 +118,36 @@ router.get('/plans', (req, res) => {
       key: k, name: x.name, labs: x.labs, flow: x.flow, cents: x.cents,
       yearly_cents: require('../lib/money').bundleYearlyCents(k),
       separate_cents: require('../lib/money').bundleSeparateCents(k) })),
-    allowances_enforced: false,
+    topups: Object.entries(require('../lib/money').TOPUPS).map(([k, t]) => ({ key: k, units: t.units, label: t.label,
+      cents: require('../lib/money').TOPUP_CENTS })),
+    allowances_enforced: true,
   });
 });
+
+// What this person has used this month and what is left, in numbers the plans page reads aloud.
+router.get('/allowance', authenticate, asyncHandler(async (req, res) => {
+  const A = require('../services/allowance');
+  const s = await A.summary(req.user);
+  const plan = Object.values(s)[0].plan;
+  res.json({ plan, unlimited: Object.values(s)[0].unlimited, usage: s });
+}));
+
+router.post('/topup', authenticate, [
+  body('kind').isIn(Object.keys(require('../lib/money').TOPUPS)),
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ error: 'Choose messages, builds or compliance questions.' });
+  const { TOPUPS, TOPUP_CENTS } = require('../lib/money');
+  const t = TOPUPS[req.body.kind];
+  const base = (process.env.CLIENT_URL || 'https://accessyplabs.com').replace(/\/+$/, '');
+  const checkout = await require('../services/stripe').createTopupCheckout({
+    userId: req.user.id, email: req.user.email, kind: req.body.kind, units: t.units, label: t.label,
+    priceCents: TOPUP_CENTS, successUrl: base + '/plans.html?topup=done', cancelUrl: base + '/plans.html?sub=canceled' });
+  if (!checkout.ok) {
+    return res.json({ ok: false, message: 'Checkout did not open, and nothing was charged. Please try again in a moment.' });
+  }
+  res.json({ ok: true, url: checkout.url });
+}));
 
 router.get('/', authenticate, asyncHandler(async (req, res) => {
   const r = await query(
