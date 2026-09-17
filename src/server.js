@@ -98,6 +98,26 @@ app.use('/api/auth/refresh', authLimiter);
 // Server-rendered pages: Clay's Desk articles (each at its own address, with real HTML for search
 // engines and link previews) and a generated sitemap. Mounted BEFORE the static handler so the
 // generated sitemap wins over the static file.
+// THE RETIRED MARKETPLACE (owner, 16 September 2026). Clay, the Exchange, listings, seeded projects,
+// project pages and the magazine are gone; everybody starts clean on the platform as it is now. Old
+// addresses answer with a permanent redirect to where that job lives today, so bookmarks and search
+// results still land somewhere useful, and nothing retired can be reached by address.
+const RETIRED_PAGES = {
+  '/app.html': '/today.html', '/dashboard.html': '/today.html', '/concept.html': '/businesses.html',
+  '/clay-chat.html': '/penny.html', '/sandbox.html': '/penny.html', '/dreamhold.html': '/',
+  '/marketplace.html': '/', '/listing.html': '/', '/sell.html': '/', '/seats.html': '/',
+  '/movers.html': '/', '/mover.html': '/', '/partners.html': '/', '/waitlist.html': '/register.html',
+  '/enter.html': '/login.html', '/consultants.html': '/', '/consultant-apply.html': '/',
+};
+app.use((req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  const p = req.path;
+  if (RETIRED_PAGES[p]) return res.redirect(301, RETIRED_PAGES[p]);
+  if (p === '/weekly' || p.startsWith('/weekly/') || p.startsWith('/market/')) return res.redirect(301, '/');
+  next();
+});
+app.locals.RETIRED_PAGES = RETIRED_PAGES;
+
 app.use(require('./routes/deskPages'));
 app.use(require('./routes/weeklyPages'));
 
@@ -108,6 +128,7 @@ app.use(require('./routes/weeklyPages'));
 // happened when a corrected chat/build routing kept behaving the old way in a live session. This
 // matters even more for a screen-reader user, for whom "just hard-refresh" is not a simple move.
 // Fingerprinted assets (images, fonts, CSS) keep normal caching.
+
 app.use(express.static(path.join(__dirname, '../public'), {
   index: false,
   etag: true,
@@ -242,30 +263,11 @@ if (require.main === module) {
   // Daily concept-expiry sweep: warn owners of quiet free concepts, then soft-expire the
   // ones that lapsed after being warned. Skipped in tests; a sweep error can't crash boot.
   if (process.env.NODE_ENV !== 'test') {
-    // The one useful message before the fade warning. Ordering matters: a person should hear
-    // "here is your next step" days before they ever hear "your dream is about to fade", or the
-    // only thing this platform has ever said to them is that their work is dying.
-    try {
-      const { runNudges } = require('./services/clay/nextStep');
-      setTimeout(() => {
-        runNudges({ quietDays: 3, limit: 25 })
-          .then((r) => console.log('next-step nudges:', JSON.stringify(r)))
-          .catch((e) => console.error('next-step nudges failed:', e && e.message));
-      }, 45000);
-      setInterval(() => {
-        runNudges({ quietDays: 3, limit: 25 })
-          .then((r) => console.log('next-step nudges:', JSON.stringify(r)))
-          .catch((e) => console.error('next-step nudges failed:', e && e.message));
-      }, 24 * 60 * 60 * 1000).unref();
-    } catch (e) { console.error('could not schedule next-step nudges:', e && e.message); }
-
-    const { runExpirySweep } = require('./services/expiry');
+    // RETIRED 16 September 2026, with Clay and the marketplace: project next-step nudges, the
+    // project-expiry warnings, the auto-seeder, auction settling, watched-listing mail, the Clay Weekly
+    // magazine and the weekly proof prompts. None of them run, so nobody hears about a project that
+    // no longer exists.
     const DAY_MS = 24 * 60 * 60 * 1000;
-    const sweep = () => runExpirySweep()
-      .then((r) => console.log('expiry sweep:', JSON.stringify(r)))
-      .catch((e) => console.error('expiry sweep error:', e && e.message));
-    setTimeout(sweep, 60 * 1000); // once, a minute after boot
-    setInterval(sweep, DAY_MS);   // then daily
 
     // DUE-DATE SWEEP. Obligations carried due dates from the day the spine was built and nothing
     // acted on them, so a compliance ledger only warned somebody who remembered to open it — which
@@ -296,18 +298,7 @@ if (require.main === module) {
     setTimeout(buildSweep, 90 * 1000);           // shortly after boot
     setInterval(buildSweep, 5 * 60 * 1000);      // then every 5 minutes
 
-    // Auto-seed scheduler: when staff enable it, Clay tops up the Exchange review queue on a
-    // cadence (a couple a day, spaced out). Every seed lands in 'in_review' — nothing goes live
-    // without staff approval. Default OFF; the tick claims a slot atomically, so it's safe across
-    // restarts and multiple instances, and a failure can't crash boot.
-    const seedScheduler = require('./services/clay/seedScheduler');
-    const seedTick = () => seedScheduler.tick()
-      .then((r) => { if (r && r.ok) console.log('scheduled seed done:', JSON.stringify(r)); })
-      .catch((e) => console.error('seed scheduler error:', e && e.message));
-    setTimeout(seedTick, 2 * 60 * 1000);         // a couple minutes after boot
-    setInterval(seedTick, 30 * 60 * 1000);       // then every 30 minutes
-
-    // Clay's weekly self-and-platform review. The tick claims a weekly slot atomically in the DB,
+    // Penny's weekly platform review for the team. The tick claims a weekly slot atomically in the DB,
     // so checking every few hours is safe — it only actually runs once a week, emails the team,
     // and changes nothing. ON by default; a failure can't crash boot.
     const weeklyReview = require('./services/clay/weeklyReview');
@@ -317,7 +308,7 @@ if (require.main === module) {
     setTimeout(reviewTick, 5 * 60 * 1000);        // a few minutes after boot
     setInterval(reviewTick, 6 * 60 * 60 * 1000);  // then every 6 hours (DB claim gates it to weekly)
 
-    // Clay drafting Desk pieces (help articles + witty stories). The tick claims a slot atomically
+    // Penny drafting Desk pieces (help articles and stories). The tick claims a slot atomically
     // and only drafts when the pending queue is small, so it's gentle by design. It ONLY creates
     // drafts — nothing is ever published without an owner approving it. A failure can't crash boot.
     const deskCompose = require('./services/clay/deskCompose');
@@ -327,50 +318,6 @@ if (require.main === module) {
     setTimeout(deskTick, 8 * 60 * 1000);          // a few minutes after boot
     setInterval(deskTick, 12 * 60 * 60 * 1000);   // then twice a day (DB claim gates it to ~3 days)
 
-    // Settling auctions whose clock has run out: record the winner and TELL BOTH SIDES. It takes no
-    // money and transfers nothing — the winner completes the purchase through the normal flow — so
-    // this is a fact being written down, not a transaction being forced. The claim only matches
-    // unsettled rows, so running it often (and on several instances) can't double-settle or
-    // double-email. A failure can't crash boot.
-    const auctions = require('./services/clay/auctions');
-    const auctionTick = () => auctions.settleDue()
-      .then((r) => { if (r && r.ok && r.settled) console.log('auctions settled:', JSON.stringify(r)); })
-      .then(() => auctions.reportEndlessAuctions())
-      .then((r) => { if (r && r.ok && r.endless) console.log('endless auctions flagged:', r.endless); })
-      .catch((e) => console.error('auction settle error:', e && e.message));
-    setTimeout(auctionTick, 3 * 60 * 1000);        // shortly after boot
-    setInterval(auctionTick, 10 * 60 * 1000);      // then every 10 minutes — a closed auction shouldn't wait
-
-    // Telling people about the projects they watch. Events are recorded as they happen and mailed in
-    // batches, so a burst of activity on one listing becomes a single message rather than five.
-    // Runs often because news that arrives late is barely news. A failure can't crash boot.
-    const watchActivity = require('./services/clay/watchActivity');
-    const watchTick = () => watchActivity.notifyWatchers()
-      .then((r) => { if (r && r.ok && r.sent) console.log('watch activity sent:', JSON.stringify(r)); })
-      .catch((e) => console.error('watch activity error:', e && e.message));
-    setTimeout(watchTick, 4 * 60 * 1000);
-    setInterval(watchTick, 15 * 60 * 1000);
-
-    // Clay Weekly. The tick claims the week by inserting the issue row itself (weekly_issues is
-    // unique on week_start), so running it every few hours is safe across restarts and instances —
-    // it can only ever draft one issue per week. It drafts and then tells the owners it's waiting;
-    // it never approves, publishes, or emails a single reader. A failure can't crash boot.
-    const weeklyMag = require('./services/clay/weekly');
-    const weeklyTick = () => weeklyMag.tick()
-      .then((r) => { if (r && r.ok) console.log('clay weekly drafted:', JSON.stringify(r)); })
-      .catch((e) => console.error('clay weekly error:', e && e.message));
-    setTimeout(weeklyTick, 12 * 60 * 1000);        // a few minutes after boot
-    setInterval(weeklyTick, 6 * 60 * 60 * 1000);   // then every 6 hours (the DB claim gates it to weekly)
-
-    // The weekly creator proof prompt. The tick claims a weekly slot atomically, then generates and
-    // emails a prompt to each creator who doesn't have one this week. Deterministic content (no LLM
-    // needed), best-effort, capped, and it can never double-send. A failure can't crash boot.
-    const proofPrompt = require('./services/clay/proofPrompt');
-    const proofTick = () => proofPrompt.tick()
-      .then((r) => { if (r && r.ok && (r.made || r.emailed)) console.log('proof prompts:', JSON.stringify(r)); })
-      .catch((e) => console.error('proof prompt error:', e && e.message));
-    setTimeout(proofTick, 10 * 60 * 1000);        // a few minutes after boot
-    setInterval(proofTick, 12 * 60 * 60 * 1000);  // then twice a day (DB claim gates it to weekly)
   }
 }
 module.exports = app;

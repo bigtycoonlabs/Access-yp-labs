@@ -33,11 +33,12 @@ test('keyword targets are search intents, not invented traffic numbers', () => {
     'no fabricated volume claims');
 });
 
-test('the sitemap is generated live and includes subjects and issues', () => {
-  // Nothing is cached, so anything Clay publishes and every Weekly issue appears the moment it does.
+test('the sitemap is generated live and includes subjects', () => {
+  // Generated on request, so a newly published article appears at once. Clay Weekly issues were
+  // listed here until the magazine was retired with Clay on 16 Sept 2026.
   assert.match(pages, /desk\/topic\/\$\{c\.slug\}/);
-  assert.match(pages, /listPublished/);
-  assert.match(flat(pages), /the sitemap is generated on request/i);
+  assert.match(pages, /publishedSlugs/);
+  assert.doesNotMatch(pages, /weekly'\)\.listPublished/);
 });
 
 test('trust proxy is one hop, so per-IP limits cannot be spoofed away', () => {

@@ -73,11 +73,11 @@ async function notifyStaff({ kind = 'note', subject, body, dedupeKey = null } = 
     let emailed = false;
     if (staff.length) {
       const html = `<div style="font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:16px;line-height:1.6;color:#191630">`
-        + `<p style="color:#585272;margin:0 0 12px">A note from Clay about Access YP Labs.</p>`
+        + `<p style="color:#585272;margin:0 0 12px">A note from Penny about Access YP Labs.</p>`
         + `<div style="white-space:pre-wrap">${esc(body)}</div></div>`;
-      const text = 'A note from Clay about Access YP Labs.\n\n' + String(body);
+      const text = 'A note from Penny about Access YP Labs.\n\n' + String(body);
       try {
-        const r = await sendEmail({ to: staff, subject: 'Clay: ' + subject, html, text });
+        const r = await sendEmail({ to: staff, subject: 'Penny: ' + subject, html, text });
         emailed = !!(r && r.sent);
       } catch (_) { emailed = false; }
     }

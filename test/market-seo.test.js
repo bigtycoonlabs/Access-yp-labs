@@ -48,10 +48,7 @@ test('a withdrawn listing is gone rather than missing', () => {
   assert.match(market, /no longer for sale/);
 });
 
-test('the sitemap carries the things we sell', () => {
-  // It listed every Desk article and not one live listing.
-  assert.match(desk, /\$\{site\}\/market\/\$\{x\.id\}/);
-  assert.match(flat(desk), /the part of the platform that gives things away was fully indexed/i);
+test('the sitemap carries the things we sell', { skip: 'the marketplace closed on 16 Sept 2026; nothing is listed, and /market/ addresses redirect (test/clean-slate.test.js)' }, () => {
 });
 
 test('the homepage shows what is for sale before what it costs', { skip: 'the marketplace homepage it tested has been replaced by the Penny Desk homepage' }, () => {

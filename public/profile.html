@@ -27,7 +27,7 @@
   <section aria-labelledby="pub-h">
     <h2 id="pub-h">How you appear to other people</h2>
     <p class="muted">Your real name is never shown. Everywhere on the platform — listings, the
-      partner board, Clay Weekly — people see the public name below.</p>
+      and anything else you share — people see the public name below.</p>
     <div class="panel"><div class="stack">
       <div><label for="display_name">Your public name</label>
         <input type="text" id="display_name" maxlength="40" autocomplete="nickname"/></div>
@@ -57,13 +57,13 @@
   <div class="panel"><div class="stack">
     <button type="button" class="btn" id="save">Save my profile</button>
 
-  <!-- CONVERSATION HISTORY. The platform records what people say to Clay so we can see where the
+  <!-- CONVERSATION HISTORY. The platform records what people said to the assistant so we can see where the
        product loses them, and it promises in writing that a creator can erase their own. That
        promise had no button behind it — the endpoint existed and nothing called it, which is the
        same shape as a refund nobody can trigger. -->
   <section aria-labelledby="hist-h">
-    <h2 id="hist-h">Your conversations with Clay</h2>
-    <p>We keep your conversations so Clay remembers what you are working on, and so we can see where
+    <h2 id="hist-h">Your earlier conversations</h2>
+    <p>We kept these conversations so the assistant could remember what you were working on, and so we could see where
       the product is confusing. Staff cannot read them. You can delete them whenever you like.</p>
     <p><button type="button" class="btn secondary" id="wipe">Delete my conversation history</button></p>
     <p id="wipe-said" role="status" aria-live="polite" class="muted"></p>
@@ -131,7 +131,7 @@ load();
     row.setAttribute('role','group');
     row.setAttribute('aria-label','Delete your conversation history?');
     var q=document.createElement('span');
-    q.textContent='Delete every conversation you have had with Clay? This cannot be undone. Your projects are not affected. ';
+    q.textContent='Delete every earlier conversation? This cannot be undone. Your businesses and files are not affected. ';
     var yes=document.createElement('button'); yes.type='button'; yes.className='btn'; yes.textContent='Yes, delete them';
     var no=document.createElement('button'); no.type='button'; no.className='btn secondary'; no.textContent='No, keep them';
     // Return focus to the button that opened this. `opener` was document.activeElement at click
@@ -160,16 +160,16 @@ load();
     no.addEventListener('click', function(){ row.remove(); restore(); said.textContent='Left as they are.'; announce(said.textContent,true); });
     row.appendChild(q); row.appendChild(yes); row.appendChild(no);
     btn.parentNode.parentNode.insertBefore(row, said);
-    announce('Confirm required. Delete every conversation you have had with Clay? This cannot be undone.', true);
+    announce('Confirm required. Delete every earlier conversation? This cannot be undone.', true);
     no.focus();
   });
 })();
 </script>
   <footer style="border-top:1px solid var(--line);color:var(--muted);font-size:15px;padding:22px 24px;text-align:center;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
     <nav aria-label="Legal">
-      <a href="/terms.html" style="color:var(--clay-dark);display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Terms of Service</a> ·
-      <a href="/privacy.html" style="color:var(--clay-dark);display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Privacy Policy</a> ·
-      <a href="/risk.html" style="color:var(--clay-dark);display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Risk Disclosure</a>
+      <a href="/terms.html" style="color:var(--link-dark);display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Terms of Service</a> ·
+      <a href="/privacy.html" style="color:var(--link-dark);display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Privacy Policy</a> ·
+      <a href="/risk.html" style="color:var(--link-dark);display:inline-block;min-height:44px;line-height:44px;margin:0 4px">Risk Disclosure</a>
     </nav>
   </footer>
 <script src="/js/site-footer.js" defer></script>

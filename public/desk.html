@@ -95,45 +95,26 @@
     <div class="wrap">
       <div class="bar">
         <div class="brand"><strong>Access YP Labs</strong></div>
-        <nav aria-label="Primary"><a href="/movers.html">Become an Affiliate</a>
-          <a href="/">Home</a>
-          <a href="/dreamhold.html">The Exchange</a>
+        <nav aria-label="Primary"><a href="/">Home</a>
+          <a href="/plans.html">Plans</a>
           <a href="/values.html">Values</a>
         </nav>
       </div>
       <div class="hero">
         <h1>The Desk</h1>
-        <p>A live, honest look at the ideas of the future — taking shape, getting proven, and finding their owner.</p>
-        <p><a href="/weekly" class="weekly-link">Read Clay Weekly — the week here, written up →</a></p>
+        <p>Plain guides and short stories for people running a small business, written by Penny.</p>
       </div>
-      <!-- The pulse. aria-live so a screen reader hears the numbers change, but only when they actually do. -->
-      <ul class="pulse" aria-label="Live platform pulse" aria-live="polite">
-        <li class="stat"><div class="n" id="n-shaped">—</div><div class="l">ideas shaped, all time</div></li>
-        <li class="stat"><div class="n" id="n-week">—</div><div class="l">shaped in the last 7 days</div></li>
-        <li class="stat"><div class="n" id="n-hold">—</div><div class="l">live in the Exchange</div></li>
-      </ul>
     </div>
   </header>
 
   <main id="main">
     <div class="wrap">
-      <section aria-labelledby="feed-h">
-        <h2 id="feed-h">Taking shape</h2>
-        <p class="sub">Real activity as it happens. Ideas still being shaped stay private — you'll only ever see that <em>an</em> idea took shape, never whose or what. Ideas that reach the Exchange are already for sale, so those we can name.</p>
-        <ul class="feed" id="feed" aria-live="polite" aria-label="Recent activity">
-          <li class="empty" id="feed-empty">Loading the latest…</li>
-        </ul>
-      </section>
-
       <section aria-labelledby="desk-h" id="desk-articles-section" hidden>
-        <h2 id="desk-h">From Clay's desk</h2>
-        <p class="sub">Notes and short stories, written by Clay.</p>
+        <h2 id="desk-h">From Penny's desk</h2>
+        <p class="sub">Guides and short stories, written by Penny and read by a person before they are published.</p>
         <div id="desk-articles"></div>
       </section>
 
-      <!-- Clay Weekly lives HERE rather than as its own entry in the top menu. To a reader the Desk
-           and the magazine are the same thing — writing about what is happening on this platform —
-           and two menu entries for one idea just makes someone wonder what the difference is. -->
       <!-- Browse by subject. 32 pieces with nothing but reverse-chronological order means somebody
            who lands on a pricing article from a search has no way to find the other pricing pieces —
            which is exactly the moment they are most likely to stay. -->
@@ -150,18 +131,12 @@
         </nav>
       </section>
 
-      <section aria-labelledby="weekly-h">
-        <h2 id="weekly-h">Clay Weekly</h2>
-        <p>Once a week, Clay writes up what actually happened here: what got shaped, what reached the Exchange, and one project worth a closer look. Nothing goes out unless a person has read it first.</p>
-        <p><a class="btn secondary" href="/weekly">Read Clay Weekly</a></p>
-      </section>
-
       <section class="about" aria-labelledby="about-h">
         <h2 id="about-h">What this is</h2>
-        <p>Everyone carries businesses they never got around to building. At Access YP Labs, Clay helps you shape one of those ideas into a complete, pre-proven project — with real research behind it — and then sell it or build it on your own terms. The Desk is where you can watch that happen: the whitespace, being filled, one idea at a time.</p>
+        <p>Access YP Labs is the back office for a small business. Penny keeps track of everything your business owes, researches your compliance requirements on government websites with every source shown, and builds your website, customer portal and apps. The Desk is where she writes up what she has learned for anyone to read.</p>
         <p style="margin-top:18px">
-          <a class="cta" href="/">Shape your idea</a>
-          <a class="cta ghost" href="/dreamhold.html">Explore the Exchange</a>
+          <a class="cta" href="/register.html">Start free</a>
+          <a class="cta ghost" href="/plans.html">See the plans</a>
         </p>
       </section>
     </div>
@@ -169,9 +144,9 @@
 
   <footer>
     <div class="wrap">
-      Access YP Labs is a brand of Set Up Your Place LLC. The Exchange is a neutral marketplace; it is not a party to any transaction between members. Projects are pre-proven starting points, not guarantees of income.
+      Access YP Labs is a brand of Set Up Your Place LLC.
       <br>
-      <a href="/">Home</a> · <a href="/values.html">Values</a> · <a href="/dreamhold.html">The Exchange</a>
+      <a href="/">Home</a> · <a href="/plans.html">Plans</a> · <a href="/values.html">Values</a>
     </div>
   </footer>
 
@@ -266,8 +241,7 @@
         .catch(function(){ /* stay quiet; try again next tick */ });
     }
 
-    load();
-    setInterval(load, 18000);
+    // The live marketplace pulse and feed were retired with the marketplace (16 Sept 2026); nothing polls.
 
     // Published Desk pieces — fetched once, not polled. Only ever shows owner-approved articles.
     function renderArticles(list){

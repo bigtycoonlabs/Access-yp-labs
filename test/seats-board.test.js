@@ -16,7 +16,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const page = fs.readFileSync('public/seats.html', 'utf8');
 
-test('a page nobody can reach does not exist', () => {
+test('a page nobody can reach does not exist', { skip: 'the seats board was retired with the marketplace on 16 Sept 2026 and now redirects (test/clean-slate.test.js)' }, () => {
   // On the sibling platform the library index was built, sitemapped, and linked only from the 404
   // page. This board is the ENTIRE way a contributor gets in.
   const html = fs.readdirSync('public').filter((f) => f.endsWith('.html'));

@@ -3,7 +3,8 @@
 // (a real test send from this exact address succeeds). resolveFrom() makes that impossible to
 // hit again: if EMAIL_FROM isn't a shape Resend accepts — a bare address or "Name <address>" —
 // we fall back to this default rather than let one bad env var break all email.
-const DEFAULT_FROM = 'Clay at Access YP Labs <clay@accessyplabs.com>';
+// Penny is the voice of the platform (owner, 16 Sept 2026). Clay is retired and sends nothing.
+const DEFAULT_FROM = 'Penny at Access YP Labs <penny@accessyplabs.com>';
 
 // WHERE EVERY REPLY GOES. Receiving is disabled on every domain on the Resend account, so a reply to
 // any from-address here vanishes silently. Every email this platform sends carries this reply-to, set

@@ -126,14 +126,14 @@ router.post('/register', [
     await notifyStaff({
       kind: 'signup',
       dedupeKey: 'signup-' + user.id,
-      subject: `New creator: ${user.name || user.email}`,
+      subject: `New member: ${user.name || user.email}`,
       body: `${user.name || 'Someone'} just created an account (${user.email}).\n\n`
         + `That is real interest arriving on its own. Worth a look at what they do next — and worth `
-        + `being ready to help if they get stuck early.\n\n— Clay`,
+        + `being ready to help if they get stuck early.\n\n— Penny`,
     });
   } catch (e) { console.error('signup notice failed:', e && e.message); }
 
-  // Best-effort welcome email from Clay — never blocks or fails signup.
+  // Best-effort welcome email from Penny — never blocks or fails signup.
   try {
     const msg = welcomeEmail(user.name);
     const sent = await sendEmail({ to: user.email, subject: msg.subject, html: msg.html, text: msg.text });

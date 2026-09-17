@@ -3,7 +3,7 @@ const { asyncHandler } = require('../lib/http');
 const deskCompose = require('../services/clay/deskCompose');
 const deskSeo = require('../services/clay/deskSeo');
 
-// Server-rendered PAGES for Clay's Desk pieces.
+// Server-rendered PAGES for The Desk pieces.
 //
 // Why rendered on the server rather than drawn by JavaScript like the rest of the site: a search
 // engine (and a link preview in a message or a post) reads the HTML it is handed. A page that only
@@ -51,7 +51,7 @@ function articleHtml(a) {
     description: desc || undefined,
     image: a.image_url || undefined,
     datePublished: published || undefined,
-    author: { '@type': 'Person', name: 'Clay', url: `${SITE()}/desk.html` },
+    author: { '@type': 'Organization', name: 'Access YP Labs', url: `${SITE()}/desk.html` },
     publisher: { '@type': 'Organization', name: 'Access YP Labs', url: SITE() },
     mainEntityOfPage: url,
   };
@@ -61,7 +61,7 @@ function articleHtml(a) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(a.title)} — Clay's Desk, Access YP Labs</title>
+<title>${esc(a.title)} — The Desk, Access YP Labs</title>
 <meta name="description" content="${esc(desc)}">
 <link rel="canonical" href="${esc(url)}">
 <meta property="og:type" content="article">
@@ -81,20 +81,19 @@ ${a.image_url ? `<meta name="twitter:image" content="${esc(a.image_url)}">` : ''
   <a class="skip" href="#main">Skip to the article</a>
   <nav class="top" aria-label="Primary">
     <a href="/">Access YP Labs</a>
-    <a href="/desk.html">Clay's Desk</a>
-    <a href="/marketplace.html">The Exchange</a>
-    <a href="/seats.html">Help build</a>
+    <a href="/desk.html">The Desk</a>
+    <a href="/plans.html">Plans</a>
   </nav>
   <main id="main" tabindex="-1">
     <article>
-      <p class="muted">${esc(kindLabel)} from Clay's Desk</p>
+      <p class="muted">${esc(kindLabel)} from The Desk</p>
       <h1>${esc(a.title)}</h1>
       ${a.dek ? `<p class="dek">${esc(a.dek)}</p>` : ''}
       ${published ? `<p class="muted"><time datetime="${esc(published)}">Published ${esc(new Date(a.published_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }))}</time></p>` : ''}
       ${a.image_url ? `<img src="${esc(a.image_url)}" alt="${esc(a.image_alt || ('Illustration for ' + a.title))}" style="max-width:100%;height:auto;border-radius:12px;margin:16px 0;">` : ''}
       ${paragraphs(a.body)}
     </article>
-    <p><a href="/desk.html">Back to Clay's Desk</a></p>
+    <p><a href="/desk.html">Back to The Desk</a></p>
   </main>
 </body>
 </html>`;
@@ -104,13 +103,13 @@ function notFoundHtml() {
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>That piece isn't here — Clay's Desk</title>
+<title>That piece isn't here — The Desk</title>
 <meta name="robots" content="noindex">
 <link rel="stylesheet" href="/css/kiln.css"></head>
 <body><main id="main" tabindex="-1">
 <h1>That piece isn't here</h1>
 <p>It may have been taken down, or the address may be slightly off. Nothing is wrong with your account.</p>
-<p><a href="/desk.html">See everything on Clay's Desk</a></p>
+<p><a href="/desk.html">See everything on The Desk</a></p>
 </main></body></html>`;
 }
 
@@ -140,7 +139,7 @@ ${noindex ? '<meta name="robots" content="noindex, nofollow"/>' : (canonical ? `
 </head><body>
 <a class="skip" href="#main">Skip to main content</a>
 <header class="site"><div class="wrap bar"><a class="brand" href="/">Access YP Labs</a>
-<nav class="top" aria-label="Primary"><a href="/desk">The Desk</a><a href="/weekly">Clay Weekly</a><a href="/marketplace.html">The Exchange</a><a href="/seats.html">Help build</a></nav>
+<nav class="top" aria-label="Primary"><a href="/">Home</a><a href="/desk">The Desk</a><a href="/plans.html">Plans</a></nav>
 </div></header>
 <main id="main" class="wrap">${bodyHtml}</main>
 <footer class="site"><div class="wrap"><nav aria-label="Legal">
@@ -222,7 +221,7 @@ router.get('/desk/topic/:category', asyncHandler(async (req, res) => {
   try { list = await deskSeo.byCategory(cat, 40); } catch (_) { list = []; }
   const items = list.length
     ? list.map((a) => `<li><a href="/desk/${a.slug}">${esc(a.title)}</a>${a.dek ? ' — ' + esc(a.dek) : ''}</li>`).join('\n')
-    : '<li>Nothing here yet. Clay is still writing on this one.</li>';
+    : '<li>Nothing here yet. Penny is still writing on this one.</li>';
   const body = `<h1>${esc(meta.label)}</h1>
     <p>${esc(meta.blurb)}</p>
     <nav aria-label="Desk subjects"><p>${deskSeo.CATEGORIES.map((c) =>
@@ -231,57 +230,31 @@ router.get('/desk/topic/:category', asyncHandler(async (req, res) => {
     <ul>${items}</ul>
     <p><a href="/desk">All of the Desk</a></p>`;
   res.set('Cache-Control', 'public, max-age=300');
-  res.type('html').send(deskPage(`${meta.label} — Clay's Desk`, meta.blurb, body, { canonical: `${SITE()}/desk/topic/${cat}` }));
+  res.type('html').send(deskPage(`${meta.label} — The Desk`, meta.blurb, body, { canonical: `${SITE()}/desk/topic/${cat}` }));
 }));
 
 // GET /sitemap.xml — generated, so every article Clay publishes is discoverable. Falls back to the
 // static core pages if the database is unreachable; never throws.
 router.get('/sitemap.xml', asyncHandler(async (req, res) => {
   const site = SITE();
-  // What the platform is now comes first: the home page and the plans. The marketplace pages are
-  // still live, so they stay listed, below them (brand and priorities reset 16 Sept 2026).
+  // The platform as it is now (16 Sept 2026). The marketplace, listings and the weekly magazine are retired
+  // and their addresses redirect, so none of them is listed.
   const core = [
     { loc: `${site}/`, priority: '1.0' },
     { loc: `${site}/plans.html`, priority: '0.9' },
     { loc: `${site}/desk.html`, priority: '0.8' },
+    { loc: `${site}/register.html`, priority: '0.6' },
     { loc: `${site}/values.html`, priority: '0.6' },
-    { loc: `${site}/marketplace.html`, priority: '0.5' },
-    // The way in for somebody who has a skill and no idea of their own, which is most people.
-    { loc: `${site}/seats.html`, priority: '0.5' },
-    { loc: `${site}/dreamhold.html`, priority: '0.5' },
-    { loc: `${site}/sell.html`, priority: '0.4' },
     { loc: `${site}/terms.html`, priority: '0.3' },
     { loc: `${site}/privacy.html`, priority: '0.3' },
   ];
   let articles = [];
   try { articles = await deskCompose.publishedSlugs(500); } catch (_) { articles = []; }
-  // Clay Weekly issues are public pages too — they belong in the sitemap or nothing Clay writes
-  // for the magazine can be found. Required lazily so a failure here can never break the Desk.
-  let issues = [];
-  try { issues = await require('../services/clay/weekly').listPublished(200); } catch (_) { issues = []; }
-
-  // Subject pages belong here too: they are real destinations, and they are what a search engine
-  // uses to understand that the Desk is about something rather than being a pile of posts. Nothing
-  // here is cached — the sitemap is generated on request, so anything Clay publishes, and every
-  // Clay Weekly issue that goes live, appears the moment it does.
+  // Subject pages are real destinations and tell a search engine what the Desk is about.
   const topics = deskSeo.CATEGORIES.map((c) => ({ loc: `${site}/desk/topic/${c.slug}`, priority: '0.7' }));
 
-  // THE THINGS WE ACTUALLY SELL. The sitemap listed every Desk article and not one live listing, so
-  // the part of the platform that gives things away was fully indexed and the part that is the
-  // business was invisible. Priority above the topic pages because a project for sale is the point.
-  let listings = [];
-  try {
-    const r = await require('../config/db').query(
-      `SELECT l.id, l.updated_at FROM listings l WHERE l.status='live' ORDER BY l.created_at DESC LIMIT 500`);
-    listings = r.rows.map((x) => ({ loc: `${site}/market/${x.id}`, priority: '0.8' }));
-  } catch (_) { listings = []; }
-
-  const urls = core.concat([{ loc: `${site}/weekly`, priority: '0.8' }]).concat(topics).concat(listings)
+  const urls = core.concat(topics)
     .map((c) => `  <url><loc>${esc(c.loc)}</loc><priority>${c.priority}</priority></url>`)
-    .concat(issues.map((i) => {
-      const lastmod = i.published_at ? new Date(i.published_at).toISOString().slice(0, 10) : null;
-      return `  <url><loc>${esc(site + '/weekly/' + i.slug)}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ''}<priority>0.7</priority></url>`;
-    }))
     .concat(articles.map((a) => {
       const lastmod = a.published_at ? new Date(a.published_at).toISOString().slice(0, 10) : null;
       return `  <url><loc>${esc(site + '/desk/' + a.slug)}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ''}<priority>0.7</priority></url>`;

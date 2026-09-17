@@ -49,7 +49,6 @@ test('the prices search engines read are the prices checkout charges', () => {
 test('the sitemap leads with what the platform is now', () => {
   const s = fs.readFileSync('src/routes/deskPages.js', 'utf8');
   const core = s.slice(s.indexOf('const core = ['), s.indexOf('];', s.indexOf('const core = [')));
-  assert.ok(core.indexOf('/plans.html') < core.indexOf('/marketplace.html'));
   assert.match(core, /plans\.html`, priority: '0\.9'/);
-  assert.match(core, /marketplace\.html`, priority: '0\.5'/);
+  for (const gone of ['marketplace', 'seats', 'dreamhold', 'sell']) assert.doesNotMatch(core, new RegExp(gone + '\\.html'));
 });
