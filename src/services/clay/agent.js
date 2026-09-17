@@ -24,6 +24,9 @@ const PARAM_TYPES = {
   operating: 'boolean',
   listing_id: 'string', decision: 'string', reason: 'string', notes: 'string',
   report_id: 'string', action: 'string', user_id: 'string', email: 'string', new_role: 'string',
+  // Money is a number, and employees are a count: sent as strings they arrive as text the other
+  // side has to guess at, and a guessed amount is the one thing an invoice must never carry.
+  amount_usd: 'number', employees: 'number', cost_if_missed_cents: 'number',
 };
 
 // Build Anthropic tool schemas from the spine registry, carrying the enum

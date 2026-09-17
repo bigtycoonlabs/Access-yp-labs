@@ -31,6 +31,7 @@ const Portal = require('./portal');
 const Keys = require('./keys');
 const Launcher = require('./launcher');
 const Compliance = require('./complianceResearch');
+const Flow = require('./flowLink');
 
 // Result shapes. Borrowed from Arbo, where they exist because an unread balance once printed as
 // "$0.00" — indistinguishable from the money being gone.
@@ -47,6 +48,30 @@ const TOOLS = {
   whats_coming: {
     irreversible: false, requires_confirmation: false, required: [], optional: ['business_id', 'days'], enums: {},
     summary: 'What falls due over the next stretch of days, in date order. Read-only.',
+  },
+  connect_flow: {
+    irreversible: false, requires_confirmation: false,
+    required: ['email'], optional: [], enums: {},
+    summary: 'Connect this person\'s YP Flow account, where their money lives with Arbo, so invoices '
+      + 'can be handed over. email is the address on their YP Flow account. YP Flow emails them to '
+      + 'confirm; they decide, not us. Say what it answered, including that no account exists if '
+      + 'that is what it says.',
+  },
+  flow_status: {
+    irreversible: false, requires_confirmation: false,
+    required: ['email'], optional: [], enums: {},
+    summary: 'Whether a YP Flow account is connected to this one: connected, waiting on their '
+      + 'confirmation email, not connected, or no account at that address. Read-only.',
+  },
+  send_invoice_to_flow: {
+    irreversible: false, requires_confirmation: true,
+    required: ['email', 'counterparty', 'label', 'amount_usd'], optional: ['due_date'], enums: {},
+    summary: 'Hand an invoice to Arbo in YP Flow: who owes it, what it is for, how much in dollars, '
+      + 'and when it is due. Never invent the amount or who owes it; ask. It arrives in YP Flow '
+      + 'awaiting their confirmation there and is not counted as money until they confirm it, so '
+      + 'say that rather than telling them their books already show it.',
+    ask: 'Shall I send this to YP Flow? It goes to Arbo as an invoice waiting for you to confirm it '
+      + 'there, and until you do it is not counted as money you can spend.',
   },
   add_business: {
     irreversible: false, requires_confirmation: false,
@@ -414,6 +439,35 @@ async function add_business(viewer, params = {}) {
     + (assumed ? ' I have noted no employees besides the owner for now; say so if that is wrong, because it changes what is owed.' : ''));
 }
 
+async function connect_flow(viewer, params = {}) {
+  const r = await Flow.connect(String(params.email || '').trim(), viewer.email);
+  if (!r.ok) return r.kind === 'unclear' ? { status: 'needs_answer', says: r.says } : unavailable('flow_not_connected', r.says);
+  return answered({ connection: r.status }, r.says);
+}
+
+async function flow_status(viewer, params = {}) {
+  const r = await Flow.status(String(params.email || '').trim());
+  if (r.ok === false && r.says && r.status !== 'no_account') return unavailable('flow_unreadable', r.says);
+  return answered({ connection: r.status }, r.says);
+}
+
+async function send_invoice_to_flow(viewer, params = {}) {
+  const r = await Flow.sendInvoice({
+    email: String(params.email || '').trim(),
+    counterparty: String(params.counterparty || '').trim(),
+    label: String(params.label || '').trim(),
+    amount_usd: params.amount_usd,
+    due_date: params.due_date,
+  });
+  if (!r.ok) {
+    if (r.kind === 'unclear' || r.status === 'incomplete') return { status: 'needs_answer', says: r.says };
+    if (r.status === 'not_linked' || r.status === 'no_account') return refused(r.says);
+    return unavailable('flow_invoice_failed', r.says || 'That did not reach YP Flow, so it is not in their books.');
+  }
+  // Reported exactly as Flow reported it: in their books, and NOT yet counted.
+  return answered({ invoice_id: r.id, in_flow: true, awaiting_their_confirmation: true }, r.says);
+}
+
 async function whats_missing(viewer, params = {}) {
   const gate = await P.can(viewer.id, params.business_id, 'documents', 'view');
   if (!gate.ok) return refused(P.refusalLine(gate, 'documents', gate.perms && gate.perms.business.name));
@@ -566,6 +620,7 @@ async function list_files(viewer, params = {}) {
 
 const EXECUTORS = { whats_due, whats_coming, list_businesses, record_obligation,
   complete_obligation, whats_missing, whats_outstanding_with_customers, start_build, publish_build, list_builds, list_files,
-  portal_status, customize_portal, list_keys, launch_build, research_compliance, add_business };
+  portal_status, customize_portal, list_keys, launch_build, research_compliance, add_business,
+  connect_flow, flow_status, send_invoice_to_flow };
 
 module.exports = { TOOLS, EXECUTORS, answered, empty, unavailable, refused };
