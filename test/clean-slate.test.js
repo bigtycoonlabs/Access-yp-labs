@@ -72,3 +72,16 @@ test('the update email starts with Clay, then Penny, and tells each person what 
   assert.match(staff.html, /<h1[^>]*>Clay is retiring\. Access YP Labs has been reborn\.<\/h1>/);
   assert.match(staff.html, /<h2[^>]*>What I do for your business<\/h2>/);
 });
+
+test('the rebirth update never sends unconfirmed, never twice, and counts only accepted mail', async () => {
+  const src = fs.readFileSync('src/services/rebirthUpdate.js', 'utf8');
+  assert.match(src, /if \(confirm !== 'send the rebirth update'\) return \{ ok: false/);
+  assert.match(src, /if \(r\.already\) \{ results\.push/);
+  assert.match(src, /sent: !!\(out && out\.sent\)/);
+  assert.match(src, /NOT \(u\.status = ANY\(\$3\)\)/);
+  assert.match(src, /\['suspended'\]\]\);/);
+  assert.match(src, /NOT ILIKE '%@example\.test'/);
+  const R = require('../src/services/rebirthUpdate');
+  const r = await R.sendAll({});
+  assert.strictEqual(r.ok, false);
+});
