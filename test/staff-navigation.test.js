@@ -23,8 +23,12 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 
+// Redesigned 17 Sept 2026: the eight old screens redirect to /staff/, which has one nav on every page
+// (test/staff-portal.test.js). The pages checked here are the old ones that still exist as files, and
+// the navigation script they load now lists the new places.
 const STAFF_PAGES = ['console.html', 'market-control.html', 'desk-admin.html', 'weekly-admin.html',
   'people.html', 'admin-tools.html', 'admin-clay.html', 'admin-overview.html'];
+const NEW_PAGES = ['staff/', 'staff/members.html', 'staff/money.html', 'staff/penny.html', 'staff/desk.html', 'staff/email.html'];
 
 const navSrc = fs.readFileSync('public/js/staffnav.js', 'utf8');
 
@@ -36,7 +40,7 @@ test('every staff screen carries the staff navigation', () => {
 });
 
 test('the navigation lists every staff screen, so the set does not depend where you stand', () => {
-  for (const p of STAFF_PAGES) {
+  for (const p of NEW_PAGES) {
     assert.ok(navSrc.includes("'/" + p + "'"), p + ' must be in the staff navigation');
   }
 });

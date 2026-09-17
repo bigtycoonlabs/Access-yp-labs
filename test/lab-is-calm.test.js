@@ -22,7 +22,8 @@ test('the staff link joins the list rather than sitting outside it', () => {
   // Inserting into `nav` would put a bare anchor outside the list, where a screen reader would not
   // count it among the menu items. The link now points at the Operations console rather than the
   // old overview page, which was one of eight staff pages with no front door.
-  assert.match(nav, /li\.appendChild\(link\('\/console\.html', 'Operations'\)\)/);
+  // Since 17 Sept 2026 it points at the redesigned staff portal.
+  assert.match(nav, /li\.appendChild\(link\('\/staff\/', 'Staff'\)\)/);
 });
 
 test('nothing asks for a decision before the person has spoken', () => {

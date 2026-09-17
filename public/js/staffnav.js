@@ -20,15 +20,15 @@
 // landmark, aria-current on the active link. The set of screens is now identical everywhere, which
 // is the part that makes a place learnable — you find a thing once and it is in that spot after.
 (function () {
+  // Replaced by the /staff/ portal on 17 September 2026; the old screens now redirect there. Kept so
+  // any page still loading this script shows the new places, not the retired ones.
   var LINKS = [
-    ['/console.html', 'Operations', 'the day: what needs a person right now'],
-    ['/market-control.html', 'Exchange', 'review, edit and approve listings'],
-    ['/desk-admin.html', "Clay's Desk", 'review what Clay wrote'],
-    ['/weekly-admin.html', 'Clay Weekly', 'assemble and send the magazine'],
-    ['/people.html', 'People', 'accounts and creators'],
-    ['/admin-tools.html', 'Moderation', 'reports, takedowns, suspensions'],
-    ['/admin-clay.html', 'Clay health', 'is Clay working'],
-    ['/admin-overview.html', 'Overview', 'one honest read on the whole platform'],
+    ['/staff/', 'Today', 'what needs a person right now'],
+    ['/staff/members.html', 'Members', 'accounts, plans and usage'],
+    ['/staff/money.html', 'Money', 'revenue and running costs'],
+    ['/staff/penny.html', 'Penny', 'is she working'],
+    ['/staff/desk.html', 'Desk', 'review and publish articles'],
+    ['/staff/email.html', 'Email', 'what went out, what did not'],
   ];
 
   function build() {

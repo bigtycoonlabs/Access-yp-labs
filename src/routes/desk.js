@@ -98,7 +98,7 @@ router.get('/drafts', authenticate, authorize('staff', 'admin', 'master_staff'),
   res.json({ drafts: await deskCompose.listDrafts(20) });
 }));
 
-// POST /api/desk/compose — have Clay draft a new Desk piece on demand (owner). Body: { kind, topic? }.
+// POST /api/desk/compose — have Penny draft a new Desk piece on demand (owner). Body: { kind, topic? }.
 // It only ever creates a DRAFT; publishing is a separate, deliberate step.
 router.post('/compose', authenticate, authorize('master_staff'), asyncHandler(async (req, res) => {
   const kind = req.body && req.body.kind === 'story' ? 'story' : 'help';

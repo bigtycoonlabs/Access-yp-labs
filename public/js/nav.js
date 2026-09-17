@@ -87,7 +87,7 @@
           var out = document.getElementById('signout');
           var host = out && out.parentNode ? out.parentNode.parentNode : nav;
           var li = document.createElement('li');
-          li.appendChild(link('/console.html', 'Operations'));
+          li.appendChild(link('/staff/', 'Staff'));
           if (host && out && out.parentNode) host.insertBefore(li, out.parentNode);
           else nav.appendChild(li);
         }

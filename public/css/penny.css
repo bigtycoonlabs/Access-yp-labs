@@ -130,3 +130,18 @@ header.site .bar{
 .coming .when{font-variant-numeric:tabular-nums;color:var(--muted);}
 
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+
+/* STAFF PORTAL (17 Sept 2026): same shell, one nav, lists that read aloud in order. */
+.staffnav ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:4px 6px;}
+.staffnav a{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;border-radius:10px;color:var(--ink);text-decoration:none;font-weight:600;}
+.staffnav a:hover{background:var(--accent-soft);}
+.staffnav a[aria-current="page"]{background:var(--accent);color:var(--accent-ink);}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin:0 0 18px;}
+.panel h2{margin:0 0 10px;font-size:1.15rem;}
+ul.lines{list-style:none;margin:0;padding:0;}
+ul.lines > li{padding:12px 0;border-top:1px solid var(--line);line-height:1.5;}
+ul.lines > li:first-child{border-top:0;padding-top:0;}
+.row-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+.row-actions .btn{min-height:44px;}
+.staff-wrap{max-width:52rem;}

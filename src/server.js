@@ -108,6 +108,10 @@ const RETIRED_PAGES = {
   '/marketplace.html': '/', '/listing.html': '/', '/sell.html': '/', '/seats.html': '/',
   '/movers.html': '/', '/mover.html': '/', '/partners.html': '/', '/waitlist.html': '/register.html',
   '/enter.html': '/login.html', '/consultants.html': '/', '/consultant-apply.html': '/',
+  // The old staff portal, replaced by /staff/ on 17 September 2026.
+  '/console.html': '/staff/', '/admin-overview.html': '/staff/', '/market-control.html': '/staff/',
+  '/weekly-admin.html': '/staff/', '/admin-clay.html': '/staff/penny.html', '/admin-tools.html': '/staff/members.html',
+  '/desk-admin.html': '/staff/desk.html', '/people.html': '/staff/members.html', '/admin-consultants.html': '/staff/',
 };
 app.use((req, res, next) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') return next();
@@ -128,6 +132,13 @@ app.use(require('./routes/weeklyPages'));
 // happened when a corrected chat/build routing kept behaving the old way in a live session. This
 // matters even more for a screen-reader user, for whom "just hard-refresh" is not a simple move.
 // Fingerprinted assets (images, fonts, CSS) keep normal caching.
+
+// The staff portal's front page lives at /staff/ (static directory indexes are off).
+app.get(['/staff', '/staff/'], (req, res) => {
+  if (req.path === '/staff') return res.redirect(301, '/staff/');
+  res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  res.sendFile(path.join(__dirname, '../public/staff/index.html'));
+});
 
 app.use(express.static(path.join(__dirname, '../public'), {
   index: false,
@@ -175,6 +186,7 @@ app.use('/api/agreements',    require('./routes/agreements'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/market-admin', require('./routes/marketAdmin'));
 app.use('/api/console', require('./routes/console'));
+app.use('/api/staff-portal', require('./routes/staffPortal'));
 app.use('/api/seed-listings', require('./routes/seedListings'));
  app.use('/api/listings',      require('./routes/listings'));
 app.use('/api/waitlist',      require('./routes/waitlist'));

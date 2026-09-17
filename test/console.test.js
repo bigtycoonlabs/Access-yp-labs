@@ -13,7 +13,8 @@ test('the whole business loads in one call', () => {
   assert.match(api, /router\.get\('\/', staffOnly/);
   ['nowSection', 'businessSection', 'growthSection', 'peopleSection', 'claySection']
     .forEach((s) => assert.ok(api.includes(s), s + ' is part of the console'));
-  assert.match(nav, /link\('\/console\.html', 'Operations'\)/);
+  // Since 17 Sept 2026 the global menu's staff entry is the redesigned portal (test/staff-portal.test.js).
+  assert.match(nav, /link\('\/staff\/', 'Staff'\)/);
 });
 
 test('queues are ordered by who has waited longest, not by count', () => {
