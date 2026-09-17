@@ -80,11 +80,23 @@
     </div>
     <p class="muted" style="margin:8px 0 0;font-size:.86rem;">Enter sends. Shift and Enter starts a
       new line.</p>
+
+    <!-- TALKING WITH HER RATHER THAN TYPING. Both ways always work: the microphone never replaces
+         the keyboard, and everything she says aloud is also written in the thread, because a voice
+         carrying anything the text does not would put a screen-reader client back where they
+         started. -->
+    <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap;">
+      <button class="btn plain" id="talk" type="button" aria-describedby="talk-hint">Hold to talk to Penny</button>
+      <button class="btn plain" id="voice" type="button" aria-pressed="false">Penny speaks her replies: off</button>
+    </div>
+    <p class="muted" id="talk-hint" style="margin:8px 0 0;font-size:.86rem;">Press and hold to speak,
+      let go to send. What you said is written out before it goes, so you can see it.</p>
   </div>
 </main>
 
 <script src="/js/api.js"></script>
 <script src="/js/desk-auth.js"></script>
+<script src="/js/penny-voice.js"></script>
 <script>
 var $ = function (id) { return document.getElementById(id); };
 var thread = $('thread');
@@ -217,6 +229,19 @@ async function send(text) {
   announce(['Sent. Penny is thinking.']);
 
   try {
+    /* VOICE MODE: the same turn, reported as it happens, so she talks while she works rather than
+       going quiet for minutes. It falls back to the written turn if the live channel fails. */
+    if (window.PennyVoice && PennyVoice.on()) {
+      var live = await PennyVoice.liveTurn(messages, waiting, {
+        announce: announce, renderDid: renderDid, renderConfirm: renderConfirm,
+      });
+      if (live.handled) {
+        if (shown.hit) messages[mine].content = shown.text;
+        messages.push({ role: 'assistant', content: live.reply });
+        busy = false; $('send').disabled = false; $('msg').focus();
+        return;
+      }
+    }
     var r = await fetch('/api/penny/chat', {
       method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },

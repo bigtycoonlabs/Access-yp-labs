@@ -44,7 +44,15 @@ test('the chat route scrubs before the model sees anything', () => {
 test('the chat page hides keys at once and never resends the raw text', () => {
   const html = fs.readFileSync('public/penny.html', 'utf8');
   assert.match(html, /addTurn\('You', shown\.text, 'me'\)/);
-  assert.strictEqual((html.match(/if \(shown\.hit\) messages\[mine\]\.content = shown\.text;/g) || []).length, 2);
+  // EVERY path that keeps the turn must replace the raw text, not a fixed number of them. Counting
+  // occurrences broke the moment the voice turn was added (17 Sept 2026), while the property held.
+  const keeps = [...html.matchAll(/messages\.push\(\{ role: 'assistant'/g)];
+  assert.ok(keeps.length >= 2);
+  for (const k of keeps) {
+    const before = html.slice(Math.max(0, k.index - 400), k.index);
+    assert.match(before, /if \(shown\.hit\) messages\[mine\]\.content = shown\.text;/,
+      'a turn is kept without replacing the raw text first');
+  }
   assert.match(html, /href="\/keys\.html"/);
 });
 

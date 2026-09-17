@@ -18,6 +18,8 @@ const workspace = require('../services/clay/workspace');
 const Keys = require('../services/clay/keys');
 const Allowance = require('../services/allowance');
 const spine = require('../services/clay/spine');
+const Voice = require('../services/clay/voice');
+const Ears = require('../services/clay/ears');
 
 const router = express.Router();
 
@@ -31,6 +33,121 @@ function buildExecutors(user) {
   }
   return out;
 }
+
+// PENNY'S VOICE. One sentence in, sound back. Sentence by sentence on purpose: speaking takes about
+// as long as the words last, so waiting for a whole answer would leave somebody in silence.
+// A failure here is said in words and the page carries on with the screen reader, because silence
+// with no reason given is the one thing a blind client cannot interpret.
+router.post('/speak', authenticate, [
+  body('text').isString().trim().isLength({ min: 1, max: Voice.MAX_CHARS }),
+], asyncHandler(async (req, res) => {
+  const e = validationResult(req);
+  if (!e.isEmpty()) throw new ApiError(400, 'There was nothing to say.');
+  const r = await Voice.speak(req.body.text);
+  if (!r.ok) return res.status(r.kind === 'unclear' ? 422 : 503).json({ error: r.says, kind: r.kind });
+  res.setHeader('Content-Type', 'audio/wav');
+  res.setHeader('Cache-Control', 'private, max-age=600');
+  res.send(r.audio);
+}));
+
+// How her answer is broken up for speaking, so the page asks for the same pieces she would say.
+router.post('/sentences', authenticate, [
+  body('text').isString(),
+], asyncHandler(async (req, res) => {
+  res.json({ sentences: Voice.sentences(req.body.text) });
+}));
+
+// PENNY LISTENING. The recording is held for one request and never stored.
+router.post('/listen', authenticate,
+  express.raw({ type: () => true, limit: Ears.MAX_BYTES + 1024 }),
+  asyncHandler(async (req, res) => {
+    const buf = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+    const r = await Ears.hear(buf, req.get('Content-Type'));
+    if (!r.ok) return res.status(r.kind === 'unavailable' ? 503 : 422).json({ error: r.says, kind: r.kind });
+    res.json({ text: r.text });
+  }));
+
+// TALKING WHILE SHE WORKS.
+//
+// The same turn as /chat, reported as it happens rather than at the end. A compliance search takes
+// minutes; going quiet for minutes reads as broken, and somebody who cannot see a spinner has
+// nothing else to go on. Each event carries a sentence written for a person, so the page can speak
+// it in Penny's voice as it arrives.
+//
+// It is the SAME agent, the same tools and the same allowance as /chat. Nothing here is a second
+// implementation of anything: a feature with two implementations is two behaviours, and the person
+// gets whichever one they happened to reach.
+router.post('/chat/live', authenticate, [
+  body('messages').isArray({ min: 1 }),
+], asyncHandler(async (req, res) => {
+  const e = validationResult(req);
+  if (!e.isEmpty()) throw new ApiError(400, 'Say something first.');
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+  const sse = (type, data) => {
+    if (res.writableEnded) return;
+    res.write('data: ' + JSON.stringify(Object.assign({ type }, data)) + '\n\n');
+  };
+
+  const scrubbed = Keys.scrub(req.body.messages);
+  if (scrubbed.found.length) sse('note', { say: 'I took a key out of that message before it was sent anywhere.' });
+
+  const allowed = await Allowance.check(req.user, 'penny_message');
+  if (!allowed.ok) {
+    sse('reply', { say: allowed.says, status: 'refused' });
+    sse('done', { status: 'refused' });
+    return res.end();
+  }
+
+  const events = [];
+  let out;
+  try {
+    out = await agent.runChat({
+      messages: scrubbed.messages,
+      executors: buildExecutors(req.user),
+      allowTools: WORKSPACE_TOOLS,
+      systemOverride: PENNY_WORKSPACE,
+      assistantName: 'Penny',
+      maxSteps: 12,
+      viewer: { role: req.user.role, name: req.user.name },
+      onEvent: (ev) => {
+        events.push(ev);
+        // Only what a person would want said aloud. 'thinking' carries step numbers, which are for
+        // a log, not for somebody waiting.
+        if (ev.type === 'tool_start' && ev.note) sse('working', { say: ev.note });
+        if (ev.type === 'tool_done') {
+          sse('worked', { tool: ev.tool, ok: ev.ok, say: ev.ok ? null : 'That one did not work: ' + (ev.note || 'no reason given') });
+        }
+      },
+    });
+  } catch (err) {
+    sse('reply', { say: 'I could not think that through just now. That is a failure on my side, not '
+      + 'an answer, and nothing has been changed.', status: 'unavailable' });
+    sse('done', { status: 'unavailable' });
+    return res.end();
+  }
+
+  if (out.status !== 'unavailable') await Allowance.record(req.user, 'penny_message');
+
+  // Sentence by sentence, in order, so the page can speak each one as it lands.
+  for (const line of Voice.sentences(out.reply || '')) sse('say', { say: line });
+
+  sse('done', {
+    status: out.status,
+    reply: out.reply,
+    tools_used: events.filter((x) => x.type === 'tool_done').map((x) => ({ tool: x.tool, ok: x.ok, note: x.note })),
+    keys_removed: scrubbed.found.length ? scrubbed.messages.filter((m) => m.role === 'user').map((m) => m.content) : null,
+    awaiting_confirmation: out.confirmation
+      ? { tool: out.confirmation.tool, params: out.confirmation.params,
+        ask: (spine.TOOLS[out.confirmation.tool] && spine.TOOLS[out.confirmation.tool].ask) || out.confirmation.reason }
+      : null,
+  });
+  res.end();
+}));
 
 router.post('/chat', authenticate, [
   body('messages').isArray({ min: 1 }).withMessage('Say something first.'),

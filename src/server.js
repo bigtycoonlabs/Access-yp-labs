@@ -291,6 +291,10 @@ if (require.main === module) {
     // no longer exists.
     const DAY_MS = 24 * 60 * 60 * 1000;
 
+    // Warm Penny's voice at boot, so the first person to ask her to speak is not waiting on a
+    // download. It is best effort: if it fails she says so when asked, rather than going quiet.
+    try { require('./services/clay/voice').warm(); } catch (_) { /* speech stays off; /speak says so */ }
+
     // DUE-DATE SWEEP. Obligations carried due dates from the day the spine was built and nothing
     // acted on them, so a compliance ledger only warned somebody who remembered to open it — which
     // is the opposite of the point. The person who loses an entity did not check and ignore it; they
