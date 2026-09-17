@@ -25,7 +25,8 @@ test('a page nobody can reach does not exist', () => {
   // Including the server-rendered pages, which carry their own nav and must not disagree.
   const desk = fs.readFileSync('src/routes/deskPages.js', 'utf8');
   assert.match(desk, /<a href="\/seats\.html">Help build<\/a>/);
-  assert.match(desk, /\{ loc: `\$\{site\}\/seats\.html`, priority: '0\.9' \}/);
+  // Still in the sitemap; its priority dropped below the plans page on 16 Sept 2026.
+  assert.match(desk, /\{ loc: `\$\{site\}\/seats\.html`, priority: '0\.\d' \}/);
 });
 
 test('one card per project, not one per seat', () => {

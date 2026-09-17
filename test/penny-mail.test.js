@@ -12,10 +12,9 @@ const server = fs.readFileSync('src/server.js', 'utf8');
 const M = require('../src/services/clay/pennyMail');
 
 test('it sends from a domain that is actually verified', () => {
-  // accessyplabs.com is verified and sending-enabled today; accesspennydesk.com is not live yet.
-  // Deliberate and temporary — the retired brand is in the envelope and nowhere in the words.
+  // Access YP Labs is the brand and accessyplabs.com its home (owner, 16 Sept 2026).
   assert.match(M.FROM, /penny@accessyplabs\.com/);
-  assert.match(src, /accesspennydesk\.com is not live yet/);
+  assert.doesNotMatch(src, /accesspennydesk/);
 });
 
 test('a reply reaches a person, and the email says so', () => {

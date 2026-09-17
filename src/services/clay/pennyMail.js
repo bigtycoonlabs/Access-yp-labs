@@ -4,9 +4,8 @@
 // opens the app — and the whole premise is reaching the person who does not. This is the half that
 // makes the ledger worth having.
 //
-// SENDING FROM accessyplabs.com, which is verified and sending-enabled on the Resend account today.
-// accesspennydesk.com is not live yet, so this is deliberate and temporary: the retired brand is in
-// the envelope address but nowhere in the words, and the domain moves when the new one verifies.
+// SENDING FROM accessyplabs.com, which is verified and sending-enabled on the Resend account. Access
+// YP Labs is the brand and accessyplabs.com its home (owner, 16 Sept 2026); there is no move coming.
 //
 // REPLIES GO TO A PERSON. Receiving is disabled on every domain on this Resend account, so a reply
 // to the from-address alone would vanish silently. Every email carries a reply-to pointing at the

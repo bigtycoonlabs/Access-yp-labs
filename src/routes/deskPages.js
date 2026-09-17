@@ -238,14 +238,20 @@ router.get('/desk/topic/:category', asyncHandler(async (req, res) => {
 // static core pages if the database is unreachable; never throws.
 router.get('/sitemap.xml', asyncHandler(async (req, res) => {
   const site = SITE();
+  // What the platform is now comes first: the home page and the plans. The marketplace pages are
+  // still live, so they stay listed, below them (brand and priorities reset 16 Sept 2026).
   const core = [
     { loc: `${site}/`, priority: '1.0' },
-    { loc: `${site}/desk.html`, priority: '0.9' },
-    { loc: `${site}/marketplace.html`, priority: '0.9' },
+    { loc: `${site}/plans.html`, priority: '0.9' },
+    { loc: `${site}/desk.html`, priority: '0.8' },
+    { loc: `${site}/values.html`, priority: '0.6' },
+    { loc: `${site}/marketplace.html`, priority: '0.5' },
     // The way in for somebody who has a skill and no idea of their own, which is most people.
-    { loc: `${site}/seats.html`, priority: '0.9' },
-    { loc: `${site}/dreamhold.html`, priority: '0.9' },
-    { loc: `${site}/sell.html`, priority: '0.8' },
+    { loc: `${site}/seats.html`, priority: '0.5' },
+    { loc: `${site}/dreamhold.html`, priority: '0.5' },
+    { loc: `${site}/sell.html`, priority: '0.4' },
+    { loc: `${site}/terms.html`, priority: '0.3' },
+    { loc: `${site}/privacy.html`, priority: '0.3' },
   ];
   let articles = [];
   try { articles = await deskCompose.publishedSlugs(500); } catch (_) { articles = []; }
