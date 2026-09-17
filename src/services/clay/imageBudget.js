@@ -10,9 +10,11 @@ const credits = require('../../lib/imageCredits');
 // entitlement layer uses); otherwise base.
 async function planFor(ownerId) {
   if (!ownerId) return 'base';
+  // The plan itself, so Office gets Office's allowance. Office first when someone holds several.
   const r = await query(
-    "SELECT 1 FROM subscriptions WHERE user_id=$1 AND plan IN ('builder','sculptor') AND status='active' LIMIT 1", [ownerId]);
-  return r.rows.length ? 'builder' : 'base';
+    `SELECT plan FROM subscriptions WHERE user_id=$1 AND plan = ANY($2) AND status='active'
+      ORDER BY (plan = 'office') DESC LIMIT 1`, [ownerId, require('../../lib/money').PAID_PLANS]);
+  return r.rows.length ? r.rows[0].plan : 'base';
 }
 
 async function usedThisMonth(conceptId) {

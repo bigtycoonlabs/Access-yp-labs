@@ -163,10 +163,10 @@ function constructEvent(rawBody, signature) {
 
 // Subscription or one-time checkout for platform plans (Clay access).
 // sculptor -> recurring monthly (unlimited); maker -> recurring monthly (per concept).
-async function createPlanCheckout({ mode, priceCents, planName, userId, plan, conceptId, email, successUrl, cancelUrl }) {
+async function createPlanCheckout({ mode, priceCents, planName, userId, plan, conceptId, email, successUrl, cancelUrl, billing }) {
   const s = stripe();
   if (!s) return { ok: false, reason: 'stripe_not_configured' };
-  const recurring = mode === 'subscription' ? { interval: 'month' } : undefined;
+  const recurring = mode === 'subscription' ? { interval: billing === 'yearly' ? 'year' : 'month' } : undefined;
   try {
     const session = await s.checkout.sessions.create({
       mode,
@@ -175,7 +175,7 @@ async function createPlanCheckout({ mode, priceCents, planName, userId, plan, co
         product_data: { name: planName }, recurring }, quantity: 1 }],
       success_url: successUrl,
       cancel_url: cancelUrl,
-      metadata: { kind: 'subscription', user_id: userId, plan, concept_id: conceptId || '' },
+      metadata: { kind: 'subscription', user_id: userId, plan, concept_id: conceptId || '', billing: billing === 'yearly' ? 'yearly' : 'monthly' },
       // Managed Payments is on by default on this account and requires a product tax code on
       // every inline price; we don't set one, so Stripe rejected the checkout. Disable it here
       // to use standard checkout. To adopt Managed Payments (Stripe handling sales tax), set a

@@ -81,8 +81,10 @@ test('what she will not do is on the homepage, not three clicks in', () => {
 test('prices are visible without an account', () => {
   // YP Flow has no pricing page at all. This one states the free tier first.
   assert.match(home, /class="amt">Free<\/p>/);
-  assert.match(home, /\$49/);
-  assert.match(home, /\$129/);
+  // Desk $55 and Office $99, owner's decision 16 Sept 2026 (the $49 and $129 here were never decided).
+  assert.match(home, /\$55 a month/);
+  assert.match(home, /\$99 a month/);
+  assert.match(home, /href="\/plans\.html"/);
 });
 
 test('a failed look is not a clear day, here too', () => {

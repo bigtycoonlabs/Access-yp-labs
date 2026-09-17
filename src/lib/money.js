@@ -23,38 +23,54 @@ const MIN_BID_CENTS = PRICE_FLOOR_CENTS;   // $10 — matches bids_amount_cents_
 // how a retired thing gets sold again by accident — the same reason planCents refuses to price the
 // retired subscription plans.
 
-// ONE PLAN, and a first project that is genuinely free.
+// THE PLANS, decided by the owner on 16 September 2026.
 //
-// What this replaced and why: charging per project taxed the exact behaviour we want. Every new
-// idea became a purchase decision, and people answer that by having fewer ideas — while capping us
-// at a few dollars from someone who would happily pay for everything. Two tiers also forced a
-// choice nobody had enough information to make. So: build your first project free, forever, with
-// nothing held back; one plan covers everything after that, including the website builder and
-// landing pages that used to sit behind a separate purchase.
+// Free, Desk at $55 a month and Office at $99 a month, each with a monthly allowance. The prices
+// were set from measured costs (the pricing document of that date): a Penny message is about three
+// cents, a page build eighteen, a compliance search eighty-five, and $19 with no limits lost money
+// on anyone who used Penny daily. Allowances are listed here so every screen and Penny read the
+// same numbers; they are not enforced yet, and nothing may say they are.
 //
-// The price lives in ONE constant. Changing it is a one-line change on purpose — this number is a
-// hypothesis to be tested, not a fact. (Rel's read is that it belongs nearer $25; we are starting
-// at $19 to see what happens, which is exactly the kind of thing this constant exists for.)
-const BUILDER_CENTS = 1900;       // $19.00 / month, unlimited projects, everything included
+// Yearly is ten months' price for twelve. Prices live only here.
+const DESK_CENTS = 5500;
+const OFFICE_CENTS = 9900;
+const YEARLY_MONTHS_CHARGED = 10;
 const FREE_PROJECTS = 1;          // the first project is free forever, in full
 const CONCEPT_ACCESS_DAYS = 30;   // legacy window, only applies to projects beyond the free one
 
 const PLANS = {
-  builder: { cents: BUILDER_CENTS, mode: 'subscription', per_concept: false,
-             label: 'Builder — $19/month, unlimited projects, sites and landing pages included' },
+  desk: { cents: DESK_CENTS, mode: 'subscription', per_concept: false, name: 'Desk',
+    label: 'Desk \u2014 $55 a month',
+    for: 'Most owners',
+    allowance: { penny_messages: 400, builds: 20, images: 60, compliance_reviews: 1, compliance_questions: 5, businesses_reviewed: 1 },
+    includes: 'Penny, a monthly compliance review, unlimited sites hosted on Labs, a customer portal, files and Keys' },
+  office: { cents: OFFICE_CENTS, mode: 'subscription', per_concept: false, name: 'Office',
+    label: 'Office \u2014 $99 a month',
+    for: 'Custom apps, several businesses, small teams',
+    allowance: { penny_messages: 1000, builds: 60, images: 150, compliance_reviews: 3, compliance_questions: 15, businesses_reviewed: 3, team_seats: 5 },
+    includes: 'Everything in Desk, compliance reviews for up to three businesses, custom app launches and up to five team seats' },
 };
 
-// Older accounts may still hold a 'maker' or 'sculptor' subscription. They keep working and keep
-// their access — we do not switch off something a person is paying for because we changed our mind
-// about packaging. New subscriptions can only be the single plan above.
-const LEGACY_PLANS = ['maker', 'sculptor'];
+const FREE_ALLOWANCE = { penny_messages: 100, builds: 3, images: 5, compliance_reviews: 0, compliance_questions: 1, labs_sites: 1 };
+
+// Every plan that counts as paid, current or retired. Checks for "is this person on a plan" read
+// this list, so a new plan cannot be forgotten in one of them.
+const PAID_PLANS = ['desk', 'office', 'builder', 'sculptor'];
+
+function yearlyCents(plan) { return PLANS[plan] ? PLANS[plan].cents * YEARLY_MONTHS_CHARGED : null; }
+
+// Older accounts may still hold 'builder' ($19, retired 16 Sept 2026), 'maker' or 'sculptor'. They
+// keep working and keep their access: nothing a person is paying for is switched off because the
+// packaging changed. New subscriptions can only be the plans above.
+const LEGACY_PLANS = ['builder', 'maker', 'sculptor'];
+const BUILDER_CENTS = 1900;       // retired price, kept only to record what a legacy subscriber pays
 
 // What the retired plans cost, kept ONLY so an existing subscriber's Stripe events can still be
 // recorded truthfully. Not sellable — planCents() below still refuses to price them for anything
 // new — but a webhook for a live legacy subscription has to know what that person actually pays.
 // Without this, their event inserted a null price into a NOT NULL column, the insert failed, the
 // webhook returned 500, and Stripe retried it forever while the subscription never registered.
-const LEGACY_PLAN_CENTS = { maker: 299, sculptor: 4999 };
+const LEGACY_PLAN_CENTS = { builder: BUILDER_CENTS, maker: 299, sculptor: 4999 };
 function planCents(plan) { return PLANS[plan] ? PLANS[plan].cents : null; }
 
 function platformFeeCents(amountCents) { return Math.round(amountCents * PLATFORM_RATE); }
@@ -77,7 +93,8 @@ function platformNetAfterMoverCents(amountCents) {
 // The price to RECORD for a plan that already exists, including retired ones. Deliberately separate
 // from planCents: one answers "what may we charge for this?" and the other "what does this person
 // actually pay?". Conflating them is how a retired price gets sold again by accident.
-function recordedPlanCents(plan) {
+function recordedPlanCents(plan, billing) {
+  if (billing === 'yearly' && PLANS[plan]) return yearlyCents(plan);
   const live = planCents(plan);
   if (live !== null && live !== undefined) return live;
   return LEGACY_PLAN_CENTS[plan] !== undefined ? LEGACY_PLAN_CENTS[plan] : 0;
@@ -85,7 +102,8 @@ function recordedPlanCents(plan) {
 
 module.exports = {
   PLATFORM_RATE, PRICE_FLOOR_CENTS, MIN_BID_CENTS, isValidBid,
-  BUILDER_CENTS, FREE_PROJECTS, LEGACY_PLANS, LEGACY_PLAN_CENTS, recordedPlanCents, CONCEPT_ACCESS_DAYS, PLANS, planCents,
+  BUILDER_CENTS, DESK_CENTS, OFFICE_CENTS, YEARLY_MONTHS_CHARGED, yearlyCents, FREE_ALLOWANCE, PAID_PLANS,
+  FREE_PROJECTS, LEGACY_PLANS, LEGACY_PLAN_CENTS, recordedPlanCents, CONCEPT_ACCESS_DAYS, PLANS, planCents,
   platformFeeCents, sellerNetCents, isAboveFloor,
   MOVER_RATE, moverCommissionCents, platformNetAfterMoverCents,
 };

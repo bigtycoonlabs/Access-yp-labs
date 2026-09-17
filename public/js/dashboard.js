@@ -165,8 +165,8 @@
         };
         const maker = (e.data.options || []).find((o) => o.plan === 'maker');
         const sculptor = (e.data.options || []).find((o) => o.plan === 'sculptor');
-                host.appendChild(actionBtn('Unlimited projects — $19/month', () => go({ plan: 'builder' })));
-        announce('Your first project is free to download. For any project after that, the plan is $19 a month and covers everything, including sites and landing pages.', true);
+                host.appendChild(actionBtn('Desk plan — $55/month', () => go({ plan: 'desk' })));
+        announce('Your first project is free to download. For any project after that, the Desk plan is $55 a month and covers sites and landing pages too. Office, at $99, adds several businesses and custom apps.', true);
       } else { announce(e.message || 'Could not download.', true); }
     }
   }
@@ -332,7 +332,7 @@
       }
       const active = subscriptions.filter((s) => s.status === 'active');
       const goPlan = async () => {
-        const r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'builder' } });
+        const r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'desk' } });
         if (r.url) { location.href = r.url; return; }
         announce(r.message || 'Billing is not configured yet.', true);
       };
@@ -390,7 +390,7 @@
       } else {
         c.appendChild(el('p', 'muted', 'No plan yet. Build for free — a plan is asked for only when you download, share, or keep a project past 30 days.'));
       }
-      c.appendChild(actionBtn('Unlimited projects — $19/month', goPlan));
+      c.appendChild(actionBtn('Desk plan — $55/month', goPlan));
       c.appendChild(el('p', 'muted', 'Your first project is free to keep and download. The plan covers every project after it, plus the website builder and landing pages.'));
     } catch (e) { fail(c, e); }
   }

@@ -10,7 +10,12 @@
 // allowance meant a heavy user could cost more in image generation than they paid us, and the more
 // they enjoyed the product the worse it got. Per-account is just as generous for a real person —
 // nobody making business plans needs sixty images a month — while the exposure stops being open-ended.
-const MONTHLY_INCLUDED = { base: 10, builder: 60 };
+// From the plan catalogue (owner, 16 Sept 2026): Free 5, Desk 60, Office 150. Retired paid plans keep
+// the 60 they were sold with.
+const { PLANS, FREE_ALLOWANCE } = require('./money');
+const MONTHLY_INCLUDED = { base: FREE_ALLOWANCE.images, desk: PLANS.desk.allowance.images,
+  office: PLANS.office.allowance.images, builder: 60, sculptor: 60 };
+function tierOf(plan) { return MONTHLY_INCLUDED[plan] !== undefined && plan !== 'base' ? plan : 'base'; }
 
 // Standalone "Extras" packs — one-time purchases. Credits attach to the concept and don't expire
 // (unlike the monthly allowance, which resets each month).
@@ -25,7 +30,7 @@ const PACKS = [
 const AUTO_IMAGES_PER_BUILD = 2;
 
 function monthlyIncluded(plan) {
-  return MONTHLY_INCLUDED[plan === 'builder' || plan === 'sculptor' ? 'builder' : 'base'];
+  return MONTHLY_INCLUDED[tierOf(plan)];
 }
 
 function packById(id) {
@@ -40,7 +45,7 @@ function budget({ plan, usedThisMonth = 0, purchased = 0 }) {
   const freeRemaining = Math.max(0, included - used);
   const purchasedRemaining = Math.max(0, purchased);
   return {
-    plan: plan === 'builder' || plan === 'sculptor' ? 'builder' : 'base',
+    plan: tierOf(plan),
     monthly_included: included,
     used_this_month: used,
     free_remaining: freeRemaining,

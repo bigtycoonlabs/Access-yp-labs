@@ -79,7 +79,9 @@ async function load(){
   const money=document.getElementById('money'); money.innerHTML='';
   // The plan that actually exists, plus anyone still on a retired plan — labelled as retired so a
   // number on this page can never be mistaken for something we still sell.
-  stat(money,(c.builder_subs||0),'On the plan ($19/mo)');
+  stat(money,(c.desk_subs||0),'On Desk ($55/mo)');
+  stat(money,(c.office_subs||0),'On Office ($99/mo)');
+  stat(money,(c.builder_subs||0),'On the retired $19 plan');
   const legacy=(c.maker_subs||0)+(c.sculptor_subs||0);
   if(legacy) stat(money,legacy,'On a retired plan (honoured, not sold)');
 

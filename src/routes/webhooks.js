@@ -50,7 +50,8 @@ async function stripeWebhook(req, res) {
         // — correctly, since they must never be sold again — but refusing here meant a null price
         // into a NOT NULL column, a failed insert, a 500, and Stripe retrying forever while the
         // subscription never registered.
-        const price = recordedPlanCents(md.plan);
+        const billing = md.billing === 'yearly' ? 'yearly' : 'monthly';
+        const price = recordedPlanCents(md.plan, billing);
         const conceptId = md.concept_id && md.concept_id.length ? md.concept_id : null;
         const stripeSubId = event.data.object.subscription || null;
         // ON CONFLICT keeps this idempotent at the row level: if Stripe delivers the same
@@ -58,9 +59,9 @@ async function stripeWebhook(req, res) {
         // records it), the second insert of the same Stripe subscription no-ops instead of
         // creating a duplicate active subscription for a single payment.
         await query(
-          `INSERT INTO subscriptions (user_id, plan, concept_id, status, price_cents, stripe_subscription_id)
-           VALUES ($1,$2,$3,'active',$4,$5)
-           ON CONFLICT (stripe_subscription_id) DO NOTHING`, [md.user_id, md.plan, conceptId, price, stripeSubId]);
+          `INSERT INTO subscriptions (user_id, plan, concept_id, status, price_cents, stripe_subscription_id, billing)
+           VALUES ($1,$2,$3,'active',$4,$5,$6)
+           ON CONFLICT (stripe_subscription_id) DO NOTHING`, [md.user_id, md.plan, conceptId, price, stripeSubId, billing]);
       // A 'consult' branch settled paid consultant sessions here. Retired with the product. Nothing
       // can create such a session any more (the routes 410 and the checkout function is gone), and
       // no engagement was ever paid for, so there is no in-flight event this could still be needed

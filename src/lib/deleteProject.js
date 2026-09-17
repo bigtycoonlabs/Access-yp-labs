@@ -1,6 +1,6 @@
 // DELETING A PROJECT.
 //
-// FIRST, THE THING THAT MATTERS MOST: the $19 plan belongs to the ACCOUNT, not to a project. Someone
+// FIRST, THE THING THAT MATTERS MOST: a paid plan belongs to the ACCOUNT, not to a project. Someone
 // on it can have twenty projects and delete nineteen; their subscription is untouched, because it
 // was never attached to any of them. Deleting a project must never cancel a person's plan, and the
 // query below is written so it structurally cannot.
@@ -24,15 +24,15 @@ const stripe = require('../services/stripe');
 // Returns { ok, deleted, cancelled } or { ok:false, reason } — never throws for an expected case.
 async function deleteProject(userId, conceptId) {
   // concept_id IS NOT NULL  ->  never an account-wide plan.
-  // plan <> 'builder'       ->  never the plan we actually sell.
+  // plan not a paid plan    ->  never an account-wide plan we sell or sold.
   const subs = await query(
     `SELECT id, stripe_subscription_id FROM subscriptions
       WHERE user_id = $2
         AND status = 'active'
         AND concept_id = $1
         AND concept_id IS NOT NULL
-        AND plan <> 'builder'`,
-    [conceptId, userId]);
+        AND NOT (plan = ANY($3))`,
+    [conceptId, userId, require('./money').PAID_PLANS]);
 
   // Stop a LEGACY per-project charge before removing anything. Ordered this way on purpose: refusing
   // the deletion and saying why is far better than removing someone's work and leaving a charge

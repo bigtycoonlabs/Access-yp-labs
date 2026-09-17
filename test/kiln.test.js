@@ -28,8 +28,12 @@ test('nothing prices a consultant session any more', () => {
 test('plan prices', () => {
   // One plan now. The price is a hypothesis we expect to revisit, so it lives in one constant —
   // this asserts the constant and the plan table cannot drift apart, not that $19 is forever.
-  assert.strictEqual(money.BUILDER_CENTS, 1900);
-  assert.strictEqual(money.planCents('builder'), money.BUILDER_CENTS);
+  // Desk $55 and Office $99, owner's decision 16 Sept 2026. Yearly is ten months for twelve.
+  assert.strictEqual(money.planCents('desk'), 5500);
+  assert.strictEqual(money.planCents('office'), 9900);
+  assert.strictEqual(money.yearlyCents('desk'), 55000);
+  assert.strictEqual(money.yearlyCents('office'), 99000);
+  assert.strictEqual(money.planCents('builder'), null, 'the $19 plan is retired');
 });
 
 test('malware scan flags pipe-to-shell, passes benign', () => {
@@ -296,8 +300,11 @@ test('clay health assess uses honest thresholds', () => {
 
 test('money path: plan prices are locked and match the webhook write', () => {
   const { PLANS, planCents, FREE_PROJECTS } = require('../src/lib/money');
-  assert.strictEqual(planCents('builder'), 1900);            // $19.00
-  assert.strictEqual(PLANS.builder.per_concept, false);      // never charged per project again
+  assert.strictEqual(planCents('desk'), 5500);
+  assert.strictEqual(planCents('office'), 9900);
+  assert.strictEqual(PLANS.desk.per_concept, false);         // never charged per project again
+  assert.strictEqual(PLANS.office.per_concept, false);
+  assert.strictEqual(planCents('builder'), null);            // retired $19 plan, not sellable
   assert.strictEqual(FREE_PROJECTS, 1);                      // the first project is free, in full
   // The retired plans must no longer be sellable — an old price cannot be charged by accident.
   assert.strictEqual(planCents('maker'), null);

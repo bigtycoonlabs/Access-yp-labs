@@ -3,7 +3,7 @@ const { body, validationResult } = require('express-validator');
 const { query } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler } = require('../lib/http');
-const { PLANS, planCents } = require('../lib/money');
+const { PLANS, planCents, yearlyCents, PAID_PLANS } = require('../lib/money');
 const { isStaff, billingExempt } = require('../lib/entitlement');
 const stripe = require('../services/stripe');
 const router = express.Router();
@@ -12,7 +12,10 @@ const router = express.Router();
 // A subscription becomes active only via the verified webhook after real
 // payment — never created unpaid here. Staff never pay.
 router.post('/', authenticate, [
-  body('plan').isIn(['builder']),
+  // Only the plans on sale. An old screen still asking for 'builder' is answered with Desk, which
+  // replaced it; nothing is charged at the retired price.
+  body('plan').customSanitizer((v) => (v === 'builder' ? 'desk' : v)).isIn(['desk', 'office']),
+  body('billing').optional().isIn(['monthly', 'yearly']),
   body('concept_id').optional().isUUID(),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
@@ -21,6 +24,7 @@ router.post('/', authenticate, [
     return res.json({ ok: false, reason: 'staff_exempt', message: 'Staff accounts have full access and are never charged.' });
   }
   const { plan } = req.body;
+  const billing = req.body.billing === 'yearly' ? 'yearly' : 'monthly';
   let conceptId = req.body.concept_id || null;
 
   if (plan === 'maker') {
@@ -38,6 +42,16 @@ router.post('/', authenticate, [
   const active = await query(
     "SELECT plan, concept_id FROM subscriptions WHERE user_id=$1 AND status='active'",
     [req.user.id]);
+  // One paid plan per person. Switching between Desk and Office is not self-serve yet, and a second
+  // checkout would charge twice, so it is refused with who to ask.
+  const held = active.rows.find((r) => PAID_PLANS.includes(r.plan) && r.plan !== 'sculptor');
+  if (held) {
+    const name = PLANS[held.plan] ? PLANS[held.plan].name : 'a plan';
+    return res.json({ ok: false, reason: 'already_covered',
+      message: held.plan === plan
+        ? 'You already have ' + name + ', so there is nothing to buy and you will not be charged again.'
+        : 'You already have ' + name + '. Changing plans is not self-serve yet, so nothing was charged. Email success@accessyourplace.com and we will switch it without charging you twice.' });
+  }
   if (active.rows.some((r) => r.plan === 'sculptor')) {
     return res.json({ ok: false, reason: 'already_covered',
       message: 'You already have Sculptor, which covers unlimited concepts — there’s nothing to buy, and you won’t be charged again.' });
@@ -52,10 +66,12 @@ router.post('/', authenticate, [
   // missing or dev-value env var.
   const base = (process.env.CLIENT_URL || '').startsWith('https') ? process.env.CLIENT_URL : 'https://accessyplabs.com';
   const checkout = await stripe.createPlanCheckout({
-    mode: 'subscription', priceCents: planCents(plan), planName: PLANS[plan].label, plan,
+    mode: 'subscription', billing,
+    priceCents: billing === 'yearly' ? yearlyCents(plan) : planCents(plan),
+    planName: 'Access YP Labs ' + PLANS[plan].name + (billing === 'yearly' ? ', yearly' : ', monthly'), plan,
     conceptId, userId: req.user.id, email: req.user.email,
-    successUrl: `${base}/dashboard.html?sub=done`,
-    cancelUrl: `${base}/dashboard.html?sub=canceled`,
+    successUrl: `${base}/plans.html?sub=done`,
+    cancelUrl: `${base}/plans.html?sub=canceled`,
   });
   if (!checkout.ok) {
     // Record the real Stripe reason so staff can read it on the dashboard (the operators are
@@ -78,6 +94,18 @@ router.post('/', authenticate, [
   }
   res.json({ ok: true, url: checkout.url });
 }));
+
+// The plans on sale, for the plans page. Public: prices are not a secret, and one source means no
+// screen can quote a different number.
+router.get('/plans', (req, res) => {
+  const { PLANS: P, FREE_ALLOWANCE, yearlyCents: yc } = require('../lib/money');
+  res.json({
+    free: { name: 'Free', cents: 0, allowance: FREE_ALLOWANCE },
+    plans: ['desk', 'office'].map((k) => ({ key: k, name: P[k].name, cents: P[k].cents, yearly_cents: yc(k),
+      for: P[k].for, includes: P[k].includes, allowance: P[k].allowance })),
+    allowances_enforced: false,
+  });
+});
 
 router.get('/', authenticate, asyncHandler(async (req, res) => {
   const r = await query(

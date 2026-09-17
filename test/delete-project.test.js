@@ -7,14 +7,15 @@ const lib = fs.readFileSync(require.resolve('../src/lib/deleteProject.js'), 'utf
 const concepts = fs.readFileSync(require.resolve('../src/routes/concepts.js'), 'utf8');
 const clay = fs.readFileSync(require.resolve('../src/routes/clay.js'), 'utf8');
 
-test('the $19 ACCOUNT plan is never cancelled by deleting a project', () => {
+test('an ACCOUNT plan (Desk, Office, or a retired one) is never cancelled by deleting a project', () => {
   // The plan belongs to the account, not to a project. Someone can have twenty projects and delete
   // nineteen; their subscription is untouched. `concept_id = $1` already excludes account-wide rows
   // because NULL never equals a uuid — but relying on that is relying on a SQL subtlety to protect
   // somebody's subscription, so the conditions say what is meant.
   assert.match(lib, /AND concept_id IS NOT NULL/);
-  assert.match(lib, /AND plan <> 'builder'/);
-  assert.match(flat(lib), /the \$19 plan belongs to the ACCOUNT, not to a project/i);
+  assert.match(lib, /AND NOT \(plan = ANY\(\$3\)\)/);
+  assert.match(lib, /require\('\.\/money'\)\.PAID_PLANS/);
+  assert.match(flat(lib), /belongs to the ACCOUNT, not to a project/i);
 });
 
 test('a RETIRED per-project subscription still stops when its project goes', () => {

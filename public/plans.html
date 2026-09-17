@@ -1,0 +1,147 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Plans, Access YP Labs</title>
+<meta name="description" content="Access YP Labs plans: Free, Desk and Office, with what each includes every month."/>
+<link rel="canonical" href="https://accessyplabs.com/plans.html"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&family=Inter:wght@400;600;700&display=swap"/>
+<link rel="stylesheet" href="/css/penny.css"/>
+<style>
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin:0 0 18px;}
+.price{font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:1.6rem;font-weight:700;margin:4px 0 8px;}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px;}
+.row .btn{min-height:44px;display:inline-flex;align-items:center;}
+fieldset{border:1px solid var(--line);border-radius:var(--radius);padding:10px 14px;margin:0 0 18px;}
+legend{font-weight:600;padding:0 6px;}
+.choice{display:flex;align-items:center;gap:10px;min-height:44px;}
+.choice input{width:22px;height:22px;}
+.current{border-left:3px solid #067647;padding-left:10px;}
+</style>
+</head><body>
+
+<!-- PLANS. Prices and allowances come from /api/subscriptions/plans so this page cannot quote a
+     number the server does not charge. Written to be read top to bottom. -->
+
+<a class="skip" href="#main">Skip to the plans</a>
+
+<header class="site">
+  <div class="bar">
+    <a class="brand" href="/today.html">Access YP Labs<span class="dot" aria-hidden="true">.</span></a>
+    <a class="btn quiet" href="/today.html">Today</a>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <h1>Plans</h1>
+  <p>Start free. Desk is for most owners. Office is for custom apps, several businesses and small teams.
+    Every plan includes Penny, and cancelling stops the next charge.</p>
+
+  <div id="status" role="status" aria-live="polite" class="muted"></div>
+  <p id="mine" class="current" hidden></p>
+
+  <fieldset>
+    <legend>How would you like to pay?</legend>
+    <label class="choice"><input type="radio" name="billing" value="monthly" checked/> Monthly</label>
+    <label class="choice"><input type="radio" name="billing" value="yearly"/> Yearly, which is ten months' price for twelve</label>
+  </fieldset>
+
+  <div id="plans"><p class="muted">Loading the plans.</p></div>
+
+  <p class="muted" id="note"></p>
+</main>
+
+<script src="/js/api.js"></script>
+<script src="/js/desk-auth.js"></script>
+<script>
+var $ = function (id) { return document.getElementById(id); };
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function say(t) { $('status').textContent = t; }
+function dollars(c) { return '$' + (c / 100).toLocaleString('en-US', { maximumFractionDigits: 0 }); }
+function billing() { return document.querySelector('input[name=billing]:checked').value; }
+
+function allowanceLine(a) {
+  var bits = [];
+  if (a.penny_messages) bits.push(a.penny_messages.toLocaleString('en-US') + ' messages with Penny');
+  if (a.builds) bits.push(a.builds + ' builds');
+  if (a.images) bits.push(a.images + ' images');
+  if (a.compliance_reviews) bits.push(a.compliance_reviews === 1 ? 'a full compliance review'
+    : 'full compliance reviews for up to ' + a.compliance_reviews + ' businesses');
+  if (a.compliance_questions) bits.push(a.compliance_questions + (a.compliance_questions === 1 ? ' compliance question' : ' compliance questions'));
+  if (a.labs_sites) bits.push(a.labs_sites + ' site hosted on Labs');
+  if (a.team_seats) bits.push('up to ' + a.team_seats + ' team seats');
+  return 'Each month: ' + bits.join(', ') + '.';
+}
+
+var catalog = null, held = null, signedIn = false;
+
+function render() {
+  if (!catalog) return;
+  var yearly = billing() === 'yearly';
+  var h = '<section class="panel" aria-labelledby="free-h"><h2 id="free-h" style="margin-top:0;">Free</h2>'
+    + '<p class="price">$0</p><p>Deadline tracking, your first project in full, and a taste of everything.</p>'
+    + '<p>' + esc(allowanceLine(catalog.free.allowance)) + '</p>'
+    + (signedIn ? '' : '<div class="row"><a class="btn" href="/register.html">Start free</a></div>') + '</section>';
+  catalog.plans.forEach(function (p) {
+    var price = yearly ? dollars(p.yearly_cents) + ' a year' : dollars(p.cents) + ' a month';
+    var mine = held === p.key;
+    h += '<section class="panel" aria-labelledby="' + p.key + '-h"><h2 id="' + p.key + '-h" style="margin-top:0;">' + esc(p.name) + '</h2>'
+      + '<p class="price">' + price + '</p>'
+      + '<p>For ' + esc(p.for.charAt(0).toLowerCase() + p.for.slice(1)) + '. ' + esc(p.includes) + '.</p>'
+      + '<p>' + esc(allowanceLine(p.allowance)) + '</p><div class="row">'
+      + (mine ? '<p><strong>This is your plan.</strong></p>'
+        : held ? '<p>To move to ' + esc(p.name) + ', email success@accessyourplace.com and we will switch it without charging you twice.</p>'
+        : '<button class="btn" type="button" data-plan="' + p.key + '">Choose ' + esc(p.name) + ', ' + price + '</button>')
+      + '</div></section>';
+  });
+  $('plans').innerHTML = h;
+  $('note').textContent = catalog.allowances_enforced ? ''
+    : 'Top-ups are coming: $10 for 150 more messages, 25 more builds, or 8 more compliance questions.';
+}
+
+async function load() {
+  try {
+    var r = await fetch('/api/subscriptions/plans'); catalog = await r.json();
+  } catch (e) { $('plans').innerHTML = '<p>I could not load the plans. Please refresh the page.</p>'; return; }
+  try {
+    var s = await fetch('/api/subscriptions');
+    if (s.ok) {
+      signedIn = true;
+      var d = await s.json();
+      if (d.staff_exempt) { $('mine').hidden = false; $('mine').textContent = 'Your account is staff, so it has everything and is never charged.'; }
+      var active = (d.subscriptions || []).filter(function (x) { return x.status === 'active'; });
+      var a = active.find(function (x) { return x.plan === 'office'; }) || active.find(function (x) { return x.plan === 'desk'; });
+      var old = active.find(function (x) { return x.plan === 'builder' || x.plan === 'sculptor'; });
+      if (a) { held = a.plan; $('mine').hidden = false; $('mine').textContent = 'You are on ' + (a.plan === 'office' ? 'Office' : 'Desk') + ', paid ' + (a.billing || 'monthly') + '.'; }
+      else if (old) { held = old.plan; $('mine').hidden = false; $('mine').textContent = 'You are on an earlier plan, which keeps working at the price you signed up for.'; }
+    }
+  } catch (_) { /* signed out is fine: the page still shows the plans */ }
+  var p = new URLSearchParams(location.search).get('sub');
+  if (p === 'done') say('Thank you. Your plan starts as soon as the payment is confirmed, usually within a minute.');
+  if (p === 'canceled') say('Checkout was cancelled, and nothing was charged.');
+  render();
+}
+
+document.addEventListener('change', function (e) { if (e.target.name === 'billing') { render(); say(billing() === 'yearly' ? 'Showing yearly prices.' : 'Showing monthly prices.'); } });
+document.addEventListener('click', async function (e) {
+  var plan = e.target.dataset && e.target.dataset.plan;
+  if (!plan) return;
+  if (!signedIn) { location.href = '/login.html?next=/plans.html'; return; }
+  e.target.disabled = true; say('Opening secure checkout.');
+  try {
+    var r = await fetch('/api/subscriptions', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan: plan, billing: billing() }) });
+    var d = {}; try { d = await r.json(); } catch (_) {}
+    if (d.ok && d.url) { location.href = d.url; return; }
+    say(d.message || (d.errors && 'That plan could not be chosen.') || 'Checkout did not open, and nothing was charged.');
+  } catch (err) { say('Checkout did not open, and nothing was charged. ' + err.message); }
+  e.target.disabled = false;
+});
+load();
+</script>
+</body></html>

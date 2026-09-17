@@ -123,7 +123,7 @@
   async function keep(conceptId, btn) {
     if (btn) btn.disabled = true;
     try {
-      var r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'builder', concept_id: conceptId } });
+      var r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'desk', concept_id: conceptId } });
       if (r && r.url) { location.href = r.url; return; }
       announce((r && r.message) || 'Billing isn’t set up yet, so nothing was charged.', true);
     } catch (e) { if (e.sessionExpired) return goSignIn(); announce(e.message, true); }
@@ -134,7 +134,7 @@
   async function goUnlimited(btn) {
     if (btn) btn.disabled = true;
     try {
-      var r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'builder' } });
+      var r = await Kiln.api('/subscriptions', { method: 'POST', body: { plan: 'desk' } });
       if (r && r.url) { location.href = r.url; return; }
       announce((r && r.message) || 'Billing isn’t set up yet, so nothing was charged.', true);
     } catch (e) { if (e.sessionExpired) return goSignIn(); announce(e.message, true); }
@@ -850,7 +850,7 @@
       if (!entitled && lockedCount) {
         var keepBox = el('div', 'keep-note'); keepBox.setAttribute('role', 'note');
         keepBox.appendChild(el('p', null, 'Your business plan, marketing strategy, and live demo stay open for free. Keep this project to unlock and download every section.'));
-        var kb = el('button', 'btn', 'Unlimited projects — $19/month'); kb.type = 'button';
+        var kb = el('button', 'btn', 'Desk plan — $55/month'); kb.type = 'button';
         kb.addEventListener('click', function () { keep(id, kb); });
         keepBox.appendChild(kb);
         var unlim = el('button', 'btn secondary', 'See what the plan includes'); unlim.type = 'button';

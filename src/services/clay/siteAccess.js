@@ -24,9 +24,9 @@ async function hasLivePlan(userId) {
   const r = await query(
     `SELECT 1 FROM subscriptions
       WHERE user_id = $1 AND status = 'active'
-        AND plan IN ('builder', 'sculptor', 'site_addon')
+        AND (plan = ANY($2) OR plan = 'site_addon')
         AND (current_period_end IS NULL OR current_period_end > now())
-      LIMIT 1`, [userId]);
+      LIMIT 1`, [userId, require('../../lib/money').PAID_PLANS]);
   return r.rows.length > 0;
 }
 
@@ -40,7 +40,7 @@ async function siteAccess(user, ownerId) {
     reason: 'plan_required',
     message: 'Building and previewing your site is free and always will be. Making it live for other '
       + 'people to visit, taking payments through it, and downloading the site files are part of the '
-      + '$19 plan. Nothing you have built is lost — it stays exactly as it is until you are ready.',
+      + 'Desk plan. Nothing you have built is lost — it stays exactly as it is until you are ready.',
   };
 }
 

@@ -14,7 +14,8 @@ async function activePlans(userId) {
   // The website builder and landing pages are part of the plan now, not a separate purchase.
   // They are among the most valuable things Clay makes, and putting them behind a second decision
   // cost more in hesitation than the add-on ever earned.
-  return { sculptor: plans.includes('builder') || plans.includes('sculptor'), addon: plans.includes('site_addon') };
+  const paid = require('../../lib/money').PAID_PLANS;
+  return { sculptor: plans.some((p) => paid.includes(p)), addon: plans.includes('site_addon') };
 }
 
 async function publishedThisMonth(userId) {

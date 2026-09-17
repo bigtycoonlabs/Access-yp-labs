@@ -2,7 +2,7 @@
 // this gate applies only when a user wants to pull assets out (download, share,
 // export) or keep a concept past its window.
 const { query } = require('../config/db');
-const { PLANS, FREE_PROJECTS } = require('./money');
+const { PLANS, FREE_PROJECTS, PAID_PLANS } = require('./money');
 
 const STAFF_ROLES = ['staff', 'admin', 'master_staff'];
 const isStaff = (role) => STAFF_ROLES.includes(role);
@@ -77,8 +77,8 @@ async function conceptEntitlement(user, conceptId) {
   // People who signed up under the old packaging keep exactly what they were promised.
   const anyPlan = await query(
     `SELECT plan FROM subscriptions
-      WHERE user_id=$1 AND status='active' AND plan IN ('builder','sculptor')
-        AND (current_period_end IS NULL OR current_period_end > now()) LIMIT 1`, [user.id]);
+      WHERE user_id=$1 AND status='active' AND plan = ANY($2)
+        AND (current_period_end IS NULL OR current_period_end > now()) LIMIT 1`, [user.id, PAID_PLANS]);
   if (anyPlan.rows.length) return { entitled: true, reason: anyPlan.rows[0].plan };
 
   const sculptor = { rows: [] };
@@ -103,7 +103,8 @@ function paywall(conceptId) {
     error: 'subscription_required',
     message: 'To download, share, or keep these materials, choose a plan. You can keep building for free.',
     options: [
-      { plan: 'builder', label: PLANS.builder.label },
+      { plan: 'desk', label: PLANS.desk.label },
+      { plan: 'office', label: PLANS.office.label },
     ],
   };
 }

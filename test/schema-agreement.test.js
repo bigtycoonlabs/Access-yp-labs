@@ -20,7 +20,8 @@ const glob = require('path');
 // together rather than drifting apart quietly.
 
 const ALLOWED = {
-  'subscriptions.plan': ['builder', 'maker', 'sculptor', 'site_addon'],
+  'subscriptions.plan': ['desk', 'office', 'builder', 'maker', 'sculptor', 'site_addon'],
+  'subscriptions.billing': ['monthly', 'yearly'],
   'subscriptions.status': ['active', 'canceled', 'past_due'],
   'concepts.movement_state': ['needs_customer_clarity', 'needs_proof', 'ready_to_package'],
   'concepts.origin': ['created', 'purchased', 'clay_seed'],
@@ -91,13 +92,13 @@ test('every value the code writes is a value the database will accept', () => {
 test('the plan we actually sell is one the database accepts', () => {
   // The specific failure that motivated all of this.
   const money = require('../src/lib/money');
-  const sellable = ['builder'];
+  const sellable = ['desk', 'office'];
   sellable.forEach((p) => {
     assert.ok(ALLOWED['subscriptions.plan'].includes(p), `${p} must be storable`);
     assert.ok(money.planCents(p) > 0, `${p} must have a price`);
   });
   // And retired plans stay storable (existing subscribers) but unsellable.
-  ['maker', 'sculptor'].forEach((p) => {
+  ['builder', 'maker', 'sculptor'].forEach((p) => {
     assert.ok(ALLOWED['subscriptions.plan'].includes(p), `${p} must remain storable for existing subscribers`);
     assert.strictEqual(money.planCents(p), null, `${p} must not be sellable`);
   });
