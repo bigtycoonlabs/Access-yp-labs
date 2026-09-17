@@ -71,7 +71,7 @@ router.get('/members', staffOnly, asyncHandler(async (req, res) => {
        LEFT JOIN LATERAL (SELECT plan, bundle, billing, status FROM subscriptions x
                            WHERE x.user_id = u.id AND x.status IN ('active','past_due') AND x.plan = ANY($1)
                            ORDER BY (x.plan = 'office') DESC, x.created_at DESC LIMIT 1) s ON true
-      WHERE u.email NOT ILIKE '%@example.test'
+      WHERE u.email NOT ILIKE '%@example.test' AND lower(u.email) <> 'clay@accessyplabs.com'
       ORDER BY u.created_at DESC LIMIT 500`, [PAID_PLANS, monthStart()]);
   res.json({ members: r.rows.map((m) => Object.assign(m, {
     plan_name: m.bundle ? BUNDLES[m.bundle].name : m.plan ? (PLANS[m.plan] ? PLANS[m.plan].name : 'Retired ' + m.plan + ' plan') : 'Free',
