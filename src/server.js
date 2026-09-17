@@ -84,17 +84,27 @@ app.use('/api/', apiLimiter);
 // where an attacker actually spends their effort, so they get their own budget. Successful sign-ins
 // are not counted, so a person using the product normally will never meet this — only someone
 // guessing will.
-const authLimiter = rateLimit({
+//
+// Each endpoint has its OWN budget (17 Sept 2026). One shared limiter counted every failed token
+// refresh against sign-in, and every protected page opened while signed out makes a failed refresh,
+// so a dozen page visits locked that device out of signing in for fifteen minutes. Found by the
+// platform health check, which was locked out exactly that way.
+const credentialLimiter = (max, extra) => rateLimit(Object.assign({
   windowMs: 15 * 60 * 1000,
-  max: 12,
+  max,
   skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many attempts from this device. Please wait a few minutes and try again.' },
-});
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
-app.use('/api/auth/refresh', authLimiter);
+}, extra || {}));
+app.use('/api/auth/login', credentialLimiter(12));
+app.use('/api/auth/register', credentialLimiter(12));
+// A refresh is normal browsing, not guessing: a much larger budget, and a visitor with no session
+// at all (no cookie, no token) is not counted, because there is nothing there to guess.
+app.use('/api/auth/refresh', credentialLimiter(120, {
+  // kiln_rt is the refresh cookie set in routes/auth.js.
+  skip: (req) => !/(?:^|;\s*)kiln_rt=/.test(String(req.headers.cookie || '')) && !(req.body && req.body.refreshToken),
+}));
 // Server-rendered pages: Clay's Desk articles (each at its own address, with real HTML for search
 // engines and link previews) and a generated sitemap. Mounted BEFORE the static handler so the
 // generated sitemap wins over the static file.
