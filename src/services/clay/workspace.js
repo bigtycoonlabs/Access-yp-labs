@@ -48,6 +48,15 @@ const TOOLS = {
     irreversible: false, requires_confirmation: false, required: [], optional: ['business_id', 'days'], enums: {},
     summary: 'What falls due over the next stretch of days, in date order. Read-only.',
   },
+  add_business: {
+    irreversible: false, requires_confirmation: false,
+    required: ['name'], optional: ['entity_type', 'formation_state', 'operating_states', 'city', 'trade', 'employees'],
+    enums: { entity_type: ['sole_proprietor', 'llc', 's_corp', 'c_corp', 'partnership', 'nonprofit', 'other'] },
+    summary: 'Put a business on file for this person when they describe one and want it set up. Give '
+      + 'whatever they said: name, entity type, formation state, other states it works in, the city it '
+      + 'runs from, what it does, and how many employees besides the owner. Never guess a detail they '
+      + 'did not give. Check list_businesses first so the same business is not added twice.',
+  },
   list_businesses: {
     irreversible: false, requires_confirmation: false, required: [], enums: {},
     summary: 'The businesses this person runs or has been given access to. Read-only.',
@@ -331,6 +340,59 @@ async function research_compliance(viewer, params = {}) {
   }, r.says);
 }
 
+const STATE_NAMES = { alabama: 'AL', alaska: 'AK', arizona: 'AZ', arkansas: 'AR', california: 'CA', colorado: 'CO',
+  connecticut: 'CT', delaware: 'DE', 'district of columbia': 'DC', florida: 'FL', georgia: 'GA', hawaii: 'HI', idaho: 'ID',
+  illinois: 'IL', indiana: 'IN', iowa: 'IA', kansas: 'KS', kentucky: 'KY', louisiana: 'LA', maine: 'ME', maryland: 'MD',
+  massachusetts: 'MA', michigan: 'MI', minnesota: 'MN', mississippi: 'MS', missouri: 'MO', montana: 'MT', nebraska: 'NE',
+  nevada: 'NV', 'new hampshire': 'NH', 'new jersey': 'NJ', 'new mexico': 'NM', 'new york': 'NY', 'north carolina': 'NC',
+  'north dakota': 'ND', ohio: 'OH', oklahoma: 'OK', oregon: 'OR', pennsylvania: 'PA', 'rhode island': 'RI',
+  'south carolina': 'SC', 'south dakota': 'SD', tennessee: 'TN', texas: 'TX', utah: 'UT', vermont: 'VT', virginia: 'VA',
+  washington: 'WA', 'west virginia': 'WV', wisconsin: 'WI', wyoming: 'WY' };
+const STATE_CODES = new Set(Object.values(STATE_NAMES));
+// "Texas", "tx" or "TX" → "TX"; anything else → null, never a guess.
+function stateCode(v) {
+  const t = String(v || '').trim();
+  if (!t) return null;
+  if (STATE_CODES.has(t.toUpperCase())) return t.toUpperCase();
+  return STATE_NAMES[t.toLowerCase()] || null;
+}
+
+async function add_business(viewer, params = {}) {
+  const name = String(params.name || '').trim().slice(0, 120);
+  if (!name) return { status: 'needs_answer', says: 'What is the business called?' };
+  const dupe = (await query(
+    `SELECT id, name FROM businesses WHERE owner_id=$1 AND lower(name)=lower($2) AND archived_at IS NULL LIMIT 1`,
+    [viewer.id, name])).rows[0];
+  if (dupe) return answered({ business_id: dupe.id, name: dupe.name, already_on_file: true }, dupe.name + ' is already on file, so I did not add it again.');
+  const formed = stateCode(params.formation_state);
+  if (params.formation_state && !formed) {
+    return { status: 'needs_answer', says: 'Which US state was it formed in? I did not recognise "' + String(params.formation_state).slice(0, 40) + '".' };
+  }
+  const others = (Array.isArray(params.operating_states) ? params.operating_states : String(params.operating_states || '').split(','))
+    .map(stateCode).filter(Boolean);
+  const operating = [...new Set([formed, ...others].filter(Boolean))];
+  const city = String(params.city || '').trim().slice(0, 120);
+  const employees = params.employees === undefined || params.employees === null || params.employees === '' ? null
+    : Math.max(0, Math.min(100000, parseInt(params.employees, 10)));
+  const entity = TOOLS.add_business.enums.entity_type.includes(params.entity_type) ? params.entity_type : null;
+  const r = await query(
+    `INSERT INTO businesses (owner_id, name, entity_type, formation_state, operating_states, localities, trade, headcount, stage)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'running') RETURNING id, name`,
+    [viewer.id, name, entity, formed, operating, city ? [city] : [], String(params.trade || '').trim().slice(0, 120) || null,
+      // headcount cannot be empty in the database. When nobody said, it is saved as none and the
+      // person is told that was assumed, so compliance is never quietly based on a guess.
+      Number.isFinite(employees) ? employees : 0]);
+  const missing = [];
+  if (!entity) missing.push('what kind of entity it is');
+  if (!formed) missing.push('which state it was formed in');
+  if (!city) missing.push('which city it runs from');
+  if (!params.trade) missing.push('what it does');
+  const assumed = !Number.isFinite(employees);
+  return answered({ business_id: r.rows[0].id, name: r.rows[0].name, missing, assumed_no_employees: assumed },
+    r.rows[0].name + ' is on file now.' + (missing.length ? ' I still do not know ' + missing.join(', ') + '.' : '')
+    + (assumed ? ' I have noted no employees besides the owner for now; say so if that is wrong, because it changes what is owed.' : ''));
+}
+
 async function whats_missing(viewer, params = {}) {
   const gate = await P.can(viewer.id, params.business_id, 'documents', 'view');
   if (!gate.ok) return refused(P.refusalLine(gate, 'documents', gate.perms && gate.perms.business.name));
@@ -463,6 +525,6 @@ async function list_files(viewer, params = {}) {
 
 const EXECUTORS = { whats_due, whats_coming, list_businesses, record_obligation,
   complete_obligation, whats_missing, whats_outstanding_with_customers, start_build, publish_build, list_builds, list_files,
-  portal_status, customize_portal, list_keys, launch_build, research_compliance };
+  portal_status, customize_portal, list_keys, launch_build, research_compliance, add_business };
 
 module.exports = { TOOLS, EXECUTORS, answered, empty, unavailable, refused };

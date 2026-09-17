@@ -29,7 +29,7 @@ test('she carries only the workspace tools', () => {
   assert.deepStrictEqual(WORKSPACE_TOOLS,
     ['whats_due', 'whats_coming', 'list_businesses', 'record_obligation', 'complete_obligation',
       'whats_missing', 'whats_outstanding_with_customers', 'start_build', 'publish_build', 'list_builds', 'list_files',
-      'portal_status', 'customize_portal', 'list_keys', 'launch_build', 'research_compliance']);
+      'portal_status', 'customize_portal', 'list_keys', 'launch_build', 'research_compliance', 'add_business']);
   // Comment text wraps, so normalise the line breaks rather than guessing where they fall.
   const flat = persona.replace(/\s*\n\s*\/\/\s*/g, ' ');
   assert.match(flat, /A real 429 followed that mistake on Access Your Place/);
