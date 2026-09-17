@@ -107,7 +107,7 @@ function refusalLine(result, area, businessName, ownerName) {
 async function myBusinesses(userId) {
   const r = await query(
     `SELECT b.id, b.name, b.legal_name, b.entity_type, b.formation_state,
-            b.operating_states, b.trade, b.stage,
+            b.operating_states, b.localities, b.headcount, b.trade, b.stage,
             (b.owner_id = $1) AS is_owner
        FROM businesses b
       WHERE b.archived_at IS NULL

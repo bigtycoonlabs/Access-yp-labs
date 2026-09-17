@@ -115,3 +115,12 @@ test('the research\'s own summary line is never cut short', () => {
   assert.match(C.shortOf(tx), /sales and use tax permit/);
   assert.match(C.shortOf(tx), /depend on the city\.$/);
 });
+
+test('asking about an area nobody researched shows what was found, not nothing', () => {
+  // The live walk: a single question was answered and filed as a question, and asking about "permits"
+  // reported that nothing had been found.
+  const ws = fs.readFileSync('src/services/clay/workspace.js', 'utf8');
+  assert.match(ws, /not_researched_as_its_own_area: true/);
+  assert.match(ws, /has not been researched as its own area\. Here is what has been found/);
+  assert.match(ws, /if \(!st\.research\.length\) return empty/);
+});

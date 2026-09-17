@@ -318,7 +318,18 @@ async function research_compliance(viewer, params = {}) {
     // One area in full, when asked for; otherwise one line per area, so the whole picture fits.
     if (params.area && params.area !== 'all') {
       const x = st.research.find((r) => r.area === params.area);
-      if (!x) return empty('Nothing has been found for ' + params.area + ' yet. ' + st.says);
+      // Nothing under that heading does not mean nothing was found: a single question is filed as a
+      // question, not as an area, and answering "nothing" hid a real finding in the live walk.
+      if (!x) {
+        if (!st.research.length) return empty('Nothing has been researched for this business yet. ' + st.says);
+        return answered({ run, asked_about: params.area, not_researched_as_its_own_area: true,
+          found_instead: st.research.map((r) => ({ area: r.area,
+            question: r.area === 'question' ? String(r.question).slice(0, 200) : undefined,
+            in_short: Compliance.shortOf(r.answer), has_government_source: r.official,
+            main_source: r.sources[0] && { title: String(r.sources[0].title).slice(0, 100), url: r.sources[0].url },
+            searched_on: day(r.searched_at) })) },
+          params.area + ' has not been researched as its own area. Here is what has been found, which may cover it.');
+      }
       return answered({ run, area: x.area, answer: String(x.answer).slice(0, 6000), sources: x.sources,
         has_government_source: x.official, searched_on: day(x.searched_at) }, st.says);
     }
