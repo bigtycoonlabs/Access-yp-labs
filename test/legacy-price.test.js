@@ -17,8 +17,8 @@ test('a retired plan can be RECORDED but never SOLD', () => {
 
 test('the webhook records, and checkout sells', () => {
   // Getting these the wrong way round either resells a retired price or breaks a live subscriber.
-  assert.match(webhooks, /const price = recordedPlanCents\(md\.plan, billing\)/);
-  assert.match(subs, /priceCents: billing === 'yearly' \? yearlyCents\(plan\) : planCents\(plan\)/);
+  assert.match(webhooks, /const price = recordedPlanCents\(md\.plan, billing, bundle\)/);
+  assert.match(subs, /\(billing === 'yearly' \? yearlyCents\(plan\) : planCents\(plan\)\)/);
   assert.strictEqual(money.recordedPlanCents('desk', 'yearly'), 55000);
   assert.strictEqual(money.recordedPlanCents('office'), 9900);
 });

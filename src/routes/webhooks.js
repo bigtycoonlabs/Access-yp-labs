@@ -2,7 +2,7 @@ const { query } = require('../config/db');
 const { notifyStaff } = require('../services/clay/staffNotify');
 const stripe = require('../services/stripe');
 const imageBudget = require('../services/clay/imageBudget');
-const { recordedPlanCents } = require('../lib/money');
+const { recordedPlanCents, BUNDLES } = require('../lib/money');
 
 // Stripe webhook. Mounted with express.raw BEFORE express.json in server.js.
 // Only a verified, real payment moves an order into escrow — we never mark an
@@ -51,7 +51,9 @@ async function stripeWebhook(req, res) {
         // into a NOT NULL column, a failed insert, a 500, and Stripe retrying forever while the
         // subscription never registered.
         const billing = md.billing === 'yearly' ? 'yearly' : 'monthly';
-        const price = recordedPlanCents(md.plan, billing);
+        // A bundle records the Labs half here; YP Flow's own webhook grants the Flow half.
+        const bundle = md.bundle && BUNDLES[md.bundle] && BUNDLES[md.bundle].labs === md.plan ? md.bundle : null;
+        const price = recordedPlanCents(md.plan, billing, bundle);
         const conceptId = md.concept_id && md.concept_id.length ? md.concept_id : null;
         const stripeSubId = event.data.object.subscription || null;
         // ON CONFLICT keeps this idempotent at the row level: if Stripe delivers the same
@@ -59,9 +61,15 @@ async function stripeWebhook(req, res) {
         // records it), the second insert of the same Stripe subscription no-ops instead of
         // creating a duplicate active subscription for a single payment.
         await query(
-          `INSERT INTO subscriptions (user_id, plan, concept_id, status, price_cents, stripe_subscription_id, billing)
-           VALUES ($1,$2,$3,'active',$4,$5,$6)
-           ON CONFLICT (stripe_subscription_id) DO NOTHING`, [md.user_id, md.plan, conceptId, price, stripeSubId, billing]);
+          `INSERT INTO subscriptions (user_id, plan, concept_id, status, price_cents, stripe_subscription_id, billing, bundle, flow_tier)
+           VALUES ($1,$2,$3,'active',$4,$5,$6,$7,$8)
+           ON CONFLICT (stripe_subscription_id) DO NOTHING`,
+          [md.user_id, md.plan, conceptId, price, stripeSubId, billing, bundle, bundle ? BUNDLES[bundle].flow : null]);
+        // Penny's welcome, once. It never throws, so a mail problem cannot fail the payment record.
+        if (stripeSubId) {
+          const w = await require('../services/planWelcome').sendOnce(stripeSubId);
+          if (!w.sent && !/Already welcomed/.test(w.says)) console.error('[stripe webhook] ' + w.says);
+        }
       // A 'consult' branch settled paid consultant sessions here. Retired with the product. Nothing
       // can create such a session any more (the routes 410 and the checkout function is gone), and
       // no engagement was ever paid for, so there is no in-flight event this could still be needed

@@ -3,7 +3,7 @@ const { body, validationResult } = require('express-validator');
 const { query } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler } = require('../lib/http');
-const { PLANS, planCents, yearlyCents, PAID_PLANS } = require('../lib/money');
+const { PLANS, planCents, yearlyCents, PAID_PLANS, BUNDLES, bundleYearlyCents } = require('../lib/money');
 const { isStaff, billingExempt } = require('../lib/entitlement');
 const stripe = require('../services/stripe');
 const router = express.Router();
@@ -14,7 +14,10 @@ const router = express.Router();
 router.post('/', authenticate, [
   // Only the plans on sale. An old screen still asking for 'builder' is answered with Desk, which
   // replaced it; nothing is charged at the retired price.
-  body('plan').customSanitizer((v) => (v === 'builder' ? 'desk' : v)).isIn(['desk', 'office']),
+  body('bundle').optional({ values: 'falsy' }).isIn(Object.keys(BUNDLES)),
+  // A bundle names its own Labs plan, so plan is filled in from it.
+  body('plan').customSanitizer((v, { req }) => (req.body.bundle && BUNDLES[req.body.bundle]
+    ? BUNDLES[req.body.bundle].labs : v === 'builder' ? 'desk' : v)).isIn(['desk', 'office']),
   body('billing').optional().isIn(['monthly', 'yearly']),
   body('concept_id').optional().isUUID(),
 ], asyncHandler(async (req, res) => {
@@ -24,6 +27,7 @@ router.post('/', authenticate, [
     return res.json({ ok: false, reason: 'staff_exempt', message: 'Staff accounts have full access and are never charged.' });
   }
   const { plan } = req.body;
+  const bundle = req.body.bundle && BUNDLES[req.body.bundle] ? req.body.bundle : null;
   const billing = req.body.billing === 'yearly' ? 'yearly' : 'monthly';
   let conceptId = req.body.concept_id || null;
 
@@ -48,8 +52,10 @@ router.post('/', authenticate, [
   if (held) {
     const name = PLANS[held.plan] ? PLANS[held.plan].name : 'a plan';
     return res.json({ ok: false, reason: 'already_covered',
-      message: held.plan === plan
+      message: held.plan === plan && !bundle
         ? 'You already have ' + name + ', so there is nothing to buy and you will not be charged again.'
+        : bundle
+        ? 'You already have ' + name + '. Adding YP Flow as a bundle is not self-serve yet, so nothing was charged. Email success@accessyourplace.com and we will set it up without charging you twice.'
         : 'You already have ' + name + '. Changing plans is not self-serve yet, so nothing was charged. Email success@accessyourplace.com and we will switch it without charging you twice.' });
   }
   if (active.rows.some((r) => r.plan === 'sculptor')) {
@@ -66,9 +72,14 @@ router.post('/', authenticate, [
   // missing or dev-value env var.
   const base = (process.env.CLIENT_URL || '').startsWith('https') ? process.env.CLIENT_URL : 'https://accessyplabs.com';
   const checkout = await stripe.createPlanCheckout({
-    mode: 'subscription', billing,
-    priceCents: billing === 'yearly' ? yearlyCents(plan) : planCents(plan),
-    planName: 'Access YP Labs ' + PLANS[plan].name + (billing === 'yearly' ? ', yearly' : ', monthly'), plan,
+    mode: 'subscription', billing, bundle, flowTier: bundle ? BUNDLES[bundle].flow : null,
+    person: bundle ? (await query('SELECT name, phone FROM users WHERE id=$1', [req.user.id])).rows[0] : null,
+    priceCents: bundle
+      ? (billing === 'yearly' ? bundleYearlyCents(bundle) : BUNDLES[bundle].cents)
+      : (billing === 'yearly' ? yearlyCents(plan) : planCents(plan)),
+    planName: bundle
+      ? 'Access YP Labs ' + PLANS[plan].name + ' and Access YP Flow ' + BUNDLES[bundle].flow.charAt(0).toUpperCase() + BUNDLES[bundle].flow.slice(1) + (billing === 'yearly' ? ', yearly' : ', monthly')
+      : 'Access YP Labs ' + PLANS[plan].name + (billing === 'yearly' ? ', yearly' : ', monthly'), plan,
     conceptId, userId: req.user.id, email: req.user.email,
     successUrl: `${base}/plans.html?sub=done`,
     cancelUrl: `${base}/plans.html?sub=canceled`,
@@ -103,6 +114,10 @@ router.get('/plans', (req, res) => {
     free: { name: 'Free', cents: 0, allowance: FREE_ALLOWANCE },
     plans: ['desk', 'office'].map((k) => ({ key: k, name: P[k].name, cents: P[k].cents, yearly_cents: yc(k),
       for: P[k].for, includes: P[k].includes, allowance: P[k].allowance })),
+    bundles: Object.entries(require('../lib/money').BUNDLES).map(([k, x]) => ({
+      key: k, name: x.name, labs: x.labs, flow: x.flow, cents: x.cents,
+      yearly_cents: require('../lib/money').bundleYearlyCents(k),
+      separate_cents: require('../lib/money').bundleSeparateCents(k) })),
     allowances_enforced: false,
   });
 });

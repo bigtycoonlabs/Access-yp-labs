@@ -112,6 +112,24 @@ function render() {
         : '<button class="btn" type="button" data-plan="' + p.key + '">Choose ' + esc(p.name) + ', ' + price + '</button>')
       + '</div></section>';
   });
+  if (catalog.bundles && catalog.bundles.length) {
+    h += '<section class="panel" aria-labelledby="bundles-h"><h2 id="bundles-h" style="margin-top:0;">Bundles with YP Flow</h2>'
+      + '<p>YP Flow is where Arbo looks after your money: books, invoices and putting idle cash to work. '
+      + 'Take both and pay less than buying them apart. One payment covers both, and each sends its own welcome.</p>';
+    catalog.bundles.forEach(function (b) {
+      var flowName = b.flow.charAt(0).toUpperCase() + b.flow.slice(1);
+      var price = yearly ? dollars(b.yearly_cents) + ' a year' : dollars(b.cents) + ' a month';
+      var saving = dollars(b.separate_cents - b.cents);
+      h += '<h3 id="b-' + b.key + '">' + esc(b.name) + '</h3>'
+        + '<p class="price">' + price + '</p>'
+        + '<p>' + esc(b.labs === 'office' ? 'Office' : 'Desk') + ' on Labs and ' + esc(flowName) + ' on Flow, '
+        + saving + ' a month less than the two bought apart (' + dollars(b.separate_cents) + ').</p><div class="row">'
+        + (held ? '<p>You already have a plan. To add Flow, email success@accessyourplace.com and we will set it up without charging you twice.</p>'
+          : '<button class="btn" type="button" data-bundle="' + b.key + '">Choose ' + esc(b.name) + ', ' + price + '</button>')
+        + '</div>';
+    });
+    h += '<p class="muted">Your Flow account uses the same email as this one. If you do not have one yet, Flow creates it and emails you how to sign in.</p></section>';
+  }
   $('plans').innerHTML = h;
   $('note').textContent = catalog.allowances_enforced ? ''
     : 'Top-ups are coming: $10 for 150 more messages, 25 more builds, or 8 more compliance questions.';
@@ -143,12 +161,13 @@ async function load() {
 document.addEventListener('change', function (e) { if (e.target.name === 'billing') { render(); say(billing() === 'yearly' ? 'Showing yearly prices.' : 'Showing monthly prices.'); } });
 document.addEventListener('click', async function (e) {
   var plan = e.target.dataset && e.target.dataset.plan;
-  if (!plan) return;
+  var bundle = e.target.dataset && e.target.dataset.bundle;
+  if (!plan && !bundle) return;
   if (!signedIn) { location.href = '/login.html?next=/plans.html'; return; }
   e.target.disabled = true; say('Opening secure checkout.');
   try {
     var r = await fetch('/api/subscriptions', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan: plan, billing: billing() }) });
+      body: JSON.stringify(bundle ? { bundle: bundle, billing: billing() } : { plan: plan, billing: billing() }) });
     var d = {}; try { d = await r.json(); } catch (_) {}
     if (d.ok && d.url) { location.href = d.url; return; }
     say(d.message || (d.errors && 'That plan could not be chosen.') || 'Checkout did not open, and nothing was charged.');

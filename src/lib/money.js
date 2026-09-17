@@ -53,6 +53,22 @@ const PLANS = {
 
 const FREE_ALLOWANCE = { penny_messages: 100, builds: 3, images: 5, compliance_reviews: 0, compliance_questions: 1, labs_sites: 1 };
 
+// BUNDLES WITH YP FLOW, approved by the owner on 16 September 2026: 17% off the two bought apart.
+// One Stripe subscription on the shared account; both platforms' webhooks receive it. Labs records
+// the Labs plan; Flow grants flow_tier to the same email and sends its welcome. Flow prices are its
+// own (lib/execution/tiers.ts in yp-flow): Flow $15, Power $39, Master $69.
+const FLOW_TIER_CENTS = { flow: 1500, power: 3900, master: 6900 };
+const BUNDLES = {
+  desk_flow:     { name: 'Desk + Flow',     labs: 'desk',   flow: 'flow',   cents: 5800 },
+  desk_power:    { name: 'Desk + Power',    labs: 'desk',   flow: 'power',  cents: 7800 },
+  office_master: { name: 'Office + Master', labs: 'office', flow: 'master', cents: 13900 },
+};
+function bundleSeparateCents(key) {
+  const b = BUNDLES[key];
+  return b ? PLANS[b.labs].cents + FLOW_TIER_CENTS[b.flow] : null;
+}
+function bundleYearlyCents(key) { return BUNDLES[key] ? BUNDLES[key].cents * YEARLY_MONTHS_CHARGED : null; }
+
 // Every plan that counts as paid, current or retired. Checks for "is this person on a plan" read
 // this list, so a new plan cannot be forgotten in one of them.
 const PAID_PLANS = ['desk', 'office', 'builder', 'sculptor'];
@@ -93,7 +109,8 @@ function platformNetAfterMoverCents(amountCents) {
 // The price to RECORD for a plan that already exists, including retired ones. Deliberately separate
 // from planCents: one answers "what may we charge for this?" and the other "what does this person
 // actually pay?". Conflating them is how a retired price gets sold again by accident.
-function recordedPlanCents(plan, billing) {
+function recordedPlanCents(plan, billing, bundle) {
+  if (bundle && BUNDLES[bundle]) return billing === 'yearly' ? bundleYearlyCents(bundle) : BUNDLES[bundle].cents;
   if (billing === 'yearly' && PLANS[plan]) return yearlyCents(plan);
   const live = planCents(plan);
   if (live !== null && live !== undefined) return live;
@@ -102,6 +119,7 @@ function recordedPlanCents(plan, billing) {
 
 module.exports = {
   PLATFORM_RATE, PRICE_FLOOR_CENTS, MIN_BID_CENTS, isValidBid,
+  BUNDLES, FLOW_TIER_CENTS, bundleSeparateCents, bundleYearlyCents,
   BUILDER_CENTS, DESK_CENTS, OFFICE_CENTS, YEARLY_MONTHS_CHARGED, yearlyCents, FREE_ALLOWANCE, PAID_PLANS,
   FREE_PROJECTS, LEGACY_PLANS, LEGACY_PLAN_CENTS, recordedPlanCents, CONCEPT_ACCESS_DAYS, PLANS, planCents,
   platformFeeCents, sellerNetCents, isAboveFloor,

@@ -163,10 +163,23 @@ function constructEvent(rawBody, signature) {
 
 // Subscription or one-time checkout for platform plans (Clay access).
 // sculptor -> recurring monthly (unlimited); maker -> recurring monthly (per concept).
-async function createPlanCheckout({ mode, priceCents, planName, userId, plan, conceptId, email, successUrl, cancelUrl, billing }) {
+async function createPlanCheckout({ mode, priceCents, planName, userId, plan, conceptId, email, successUrl, cancelUrl, billing, bundle, flowTier, person }) {
   const s = stripe();
   if (!s) return { ok: false, reason: 'stripe_not_configured' };
   const recurring = mode === 'subscription' ? { interval: billing === 'yearly' ? 'year' : 'month' } : undefined;
+  // BUNDLES: YP Flow's webhook sees every event on this shared Stripe account. It acts only on its own
+  // checkouts (metadata.type = 'subscription') and on bundles (metadata.bundle + flow_tier), which it
+  // matches to a Flow account by flow_email. Labs never sets metadata.type, so Flow can never mistake
+  // a Labs-only plan for its own.
+  const metadata = { kind: 'subscription', user_id: userId, plan, concept_id: conceptId || '',
+    billing: billing === 'yearly' ? 'yearly' : 'monthly' };
+  if (bundle) {
+    // Flow needs a name and a phone to open an account for somebody who does not have one yet.
+    const parts = String((person && person.name) || '').trim().split(/\s+/).filter(Boolean);
+    Object.assign(metadata, { bundle, flow_tier: flowTier, flow_email: String(email || '').toLowerCase(), sold_by: 'labs',
+      flow_first_name: (parts[0] || '').slice(0, 100), flow_last_name: parts.slice(1).join(' ').slice(0, 100),
+      flow_phone: String((person && person.phone) || '').slice(0, 40) });
+  }
   try {
     const session = await s.checkout.sessions.create({
       mode,
@@ -175,7 +188,10 @@ async function createPlanCheckout({ mode, priceCents, planName, userId, plan, co
         product_data: { name: planName }, recurring }, quantity: 1 }],
       success_url: successUrl,
       cancel_url: cancelUrl,
-      metadata: { kind: 'subscription', user_id: userId, plan, concept_id: conceptId || '', billing: billing === 'yearly' ? 'yearly' : 'monthly' },
+      metadata,
+      // The same facts ride on the subscription itself, so a cancellation or a failed renewal tells
+      // both platforms which bundle it was, not only the first checkout.
+      subscription_data: mode === 'subscription' ? { metadata } : undefined,
       // Managed Payments is on by default on this account and requires a product tax code on
       // every inline price; we don't set one, so Stripe rejected the checkout. Disable it here
       // to use standard checkout. To adopt Managed Payments (Stripe handling sales tax), set a

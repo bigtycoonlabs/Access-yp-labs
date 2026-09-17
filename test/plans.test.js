@@ -35,7 +35,7 @@ test('checkout sells only Desk or Office, refuses a second plan, and records yea
   assert.match(subs, /isIn\(\['desk', 'office'\]\)/);
   assert.match(subs, /Changing plans is not self-serve yet, so nothing was charged/);
   assert.match(fs.readFileSync('src/services/stripe.js', 'utf8'), /interval: billing === 'yearly' \? 'year' : 'month'/);
-  assert.match(fs.readFileSync('src/routes/webhooks.js', 'utf8'), /INSERT INTO subscriptions \(user_id, plan, concept_id, status, price_cents, stripe_subscription_id, billing\)/);
+  assert.match(fs.readFileSync('src/routes/webhooks.js', 'utf8'), /INSERT INTO subscriptions \(user_id, plan, concept_id, status, price_cents, stripe_subscription_id, billing, bundle, flow_tier\)/);
   const sql = fs.readFileSync('docs/migrations/072_desk_office_plans.sql', 'utf8');
   assert.match(sql, /plan IN \('desk', 'office', 'builder', 'maker', 'sculptor', 'site_addon'\)/);
 });
