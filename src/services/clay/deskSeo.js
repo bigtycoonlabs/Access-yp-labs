@@ -17,14 +17,21 @@ const { query } = require('../../config/db');
 
 // The categories a reader can browse. Small on purpose: seven browsable shelves beat twenty-four
 // one-article "topics", which is what the Desk had.
+// THE SUBJECTS THE DESK WRITES ABOUT (rewritten 18 September 2026).
+//
+// The old set was built around the retired marketplace: one of them was literally about the
+// Exchange. These are the parts of a small business somebody actually searches for, and each one is
+// a pillar with its own articles underneath it.
 const CATEGORIES = [
-  { slug: 'starting-out',       label: 'Starting out',        blurb: 'Going from an idea in your head to something real.' },
-  { slug: 'finding-customers',  label: 'Finding customers',   blurb: 'Proof, first buyers, and the strangers who tell you it works.' },
-  { slug: 'pricing',            label: 'Pricing',             blurb: 'What to charge, and what it does to everything else.' },
-  { slug: 'marketing',          label: 'Marketing',           blurb: 'Getting seen, and saying the thing that lands.' },
-  { slug: 'growing',            label: 'Growing',             blurb: 'When something works and you want more of it.' },
-  { slug: 'buying-and-selling', label: 'Buying and selling',  blurb: 'The Exchange, what makes a project worth buying, and what it is worth.' },
-  { slug: 'getting-help',       label: 'Getting help',        blurb: 'Partners, first hires, and what to hand off.' },
+  { slug: 'starting-out',      label: 'Starting out',        blurb: 'Going from an idea in your head to a business that exists on paper.' },
+  { slug: 'furnished-rentals', label: 'Furnished rentals',   blurb: 'Short-term, mid-term and co-living: finding units, signing them, filling them.' },
+  { slug: 'home-services',     label: 'Home services',       blurb: 'Housekeeping, cleaning, maintenance and the trades, from first client to a crew.' },
+  { slug: 'compliance',        label: 'Staying legal',       blurb: 'Licences, filings, renewals and the deadlines nobody warns you about.' },
+  { slug: 'running-it',        label: 'Running it',          blurb: 'The daily operation: people, jobs, paperwork and the things that slip.' },
+  { slug: 'getting-paid',      label: 'Getting paid',        blurb: 'Pricing, invoices, chasing money, and keeping the books straight.' },
+  { slug: 'building',          label: 'Building it',         blurb: 'Websites, customer portals, apps and code, without hiring a developer.' },
+  { slug: 'tools',             label: 'Tools compared',      blurb: 'What the software actually does, where it helps, and where it does not.' },
+  { slug: 'by-ear',            label: 'Running it by ear',   blurb: 'Doing all of the above with a screen reader, or without looking at a screen.' },
 ];
 const CATEGORY_SLUGS = CATEGORIES.map((c) => c.slug);
 const isCategory = (s) => CATEGORY_SLUGS.includes(String(s || ''));
