@@ -28,13 +28,51 @@ function esc(s) {
 
 // Clay writes plain prose with blank lines between paragraphs — turn that into real paragraphs so
 // the page has genuine structure to navigate by, rather than one undifferentiated block of text.
+// A DESK ARTICLE IS WRITTEN IN MARKDOWN, so it is read as markdown.
+//
+// Until 18 September 2026 every article was rendered as plain paragraphs: headings appeared as
+// "## What it costs", bullet lists ran together, and a linked government source showed as raw
+// brackets in the middle of a sentence. The sourced articles are the whole point of the Desk, and
+// their sources were unreadable and unclickable.
+//
+// Deliberately small: headings, bullets, numbered points, bold, italics and links. Only http and
+// https links are made clickable, and everything is escaped first, so an article can never inject
+// markup or a javascript: url.
 function paragraphs(body) {
-  return String(body || '')
-    .split(/\n\s*\n/)
-    .map((p) => p.trim())
-    .filter(Boolean)
-    .map((p) => `<p>${esc(p)}</p>`)
-    .join('\n      ');
+  const inline = (t) => esc(t)
+    .replace(/\[([^\]]{1,120})\]\((https?:\/\/[^\s)]{1,300})\)/g,
+      (m, text, href) => `<a href="${href}" rel="nofollow noopener">${text}</a>`)
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>');
+
+  const out = [];
+  let list = null;                       // 'ul' or 'ol' while one is open
+  const closeList = () => { if (list) { out.push('</' + list + '>'); list = null; } };
+  for (const raw of String(body || '').split('\n')) {
+    const line = raw.trim();
+    if (!line) { closeList(); continue; }
+    const bullet = /^[-*]\s+(.*)$/.exec(line);
+    const numbered = /^\d+[.)]\s+(.*)$/.exec(line);
+    if (bullet) {
+      if (list !== 'ul') { closeList(); out.push('<ul>'); list = 'ul'; }
+      out.push(`<li>${inline(bullet[1])}</li>`);
+      continue;
+    }
+    if (numbered) {
+      if (list !== 'ol') { closeList(); out.push('<ol>'); list = 'ol'; }
+      out.push(`<li>${inline(numbered[1])}</li>`);
+      continue;
+    }
+    closeList();
+    if (/^####\s+/.test(line)) { out.push(`<h4>${inline(line.replace(/^####\s+/, ''))}</h4>`); continue; }
+    if (/^###\s+/.test(line))  { out.push(`<h3>${inline(line.replace(/^###\s+/, ''))}</h3>`); continue; }
+    if (/^##\s+/.test(line))   { out.push(`<h2>${inline(line.replace(/^##\s+/, ''))}</h2>`); continue; }
+    // A single # would be a second h1 on a page that already has the title as its h1.
+    if (/^#\s+/.test(line))    { out.push(`<h2>${inline(line.replace(/^#\s+/, ''))}</h2>`); continue; }
+    out.push(`<p>${inline(line)}</p>`);
+  }
+  closeList();
+  return out.join('\n      ');
 }
 
 function articleHtml(a) {
