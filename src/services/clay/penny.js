@@ -260,6 +260,8 @@ const WORKSPACE_TOOLS = [
   'write_document',
   'read_document',
   'write_spreadsheet',
+  'add_teammate',
+  'list_team',
   'send_email',
   'search_web',
   'shopping_list',

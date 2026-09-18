@@ -60,6 +60,23 @@ const TOOLS = {
       + 'worth keeping. It is saved as a real document the person can read, share or delete. Prefer '
       + 'this over trying to hold a long thing in mind.',
   },
+  add_teammate: {
+    irreversible: false, requires_confirmation: true,
+    required: ['business_id', 'display_name', 'kind'], optional: ['email', 'phone', 'preset', 'notes'],
+    enums: { kind: ['owner', 'partner', 'employee', 'contractor', 'assistant', 'vendor', 'landlord', 'customer', 'professional'],
+      preset: ['bookkeeper', 'accountant', 'compliance_manager', 'developer', 'operations', 'office_manager', 'full_admin'] },
+    summary: 'Put somebody on this business: their name, what they are to it, and the preset that '
+      + 'decides what they can see. With an email they are told, and they make their own account, '
+      + 'which links to this seat. Say which preset you are giving them and what it allows before '
+      + 'you ask them to confirm.',
+    ask: 'Shall I add them? They will be emailed, and they will be able to see what that preset allows.',
+  },
+  list_team: {
+    irreversible: false, requires_confirmation: false,
+    required: ['business_id'], optional: [], enums: {},
+    summary: 'Who is on this business, what they are to it, what each can see, and whether they have '
+      + 'their own account yet. Read-only.',
+  },
   send_email: {
     irreversible: true, requires_confirmation: true,
     required: ['to', 'subject', 'body'], optional: ['business_name'], enums: {},
@@ -540,6 +557,28 @@ async function write_document(viewer, params = {}) {
   return answered({ file_id: r.file.id, name: r.file.name, bytes: r.file.bytes }, r.says);
 }
 
+async function add_teammate(viewer, params = {}) {
+  const Team = require('./team');
+  const r = await Team.addPerson(viewer, params);
+  if (!r.ok) return r.kind === 'refused' || r.kind === 'not_found' ? refused(r.says) : { status: 'needs_answer', says: r.says };
+  const areas = Object.entries(r.permissions).map(([a, l]) => a + ': ' + l);
+  return answered({ person_id: r.person.id, permissions: r.permissions, has_login: r.has_login,
+    told_them: r.invited === 'told', raised: (r.raised || []).map((x) => x.title) },
+  r.person.display_name + ' is on this business with ' + (areas.length ? areas.join(', ') : 'nothing yet')
+    + '. ' + (r.invited === 'told' ? 'I have emailed them' + (r.has_login ? '.' : ' to make their own account.')
+      : r.person.email ? 'I could not email them, so nobody has told them yet.' : 'No email, so this is a record rather than a login.')
+    + ((r.raised || []).length ? ' I also raised: ' + r.raised.map((x) => x.title).join('; ') + '.' : ''));
+}
+
+async function list_team(viewer, params = {}) {
+  const Team = require('./team');
+  const r = await Team.listPeople(viewer, params.business_id);
+  if (!r.ok) return refused(r.says);
+  if (!r.people.length) return empty('Nobody is on that business except you.');
+  return answered({ people: r.people.map((x) => ({ name: x.display_name, is: x.kind,
+    can_see: x.areas, has_account: x.has_login })) }, 'Here is who is on it.');
+}
+
 async function send_email(viewer, params = {}) {
   const r = await Outbound.send(viewer, { to: params.to, subject: params.subject, body: params.body,
     business_name: params.business_name });
@@ -858,6 +897,7 @@ const EXECUTORS = { whats_due, whats_coming, list_businesses, record_obligation,
   portal_status, customize_portal, list_keys, launch_build, research_compliance, add_business,
   connect_flow, flow_status, send_invoice_to_flow, remember_this, what_you_know, forget_this,
   write_document, read_document, write_spreadsheet,
-  schedule_work, scheduled_work, stop_scheduled_work, search_web, shopping_list, send_email };
+  schedule_work, scheduled_work, stop_scheduled_work, search_web, shopping_list, send_email,
+  add_teammate, list_team };
 
 module.exports = { TOOLS, EXECUTORS, answered, empty, unavailable, refused };

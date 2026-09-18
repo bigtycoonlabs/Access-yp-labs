@@ -7,7 +7,9 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 
-const team = fs.readFileSync('src/routes/team.js', 'utf8');
+// The work lives in the service; the route is the screen's door to it.
+const team = fs.readFileSync('src/routes/team.js', 'utf8')
+  + fs.readFileSync('src/services/clay/team.js', 'utf8');
 const auth = fs.readFileSync('src/routes/auth.js', 'utf8');
 const mail = fs.readFileSync('src/services/pennyEmails.js', 'utf8');
 
@@ -55,4 +57,19 @@ test('a preset nobody has is refused, not silently granted as nothing', () => {
   assert.match(team, /There is no "' \+ String\(b\.preset\)\.slice\(0, 40\) \+ '" preset, so nobody was/);
   assert.match(team, /That would add them with nothing they can see or do/);
   assert.match(team, /Object\.keys\(PRESETS\)\.join\(', '\)/);
+});
+
+test('Penny can put somebody on a business herself, with a yes first', () => {
+  const W = require('../src/services/clay/workspace');
+  const S = require('../src/services/clay/standing');
+  assert.strictEqual(W.TOOLS.add_teammate.requires_confirmation, true);
+  assert.ok(W.TOOLS.add_teammate.ask.includes('They will be emailed'));
+  assert.ok(!S.UNATTENDED_TOOLS().includes('add_teammate'), 'never on a schedule');
+  assert.ok(S.UNATTENDED_TOOLS().includes('list_team'), 'reading who is there is safe');
+  // Asked live, she said she had no way to do it and sent the person to another tab.
+  const service = fs.readFileSync('src/services/clay/team.js', 'utf8').replace(/\s+/g, ' ');
+  assert.match(service, /One implementation, used by the team screen and by Penny/);
+  assert.match(service, /Two implementations would be two behaviours/);
+  const route = fs.readFileSync('src/routes/team.js', 'utf8');
+  assert.match(route, /const r = await Team\.addPerson\(req\.user, req\.body\)/, 'the screen uses the service too');
 });

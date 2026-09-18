@@ -12,7 +12,10 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const api = fs.readFileSync('src/routes/team.js', 'utf8');
+// The work moved out of the route into services/clay/team.js on 17 Sept 2026, so the team
+// screen and Penny do the same thing. These rules live with the work.
+const api = fs.readFileSync('src/routes/team.js', 'utf8')
+  + fs.readFileSync('src/services/clay/team.js', 'utf8');
 const html = fs.readFileSync('public/team.html', 'utf8');
 const server = fs.readFileSync('src/server.js', 'utf8');
 
