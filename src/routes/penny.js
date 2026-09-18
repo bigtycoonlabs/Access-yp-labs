@@ -11,6 +11,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { asyncHandler, ApiError } = require('../lib/http');
+const { query } = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const agent = require('../services/clay/agent');
 const { PENNY_WORKSPACE, WORKSPACE_TOOLS } = require('../services/clay/penny');
@@ -281,6 +282,43 @@ router.post('/confirm', authenticate, [
   const fn = workspace.EXECUTORS[req.body.tool];
   const result = await fn({ id: req.user.id, name: req.user.name }, req.body.params);
   res.json({ result });
+}));
+
+// YOUR OWN CONVERSATIONS: reading them back, and deleting them.
+//
+// These moved here from the retired Clay routes on 18 September 2026. Unmounting that router took
+// the "delete every earlier conversation" button on the profile page down with it — a live button on
+// a live page, calling an endpoint that had quietly gone. Moving the code rather than remounting the
+// old router keeps one door per job.
+router.get('/history', authenticate, asyncHandler(async (req, res) => {
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 40));
+  const r = await query(
+    `SELECT m.role, m.content, m.created_at
+       FROM clay_messages m
+       JOIN clay_sessions s ON s.id = m.session_id
+      WHERE s.user_id = $1 AND s.surface = COALESCE($2, s.surface)
+        AND s.id = (
+          SELECT id FROM clay_sessions
+           WHERE user_id = $1 AND surface = COALESCE($2, surface)
+           ORDER BY last_at DESC NULLS LAST LIMIT 1)
+      ORDER BY m.created_at ASC
+      LIMIT $3`,
+    [req.user.id, req.query.surface || null, limit]);
+  res.json({
+    ok: true,
+    messages: r.rows,
+    // Said in words: an empty array and a failed read look identical to a caller, and only one of
+    // them means this person has never spoken to her.
+    summary: r.rows.length ? 'Picking up where you left off.' : 'No earlier conversation to restore.',
+  });
+}));
+
+router.delete('/history', authenticate, asyncHandler(async (req, res) => {
+  const conversations = require('../services/clay/conversations');
+  const out = await conversations.forgetMine(req.user.id);
+  if (!out.ok) throw new ApiError(500, 'Could not clear your history just now. Nothing was deleted.');
+  res.json({ ok: true, sessions_deleted: out.sessions_deleted,
+    message: `Deleted ${out.sessions_deleted} conversation${out.sessions_deleted === 1 ? '' : 's'}. They are gone, not hidden.` });
 }));
 
 module.exports = router;

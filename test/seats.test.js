@@ -86,7 +86,7 @@ test('the platform records the connection and stays out of the money', () => {
   assert.ok(!/stripe|price_cents|payout|charge/i.test(src.replace(/^\s*\/\/.*$/gm, '')));
 });
 
-test('the open board exists, because it is what creators work', () => {
+test('the open board exists, because it is what creators work', { skip: 'the board retired with the marketplace, and its API was unmounted on 18 Sept 2026' }, () => {
   // The counterpart to the staff review queue. Every unfilled seat across every project, in one
   // place, filterable by what somebody can actually do.
   assert.match(src, /router\.get\('\/open'/);

@@ -151,7 +151,7 @@ load();
     yes.addEventListener('click', async function(){
       yes.disabled=true; no.disabled=true; said.textContent='Deleting…';
       try{
-        var d=await Kiln.api('/clay/history',{method:'DELETE'});
+        var d=await Kiln.api('/penny/history',{method:'DELETE'});
         said.textContent=d.message||'Deleted.';
       }catch(e){ said.textContent=(e&&e.message)||'That did not go through. Nothing was deleted.'; }
       announce(said.textContent,true); row.remove(); restore();

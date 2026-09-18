@@ -38,7 +38,8 @@ test('the closure explains what replaced it', () => {
 test('a creator can actually delete their conversation history', () => {
   // The endpoint existed and nothing called it — the same shape as a refund nobody can trigger.
   assert.match(profile, /id="wipe"/);
-  assert.match(profile, /Kiln\.api\('\/clay\/history',\{method:'DELETE'\}\)/);
+  // Moved to Penny's own route when the Clay router was unmounted (18 Sept 2026).
+  assert.match(profile, /Kiln\.api\('\/penny\/history',\{method:'DELETE'\}\)/);
   assert.match(profile, /Staff cannot read them/);
 });
 

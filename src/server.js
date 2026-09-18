@@ -172,15 +172,18 @@ app.use('/api/progress',      require('./routes/progress'));
 app.use('/api/partners',      require('./routes/partners'));
 app.use('/api/admin/users',   require('./routes/adminUsers'));
 app.use('/api/subscriptions', require('./routes/subscriptions'));
-app.use('/api/concepts',      require('./routes/concepts'));
-app.use('/api/clay',          require('./routes/clay'));
 app.use('/api/assets',        require('./routes/assets'));
 app.use('/api/sellers',       require('./routes/sellers'));
 app.use('/api/store',         require('./routes/store'));
 app.use('/api/admin',         require('./routes/admin'));
 app.use('/api/maintenance',   require('./routes/maintenance'));
 app.use('/', require('./routes/marketPages'));
-app.use('/api/seats',         require('./routes/seats'));
+// RETIRED ROUTES, UNMOUNTED (18 September 2026).
+//
+// Clay, concepts, listings, orders, movers, seats and the listing seeder all belonged to the
+// marketplace that was retired in migration 075. Their pages redirect and nothing in the front end
+// calls them, but the endpoints stayed mounted and reachable for weeks: a retired product still
+// answering on the API is a retired product still exposing data.
 app.use('/api/businesses',    require('./routes/businesses'));
 app.use('/api/obligations',   require('./routes/obligations'));
 app.use('/api/penny',         require('./routes/penny'));
@@ -202,8 +205,6 @@ app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/market-admin', require('./routes/marketAdmin'));
 app.use('/api/console', require('./routes/console'));
 app.use('/api/staff-portal', require('./routes/staffPortal'));
-app.use('/api/seed-listings', require('./routes/seedListings'));
- app.use('/api/listings',      require('./routes/listings'));
 app.use('/api/waitlist',      require('./routes/waitlist'));
 app.use('/api/launch',        require('./routes/launch'));
 app.use('/api/site',          require('./routes/sites'));
@@ -211,8 +212,6 @@ app.use('/api/desk',          require('./routes/desk'));
 app.use('/api',               require('./routes/visitor'));
 app.use('/api/bids',          require('./routes/bids'));
 app.use('/api/watches',       require('./routes/watches'));
-app.use('/api/orders',        require('./routes/orders'));
-app.use('/api/movers',        require('./routes/movers'));
 app.use('/api/consultants',   require('./routes/consultants'));
 app.use('/api/moderation',    require('./routes/moderation'));
 app.use('/api/reports',       require('./routes/reports'));

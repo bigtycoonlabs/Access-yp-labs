@@ -55,7 +55,27 @@ test('every endpoint the interface calls resolves to a real route', () => {
   assert.ok(full.length > 50, 'routes were parsed at all');
 
   const calls = [];
+  // PAGES THAT NO LONGER EXIST DO NOT COUNT (18 September 2026).
+  //
+  // Retired pages redirect before they are served and their scripts never run, so an endpoint they
+  // call is not a broken button. Read from server.js rather than listed here, so retiring a page in
+  // one place is enough and this check cannot drift from what is actually served.
+  const retiredBlock = srv.slice(srv.indexOf('const RETIRED_PAGES'), srv.indexOf('app.use((req, res, next) => {', srv.indexOf('const RETIRED_PAGES')));
+  const retiredPages = [...retiredBlock.matchAll(/'(\/[a-z-]+\.html)':/g)].map((m) => 'public' + m[1]);
+  const retiredScripts = new Set();
+  for (const page of retiredPages) {
+    if (!fs.existsSync(page)) continue;
+    for (const m of fs.readFileSync(page, 'utf8').matchAll(/\/js\/([a-z0-9-]+\.js)/g)) retiredScripts.add(m[1]);
+  }
+  // Except any script a live page also loads: that one is still real.
+  for (const file of collect('public', '.html')) {
+    if (retiredPages.includes(file)) continue;
+    for (const m of fs.readFileSync(file, 'utf8').matchAll(/\/js\/([a-z0-9-]+\.js)/g)) retiredScripts.delete(m[1]);
+  }
+
   for (const file of collect('public', '.js').concat(collect('public', '.html'))) {
+    if (retiredPages.includes(file)) continue;
+    if (retiredScripts.has(path.basename(file))) continue;
     const src = fs.readFileSync(file, 'utf8');
     for (const m of src.matchAll(/Kiln\.api\(\s*['"`]([^'"`]+)/g)) calls.push([m[1], file]);
     for (const m of src.matchAll(/fetch\(\s*['"`](\/api\/[^'"`?]+)/g)) calls.push([m[1], file]);
