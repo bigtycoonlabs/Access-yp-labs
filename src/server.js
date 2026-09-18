@@ -184,6 +184,7 @@ app.use('/', require('./routes/marketPages'));
 // marketplace that was retired in migration 075. Their pages redirect and nothing in the front end
 // calls them, but the endpoints stayed mounted and reachable for weeks: a retired product still
 // answering on the API is a retired product still exposing data.
+app.use('/api/inbound',       require('./routes/inbound'));
 app.use('/api/businesses',    require('./routes/businesses'));
 app.use('/api/obligations',   require('./routes/obligations'));
 app.use('/api/penny',         require('./routes/penny'));

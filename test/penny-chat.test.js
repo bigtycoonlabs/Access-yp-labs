@@ -37,6 +37,8 @@ test('she carries only the workspace tools', () => {
     // She looks things up, and prepares lists to buy from without buying (17 Sept 2026).
     'remove_business', 'add_teammate', 'list_team',
     // They can see and change their own plan from the chat (18 Sept 2026).
+    // Mail forwarded to her, which is not the same as reading a mailbox (18 Sept 2026).
+    'inbox_address', 'read_mail', 'mail_handled',
     'my_plan', 'change_plan', 'send_email', 'search_web', 'shopping_list',
     // Work she does on a schedule and reports afterwards.
     'schedule_work', 'scheduled_work', 'stop_scheduled_work',
