@@ -103,11 +103,25 @@
     } catch (e) { return { handled: false }; }
     if (!res.ok || !res.body) return { handled: false };
 
+    // The bubble keeps her words. Progress sits under them, in its own line, marked as not the
+    // answer, and is cleared the moment the answer starts arriving.
+    var note = null;
+    function progress(el, text) {
+      if (!note) {
+        note = document.createElement('p');
+        note.className = 'muted';
+        note.setAttribute('data-progress', 'true');
+        el.parentNode.appendChild(note);
+      }
+      note.textContent = 'Working: ' + text;
+    }
+    function clearProgress() { if (note && note.parentNode) note.parentNode.removeChild(note); note = null; }
+
     var reader = res.body.getReader();
     var decoder = new TextDecoder();
     var buf = '';
     var done = null;
-    say(body, '');
+    say(body, 'Working on it.');
     while (true) {
       var chunk = await reader.read();
       if (chunk.done) break;
@@ -120,8 +134,13 @@
         var ev = {};
         try { ev = JSON.parse(line); } catch (e) { continue; }
         if (ev.type === 'working' && ev.say) {
-          // What she is doing, while she does it, written and spoken.
-          body.textContent = ev.say;
+          // WHAT SHE IS DOING GOES BEHIND HER ANSWER, NEVER IN FRONT OF IT.
+          //
+          // It used to be written into the reply itself, so a screen reader reading down the page
+          // met "I am looking at your businesses" where her answer should be, and her actual words
+          // replaced it a moment later. Progress now lives in the status line, which is announced
+          // separately and read in its own place, and the reply bubble holds only the reply.
+          progress(body, ev.say);
           speak(ev.say);
           hooks.announce([ev.say]);
         } else if (ev.type === 'worked' && ev.say) {
@@ -130,10 +149,12 @@
         } else if (ev.type === 'note' && ev.say) {
           hooks.announce([ev.say]);
         } else if (ev.type === 'say' && ev.say) {
+          clearProgress();
           reply += (reply ? ' ' : '') + ev.say;
           body.textContent = reply;
           speak(ev.say);
         } else if (ev.type === 'reply' && ev.say) {
+          clearProgress();
           reply = ev.say;
           body.textContent = reply;
           speak(ev.say);
@@ -142,6 +163,7 @@
         }
       }
     }
+    clearProgress();
     if (!done) {
       // The channel stopped mid-turn. Never left as a half answer that reads finished.
       body.textContent = (reply ? reply + ' ' : '')

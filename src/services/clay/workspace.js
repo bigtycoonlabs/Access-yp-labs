@@ -60,6 +60,16 @@ const TOOLS = {
       + 'worth keeping. It is saved as a real document the person can read, share or delete. Prefer '
       + 'this over trying to hold a long thing in mind.',
   },
+  remove_business: {
+    irreversible: false, requires_confirmation: true,
+    required: ['business_id'], optional: [], enums: {},
+    summary: 'Take a business out of their workspace when they no longer want it there: a duplicate, '
+      + 'something they tried and stopped, a business they sold. Only the owner can. It is archived '
+      + 'rather than erased, so the record of what it owed still exists and can be brought back. Say '
+      + 'its name and that nothing is erased before you ask them to confirm.',
+    ask: 'Shall I take that business out of your workspace? It stops appearing anywhere; nothing it '
+      + 'owed is erased, and it can be brought back.',
+  },
   add_teammate: {
     irreversible: false, requires_confirmation: true,
     required: ['business_id', 'display_name', 'kind'], optional: ['email', 'phone', 'preset', 'notes'],
@@ -557,6 +567,26 @@ async function write_document(viewer, params = {}) {
   return answered({ file_id: r.file.id, name: r.file.name, bytes: r.file.bytes }, r.says);
 }
 
+async function remove_business(viewer, params = {}) {
+  const id = String(params.business_id || '').trim();
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { status: 'needs_answer', says: 'Which business?' };
+  // Ownership checked directly: a business is not one of the permission areas, and a teammate with
+  // full access to a business still does not get to remove it from somebody else's workspace.
+  const own = await query('SELECT name, archived_at FROM businesses WHERE id=$1 AND owner_id=$2', [id, viewer.id]);
+  if (!own.rows.length) {
+    return refused('That is not a business you own, so I have not touched it. Only its owner can take '
+      + 'it out of the workspace.');
+  }
+  if (own.rows[0].archived_at) return empty(own.rows[0].name + ' is already out of your workspace, so nothing changed.');
+  const r = await query(
+    `UPDATE businesses SET archived_at=now(), updated_at=now()
+      WHERE id=$1 AND archived_at IS NULL RETURNING name`, [id]);
+  if (!r.rows.length) return empty('That business is already out of your workspace, so nothing changed.');
+  return answered({ archived: true, name: r.rows[0].name },
+    r.rows[0].name + ' is out of your workspace. Nothing it owed has been erased, and I can bring it '
+    + 'back if you want it.');
+}
+
 async function add_teammate(viewer, params = {}) {
   const Team = require('./team');
   const r = await Team.addPerson(viewer, params);
@@ -898,6 +928,6 @@ const EXECUTORS = { whats_due, whats_coming, list_businesses, record_obligation,
   connect_flow, flow_status, send_invoice_to_flow, remember_this, what_you_know, forget_this,
   write_document, read_document, write_spreadsheet,
   schedule_work, scheduled_work, stop_scheduled_work, search_web, shopping_list, send_email,
-  add_teammate, list_team };
+  add_teammate, list_team, remove_business };
 
 module.exports = { TOOLS, EXECUTORS, answered, empty, unavailable, refused };

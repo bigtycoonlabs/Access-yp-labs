@@ -35,7 +35,7 @@ test('she carries only the workspace tools', () => {
     // She writes what is worth keeping into their documents, and reads it back (17 Sept 2026).
     'write_document', 'read_document', 'write_spreadsheet',
     // She looks things up, and prepares lists to buy from without buying (17 Sept 2026).
-    'add_teammate', 'list_team', 'send_email', 'search_web', 'shopping_list',
+    'remove_business', 'add_teammate', 'list_team', 'send_email', 'search_web', 'shopping_list',
     // Work she does on a schedule and reports afterwards.
     'schedule_work', 'scheduled_work', 'stop_scheduled_work',
     // And she keeps what she is told about how somebody wants to work.

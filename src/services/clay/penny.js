@@ -260,6 +260,7 @@ const WORKSPACE_TOOLS = [
   'write_document',
   'read_document',
   'write_spreadsheet',
+  'remove_business',
   'add_teammate',
   'list_team',
   'send_email',

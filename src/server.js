@@ -43,6 +43,11 @@ app.use(helmet({
       // blob: so the Files screen can show a photo it fetched with the session. Images only.
       imgSrc: ["'self'", 'data:', 'blob:', 'https:'],          // generated + stored images arrive over https
       connectSrc: ["'self'", 'https:'],
+      // Penny's voice. Her sound arrives as a blob from our own server, and the moment of silence
+      // that wakes the audio element is a data URI. Without this the browser refused both and she
+      // was silent with no error a person could see — reported twice as "she does not speak", and
+      // blamed on iOS the first time (17 Sept 2026).
+      mediaSrc: ["'self'", 'blob:', 'data:'],
       fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"],                      // nobody may frame this site
