@@ -32,6 +32,9 @@ const CATEGORIES = [
   { slug: 'building',          label: 'Building it',         blurb: 'Websites, customer portals, apps and code, without hiring a developer.' },
   { slug: 'tools',             label: 'Tools compared',      blurb: 'What the software actually does, where it helps, and where it does not.' },
   { slug: 'by-ear',            label: 'Running it by ear',   blurb: 'Doing all of the above with a screen reader, or without looking at a screen.' },
+  // Help for the platform itself. It belongs on the Desk rather than in a separate manual: somebody
+  // searching "how do I get Penny to remind me" should land on the answer, not a marketing page.
+  { slug: 'using-penny',       label: 'Using Penny',         blurb: 'How the platform works: what to ask her, what she does on her own, and what she will not do.' },
 ];
 const CATEGORY_SLUGS = CATEGORIES.map((c) => c.slug);
 const isCategory = (s) => CATEGORY_SLUGS.includes(String(s || ''));

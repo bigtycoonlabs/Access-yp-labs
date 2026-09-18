@@ -11,9 +11,10 @@ const server = fs.readFileSync(require.resolve('../src/server.js'), 'utf8');
 test('the Desk has browsable subjects, not one-off topics', () => {
   // Nine pillars since 18 Sept 2026, rewritten around the business rather than the retired
   // marketplace: one of the old seven was about the Exchange.
-  assert.strictEqual(seo.CATEGORIES.length, 9);
+  assert.strictEqual(seo.CATEGORIES.length, 10);
   assert.ok(seo.isCategory('furnished-rentals'));
   assert.ok(seo.isCategory('by-ear'));
+  assert.ok(seo.isCategory('using-penny'), 'help for the platform belongs on the Desk, where people search');
   assert.ok(!seo.isCategory('buying-and-selling'));
   assert.ok(!seo.isCategory('nonsense'));
   assert.match(pages, /router\.get\('\/desk\/topic\/:category'/);
