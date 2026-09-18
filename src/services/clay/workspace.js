@@ -50,6 +50,21 @@ const TOOLS = {
     irreversible: false, requires_confirmation: false, required: [], optional: ['business_id', 'days'], enums: {},
     summary: 'What falls due over the next stretch of days, in date order. Read-only.',
   },
+  write_document: {
+    irreversible: false, requires_confirmation: false,
+    required: ['business_id', 'name', 'text'], optional: ['description'], enums: {},
+    summary: 'Write something into this business\'s documents so it is on file and you can read it '
+      + 'back later: notes from a conversation, a policy, a checklist, a summary of a call, anything '
+      + 'worth keeping. It is saved as a real document the person can read, share or delete. Prefer '
+      + 'this over trying to hold a long thing in mind.',
+  },
+  read_document: {
+    irreversible: false, requires_confirmation: false,
+    required: ['file_id'], optional: [], enums: {},
+    summary: 'Read a document you or they saved, by its id from list_files. Text documents only: a '
+      + 'PDF, photo or spreadsheet cannot be read as words and will say so rather than being guessed '
+      + 'at. Read before answering from a document rather than from memory.',
+  },
   remember_this: {
     irreversible: false, requires_confirmation: false,
     required: ['note'], optional: ['business_id'], enums: {},
@@ -460,6 +475,21 @@ async function add_business(viewer, params = {}) {
     + (assumed ? ' I have noted no employees besides the owner for now; say so if that is wrong, because it changes what is owed.' : ''));
 }
 
+async function write_document(viewer, params = {}) {
+  const r = await Files.write(viewer, { business_id: params.business_id, name: params.name,
+    text: params.text, description: params.description });
+  if (!r.ok) return r.kind === 'refused' ? refused(r.says) : r.kind === 'unclear'
+    ? { status: 'needs_answer', says: r.says } : unavailable('document_not_saved', r.says);
+  return answered({ file_id: r.file.id, name: r.file.name, bytes: r.file.bytes }, r.says);
+}
+
+async function read_document(viewer, params = {}) {
+  const r = await Files.read(viewer, String(params.file_id || ''));
+  if (!r.ok) return r.kind === 'refused' ? refused(r.says) : unavailable('document_unreadable', r.says);
+  return answered({ name: r.name, text: r.text, truncated: !!r.truncated },
+    r.says || 'Here is what ' + r.name + ' says.');
+}
+
 async function remember_this(viewer, params = {}) {
   const r = await Notes.remember(viewer.id, params.note, params.business_id);
   if (!r.ok) return r.kind === 'refused' ? refused(r.says) : { status: 'needs_answer', says: r.says };
@@ -664,6 +694,7 @@ async function list_files(viewer, params = {}) {
 const EXECUTORS = { whats_due, whats_coming, list_businesses, record_obligation,
   complete_obligation, whats_missing, whats_outstanding_with_customers, start_build, publish_build, list_builds, list_files,
   portal_status, customize_portal, list_keys, launch_build, research_compliance, add_business,
-  connect_flow, flow_status, send_invoice_to_flow, remember_this, what_you_know, forget_this };
+  connect_flow, flow_status, send_invoice_to_flow, remember_this, what_you_know, forget_this,
+  write_document, read_document };
 
 module.exports = { TOOLS, EXECUTORS, answered, empty, unavailable, refused };

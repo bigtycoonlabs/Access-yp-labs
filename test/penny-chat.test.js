@@ -32,7 +32,9 @@ test('she carries only the workspace tools', () => {
       'portal_status', 'customize_portal', 'list_keys', 'launch_build', 'research_compliance', 'add_business',
     // Money is Arbo's: she hands it over rather than telling somebody to retype it (17 Sept 2026).
     'connect_flow', 'flow_status', 'send_invoice_to_flow',
-    // She keeps what she is told about how somebody wants to work (17 Sept 2026).
+    // She writes what is worth keeping into their documents, and reads it back (17 Sept 2026).
+    'write_document', 'read_document',
+    // And she keeps what she is told about how somebody wants to work.
     'remember_this', 'what_you_know', 'forget_this']);
   // Comment text wraps, so normalise the line breaks rather than guessing where they fall.
   const flat = persona.replace(/\s*\n\s*\/\/\s*/g, ' ');

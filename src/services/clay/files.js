@@ -143,6 +143,46 @@ async function upload(viewer, { business_id, name, buffer, description }) {
   }
 }
 
+// PENNY WRITING SOMETHING DOWN.
+//
+// The owner's point: she should not have to hold everything in her head. What is worth keeping gets
+// written into the business's own documents, where the person can read it, edit the file, share it
+// or delete it like anything else they own. It is not a hidden store she alone can see.
+//
+// It goes through the same upload as a file a person drops in, so the same permission, the same
+// limit and the same record. A second way in is a second set of rules to keep in step.
+async function write(viewer, { business_id, name, text, description }) {
+  const body = String(text == null ? '' : text);
+  if (!body.trim()) return { ok: false, kind: 'unclear', says: 'There was nothing to write, so nothing was saved.' };
+  const clean = String(name || '').trim() || 'Note';
+  const filename = /\.[a-z0-9]{1,5}$/i.test(clean) ? clean : clean + '.md';
+  const r = await upload(viewer, {
+    business_id, name: filename, buffer: Buffer.from(body, 'utf8'),
+    description: description || 'Written by Penny.',
+  });
+  if (!r.ok) return r;
+  return { ok: true, file: r.file, says: r.file.name + ' is saved in your documents.' };
+}
+
+// READING ONE BACK. Text only: a PDF or a photo is not something this can turn into words, and
+// pretending otherwise would put invented contents into a conversation.
+const READABLE = /^text\/|json$|^application\/xml$/;
+async function read(viewer, id, { max = 20000 } = {}) {
+  const g = await fileFor(viewer, id, 'see');
+  if (!g.ok) return g;
+  const f = g.file;
+  if (!READABLE.test(f.mime)) {
+    return { ok: false, kind: 'refused',
+      says: f.name + ' is ' + f.mime + ', which I cannot read as words. I know it is there and what it '
+        + 'is called' + (f.description ? ', and its note says: ' + f.description : '') + '.' };
+  }
+  if (!f.data) return { ok: false, kind: 'unavailable', says: f.name + ' has no contents stored.' };
+  const text = Buffer.from(f.data).toString('utf8');
+  const cut = text.length > max;
+  return { ok: true, name: f.name, text: cut ? text.slice(0, max) : text, truncated: cut,
+    says: cut ? 'This is the first part of ' + f.name + '; it is longer than I read in one go.' : null };
+}
+
 async function list(viewer, business_id) {
   const gate = await P.can(viewer.id, business_id, 'documents', 'view');
   if (!gate.ok) return { ok: false, kind: 'refused', says: gateLine(gate) };
@@ -262,5 +302,5 @@ async function openShared(token) {
   return r.rows[0] ? { ok: true, file: r.rows[0] } : { ok: false };
 }
 
-module.exports = { upload, list, update, redescribe, remove, share, revoke, openShared, fileFor,
+module.exports = { upload, write, read, list, update, redescribe, remove, share, revoke, openShared, fileFor,
   sniff, cleanName, summarise, MAX_BYTES };

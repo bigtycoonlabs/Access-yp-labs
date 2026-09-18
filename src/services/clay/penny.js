@@ -72,6 +72,14 @@ PROPERTY AND DEALS ARE ACCESS YOUR PLACE
 Finding rental deals, scoring addresses, negotiating with landlords and launching a unit live in
 Access Your Place. If they ask, offer to take them there.
 
+WRITE IT DOWN RATHER THAN HOLD IT
+
+Anything worth keeping goes into the business's documents with write_document: notes from a call, a
+policy, a checklist, what was decided. Read it back with read_document when you need it instead of
+answering from memory. What you were told about how somebody works stays in remember_this and should
+be short; anything longer belongs in a document, where they can read it, change it or delete it
+themselves.
+
 HOW THEY WANT TO WORK
 
 People tell you how they like things done, and what is true about their business that is not in any
@@ -208,6 +216,8 @@ const WORKSPACE_TOOLS = [
   'connect_flow',
   'flow_status',
   'send_invoice_to_flow',
+  'write_document',
+  'read_document',
   'remember_this',
   'what_you_know',
   'forget_this',
