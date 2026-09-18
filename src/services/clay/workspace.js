@@ -33,6 +33,7 @@ const Launcher = require('./launcher');
 const Compliance = require('./complianceResearch');
 const Flow = require('./flowLink');
 const Notes = require('./notes');
+const Provider = require('./provider');
 
 // Result shapes. Borrowed from Arbo, where they exist because an unread balance once printed as
 // "$0.00" — indistinguishable from the money being gone.
@@ -57,6 +58,23 @@ const TOOLS = {
       + 'back later: notes from a conversation, a policy, a checklist, a summary of a call, anything '
       + 'worth keeping. It is saved as a real document the person can read, share or delete. Prefer '
       + 'this over trying to hold a long thing in mind.',
+  },
+  search_web: {
+    irreversible: false, requires_confirmation: false,
+    required: ['query'], optional: ['what_for'], enums: {},
+    summary: 'Look something up on the open web when the answer is not in their own records: a '
+      + 'supplier, a price, how something is usually done, what a form asks for, who to call. Give '
+      + 'the answer with the pages it came from. If the web has little on it, say so rather than '
+      + 'filling the gap. For what the law requires of their business, use research_compliance '
+      + 'instead, because that keeps its sources and is checked harder.',
+  },
+  shopping_list: {
+    irreversible: false, requires_confirmation: false,
+    required: ['business_id', 'name', 'items'], optional: ['where'], enums: {},
+    summary: 'Find what they need to buy and save it as a spreadsheet they can shop from: each item '
+      + 'searched for, with a real product, a price seen today and a link. items is a list of plain '
+      + 'descriptions such as "24 microfibre cloths". where is the shop to look at, Amazon unless '
+      + 'they say otherwise. You never buy anything: the list is theirs to order from.',
   },
   schedule_work: {
     irreversible: false, requires_confirmation: false,
@@ -512,6 +530,64 @@ async function write_document(viewer, params = {}) {
   return answered({ file_id: r.file.id, name: r.file.name, bytes: r.file.bytes }, r.says);
 }
 
+async function search_web(viewer, params = {}) {
+  const q = String(params.query || '').trim();
+  if (!q) return { status: 'needs_answer', says: 'What should I look up?' };
+  const r = await Provider.webSearch(q, { maxResults: 6,
+    instruction: 'You are looking this up for a small business owner' + (params.what_for
+      ? ', who wants it for: ' + String(params.what_for).slice(0, 200) : '')
+      + '. Answer in a few plain sentences with real links. Say plainly when the web does not settle it.' });
+  if (r.available === false) {
+    return unavailable('no_web_search', 'Looking things up on the web is not switched on for this '
+      + 'server, so I have not searched. I have not guessed either.');
+  }
+  if (!r.searched || (!r.answer && !(r.results || []).length)) {
+    return unavailable('search_failed', 'That search did not come back' + (r.reason ? ' (' + r.reason + ')' : '')
+      + ', so I have nothing from the web. I will not fill the gap myself.');
+  }
+  return answered({ answer: r.answer || null,
+    sources: (r.results || []).map((x) => ({ title: x.title, url: x.url })) },
+  r.answer || 'Here is what I found.');
+}
+
+// A LIST THEY CAN SHOP FROM. Each line searched for separately, because one search for six things
+// returns six half-answers. Nothing is bought: buying is theirs.
+async function shopping_list(viewer, params = {}) {
+  const items = (Array.isArray(params.items) ? params.items : String(params.items || '').split(/[\n,;]+/))
+    .map((x) => String(x).trim()).filter(Boolean).slice(0, 25);
+  if (!items.length) return { status: 'needs_answer', says: 'What should be on the list?' };
+  const where = String(params.where || 'Amazon').slice(0, 40);
+  const rows = [['Item', 'Product', 'Price seen', 'Where', 'Link']];
+  const missed = [];
+  for (const item of items) {
+    const r = await Provider.webSearch(
+      'Buy ' + item + ' on ' + where + '. Give one specific product: its exact name, its price today, '
+      + 'and the product page link.',
+      { maxResults: 3, maxChars: 400,
+        instruction: 'Answer in one line as: NAME | PRICE | LINK. Use a real listing you found and its '
+          + 'real price. If you cannot find one, answer exactly: NONE' });
+    const line = String((r && r.answer) || '').split('\n').map((x) => x.trim()).filter(Boolean)[0] || '';
+    const parts = line.split('|').map((x) => x.trim());
+    const url = (r.results && r.results[0] && r.results[0].url) || (parts[2] || '');
+    if (/^NONE/i.test(line) || parts.length < 2) {
+      missed.push(item);
+      rows.push([item, 'Not found', '', where, '']);
+    } else {
+      rows.push([item, parts[0].slice(0, 120), parts[1].slice(0, 20), where, String(url).slice(0, 300)]);
+    }
+  }
+  const saved = await Files.writeSheet(viewer, { business_id: params.business_id,
+    name: params.name || 'Shopping list', rows,
+    description: 'Prices were what I saw when I looked, on ' + new Date().toISOString().slice(0, 10)
+      + '. Check before ordering.' });
+  if (!saved.ok) return saved.kind === 'refused' ? refused(saved.says) : unavailable('list_not_saved', saved.says);
+  return answered({ file_id: saved.file.id, name: saved.file.name, items: items.length,
+    not_found: missed },
+  saved.file.name + ' is in your documents, ' + items.length + (items.length === 1 ? ' item' : ' items')
+    + (missed.length ? ', though I could not find ' + missed.join(', ') : '')
+    + '. The prices are what I saw today, and I have not bought anything.');
+}
+
 async function schedule_work(viewer, params = {}) {
   // Required here, not at the top: standing.js requires this file back.
   const Standing = require('./standing');
@@ -761,6 +837,6 @@ const EXECUTORS = { whats_due, whats_coming, list_businesses, record_obligation,
   portal_status, customize_portal, list_keys, launch_build, research_compliance, add_business,
   connect_flow, flow_status, send_invoice_to_flow, remember_this, what_you_know, forget_this,
   write_document, read_document, write_spreadsheet,
-  schedule_work, scheduled_work, stop_scheduled_work };
+  schedule_work, scheduled_work, stop_scheduled_work, search_web, shopping_list };
 
 module.exports = { TOOLS, EXECUTORS, answered, empty, unavailable, refused };
