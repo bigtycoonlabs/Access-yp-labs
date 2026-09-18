@@ -39,3 +39,11 @@ test('every article is reachable without running JavaScript', () => {
   assert.match(page, /\/desk\/topic\/furnished-rentals/);
   assert.match(page, /\/desk\/topic\/by-ear/);
 });
+
+test('the index is declared above the article route that would swallow it', () => {
+  // /desk/:slug matched "all" as an article slug, so the whole library returned a not-found page.
+  const current = fs.readFileSync('src/routes/deskPages.js', 'utf8');
+  assert.ok(current.indexOf("router.get('/desk/all'") < current.indexOf("router.get('/desk/:slug'"),
+    '/desk/all must be registered before /desk/:slug');
+  assert.match(current, /Declared ABOVE \/desk\/:slug on purpose/);
+});

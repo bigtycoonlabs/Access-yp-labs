@@ -152,6 +152,33 @@ function notFoundHtml() {
 }
 
 // GET /desk/:slug — one article, fully rendered.
+// GET /desk/all — every article, rendered by the server.
+//
+// Declared ABOVE /desk/:slug on purpose: that route matches 'all' as an article slug, so registering
+// this one lower returned the Desk's own not-found page for the entire library.
+//
+// The Desk's front page draws its list with JavaScript. A person is fine; a crawler that does not run
+// scripts sees an empty page, which is the whole library invisible to the thing we are writing it for
+// (18 Sept 2026). Subject pages were already server-rendered; this is the index of everything.
+router.get('/desk/all', asyncHandler(async (req, res) => {
+  const bySubject = [];
+  for (const c of deskSeo.CATEGORIES) {
+    let list = [];
+    try { list = await deskSeo.byCategory(c.slug, 60); } catch (_) { list = []; }
+    if (list.length) bySubject.push({ c, list });
+  }
+  const body = `<h1>Everything on the Desk</h1>
+    <p>Every article, by subject. Written by Penny, with the sources she used.</p>
+    ${bySubject.length ? bySubject.map(({ c, list }) => `<h2><a href="/desk/topic/${c.slug}">${esc(c.label)}</a></h2>
+      <p>${esc(c.blurb)}</p>
+      <ul>${list.map((a) => `<li><a href="/desk/${a.slug}">${esc(a.title)}</a>${a.dek ? ' — ' + esc(a.dek) : ''}</li>`).join('')}</ul>`).join('\n    ')
+      : '<p>Nothing is published yet.</p>'}
+    <p><a href="/desk">Back to the Desk</a></p>`;
+  res.set('Cache-Control', 'public, max-age=300');
+  res.type('html').send(deskPage('Everything on the Desk', 'Every article on the Desk, by subject.', body,
+    { canonical: `${SITE()}/desk/all` }));
+}));
+
 router.get('/desk/:slug', asyncHandler(async (req, res) => {
   let a = null;
   try { a = await deskCompose.getPublishedBySlug(req.params.slug); } catch (_) { a = null; }
@@ -269,30 +296,6 @@ router.get('/desk/topic/:category', asyncHandler(async (req, res) => {
     <p><a href="/desk">All of the Desk</a></p>`;
   res.set('Cache-Control', 'public, max-age=300');
   res.type('html').send(deskPage(`${meta.label} — The Desk`, meta.blurb, body, { canonical: `${SITE()}/desk/topic/${cat}` }));
-}));
-
-// GET /desk/all — every article, rendered by the server.
-//
-// The Desk's front page draws its list with JavaScript. A person is fine; a crawler that does not run
-// scripts sees an empty page, which is the whole library invisible to the thing we are writing it for
-// (18 Sept 2026). Subject pages were already server-rendered; this is the index of everything.
-router.get('/desk/all', asyncHandler(async (req, res) => {
-  const bySubject = [];
-  for (const c of deskSeo.CATEGORIES) {
-    let list = [];
-    try { list = await deskSeo.byCategory(c.slug, 60); } catch (_) { list = []; }
-    if (list.length) bySubject.push({ c, list });
-  }
-  const body = `<h1>Everything on the Desk</h1>
-    <p>Every article, by subject. Written by Penny, with the sources she used.</p>
-    ${bySubject.length ? bySubject.map(({ c, list }) => `<h2><a href="/desk/topic/${c.slug}">${esc(c.label)}</a></h2>
-      <p>${esc(c.blurb)}</p>
-      <ul>${list.map((a) => `<li><a href="/desk/${a.slug}">${esc(a.title)}</a>${a.dek ? ' — ' + esc(a.dek) : ''}</li>`).join('')}</ul>`).join('\n    ')
-      : '<p>Nothing is published yet.</p>'}
-    <p><a href="/desk">Back to the Desk</a></p>`;
-  res.set('Cache-Control', 'public, max-age=300');
-  res.type('html').send(deskPage('Everything on the Desk', 'Every article on the Desk, by subject.', body,
-    { canonical: `${SITE()}/desk/all` }));
 }));
 
 // GET /sitemap.xml — generated, so every article Clay publishes is discoverable. Falls back to the
