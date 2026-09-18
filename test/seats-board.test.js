@@ -95,7 +95,7 @@ test('the server sentence is passed through, not replaced', () => {
   assert.match(page, /\(e && e\.status && e\.message\) \|\| 'That did not send/);
 });
 
-test('the board is in the real nav, both signed in and signed out', () => {
+test('the board is in the real nav, both signed in and signed out', { skip: 'the seats board retired with the marketplace on 16 Sept 2026; the menu now lists the platform as it is (test/team-views.test.js)' }, () => {
   // I added "Help build" to ten static pages and it never appeared on the live site. nav.js REPLACES
   // every page's nav on load, so the static markup was dead the whole time — my link existed in the
   // file and in no rendered page.

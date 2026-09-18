@@ -47,3 +47,22 @@ test('an allowance that cannot be read still lets the work happen', () => {
   assert.match(views, /catch\(\(\) => \(\{ working_for: null \}\)\)/);
   assert.match(allowance, /catch \(_\) \{ return user; \}/, 'a failure to read it still lets the work happen');
 });
+
+test('the switcher is in the header, only when there is something to switch to', () => {
+  const nav = fs.readFileSync('public/js/nav.js', 'utf8');
+  assert.match(nav, /if \(!v \|\| !v\.views \|\| v\.views\.length < 2\) return;/, 'one option is noise');
+  assert.match(nav, /lab\.setAttribute\('for', 'whose-work'\)/, 'a real label for a real select');
+  assert.match(nav, /sel\.style\.minHeight = '44px'/);
+  assert.match(nav, /live\.textContent = r && r\.says/, 'moving is said before the page turns over');
+  assert.match(nav, /That did not change, so you are where you were/);
+});
+
+test('the menu lists the platform as it is, not the one that was retired', () => {
+  const nav = fs.readFileSync('public/js/nav.js', 'utf8');
+  for (const gone of ['/app.html', '/dashboard.html', '/marketplace.html', '/seats.html', '/movers.html']) {
+    assert.ok(!nav.includes("link('" + gone), 'the menu still offers ' + gone + ', which only redirects');
+  }
+  for (const here of ['/today.html', '/penny.html', '/businesses.html', '/files.html', '/plans.html']) {
+    assert.ok(nav.includes("link('" + here), 'the menu should reach ' + here);
+  }
+});
