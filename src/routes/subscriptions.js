@@ -157,6 +157,30 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
   res.json({ subscriptions: r.rows, staff_exempt: billingExempt(req.user) });
 }));
 
+// Changing your mind while you are still paid up. A $19 plan does not survive "email us to come
+// back": most people simply leave instead.
+router.post('/:id/resume', authenticate, asyncHandler(async (req, res) => {
+  const r = await query(
+    'SELECT id, stripe_subscription_id, status, cancel_at_period_end FROM subscriptions WHERE id=$1 AND user_id=$2',
+    [req.params.id, req.user.id]);
+  const sub = r.rows[0];
+  if (!sub) throw new ApiError(404, 'No subscription of yours with that id.');
+  if (!sub.cancel_at_period_end) {
+    return res.json({ subscription: sub, already: true,
+      note: sub.status === 'canceled'
+        ? 'That plan has already ended. Starting again is a fresh checkout.'
+        : 'That plan was not due to end, so nothing changed.' });
+  }
+  if (!sub.stripe_subscription_id) throw new ApiError(409, 'That plan has no Stripe record to resume.');
+  const out = await stripe.resumeSubscription(sub.stripe_subscription_id);
+  if (!out.ok) throw new ApiError(409, out.says || 'Stripe would not resume that plan, so nothing changed.');
+  const updated = await query(
+    'UPDATE subscriptions SET cancel_at_period_end=false, updated_at=now() WHERE id=$1 RETURNING *',
+    [sub.id]);
+  res.json({ subscription: updated.rows[0], resumed: true,
+    note: 'It will renew as normal. Nothing was charged now.' });
+}));
+
 router.post('/:id/cancel', authenticate, asyncHandler(async (req, res) => {
   const sub = (await query(
     'SELECT id, stripe_subscription_id, status, cancel_at_period_end FROM subscriptions WHERE id=$1 AND user_id=$2',

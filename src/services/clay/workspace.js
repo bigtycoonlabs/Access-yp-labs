@@ -87,6 +87,22 @@ const TOOLS = {
     summary: 'Who is on this business, what they are to it, what each can see, and whether they have '
       + 'their own account yet. Read-only.',
   },
+  my_plan: {
+    irreversible: false, requires_confirmation: false,
+    required: [], optional: [], enums: {},
+    summary: 'What they are paying for: the plan, what it costs, whether it renews or is due to end, '
+      + 'and what is left of this month\'s allowance. Read-only. Use it before answering anything '
+      + 'about billing rather than guessing.',
+  },
+  change_plan: {
+    irreversible: false, requires_confirmation: true,
+    required: ['action'], optional: [], enums: { action: ['cancel', 'resume'] },
+    summary: 'Stop a plan renewing, or turn the renewal back on if they changed their mind while '
+      + 'still paid up. Cancelling keeps their access until the end of the period they have already '
+      + 'paid for, and nothing is refunded. Say which it is and what happens before asking them to '
+      + 'confirm. Starting a new plan is a checkout they do themselves on the Plans page.',
+    ask: 'Shall I do that to your plan?',
+  },
   send_email: {
     irreversible: true, requires_confirmation: true,
     required: ['to', 'subject', 'body'], optional: ['business_name'], enums: {},
@@ -609,6 +625,61 @@ async function list_team(viewer, params = {}) {
     can_see: x.areas, has_account: x.has_login })) }, 'Here is who is on it.');
 }
 
+async function my_plan(viewer) {
+  const r = await query(
+    `SELECT id, plan, status, cancel_at_period_end, current_period_end, price_cents
+       FROM subscriptions WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1`, [viewer.id]);
+  const Allowance = require('../allowance');
+  const left = await Allowance.status(viewer, 'penny_message').catch(() => null);
+  const sub = r.rows[0];
+  if (!sub) {
+    return answered({ plan: 'free', subscription: null, allowance: left },
+      'You are on the free plan. The Plans page has what the paid plan adds, and starting one is a '
+      + 'checkout you do yourself.');
+  }
+  const ends = sub.current_period_end ? new Date(sub.current_period_end).toISOString().slice(0, 10) : null;
+  const words = sub.status === 'canceled' ? 'Your plan has ended.'
+    : sub.cancel_at_period_end
+      ? 'Your plan is set to end' + (ends ? ' on ' + ends : ' at the end of this period')
+        + '. You keep everything until then, and I can turn the renewal back on if you change your mind.'
+      : 'You are on the ' + (sub.plan || 'paid') + ' plan'
+        + (sub.price_cents ? ' at $' + (sub.price_cents / 100).toFixed(2) + ' a month' : '')
+        + (ends ? ', renewing ' + ends : '') + '.';
+  return answered({ subscription_id: sub.id, plan: sub.plan, status: sub.status,
+    ending: !!sub.cancel_at_period_end, renews_or_ends: ends, allowance: left }, words);
+}
+
+async function change_plan(viewer, params = {}) {
+  const action = String(params.action || '');
+  const r = await query(
+    `SELECT id, stripe_subscription_id, status, cancel_at_period_end
+       FROM subscriptions WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1`, [viewer.id]);
+  const sub = r.rows[0];
+  if (!sub) return empty('You have no paid plan to change. Starting one is a checkout on the Plans page.');
+  const stripe = require('../stripe');
+
+  if (action === 'cancel') {
+    if (sub.status === 'canceled') return empty('That plan has already ended, so nothing changed.');
+    if (sub.cancel_at_period_end) return empty('It is already set to end, so nothing changed.');
+    const out = await stripe.cancelSubscription(sub.stripe_subscription_id, { atPeriodEnd: true });
+    if (!out.ok) return unavailable('cancel_failed', 'Stripe would not take that, so your plan is unchanged.');
+    await query('UPDATE subscriptions SET cancel_at_period_end=true, updated_at=now() WHERE id=$1', [sub.id]);
+    return answered({ ending: true },
+      'Your plan will not renew. You keep everything until the end of the period you have already '
+      + 'paid for, nothing is refunded, and I can turn the renewal back on any time before then.');
+  }
+
+  if (sub.status === 'canceled') {
+    return refused('That plan has already ended rather than being due to end, so it cannot be resumed. '
+      + 'Starting again is a checkout on the Plans page.');
+  }
+  if (!sub.cancel_at_period_end) return empty('It was not due to end, so nothing changed.');
+  const out = await stripe.resumeSubscription(sub.stripe_subscription_id);
+  if (!out.ok) return unavailable('resume_failed', out.says || 'Stripe would not take that, so your plan is unchanged.');
+  await query('UPDATE subscriptions SET cancel_at_period_end=false, updated_at=now() WHERE id=$1', [sub.id]);
+  return answered({ ending: false }, 'It will renew as normal. Nothing was charged now.');
+}
+
 async function send_email(viewer, params = {}) {
   const r = await Outbound.send(viewer, { to: params.to, subject: params.subject, body: params.body,
     business_name: params.business_name });
@@ -928,6 +999,6 @@ const EXECUTORS = { whats_due, whats_coming, list_businesses, record_obligation,
   connect_flow, flow_status, send_invoice_to_flow, remember_this, what_you_know, forget_this,
   write_document, read_document, write_spreadsheet,
   schedule_work, scheduled_work, stop_scheduled_work, search_web, shopping_list, send_email,
-  add_teammate, list_team, remove_business };
+  add_teammate, list_team, remove_business, my_plan, change_plan };
 
 module.exports = { TOOLS, EXECUTORS, answered, empty, unavailable, refused };

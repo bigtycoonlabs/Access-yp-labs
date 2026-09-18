@@ -105,6 +105,32 @@ async function createEscrowCheckout({ amountCents, feeCents, sellerAccountId, or
 
 // Cancel a live subscription so billing actually STOPS. Flipping our DB status alone
 // never stops Stripe from charging the card — this does.
+// CHANGING YOUR MIND BEFORE THE PERIOD ENDS.
+//
+// Cancelling at period end leaves a window where somebody is still paid up and has decided to stay.
+// Until now the only way back was to email us and wait, which for a $19 plan means most people just
+// leave. Stripe holds the subscription open until the date, so this is a single flag.
+async function resumeSubscription(subscriptionId) {
+  const s = stripe();
+  if (!s) return { ok: false, reason: 'stripe_not_configured' };
+  try {
+    const sub = await s.subscriptions.retrieve(subscriptionId);
+    if (sub.status === 'canceled') {
+      return { ok: false, reason: 'already_ended',
+        says: 'That plan has already ended rather than being due to end, so it cannot be resumed. '
+          + 'Starting again is a fresh checkout.' };
+    }
+    if (!sub.cancel_at_period_end) return { ok: true, alreadyOn: true };
+    await s.subscriptions.update(subscriptionId, { cancel_at_period_end: false });
+    return { ok: true, resumed: true };
+  } catch (err) {
+    if (err && /No such subscription|resource_missing/i.test(err.message || '')) {
+      return { ok: false, reason: 'not_found', says: 'Stripe has no record of that subscription.' };
+    }
+    return { ok: false, reason: 'stripe_error', says: err.message };
+  }
+}
+
 async function cancelSubscription(subscriptionId, opts) {
   const s = stripe();
   if (!s) return { ok: false, reason: 'stripe_not_configured' };
@@ -370,4 +396,5 @@ async function createTopupCheckout({ userId, email, kind, units, label, priceCen
 
 module.exports = {
   createTopupCheckout,
-  refundPayment, configured, constructEvent, createPlanCheckout, cancelSubscription, createConnectedAccount, createAccountLink, retrieveAccount, createEscrowCheckout, createImagePackCheckout, createTransfer, ensureCardPayments, createStoreCheckout, retrieveStoreSession };
+  refundPayment, configured, constructEvent, createPlanCheckout, cancelSubscription,
+  resumeSubscription, createConnectedAccount, createAccountLink, retrieveAccount, createEscrowCheckout, createImagePackCheckout, createTransfer, ensureCardPayments, createStoreCheckout, retrieveStoreSession };

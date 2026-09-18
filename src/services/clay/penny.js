@@ -263,6 +263,8 @@ const WORKSPACE_TOOLS = [
   'remove_business',
   'add_teammate',
   'list_team',
+  'my_plan',
+  'change_plan',
   'send_email',
   'search_web',
   'shopping_list',
