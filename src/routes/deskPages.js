@@ -271,6 +271,30 @@ router.get('/desk/topic/:category', asyncHandler(async (req, res) => {
   res.type('html').send(deskPage(`${meta.label} — The Desk`, meta.blurb, body, { canonical: `${SITE()}/desk/topic/${cat}` }));
 }));
 
+// GET /desk/all — every article, rendered by the server.
+//
+// The Desk's front page draws its list with JavaScript. A person is fine; a crawler that does not run
+// scripts sees an empty page, which is the whole library invisible to the thing we are writing it for
+// (18 Sept 2026). Subject pages were already server-rendered; this is the index of everything.
+router.get('/desk/all', asyncHandler(async (req, res) => {
+  const bySubject = [];
+  for (const c of deskSeo.CATEGORIES) {
+    let list = [];
+    try { list = await deskSeo.byCategory(c.slug, 60); } catch (_) { list = []; }
+    if (list.length) bySubject.push({ c, list });
+  }
+  const body = `<h1>Everything on the Desk</h1>
+    <p>Every article, by subject. Written by Penny, with the sources she used.</p>
+    ${bySubject.length ? bySubject.map(({ c, list }) => `<h2><a href="/desk/topic/${c.slug}">${esc(c.label)}</a></h2>
+      <p>${esc(c.blurb)}</p>
+      <ul>${list.map((a) => `<li><a href="/desk/${a.slug}">${esc(a.title)}</a>${a.dek ? ' — ' + esc(a.dek) : ''}</li>`).join('')}</ul>`).join('\n    ')
+      : '<p>Nothing is published yet.</p>'}
+    <p><a href="/desk">Back to the Desk</a></p>`;
+  res.set('Cache-Control', 'public, max-age=300');
+  res.type('html').send(deskPage('Everything on the Desk', 'Every article on the Desk, by subject.', body,
+    { canonical: `${SITE()}/desk/all` }));
+}));
+
 // GET /sitemap.xml — generated, so every article Clay publishes is discoverable. Falls back to the
 // static core pages if the database is unreachable; never throws.
 router.get('/sitemap.xml', asyncHandler(async (req, res) => {
@@ -281,6 +305,7 @@ router.get('/sitemap.xml', asyncHandler(async (req, res) => {
     { loc: `${site}/`, priority: '1.0' },
     { loc: `${site}/plans.html`, priority: '0.9' },
     { loc: `${site}/desk.html`, priority: '0.8' },
+    { loc: `${site}/desk/all`, priority: '0.8' },
     { loc: `${site}/register.html`, priority: '0.6' },
     { loc: `${site}/values.html`, priority: '0.6' },
     { loc: `${site}/terms.html`, priority: '0.3' },
