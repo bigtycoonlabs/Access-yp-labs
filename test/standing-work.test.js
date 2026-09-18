@@ -75,3 +75,13 @@ test('she is told to set one up rather than wait to be asked again', () => {
   assert.match(standing, /YOU ARE RUNNING THIS ON YOUR OWN/);
   assert.match(standing, /If nothing needed doing, say that plainly rather than inventing work/);
 });
+
+test('the same standing job cannot be set up twice', () => {
+  // Asked live on production, she set one weekly check up four times in a single turn, then had to
+  // offer to undo her own work.
+  const src = fs.readFileSync('src/services/clay/standing.js', 'utf8').replace(/\s+/g, ' ');
+  assert.match(src, /THE SAME JOB TWICE IS A BUG, not a choice/);
+  assert.match(src, /lower\(btrim\(asked_for\)\) = lower\(btrim\(\$3\)\)/);
+  assert.match(src, /business_id IS NOT DISTINCT FROM \$4/);
+  assert.match(src, /You already have that on a schedule, so I have not set it up twice/);
+});

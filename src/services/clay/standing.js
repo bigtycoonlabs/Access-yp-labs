@@ -69,6 +69,17 @@ async function add(viewer, { asked_for, cadence, at_hour, weekday, day_of_month,
   if (!CADENCES.includes(cadence)) {
     return { ok: false, kind: 'unclear', says: 'How often: every day, weekdays, once a week, or once a month?' };
   }
+  // THE SAME JOB TWICE IS A BUG, not a choice. Asked live, she set the same weekly check up four
+  // times in one turn (17 Sept 2026) and then had to offer to undo her own work.
+  const same = await query(
+    `SELECT id, next_run_at FROM standing_jobs
+      WHERE user_id=$1 AND active AND cadence=$2 AND lower(btrim(asked_for)) = lower(btrim($3))
+        AND business_id IS NOT DISTINCT FROM $4 LIMIT 1`,
+    [viewer.id, cadence, said, business_id || null]);
+  if (same.rows.length) {
+    return { ok: true, id: same.rows[0].id, already: true, next_run_at: same.rows[0].next_run_at,
+      says: 'You already have that on a schedule, so I have not set it up twice.' };
+  }
   const held = await query(
     'SELECT count(*)::int AS n FROM standing_jobs WHERE user_id=$1 AND active', [viewer.id]);
   if (held.rows[0].n >= MAX_PER_USER) {
