@@ -34,6 +34,8 @@ test('she carries only the workspace tools', () => {
     'connect_flow', 'flow_status', 'send_invoice_to_flow',
     // She writes what is worth keeping into their documents, and reads it back (17 Sept 2026).
     'write_document', 'read_document', 'write_spreadsheet',
+    // Work she does on a schedule and reports afterwards (17 Sept 2026).
+    'schedule_work', 'scheduled_work', 'stop_scheduled_work',
     // And she keeps what she is told about how somebody wants to work.
     'remember_this', 'what_you_know', 'forget_this']);
   // Comment text wraps, so normalise the line breaks rather than guessing where they fall.

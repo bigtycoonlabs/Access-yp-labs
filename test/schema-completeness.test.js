@@ -41,6 +41,10 @@ test('every table the code reads or writes is created by a migration', () => {
       .replace(/\/\/[^\n]*/g, ' ')           // line comments
       .replace(/\/\*[\s\S]*?\*\//g, ' ');    // block comments
     for (const q of raw.matchAll(/[`'"]([^`'"]*(?:SELECT|INSERT INTO|UPDATE|DELETE FROM)[^`'"]*)[`'"]/gis)) {
+      // FOR UPDATE SKIP LOCKED is row locking, not a table called "skip". It is how the standing-work
+      // runner claims a job so two servers cannot run it twice, and it must not be dropped to keep a
+      // scanner quiet.
+      q[1] = q[1].replace(/FOR\s+UPDATE\s+SKIP\s+LOCKED/gi, ' ').replace(/FOR\s+UPDATE\b/gi, ' ');
       for (const m of q[1].matchAll(/\b(?:FROM|INTO|UPDATE|JOIN)\s+(?:yp_labs\.)?([a-z_]{3,})\b/gi)) {
         referenced.add(m[1].toLowerCase());
       }

@@ -58,6 +58,27 @@ const TOOLS = {
       + 'worth keeping. It is saved as a real document the person can read, share or delete. Prefer '
       + 'this over trying to hold a long thing in mind.',
   },
+  schedule_work: {
+    irreversible: false, requires_confirmation: false,
+    required: ['asked_for', 'cadence'], optional: ['at_hour', 'weekday', 'day_of_month', 'timezone', 'business_id'],
+    enums: { cadence: ['daily', 'weekdays', 'weekly', 'monthly'] },
+    summary: 'Do something for them on a schedule without being asked each time, and tell them what '
+      + 'you did. asked_for is the instruction in their words. at_hour is their local hour, 0 to 23, '
+      + 'with timezone as an area name such as America/Chicago. weekday is 0 for Sunday when weekly. '
+      + 'Unattended you may only do the safe part: anything that spends money or needs their decision '
+      + 'stops and waits for them, so say that when you set one up.',
+  },
+  scheduled_work: {
+    irreversible: false, requires_confirmation: false,
+    required: [], optional: [], enums: {},
+    summary: 'The standing jobs you do for them without being asked, when each next runs, and how the '
+      + 'last run went. Read-only.',
+  },
+  stop_scheduled_work: {
+    irreversible: false, requires_confirmation: false,
+    required: ['which'], optional: [], enums: {},
+    summary: 'Stop a standing job. which is its id or enough of its words to find it. Say what stopped.',
+  },
   write_spreadsheet: {
     irreversible: false, requires_confirmation: false,
     required: ['business_id', 'name', 'rows'], optional: ['format', 'description'], enums: { format: ['xlsx', 'csv'] },
@@ -491,6 +512,30 @@ async function write_document(viewer, params = {}) {
   return answered({ file_id: r.file.id, name: r.file.name, bytes: r.file.bytes }, r.says);
 }
 
+async function schedule_work(viewer, params = {}) {
+  // Required here, not at the top: standing.js requires this file back.
+  const Standing = require('./standing');
+  const r = await Standing.add(viewer, params);
+  if (!r.ok) return r.kind === 'refused' ? refused(r.says) : { status: 'needs_answer', says: r.says };
+  return answered({ job_id: r.id, next_run_at: r.next_run_at }, r.says);
+}
+
+async function scheduled_work(viewer) {
+  const Standing = require('./standing');
+  const jobs = await Standing.list(viewer);
+  if (!jobs.length) return empty('You have nothing on a schedule with me yet.');
+  return answered({ jobs: jobs.map((j) => ({ id: j.id, asked_for: j.asked_for, when: j.when,
+    next_run_at: j.next_run_at, last_run: j.last_status || 'not yet', last_summary: j.last_summary || null })) },
+  'Here is what I do for you without being asked.');
+}
+
+async function stop_scheduled_work(viewer, params = {}) {
+  const Standing = require('./standing');
+  const r = await Standing.stop(viewer, params.which);
+  if (!r.ok) return r.kind === 'empty' ? empty(r.says) : { status: 'needs_answer', says: r.says };
+  return answered({}, r.says);
+}
+
 async function write_spreadsheet(viewer, params = {}) {
   const r = await Files.writeSheet(viewer, { business_id: params.business_id, name: params.name,
     rows: params.rows, format: params.format, description: params.description });
@@ -715,6 +760,7 @@ const EXECUTORS = { whats_due, whats_coming, list_businesses, record_obligation,
   complete_obligation, whats_missing, whats_outstanding_with_customers, start_build, publish_build, list_builds, list_files,
   portal_status, customize_portal, list_keys, launch_build, research_compliance, add_business,
   connect_flow, flow_status, send_invoice_to_flow, remember_this, what_you_know, forget_this,
-  write_document, read_document, write_spreadsheet };
+  write_document, read_document, write_spreadsheet,
+  schedule_work, scheduled_work, stop_scheduled_work };
 
 module.exports = { TOOLS, EXECUTORS, answered, empty, unavailable, refused };

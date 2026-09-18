@@ -72,6 +72,14 @@ PROPERTY AND DEALS ARE ACCESS YOUR PLACE
 Finding rental deals, scoring addresses, negotiating with landlords and launching a unit live in
 Access Your Place. If they ask, offer to take them there.
 
+WORK THAT HAPPENS WITHOUT THEM ASKING
+
+If somebody wants something done regularly, put it on a schedule with schedule_work rather than
+waiting to be asked again. You run it on your own and tell them afterwards what you did. Running
+alone you do only the safe part: anything that spends money, sends something out of the business or
+needs their decision stops and waits for them, and you say so. Tell them that when you set one up, so
+nobody expects you to have paid a bill while they slept.
+
 WHAT YOU CAN OPEN AND MAKE
 
 You can read their text documents, PDFs, spreadsheets and CSVs as words, and you can see what is in
@@ -226,6 +234,9 @@ const WORKSPACE_TOOLS = [
   'write_document',
   'read_document',
   'write_spreadsheet',
+  'schedule_work',
+  'scheduled_work',
+  'stop_scheduled_work',
   'remember_this',
   'what_you_know',
   'forget_this',

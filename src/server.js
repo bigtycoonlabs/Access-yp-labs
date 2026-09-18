@@ -315,6 +315,16 @@ if (require.main === module) {
     setTimeout(runDue, 90 * 1000);
     setInterval(runDue, DAY_MS);
 
+    // STANDING WORK. What people asked Penny to do regularly, done on its own and reported
+    // afterwards. Every fifteen minutes: the jobs carry their own next-run time in the person's own
+    // zone, and a job is claimed in the database before it runs so two servers cannot do it twice.
+    const Standing = require('./services/clay/standing');
+    const standingTick = () => Standing.runDue({ send: pennySend })
+      .then((r) => { if (r.considered) console.log('standing work:', JSON.stringify(r)); })
+      .catch((e) => console.error('standing work error:', e && e.message));
+    setTimeout(standingTick, 2 * 60 * 1000);
+    setInterval(standingTick, 15 * 60 * 1000);
+
     // Stale-build sweep: fail builds orphaned in 'building' by a restart and email the person
     // the honest outcome, so no one is left waiting on a concept that will never arrive.
     const { sweepStaleBuilds } = require('./services/builds');
