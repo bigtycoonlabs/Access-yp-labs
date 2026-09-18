@@ -99,9 +99,20 @@ router.post('/', authenticate, [
 
   // Permissions, from a preset or explicitly. A relationship with no permissions sees nothing, which
   // is the right default — absence is never permission.
+  // A PRESET NOBODY HAS IS NOT AN EMPTY PRESET. Asked live for an "assistant" preset, which does not
+  // exist, this granted nothing and said nothing: the person was added, emailed, and could see
+  // nothing at all, with the owner believing they had given them a role (17 Sept 2026).
+  if (b.preset && !PRESETS[b.preset]) {
+    throw new ApiError(400, 'There is no "' + String(b.preset).slice(0, 40) + '" preset, so nobody was '
+      + 'added. The presets are: ' + Object.keys(PRESETS).join(', ') + '. Or name the areas yourself.');
+  }
   const wanted = b.permissions && typeof b.permissions === 'object'
     ? b.permissions
     : (PRESETS[b.preset] || {});
+  if (!Object.keys(wanted).length) {
+    throw new ApiError(400, 'That would add them with nothing they can see or do. Give a preset ('
+      + Object.keys(PRESETS).join(', ') + ') or say which areas they get.');
+  }
   const granted = {};
   for (const [area, level] of Object.entries(wanted)) {
     if (!P.AREAS.includes(area) || !P.LEVELS.includes(level) || level === 'none') continue;

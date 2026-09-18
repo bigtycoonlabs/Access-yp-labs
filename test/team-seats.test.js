@@ -47,3 +47,12 @@ test('a shared business is theirs to work in, and their own stays their own', ()
   assert.match(perms, /EXISTS \(SELECT 1 FROM relationships r/);
   assert.match(perms, /ORDER BY \(b\.owner_id = \$1\) DESC/);
 });
+
+test('a preset nobody has is refused, not silently granted as nothing', () => {
+  // Asked live for an "assistant" preset, which does not exist: the person was added, emailed, and
+  // could see nothing, while the owner believed they had given them a role.
+  assert.match(team, /A PRESET NOBODY HAS IS NOT AN EMPTY PRESET/);
+  assert.match(team, /There is no "' \+ String\(b\.preset\)\.slice\(0, 40\) \+ '" preset, so nobody was/);
+  assert.match(team, /That would add them with nothing they can see or do/);
+  assert.match(team, /Object\.keys\(PRESETS\)\.join\(', '\)/);
+});

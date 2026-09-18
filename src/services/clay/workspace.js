@@ -34,6 +34,7 @@ const Compliance = require('./complianceResearch');
 const Flow = require('./flowLink');
 const Notes = require('./notes');
 const Provider = require('./provider');
+const Outbound = require('./outbound');
 
 // Result shapes. Borrowed from Arbo, where they exist because an unread balance once printed as
 // "$0.00" — indistinguishable from the money being gone.
@@ -58,6 +59,15 @@ const TOOLS = {
       + 'back later: notes from a conversation, a policy, a checklist, a summary of a call, anything '
       + 'worth keeping. It is saved as a real document the person can read, share or delete. Prefer '
       + 'this over trying to hold a long thing in mind.',
+  },
+  send_email: {
+    irreversible: true, requires_confirmation: true,
+    required: ['to', 'subject', 'body'], optional: ['business_name'], enums: {},
+    summary: 'Send an email for them, once they have said yes to the exact words. It goes out as '
+      + 'Penny with their address as the reply-to, so replies reach them. Show the address, the '
+      + 'subject and the whole message first and let them change it. An email cannot be taken back, '
+      + 'so never send one you were not clearly asked to send.',
+    ask: 'Shall I send this email? It goes out now and cannot be taken back.',
   },
   search_web: {
     irreversible: false, requires_confirmation: false,
@@ -530,6 +540,17 @@ async function write_document(viewer, params = {}) {
   return answered({ file_id: r.file.id, name: r.file.name, bytes: r.file.bytes }, r.says);
 }
 
+async function send_email(viewer, params = {}) {
+  const r = await Outbound.send(viewer, { to: params.to, subject: params.subject, body: params.body,
+    business_name: params.business_name });
+  if (!r.ok) {
+    if (r.kind === 'refused') return refused(r.says);
+    if (r.kind === 'unclear') return { status: 'needs_answer', says: r.says };
+    return unavailable('email_not_sent', r.says);
+  }
+  return answered({ to: params.to, sent: true, id: r.id }, r.says);
+}
+
 async function search_web(viewer, params = {}) {
   const q = String(params.query || '').trim();
   if (!q) return { status: 'needs_answer', says: 'What should I look up?' };
@@ -837,6 +858,6 @@ const EXECUTORS = { whats_due, whats_coming, list_businesses, record_obligation,
   portal_status, customize_portal, list_keys, launch_build, research_compliance, add_business,
   connect_flow, flow_status, send_invoice_to_flow, remember_this, what_you_know, forget_this,
   write_document, read_document, write_spreadsheet,
-  schedule_work, scheduled_work, stop_scheduled_work, search_web, shopping_list };
+  schedule_work, scheduled_work, stop_scheduled_work, search_web, shopping_list, send_email };
 
 module.exports = { TOOLS, EXECUTORS, answered, empty, unavailable, refused };
