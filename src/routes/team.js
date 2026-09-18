@@ -174,4 +174,25 @@ router.post('/:relationshipId/end', authenticate, asyncHandler(async (req, res) 
   });
 }));
 
+// WHERE THIS PERSON IS STANDING. Their own work, or a team they were added to. The switch is here
+// because it is the same idea as the team itself: one account, and whatever the owner allowed.
+router.get('/views/mine', authenticate, asyncHandler(async (req, res) => {
+  const Views = require('../services/clay/views');
+  const [teams, now] = await Promise.all([Views.available(req.user.id), Views.current(req.user.id)]);
+  res.json({
+    working_for: now.working_for, owner_name: now.owner_name,
+    views: [{ owner_id: null, name: 'Your own work', businesses: null }]
+      .concat(teams.map((t) => ({ owner_id: t.owner_id, name: t.owner_name + '\u2019s business', businesses: t.businesses }))),
+  });
+}));
+
+router.post('/views/mine', authenticate, [
+  body('owner_id').optional({ values: 'null' }).isUUID(),
+], asyncHandler(async (req, res) => {
+  const Views = require('../services/clay/views');
+  const r = await Views.setTo(req.user.id, req.body.owner_id || null);
+  if (!r.ok) throw new ApiError(403, r.says);
+  res.json(r);
+}));
+
 module.exports = router;

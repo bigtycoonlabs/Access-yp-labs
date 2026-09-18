@@ -92,3 +92,4 @@
 075_clean_slate.sql
 076_penny_notes.sql
 077_standing_work.sql
+078_team_view.sql

@@ -73,9 +73,16 @@ function refusal(s) {
 }
 
 // Before new work. Returns { ok: true } or { ok: false, says }. Never throws.
+// WHOSE PLAN PAYS. Somebody working in a team they were added to spends that owner's allowance, not
+// their own: the owner invited them, the owner's plan covers the work. Standing in their own work, it
+// is theirs. Read here rather than at each call site, so no path can forget it.
+async function payer(user) {
+  try { return await require('./clay/views').billTo(user); } catch (_) { return user; }
+}
+
 async function check(user, kind) {
   try {
-    const s = await status(user, kind);
+    const s = await status(await payer(user), kind);
     return s.ok ? { ok: true, status: s } : { ok: false, kind: 'refused', says: refusal(s), status: s };
   } catch (e) {
     console.error('[allowance] could not read the ' + kind + ' allowance for ' + (user && user.id) + ': ' + e.message);
@@ -87,16 +94,17 @@ async function check(user, kind) {
 // Never throws; a failure to count is logged.
 async function record(user, kind, ref) {
   try {
-    const s = await status(user, kind);
+    const who = await payer(user);
+    const s = await status(who, kind);
     let fromTopup = false;
     if (!s.unlimited && s.left <= 0 && s.topup > 0) {
       const took = await query(
         `UPDATE topup_balances SET units = units - 1, updated_at = now() WHERE user_id=$1 AND kind=$2 AND units > 0 RETURNING units`,
-        [user.id, kind]);
+        [who.id, kind]);
       fromTopup = took.rows.length > 0;
     }
     await query('INSERT INTO usage_events (user_id, kind, from_topup, ref) VALUES ($1,$2,$3,$4)',
-      [user.id, kind, fromTopup, ref ? String(ref).slice(0, 200) : null]);
+      [who.id, kind, fromTopup, ref ? String(ref).slice(0, 200) : null]);
     return { counted: true, from_topup: fromTopup };
   } catch (e) {
     console.error('[allowance] could not count a ' + kind + ' for ' + (user && user.id) + ': ' + e.message);

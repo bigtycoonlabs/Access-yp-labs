@@ -21,6 +21,7 @@ const spine = require('../services/clay/spine');
 const Voice = require('../services/clay/voice');
 const Ears = require('../services/clay/ears');
 const Notes = require('../services/clay/notes');
+const Views = require('../services/clay/views');
 
 const router = express.Router();
 
@@ -107,6 +108,13 @@ router.post('/chat/live', authenticate, [
   // WHAT SHE HAS BEEN TOLD, carried into the turn. Never blocks it: if it cannot be read she works
   // without it rather than refusing to answer.
   const told = await Notes.forPrompt(req.user.id).catch(() => '');
+  const where = await Views.current(req.user.id).catch(() => ({ working_for: null }));
+  const standing = where.working_for
+    ? '\n\nYOU ARE IN ' + String(where.owner_name || 'somebody else').toUpperCase() + '\u2019S TEAM RIGHT NOW. '
+      + 'This person was added to their business and can only do what they were allowed. Their own '
+      + 'businesses are not part of this conversation, and what happens here counts against '
+      + (where.owner_name || 'that owner') + '\u2019s plan.'
+    : '';
 
   const events = [];
   let out;
@@ -115,7 +123,7 @@ router.post('/chat/live', authenticate, [
       messages: scrubbed.messages,
       executors: buildExecutors(req.user),
       allowTools: WORKSPACE_TOOLS,
-      systemOverride: PENNY_WORKSPACE + told,
+      systemOverride: PENNY_WORKSPACE + told + standing,
       assistantName: 'Penny',
       maxSteps: 12,
       viewer: { role: req.user.role, name: req.user.name },
@@ -182,6 +190,13 @@ router.post('/chat', authenticate, [
   }
 
   const told = await Notes.forPrompt(req.user.id).catch(() => '');
+  const where = await Views.current(req.user.id).catch(() => ({ working_for: null }));
+  const standing = where.working_for
+    ? '\n\nYOU ARE IN ' + String(where.owner_name || 'somebody else').toUpperCase() + '\u2019S TEAM RIGHT NOW. '
+      + 'This person was added to their business and can only do what they were allowed. Their own '
+      + 'businesses are not part of this conversation, and what happens here counts against '
+      + (where.owner_name || 'that owner') + '\u2019s plan.'
+    : '';
 
   const events = [];
   let out;
@@ -190,7 +205,7 @@ router.post('/chat', authenticate, [
       messages: scrubbed.messages,
       executors: buildExecutors(req.user),
       allowTools: WORKSPACE_TOOLS,
-      systemOverride: PENNY_WORKSPACE + told,
+      systemOverride: PENNY_WORKSPACE + told + standing,
       // So a degraded turn is in her voice rather than in the retired product's.
       assistantName: 'Penny',
       // Twelve rather than six. A person asking "what do I owe and can you add the licence renewal"
