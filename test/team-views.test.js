@@ -48,13 +48,19 @@ test('an allowance that cannot be read still lets the work happen', () => {
   assert.match(allowance, /catch \(_\) \{ return user; \}/, 'a failure to read it still lets the work happen');
 });
 
-test('the switcher is in the header, only when there is something to switch to', () => {
-  const nav = fs.readFileSync('public/js/nav.js', 'utf8');
-  assert.match(nav, /if \(!v \|\| !v\.views \|\| v\.views\.length < 2\) return;/, 'one option is noise');
-  assert.match(nav, /lab\.setAttribute\('for', 'whose-work'\)/, 'a real label for a real select');
-  assert.match(nav, /sel\.style\.minHeight = '44px'/);
-  assert.match(nav, /live\.textContent = r && r\.says/, 'moving is said before the page turns over');
-  assert.match(nav, /That did not change, so you are where you were/);
+test('the switcher is on every page somebody works on, not the retired ones', () => {
+  // The first version went into nav.js, which the workspace does not use: it rendered on the retired
+  // marketplace pages and nowhere a person actually works.
+  const sw = fs.readFileSync('public/js/whose-work.js', 'utf8');
+  assert.match(sw, /if \(!v \|\| !v\.views \|\| v\.views\.length < 2\) return;/, 'one option is noise');
+  assert.match(sw, /lab\.setAttribute\('for', 'whose-work'\)/, 'a real label for a real select');
+  assert.match(sw, /status\.textContent = \(r && r\.says\)/, 'moving is said before the page turns over');
+  assert.match(sw, /That did not change, so you are where you were/);
+  assert.match(sw, /aria-live', 'polite'/);
+  for (const page of ['today', 'penny', 'businesses', 'files', 'team', 'portal', 'builds', 'keys', 'plans', 'profile']) {
+    assert.match(fs.readFileSync('public/' + page + '.html', 'utf8'), /whose-work\.js/, page + ' has no switcher');
+  }
+  assert.ok(!fs.readFileSync('public/js/nav.js', 'utf8').includes('whose-work'), 'one implementation only');
 });
 
 test('the menu lists the platform as it is, not the one that was retired', () => {

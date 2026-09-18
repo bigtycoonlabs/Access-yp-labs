@@ -75,50 +75,6 @@
       so,
     ]));
 
-    // WHOSE WORK AM I IN. Only shown to somebody who is on somebody else's team, because a control
-    // with one option is noise. It is a real select with a real label: a screen reader hears where it
-    // is, and changing it says what changed.
-    if (window.Kiln && Kiln.api) {
-      Kiln.api('/team/views/mine').then(function (v) {
-        if (!v || !v.views || v.views.length < 2) return;
-        var li = document.createElement('li');
-        var lab = document.createElement('label');
-        lab.setAttribute('for', 'whose-work');
-        lab.className = 'sr-only';
-        lab.textContent = 'Whose work you are in';
-        var sel = document.createElement('select');
-        sel.id = 'whose-work';
-        sel.style.minHeight = '44px';
-        v.views.forEach(function (w) {
-          var o = document.createElement('option');
-          o.value = w.owner_id || '';
-          o.textContent = w.name;
-          if ((w.owner_id || null) === (v.working_for || null)) o.selected = true;
-          sel.appendChild(o);
-        });
-        sel.addEventListener('change', function () {
-          sel.disabled = true;
-          Kiln.api('/team/views/mine', { method: 'POST', body: { owner_id: sel.value || null } })
-            .then(function (r) {
-              // Said out loud before the page turns over, so nobody is moved without being told.
-              var live = document.getElementById('live');
-              if (live) live.textContent = r && r.says ? r.says : 'Moved.';
-              setTimeout(function () { location.reload(); }, 600);
-            })
-            .catch(function (e) {
-              sel.disabled = false;
-              var live = document.getElementById('live');
-              if (live) live.textContent = (e && e.message) || 'That did not change, so you are where you were.';
-            });
-        });
-        li.appendChild(lab);
-        li.appendChild(sel);
-        var out2 = document.getElementById('signout');
-        if (out2 && out2.parentNode && out2.parentNode.parentNode) out2.parentNode.parentNode.insertBefore(li, out2.parentNode);
-        else nav.appendChild(li);
-      }).catch(function () {});
-    }
-
     // Reveal Staff for staff accounts — async, never blocks the menu rendering.
     if (window.Kiln && Kiln.api) {
       Kiln.api('/auth/me').then(function (r) {
