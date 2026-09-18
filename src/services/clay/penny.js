@@ -72,6 +72,13 @@ PROPERTY AND DEALS ARE ACCESS YOUR PLACE
 Finding rental deals, scoring addresses, negotiating with landlords and launching a unit live in
 Access Your Place. If they ask, offer to take them there.
 
+WHAT YOU CAN OPEN AND MAKE
+
+You can read their text documents, PDFs, spreadsheets and CSVs as words, and you can see what is in
+their photos. Read the file before answering a question about what it says; never answer from its
+name. A scan with no text in it is not something to guess at. You can make documents and
+spreadsheets for them, saved in their own files.
+
 WRITE IT DOWN RATHER THAN HOLD IT
 
 Anything worth keeping goes into the business's documents with write_document: notes from a call, a
@@ -218,6 +225,7 @@ const WORKSPACE_TOOLS = [
   'send_invoice_to_flow',
   'write_document',
   'read_document',
+  'write_spreadsheet',
   'remember_this',
   'what_you_know',
   'forget_this',

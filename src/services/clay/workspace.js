@@ -58,12 +58,20 @@ const TOOLS = {
       + 'worth keeping. It is saved as a real document the person can read, share or delete. Prefer '
       + 'this over trying to hold a long thing in mind.',
   },
+  write_spreadsheet: {
+    irreversible: false, requires_confirmation: false,
+    required: ['business_id', 'name', 'rows'], optional: ['format', 'description'], enums: { format: ['xlsx', 'csv'] },
+    summary: 'Make a spreadsheet and save it in this business\'s documents: a shopping list, a price '
+      + 'list, a schedule, anything with rows. rows is a list of rows, each one a list of cells, with '
+      + 'the headings as the first row. format is xlsx unless they asked for csv.',
+  },
   read_document: {
     irreversible: false, requires_confirmation: false,
     required: ['file_id'], optional: [], enums: {},
-    summary: 'Read a document you or they saved, by its id from list_files. Text documents only: a '
-      + 'PDF, photo or spreadsheet cannot be read as words and will say so rather than being guessed '
-      + 'at. Read before answering from a document rather than from memory.',
+    summary: 'Read one of their files, by its id from list_files: a text document, a PDF, a '
+      + 'spreadsheet or a CSV comes back as words, and a photo comes back as what can be seen in it. '
+      + 'A scan with no text in it says so rather than being guessed at. Always read the file before '
+      + 'answering a question about what it says.',
   },
   remember_this: {
     irreversible: false, requires_confirmation: false,
@@ -483,11 +491,23 @@ async function write_document(viewer, params = {}) {
   return answered({ file_id: r.file.id, name: r.file.name, bytes: r.file.bytes }, r.says);
 }
 
+async function write_spreadsheet(viewer, params = {}) {
+  const r = await Files.writeSheet(viewer, { business_id: params.business_id, name: params.name,
+    rows: params.rows, format: params.format, description: params.description });
+  if (!r.ok) return r.kind === 'refused' ? refused(r.says) : r.kind === 'unclear'
+    ? { status: 'needs_answer', says: r.says } : unavailable('sheet_not_saved', r.says);
+  return answered({ file_id: r.file.id, name: r.file.name, bytes: r.file.bytes }, r.says);
+}
+
 async function read_document(viewer, params = {}) {
   const r = await Files.read(viewer, String(params.file_id || ''));
-  if (!r.ok) return r.kind === 'refused' ? refused(r.says) : unavailable('document_unreadable', r.says);
-  return answered({ name: r.name, text: r.text, truncated: !!r.truncated },
-    r.says || 'Here is what ' + r.name + ' says.');
+  if (!r.ok) {
+    if (r.kind === 'refused') return refused(r.says);
+    if (r.kind === 'empty') return empty(r.says);
+    return unavailable('document_unreadable', r.says);
+  }
+  return answered({ name: r.name, text: r.text, truncated: !!r.truncated, is_photo: r.kind === 'photo' },
+    r.says || (r.kind === 'photo' ? 'This is what I can see in ' + r.name + '.' : 'Here is what ' + r.name + ' says.'));
 }
 
 async function remember_this(viewer, params = {}) {
@@ -695,6 +715,6 @@ const EXECUTORS = { whats_due, whats_coming, list_businesses, record_obligation,
   complete_obligation, whats_missing, whats_outstanding_with_customers, start_build, publish_build, list_builds, list_files,
   portal_status, customize_portal, list_keys, launch_build, research_compliance, add_business,
   connect_flow, flow_status, send_invoice_to_flow, remember_this, what_you_know, forget_this,
-  write_document, read_document };
+  write_document, read_document, write_spreadsheet };
 
 module.exports = { TOOLS, EXECUTORS, answered, empty, unavailable, refused };

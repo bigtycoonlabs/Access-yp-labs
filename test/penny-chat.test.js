@@ -33,7 +33,7 @@ test('she carries only the workspace tools', () => {
     // Money is Arbo's: she hands it over rather than telling somebody to retype it (17 Sept 2026).
     'connect_flow', 'flow_status', 'send_invoice_to_flow',
     // She writes what is worth keeping into their documents, and reads it back (17 Sept 2026).
-    'write_document', 'read_document',
+    'write_document', 'read_document', 'write_spreadsheet',
     // And she keeps what she is told about how somebody wants to work.
     'remember_this', 'what_you_know', 'forget_this']);
   // Comment text wraps, so normalise the line breaks rather than guessing where they fall.

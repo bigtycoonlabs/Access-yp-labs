@@ -164,23 +164,110 @@ async function write(viewer, { business_id, name, text, description }) {
   return { ok: true, file: r.file, says: r.file.name + ' is saved in your documents.' };
 }
 
-// READING ONE BACK. Text only: a PDF or a photo is not something this can turn into words, and
-// pretending otherwise would put invented contents into a conversation.
-const READABLE = /^text\/|json$|^application\/xml$/;
+// READING ONE BACK.
+//
+// Plain text, a PDF, a spreadsheet or a CSV all come back as words. A photo comes back as what was
+// seen in it. What none of them do is come back as a guess: a scanned PDF with no text layer says it
+// has no text to read rather than being described from its file name, because a made-up lease clause
+// is worse than no answer at all.
+const PLAIN = /^text\/|json$|^application\/xml$/;
+const SHEET = /spreadsheetml|ms-excel|^text\/csv$/;
+
+async function readPdf(buf) {
+  try {
+    const pdf = await require('pdf-parse')(buf);
+    const text = String(pdf.text || '').trim();
+    if (!text) {
+      return { ok: false, kind: 'empty',
+        says: 'That PDF has no text in it. It is probably a scan or photographs of pages, and I will '
+          + 'not guess at what it says.' };
+    }
+    return { ok: true, text, note: pdf.numpages + (pdf.numpages === 1 ? ' page.' : ' pages.') };
+  } catch (e) {
+    return { ok: false, kind: 'unavailable', says: 'I could not open that PDF, so I have not read it. ' + e.message };
+  }
+}
+
+// A sheet read as words, one row per line, so a person hears it in the order it is written.
+async function readSheet(buf, mime) {
+  try {
+    const XLSX = require('xlsx');
+    const wb = XLSX.read(buf, { type: 'buffer' });
+    const parts = wb.SheetNames.map((n) => {
+      const rows = XLSX.utils.sheet_to_csv(wb.Sheets[n], { blankrows: false });
+      return wb.SheetNames.length > 1 ? n + ':\n' + rows : rows;
+    });
+    const text = parts.join('\n\n').trim();
+    if (!text) return { ok: false, kind: 'empty', says: 'That spreadsheet is empty.' };
+    return { ok: true, text,
+      note: wb.SheetNames.length + (wb.SheetNames.length === 1 ? ' sheet.' : ' sheets: ' + wb.SheetNames.join(', ')) };
+  } catch (e) {
+    return { ok: false, kind: 'unavailable', says: 'I could not open that spreadsheet, so I have not read it. ' + e.message };
+  }
+}
+
 async function read(viewer, id, { max = 20000 } = {}) {
   const g = await fileFor(viewer, id, 'see');
   if (!g.ok) return g;
   const f = g.file;
-  if (!READABLE.test(f.mime)) {
-    return { ok: false, kind: 'refused',
-      says: f.name + ' is ' + f.mime + ', which I cannot read as words. I know it is there and what it '
-        + 'is called' + (f.description ? ', and its note says: ' + f.description : '') + '.' };
-  }
   if (!f.data) return { ok: false, kind: 'unavailable', says: f.name + ' has no contents stored.' };
-  const text = Buffer.from(f.data).toString('utf8');
+  const buf = Buffer.from(f.data);
+
+  // A photo is looked at rather than read. If it was described when it arrived, that description is
+  // what she saw; if not, she looks now.
+  if (f.kind === 'photo' || /^image\//.test(f.mime)) {
+    if (f.description) return { ok: true, name: f.name, text: f.description, kind: 'photo', note: 'What I can see in it.' };
+    const d = await describePhoto(buf, f.mime);
+    if (!d.ok) return { ok: false, kind: 'unavailable', says: d.says };
+    return { ok: true, name: f.name, text: d.text, kind: 'photo', note: 'What I can see in it.' };
+  }
+
+  let out;
+  if (PLAIN.test(f.mime)) out = { ok: true, text: buf.toString('utf8') };
+  else if (f.mime === 'application/pdf') out = await readPdf(buf);
+  else if (SHEET.test(f.mime)) out = await readSheet(buf, f.mime);
+  else {
+    return { ok: false, kind: 'refused',
+      says: f.name + ' is ' + f.mime + ', which I cannot read as words yet. I know it is there and what '
+        + 'it is called' + (f.description ? ', and its note says: ' + f.description : '') + '.' };
+  }
+  if (!out.ok) return out;
+
+  const text = String(out.text || '');
   const cut = text.length > max;
-  return { ok: true, name: f.name, text: cut ? text.slice(0, max) : text, truncated: cut,
-    says: cut ? 'This is the first part of ' + f.name + '; it is longer than I read in one go.' : null };
+  return { ok: true, name: f.name, text: cut ? text.slice(0, max) : text, truncated: cut, kind: f.kind,
+    says: (out.note ? out.note + ' ' : '')
+      + (cut ? 'This is the first part of ' + f.name + '; it is longer than I read in one go.' : '') || null };
+}
+
+// A SPREADSHEET SHE MAKES. Rows in, a real .xlsx or .csv out, saved like any other file of theirs.
+async function writeSheet(viewer, { business_id, name, rows, format = 'xlsx', description }) {
+  if (!Array.isArray(rows) || !rows.length) {
+    return { ok: false, kind: 'unclear', says: 'There were no rows to put in it, so nothing was saved.' };
+  }
+  let buf, filename;
+  try {
+    const XLSX = require('xlsx');
+    const grid = rows.map((r) => (Array.isArray(r) ? r : [r]));
+    const sheet = XLSX.utils.aoa_to_sheet(grid);
+    const clean = String(name || 'List').trim().replace(/\.(xlsx|csv)$/i, '');
+    if (format === 'csv') {
+      buf = Buffer.from(XLSX.utils.sheet_to_csv(sheet), 'utf8');
+      filename = clean + '.csv';
+    } else {
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, sheet, 'Sheet1');
+      buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      filename = clean + '.xlsx';
+    }
+  } catch (e) {
+    return { ok: false, kind: 'unavailable', says: 'I could not build that file, so nothing was saved. ' + e.message };
+  }
+  const r = await upload(viewer, { business_id, name: filename, buffer: buf,
+    description: description || 'Made by Penny.' });
+  if (!r.ok) return r;
+  return { ok: true, file: r.file,
+    says: r.file.name + ' is saved in your documents, ' + rows.length + (rows.length === 1 ? ' row.' : ' rows.') };
 }
 
 async function list(viewer, business_id) {
@@ -302,5 +389,5 @@ async function openShared(token) {
   return r.rows[0] ? { ok: true, file: r.rows[0] } : { ok: false };
 }
 
-module.exports = { upload, write, read, list, update, redescribe, remove, share, revoke, openShared, fileFor,
+module.exports = { upload, write, writeSheet, read, list, update, redescribe, remove, share, revoke, openShared, fileFor,
   sniff, cleanName, summarise, MAX_BYTES };
