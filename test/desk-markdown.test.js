@@ -47,3 +47,12 @@ test('the index is declared above the article route that would swallow it', () =
     '/desk/all must be registered before /desk/:slug');
   assert.match(current, /Declared ABOVE \/desk\/:slug on purpose/);
 });
+
+test('a price table is a table, with real row and column headers', () => {
+  // The comparison articles are tables of prices. Without this they arrived as a paragraph full of
+  // vertical bars, which is unreadable by eye and meaningless to a screen reader.
+  const current = fs.readFileSync('src/routes/deskPages.js', 'utf8');
+  assert.match(current, /<th scope="col">/);
+  assert.match(current, /<th scope="row">/, 'the first cell of a row names it');
+  assert.match(current, /The second row\n\s*\/\/ of dashes is the header separator and is not printed/);
+});

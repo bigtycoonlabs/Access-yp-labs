@@ -47,10 +47,32 @@ function paragraphs(body) {
 
   const out = [];
   let list = null;                       // 'ul' or 'ol' while one is open
+  let table = null;                      // a pipe table being gathered
+  const renderTable = (t) => '<table><thead><tr>'
+    + t.head.map((h) => `<th scope="col">${inline(h)}</th>`).join('')
+    + '</tr></thead><tbody>'
+    + t.rows.map((r) => '<tr>' + r.map((c, i) => (i === 0
+      ? `<th scope="row">${inline(c)}</th>` : `<td>${inline(c)}</td>`)).join('') + '</tr>').join('')
+    + '</tbody></table>';
   const closeList = () => { if (list) { out.push('</' + list + '>'); list = null; } };
   for (const raw of String(body || '').split('\n')) {
     const line = raw.trim();
-    if (!line) { closeList(); continue; }
+    if (!line) { closeList(); if (table) { out.push(renderTable(table)); table = null; } continue; }
+    // A PIPE TABLE. Prices and comparisons are read as tables by people and by search engines, and
+    // without this they arrived as a paragraph full of vertical bars (18 Sept 2026). The second row
+    // of dashes is the header separator and is not printed.
+    if (/^\|.*\|$/.test(line)) {
+      closeList();
+      const cells = (l) => l.replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
+      if (!table) {
+        table = { head: cells(line), rows: [], sawRule: false };
+        continue;
+      }
+      if (!table.sawRule && /^\|[\s|:-]+\|$/.test(line)) { table.sawRule = true; continue; }
+      table.rows.push(cells(line));
+      continue;
+    }
+    if (table) { out.push(renderTable(table)); table = null; }
     const bullet = /^[-*]\s+(.*)$/.exec(line);
     const numbered = /^\d+[.)]\s+(.*)$/.exec(line);
     if (bullet) {
@@ -72,6 +94,7 @@ function paragraphs(body) {
     out.push(`<p>${inline(line)}</p>`);
   }
   closeList();
+  if (table) out.push(renderTable(table));
   return out.join('\n      ');
 }
 
