@@ -22,8 +22,12 @@ test('the address cannot be guessed, and the token decides where mail lands', ()
 });
 
 test('the receiving endpoint refuses everything without a secret', () => {
-  assert.match(route, /if \(!want\) return false;/);
-  assert.match(route, /an open endpoint that writes into\n\/\/ people's business records is worse than a feature that is switched off/);
+  // Neither way in works unless it is configured: no shared secret and no signing secret means no
+  // caller can ever be proved, and an open endpoint that writes into people's business records is
+  // worse than a feature that is switched off.
+  assert.match(route, /if \(!want \|\| !got\) return false;/);
+  assert.match(route, /if \(!secret \|\| !raw\) return false;/);
+  assert.match(route, /worse than a feature that is switched off/);
   assert.match(route, /crypto\.timingSafeEqual/, 'the secret cannot be found one character at a time');
   assert.match(route, /res\.status\(401\)\.json\(\{ ok: false \}\)/);
 });
@@ -57,4 +61,21 @@ test('reading mail is safe work; only what you own is readable', () => {
   // Ownership is checked in the query itself rather than trusted to the caller.
   assert.match(svc, /FROM businesses WHERE id=\$1 AND owner_id=\$2/);
   assert.match(svc, /JOIN businesses b ON b\.id = m\.business_id WHERE m\.id=\$1 AND b\.owner_id=\$2/);
+});
+
+test('a signed webhook is verified over the exact bytes received', () => {
+  // Resend signs rather than sending a header and cannot be told to add one, so a shared secret
+  // alone meant either an open endpoint or a feature that never receives anything.
+  assert.match(route, /function signedByProvider\(req, raw\)/);
+  assert.match(route, /re-serialising parsed JSON changes the bytes and every signature would fail/);
+  assert.match(route, /express\.raw\(\{ type: '\*\/\*', limit: '2mb' \}\)/);
+  assert.match(route, /crypto\.createHmac\('sha256', key\)/);
+  // A replayed payload is not a new message.
+  assert.match(route, /if \(!Number\.isFinite\(age\) \|\| age > 300\) return false;/);
+  assert.match(route, /An old payload replayed is not a new message/);
+});
+
+test('the provider envelope is unwrapped, and bad JSON is refused', () => {
+  assert.match(route, /if \(b && b\.data && typeof b\.data === 'object'\) b = Object\.assign\(\{\}, b, b\.data\);/);
+  assert.match(route, /That payload was not JSON, so nothing was stored/);
 });
