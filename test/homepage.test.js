@@ -1,12 +1,12 @@
 'use strict';
-// THE FRONT DOOR.
+// THE DEMO THAT WAS ON THE HOMEPAGE.
 //
-// The homepage was still the retired marketplace: "Meet Clay, your partner", "The Exchange", "Get
-// Clay Weekly". Every page in the signup funnel — homepage, register, login — advertised a product
-// being shut down.
-//
-// Walked on a 390x780 phone with no account: picked Ohio, pressed Show me, and read what came back.
-
+// A visitor could pick a state and see real filings before signing up. Three tests here guarded how
+// it answered: absence first, no claim printed twice, and every figure carrying its source. The
+// owner removed the box on 17 Sept 2026 — compliance is the narrowest part of the platform and it
+// was standing at the front door as though it were the whole of it — so those three tests went with
+// the thing they described. The rules themselves still hold wherever an answer is shown; they are
+// enforced where the answering now happens.
 const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -43,37 +43,17 @@ test('the proof works before signup, on the real engine', () => {
   assert.match(server, /app\.use\('\/api\/public'/);
 });
 
-test('absence leads the result', () => {
-  // Six states require no annual report. Telling somebody that on the homepage is more persuasive
-  // than any feature list, because people pay for filings they never needed.
-  assert.match(home, /Absence first/);
-  const notesIdx = home.indexOf('(d.notes || []).forEach');
-  const itemsIdx = home.indexOf('d.items.forEach');
-  assert.ok(notesIdx > 0 && notesIdx < itemsIdx, 'notes should render before obligations');
-});
 
-test('the same claim is not printed twice', () => {
-  // The note rendered its title and then a `says` that opened with the same sentence — read aloud,
-  // the same sentence twice in a row.
-  assert.match(home, /Read aloud that is the same sentence twice/);
-  assert.ok(!/note"><p class="t">' \+ esc\(n\.title\)/.test(home));
-});
 
-test('every result carries where it came from', () => {
-  assert.match(home, /esc\(i\.source_ref\)/);
-  assert.match(preview, /source_ref: o\.source_ref/);
-});
 
-test('an unconfirmed fee is admitted on the public page too', () => {
-  // Said to a stranger as readily as to a customer.
-  assert.match(preview, /Said on the public page as readily as inside the product/);
-  assert.match(home, /tells you the fee is unchecked/);
-});
+
+
+
+
 
 test('what she will not do is on the homepage, not three clicks in', () => {
   // Carried from the Penny page on Access Your Place. Every competitor publishes only capabilities;
   // this is the strongest thing in the estate.
-  assert.match(home, /CARRIED FROM THE PENNY PAGE ON ACCESS YOUR PLACE/);
   assert.match(home, /What she will not do/);
   assert.match(home, /A failed look is not a\s*\n?\s*clear day/);
 });
@@ -87,9 +67,7 @@ test('prices are visible without an account', () => {
   assert.match(home, /href="\/plans\.html"/);
 });
 
-test('a failed look is not a clear day, here too', () => {
-  assert.match(home, /that is a failure on '\s*\n?\s*\+ 'our side, not an empty answer/);
-});
+
 
 test('one main, one h1, labelled controls, its own title', () => {
   // Verified in the rendered DOM: mains 1, h1s 1, unlabelled 0, nothing under 44px but the checkbox
@@ -100,5 +78,5 @@ test('one main, one h1, labelled controls, its own title', () => {
   // homepage should not sell a name nobody can reach. Penny keeps her name; the product does not
   // have one on this page yet.
   assert.match(home, /<title>Access YP Labs — the employees you always needed<\/title>/);
-  assert.match(home, /role="status" aria-live="polite"/);
+  // The live region went with the demo: nothing on this page answers anything now.
 });

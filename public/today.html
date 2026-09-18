@@ -45,18 +45,13 @@
     <h2 id="items-h" class="visually-hidden" style="position:absolute;left:-9999px;">What needs you</h2>
   </section>
 
+  <!-- ONE CONVERSATION, NOT TWO. This was a second box that looked like a chat and could not
+       answer anything: whatever you typed was carried to Penny's page to be asked again. Two places
+       that look like the same thing is two things to learn, so this is now the door to the one
+       conversation there is. -->
   <section class="ask" aria-labelledby="ask-h">
     <h2 id="ask-h">Ask Penny</h2>
-    <p class="muted" style="margin-bottom:12px;">Anything about the business. She answers from your
-      own records and says where each answer came from.</p>
-    <label for="q">What do you want to know?</label>
-    <!-- No autocapitalize="none" here, deliberately. That rule is for credential fields, where iOS
-         silently inserts a capital and the person is told their password is wrong. This is a
-         question in English: the first letter SHOULD be capitalised, and suppressing it would make
-         the box behave worse than every other text field on the phone. -->
-    <input id="q" type="text" autocomplete="off"
-           placeholder="When is my annual report due?"/>
-    <div style="margin-top:12px;"><a class="btn" href="/penny.html" id="askgo">Open Penny</a></div>
+    <p><a class="btn" href="/penny.html" id="askgo">Ask Penny anything</a></p>
   </section>
 
   <section id="coming-wrap" aria-labelledby="coming-h" hidden>
@@ -185,16 +180,6 @@ document.addEventListener('click', async function (ev) {
     b.textContent = 'Mark it done';
     $('status').textContent = 'I could not mark that done, so it is still open. ' + e.message;
   }
-});
-
-$('q').addEventListener('keydown', function (e) {
-  if (e.key === 'Enter' && this.value.trim()) {
-    location.href = '/penny.html?q=' + encodeURIComponent(this.value.trim());
-  }
-});
-$('askgo').addEventListener('click', function (e) {
-  var v = $('q').value.trim();
-  if (v) { e.preventDefault(); location.href = '/penny.html?q=' + encodeURIComponent(v); }
 });
 
 load();

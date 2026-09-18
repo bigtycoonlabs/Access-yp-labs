@@ -58,9 +58,7 @@
 
 <main id="main" class="wrap">
   <h1>Ask Penny</h1>
-  <p class="muted" id="intro">She answers from your own records, and says where each answer came
-    from. Anything about money goes to Arbo, and anything about finding property goes to Access
-    Your Place.</p>
+  <p class="muted" id="intro">She answers from your own records and says where each answer came from.</p>
 
   <!-- EVERY ATTACHED COMPONENT CONTRIBUTES A SPOKEN SENTENCE.
        On Flow a go-live checklist rendered perfectly and was announced to nobody, because the live
@@ -78,19 +76,14 @@
       <textarea id="msg" rows="2" placeholder="What is due this month?"></textarea>
       <button class="btn" id="send">Send</button>
     </div>
-    <p class="muted" style="margin:8px 0 0;font-size:.86rem;">Enter sends. Shift and Enter starts a
-      new line.</p>
-
     <!-- TALKING WITH HER RATHER THAN TYPING. Both ways always work: the microphone never replaces
          the keyboard, and everything she says aloud is also written in the thread, because a voice
          carrying anything the text does not would put a screen-reader client back where they
          started. -->
     <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap;">
-      <button class="btn plain" id="talk" type="button" aria-describedby="talk-hint">Hold to talk to Penny</button>
-      <button class="btn plain" id="voice" type="button" aria-pressed="false">Penny speaks her replies: off</button>
+      <button class="btn plain" id="talk" type="button">Hold to talk</button>
+      <button class="btn plain" id="voice" type="button" aria-pressed="false">Voice off</button>
     </div>
-    <p class="muted" id="talk-hint" style="margin:8px 0 0;font-size:.86rem;">Press and hold to speak,
-      let go to send. What you said is written out before it goes, so you can see it.</p>
   </div>
 </main>
 
@@ -214,6 +207,10 @@ function hideKeys(text) {
   return { text: out, hit: hit };
 }
 
+// BROUGHT INTO VIEW AND GIVEN FOCUS.
+// Learned on the front door, where the answer rendered thirty pixels below the fold and people
+// believed nothing had happened. An error nobody sees is indistinguishable from nothing happening,
+// so both the reply and the failure are scrolled to and announced rather than merely rendered.
 async function send(text) {
   if (busy || !text.trim()) return;
   busy = true;

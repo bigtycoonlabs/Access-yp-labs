@@ -45,7 +45,6 @@ test('one main, one h1, one live region, labelled inputs', () => {
   assert.strictEqual((html.match(/<main/g) || []).length, 1);
   assert.strictEqual((html.match(/<h1/g) || []).length, 1);
   assert.match(html, /role="status" aria-live="polite"/);
-  assert.match(html, /<label for="q">/);
 });
 
 test('the page has its own title', () => {
@@ -54,15 +53,12 @@ test('the page has its own title', () => {
   assert.match(html, /<title>Today, Access YP Labs<\/title>/);
 });
 
-test('the question box is not treated as a credential field', () => {
-  // Caught by the existing credential-fields suite: I had put autocapitalize="none" on the Ask Penny
-  // box out of habit. That rule exists for email and password fields, where iOS silently inserts a
-  // capital and the person is told their password is wrong. A question in English wants its first
-  // letter capitalised, so suppressing it makes the box behave worse than every other field on the
-  // phone.
-  const q = html.match(/<input id="q"[^>]*>/)[0];
-  assert.ok(!/autocapitalize/.test(q), 'the question box should capitalise normally');
-  assert.match(html, /This is a\s*\n?\s*question in English/);
+test('Today does not hold a second conversation', () => {
+  // It had a box that looked like a chat and could not answer: whatever you typed was carried to
+  // Penny's page to be asked again. Two places that look like the same thing is two things to learn.
+  assert.doesNotMatch(html, /<input id="q"/);
+  assert.doesNotMatch(html, /\$\('q'\)/, 'and no script left pointing at a box that is gone');
+  assert.match(html, /href="\/penny\.html" id="askgo"/);
 });
 
 test('every target is 44px — including the brand link', () => {

@@ -99,3 +99,24 @@ test('a live turn that stops halfway is never shown as a finished answer', () =>
   assert.match(js, /stopped partway and the connection closed, so this answer is not complete/);
   assert.match(js, /return \{ handled: false \}/, 'a channel that cannot start falls back to the written turn');
 });
+
+test('her voice is woken inside the tap, because iOS only plays sound a person started', () => {
+  // Found live on an iPhone: every sentence was fetched and none was heard. The page looked right
+  // and was silent, which is the exact failure this product exists to avoid.
+  const js = fs.readFileSync('public/js/penny-voice.js', 'utf8');
+  assert.match(js, /function unlock\(\)/);
+  assert.match(js, /voiceBtn\.addEventListener\('click', function \(\) \{\s*\n\s*unlock\(\);/);
+  assert.match(js, /async function startRecording\(btn\) \{\s*\n\s*unlock\(\);/);
+  assert.match(js, /Your browser blocked the sound\. Tap the speak button once more to allow it\./);
+});
+
+test('one conversation, not two, and the controls do not over-explain themselves', () => {
+  const today = fs.readFileSync('public/today.html', 'utf8');
+  assert.doesNotMatch(today, /<input id="q"/, 'Today had a box that looked like a chat and could not answer');
+  assert.match(today, /Ask Penny anything/);
+  const page = fs.readFileSync('public/penny.html', 'utf8');
+  assert.match(page, />Hold to talk</);
+  assert.match(page, />Voice off</);
+  assert.doesNotMatch(page, /Press and hold to speak,/);
+  assert.doesNotMatch(page, /Enter sends\. Shift and Enter/);
+});

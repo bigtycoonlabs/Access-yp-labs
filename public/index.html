@@ -76,112 +76,50 @@ footer{padding:30px 0 60px;color:var(--muted);font-size:.9rem;}
        So this page does not describe the product. It runs it. -->
   <div class="hero">
     <h1>The employees you always needed.</h1>
-    <p class="sub">Penny runs the back office. Filings in every state you operate in, licences,
-      renewals, documents, customers, your team — one list, ordered by what it costs you to miss
-      each thing.</p>
+    <p class="sub">Penny runs the back office for your business. She keeps track of everything you
+      owe, researches what the law wants from you and shows you the government pages she read, and
+      builds your website, your customer portal and your apps. Then she gets on with it.</p>
+    <p style="margin-top:22px;">
+      <a class="btn" href="/register.html">Start free</a>
+      <a class="btn quiet" href="/plans.html">See the plans</a>
+    </p>
+    <p class="muted" style="margin-top:14px;font-size:.95rem;">No card. Built to be run by ear as
+      well as by eye, so anyone on your team can use it.</p>
   </div>
 
-  <section class="try" id="try" aria-labelledby="try-h">
-    <h2 id="try-h">What does your business owe?</h2>
-    <p class="muted" style="margin:0;">Two questions, no account, nothing saved. These are real
-      filings, from the same rules a paying customer gets.</p>
-
-    <label for="st">Which state is it registered in?</label>
-    <select id="st"><option value="">Choose a state</option></select>
-
-    <label for="et">How is it set up?</label>
-    <select id="et">
-      <option value="llc">LLC</option>
-      <option value="sole_proprietor">Just me, nothing registered</option>
-      <option value="s_corp">S-Corp</option>
-      <option value="c_corp">C-Corp</option>
-      <option value="partnership">Partnership</option>
-      <option value="nonprofit">Nonprofit</option>
-    </select>
-
-    <label for="ct" style="display:flex;align-items:center;gap:10px;min-height:44px;">
-      <input id="ct" type="checkbox" style="width:24px;height:24px;accent-color:var(--accent);
-      margin:10px 8px 10px 0;"/>
-      I pay contractors or freelancers
-    </label>
-
-    <div class="row"><button class="btn" id="go">Show me</button></div>
-    <div id="out" class="out" role="status" aria-live="polite"></div>
-  </section>
-
-  <!-- WHAT IS ACTUALLY BUILT.
-       Not a feature grid — no ticks, no columns, no comparison. The research is blunt about where a
-       grid leads: it wins the purchase and loses the customer six months later when the workflow
-       does not fit. But the page was going too far the other way and describing a to-do list, while
-       what exists is a back office. Naming the areas is not a grid; hiding them is underselling.
-
-       Every line here is something that runs today. Where something is not built, the page says so
-       further down rather than leaving it to be discovered after signing up. -->
+  <!-- EVERY LINE HERE RUNS TODAY, and is the thing itself rather than a document about it. This
+       section used to be followed by a roadmap written before the builder, the launcher and the
+       Arbo handoff shipped. Leaving a "what is coming" list up after it is built makes a working
+       product read as an empty one. -->
   <section class="block" aria-labelledby="does-h">
-    <h2 id="does-h">What she does today</h2>
-    <p>All of this runs now. Several businesses, several states, one place. She works from your record rather than a
-      checklist, and she tells you where every answer came from.</p>
+    <h2 id="does-h">What she does</h2>
     <dl class="does">
-      <dt>Filings, licences and renewals</dt>
-      <dd>Fifty states and DC. Every rule carries the source it came from and the date it was
-        checked, and where the fee is not confirmed she says it is not confirmed rather than
-        guessing. Ohio does not require an LLC annual report — most tools tell you it does.</dd>
+      <dt>She keeps everything you owe in one place</dt>
+      <dd>Filings, licences, renewals, invoices, and the promises you made a customer. Ordered by
+        what missing each one would cost you, with a reminder before it is due rather than after.</dd>
 
-      <dt>Documents, including the ones that are not there</dt>
-      <dd>Storing files is the easy half. She works out what should be on file from what your
-        business actually is — a contractor means a W-9, a partner means an operating agreement —
-        and an expired certificate leads, because nobody believes they are covered by one they
-        never collected.</dd>
+      <dt>She builds what your business needs</dt>
+      <dd>A website, a customer portal your customers sign into, or a custom app. You see a working
+        version first, free, and only pay once you have seen it and said yes. An app goes onto your
+        own GitHub, in your account, so you can take it and leave whenever you like.</dd>
 
-      <dt>Customers, as promises and money</dt>
-      <dd>What you owe them and what they owe you, kept apart, ordered by what is late. Not a CRM.
-        There is nothing to keep up to date — people appear when something is outstanding and leave
-        when it is settled.</dd>
+      <dt>She checks the law for you, and shows her working</dt>
+      <dd>Ask what your business needs to stay legal where it operates and she reads the government
+        websites herself, then gives you the answer with every page she used. When she cannot
+        confirm something she says so. She never guesses.</dd>
 
-      <dt>Your team, and exactly what each person can see</dt>
-      <dd>A bookkeeper sees the money and not the filings. Adding a contractor raises a W-9; adding
-        your first employee raises workers comp before their first day, which is one of the
-        genuinely dangerous moments in a small business that almost nothing warns you about.</dd>
+      <dt>She holds your files, keys and people</dt>
+      <dd>Documents, photos and credentials in one place, shared only with the people you choose,
+        each seeing their own part and nothing else.</dd>
 
-      <dt>And she tells you before it is late</dt>
-      <dd>An expensive filing is raised at thirty days, fourteen, seven and the day before. By
-        email, so it reaches you when you are not looking at this.</dd>
+      <dt>Money goes to Arbo, and she hands it over</dt>
+      <dd>The money side lives in YP Flow with Arbo. Connect the two and an invoice Penny is holding
+        lands in your books there, waiting for you to confirm it.</dd>
+
+      <dt>You can talk to her</dt>
+      <dd>Type, or hold the button and speak. She answers out loud and keeps talking while she
+        works, so you are never left wondering whether anything is happening.</dd>
     </dl>
-  </section>
-
-  <!-- WHAT IS COMING, SAID AS COMING.
-       A homepage that only lists what shipped undersells a business that is going somewhere. One
-       that writes the roadmap in the present tense is the single defect this whole estate is built
-       against — and it is the most checkable kind of lie, because a visitor can ask to see it.
-
-       So: a separate section, its own heading, "not built yet" in the first sentence, and no dates.
-       A date is a promise to somebody who is choosing between tools. -->
-  <section class="block" aria-labelledby="next-h">
-    <h2 id="next-h">What is coming</h2>
-    <p>None of this is built yet. It is what we are building next, and it is here so you can judge
-      where this is going rather than only where it is.</p>
-    <dl class="does">
-      <dt>She builds the thing, not a document about the thing</dt>
-      <dd>Describe what your business needs — a booking page, a customer portal, an internal tool —
-        and Penny builds it. You see a working mock first, free, before anything is committed. The
-        code lands in your GitHub, the database is yours to claim, the domain stays at your
-        registrar. If you leave, it keeps running without us.</dd>
-
-      <dt>Money, through Arbo</dt>
-      <dd>Bookkeeping and the cash side, handled by the assistant already running on Access YP Flow.
-        Penny hands you across rather than pretending to be an accountant.</dd>
-
-      <dt>Messages that live where the work does</dt>
-      <dd>Your team, your customers and your vendors, in threads attached to the actual thing being
-        discussed rather than a separate app to keep up with. Voice notes, because most of this gets
-        said in a van.</dd>
-
-      <dt>Your own people, on your own terms</dt>
-      <dd>Bring your bookkeeper, your VA, your contractors. Each sees only their part, and adding
-        somebody raises what that costs you to get wrong.</dd>
-    </dl>
-    <p class="muted">We will not put a date on any of it here. A date on a homepage is a promise to
-      somebody choosing between tools, and we would rather tell you what is true today.</p>
   </section>
 
   <section class="block" aria-labelledby="who-h">
@@ -211,24 +149,21 @@ footer{padding:30px 0 60px;color:var(--muted);font-size:.9rem;}
       the leaving.</p>
   </section>
 
-  <!-- CARRIED FROM THE PENNY PAGE ON ACCESS YOUR PLACE.
-       A published list of what she will not do, including things that are not built yet. Every
-       competitor publishes only capabilities. It is the strongest thing in this estate and it
-       belongs on the homepage rather than three clicks in. -->
+  <!-- WHAT SHE WILL NOT DO. Every competitor publishes only what their software can do. This is the
+       strongest thing on the page, so it stays — shorter, because a long list of refusals reads as
+       a long list of gaps. -->
   <section class="block" aria-labelledby="wont-h">
     <h2 id="wont-h">What she will not do</h2>
     <div class="wont">
       <ul>
-        <li>She will not invent a filing, a fee or a deadline. Where the rules are confirmed she says
-          the number; where they are not, she says that instead of guessing.</li>
-        <li>She has confirmed figures for twelve states so far. For the rest she has the deadline and
-          tells you the fee is unchecked.</li>
-        <li>She does not do your books. That is Arbo, in YP Flow, and anything about money goes to
-          him rather than being half-answered here.</li>
+        <li>She will not invent a filing, a fee or a deadline. If she could not confirm it, she says
+          so instead of guessing.</li>
         <li>She will not tell you nothing is due when she could not check. A failed look is not a
           clear day, and she says which it was.</li>
-        <li>She is built for your business, not for everything. Ask her about your dinner and she
-          will point you somewhere better.</li>
+        <li>She does not do your books. That is Arbo, in YP Flow, and she hands you over rather than
+          half-answering.</li>
+        <li>She will not claim she did something she did not do. What she says happened is what the
+          tools actually saved.</li>
       </ul>
     </div>
   </section>
@@ -245,71 +180,6 @@ footer{padding:30px 0 60px;color:var(--muted);font-size:.9rem;}
   </footer>
 </main>
 
-<script>
-var $ = function (id) { return document.getElementById(id); };
-function esc(s) {
-  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
-    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-  });
-}
 
-var ST = ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DC', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN',
-  'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
-  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA',
-  'WA', 'WV', 'WI', 'WY'];
-ST.forEach(function (s) {
-  var o = document.createElement('option'); o.value = s; o.textContent = s; $('st').appendChild(o);
-});
-
-$('go').addEventListener('click', async function () {
-  var st = $('st').value;
-  if (!st) { $('out').textContent = 'Pick a state first.'; $('st').focus(); return; }
-  this.disabled = true; this.textContent = 'Checking\u2026';
-  try {
-    var r = await fetch('/api/public/preview?state=' + st + '&entity_type=' + $('et').value
-      + '&has_contractors=' + ($('ct').checked ? 'true' : 'false'));
-    var d = await r.json();
-    if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
-
-    var html = '';
-    /* Absence first. Six states require no annual report, and telling somebody that is more
-       persuasive than any feature list — people pay for filings they never needed. */
-    (d.notes || []).forEach(function (n) {
-      /* The title and the first sentence of `says` are the same claim — rendering both printed
-         "OH does not require an LLC annual report" directly above "Ohio does not require an LLC
-         annual report — one of only a handful...". Read aloud that is the same sentence twice. */
-      html += '<div class="note"><p class="s">' + esc(n.says) + '</p></div>';
-    });
-    if (!d.items.length && !(d.notes || []).length) {
-      html += '<p class="muted">Nothing on file for that combination yet.</p>';
-    }
-    d.items.forEach(function (i) {
-      html += '<div class="line"><p class="t">' + esc(i.title) + '</p><p class="s">'
-        + esc(i.says) + '</p>'
-        + (i.needs_formation_date ? '<p class="src">' + esc(i.why_no_date) + '</p>' : '')
-        + '<p class="src">' + esc(i.source_ref) + '</p></div>';
-    });
-    if (d.coverage) html += '<p class="src">' + esc(d.coverage) + '</p>';
-    html += '<p style="margin-top:14px;"><a class="btn" href="/register.html">Keep this list</a></p>';
-    $('out').innerHTML = html;
-    /* BROUGHT INTO VIEW AND GIVEN FOCUS.
-       Carried from the marketplace homepage this replaced, where typing an idea and tapping the
-       button changed nothing on screen: the request succeeded and the answer rendered thirty pixels
-       below the fold. The page was working and the person could not tell.
-       Same risk here — a long result on a small phone puts the answer off-screen. */
-    $('out').setAttribute('tabindex', '-1');
-    $('out').focus({ preventScroll: true });
-    $('out').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  } catch (e) {
-    /* A failed look is not a clear day — on the homepage as much as inside the product. */
-    $('out').innerHTML = '<p class="muted">I could not check just now \u2014 that is a failure on '
-      + 'our side, not an empty answer. Try again in a moment.</p>';
-    /* Errors too. An error nobody sees is indistinguishable from nothing happening. */
-    $('out').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  } finally {
-    this.disabled = false; this.textContent = 'Show me';
-  }
-});
-</script>
 <script src="/js/site-footer.js" defer></script>
 </body></html>

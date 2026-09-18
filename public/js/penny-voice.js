@@ -14,6 +14,18 @@
   var queue = [];            // sentences waiting to be spoken, in order
   var playing = false;
   var audio = new Audio();
+  var unlocked = false;
+
+  // WHY THIS EXISTS. On iPhone the sound was fetched and never heard: Safari only plays audio that
+  // started inside a tap. Every sentence arrived, the page looked right, and it was silent — the
+  // exact failure this product is built to avoid. So the element is woken inside the button's own
+  // handler with a moment of silence, and from then on it is allowed to speak.
+  var SILENCE = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=';
+  function unlock() {
+    if (unlocked) return;
+    unlocked = true;
+    try { audio.src = SILENCE; var p = audio.play(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+  }
   var recorder = null;
   var chunks = [];
   var announce = function () {};
@@ -48,7 +60,16 @@
         audio.src = URL.createObjectURL(blob);
         audio.onended = done;
         audio.onerror = done;
-        audio.play().catch(done);
+        var started = audio.play();
+        if (started && started.catch) {
+          started.catch(function () {
+            // Blocked by the browser rather than broken. Said once, in words a person can act on.
+            queue = [];
+            announce(['Your browser blocked the sound. Tap the speak button once more to allow it. '
+              + 'Her words are on the screen either way.']);
+            done();
+          });
+        }
       });
     } catch (e) {
       queue = [];
@@ -143,6 +164,7 @@
   // before it is sent, because a misheard sentence sent as though you said it is the worst failure
   // this can have.
   async function startRecording(btn) {
+    unlock();
     if (!navigator.mediaDevices || !window.MediaRecorder) {
       announce(['This browser cannot record, so talking to her is not available here. Typing still works.']);
       return;
@@ -158,7 +180,7 @@
     recorder.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
     recorder.onstop = async function () {
       stream.getTracks().forEach(function (t) { t.stop(); });
-      btn.textContent = 'Hold to talk to Penny';
+      btn.textContent = 'Hold to talk';
       var blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
       if (!blob.size) { announce(['Nothing was recorded.']); return; }
       announce(['Working out what you said.']);
@@ -181,7 +203,7 @@
       }
     };
     recorder.start();
-    btn.textContent = 'Listening. Let go to send';
+    btn.textContent = 'Listening…';
     announce(['Listening.']);
   }
 
@@ -199,8 +221,9 @@
     var voiceBtn = document.getElementById('voice');
     if (voiceBtn) {
       voiceBtn.addEventListener('click', function () {
+        unlock();
         speaking = !speaking;
-        voiceBtn.textContent = 'Penny speaks her replies: ' + (speaking ? 'on' : 'off');
+        voiceBtn.textContent = speaking ? 'Voice on' : 'Voice off';
         voiceBtn.setAttribute('aria-pressed', speaking ? 'true' : 'false');
         if (!speaking) stop();
         announce([speaking

@@ -29,8 +29,10 @@ const assert = require('node:assert');
 const fs = require('fs');
 
 test('the lesson survived the page it was learned on', () => {
-  const home = fs.readFileSync('public/index.html', 'utf8');
-  assert.match(home, /BROUGHT INTO VIEW AND GIVEN FOCUS/);
-  assert.match(home, /scrollIntoView/);
-  assert.match(home, /An error nobody sees is indistinguishable from nothing happening/);
+  // It was learned on the front door and lived in that page's script. The homepage was rewritten on
+  // 17 Sept 2026 and no longer answers anything; the lesson moved to the page that does.
+  const chat = fs.readFileSync('public/penny.html', 'utf8');
+  assert.match(chat, /BROUGHT INTO VIEW AND GIVEN FOCUS/);
+  assert.match(chat, /scrollIntoView/);
+  assert.match(chat, /An error nobody sees is indistinguishable from nothing happening/);
 });
