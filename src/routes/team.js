@@ -25,6 +25,7 @@ const { query } = require('../config/db');
 const { asyncHandler, ApiError } = require('../lib/http');
 const { authenticate } = require('../middleware/auth');
 const P = require('../lib/permissions');
+const { sendEmail } = require('../services/email');
 const compliance = require('../services/clay/compliance');
 
 const router = express.Router();
@@ -112,6 +113,26 @@ router.post('/', authenticate, [
     granted[area] = level;
   }
 
+  // THEY ARE TOLD, AND THEY MAKE THEIR OWN ACCOUNT.
+  //
+  // Adding somebody used to be silent: a row appeared and the person never heard about it. Nobody is
+  // signed up by somebody else either, so the email invites them to create their own account, which
+  // is then linked to this relationship by their email address when they register.
+  let invited = null;
+  if (b.email) {
+    try {
+      const { teamInviteEmail } = require('../services/pennyEmails');
+      const biz = (await query('SELECT name FROM businesses WHERE id=$1', [b.business_id])).rows[0];
+      const msg = teamInviteEmail({
+        name: b.display_name, ownerName: req.user.name, businessName: biz && biz.name,
+        areas: Object.entries(granted).map(([area, level]) => area + ': ' + level),
+        hasAccount: !!userId, site: process.env.CLIENT_URL,
+      });
+      const sent = await sendEmail({ to: b.email, subject: msg.subject, html: msg.html, text: msg.text });
+      invited = sent && sent.sent ? 'told' : 'not_told';
+    } catch (_) { invited = 'not_told'; }
+  }
+
   // WHAT ADDING THEM MEANS, beyond access. This is the part nobody else does.
   const raised = [];
   const kindRules = {
@@ -158,10 +179,16 @@ router.post('/', authenticate, [
     permissions: granted,
     has_login: !!userId,
     // Said plainly rather than left for them to discover when the person cannot sign in.
+    invited,
     seat_note: userId
-      ? null
+      ? (invited === 'told' ? 'They already have an account, and I have emailed them to say this '
+        + 'business is now on it.' : null)
       : (b.email
-        ? 'No account exists for that email yet, so they are a record rather than a login for now.'
+        ? (invited === 'told'
+          ? 'No account exists for that email yet, so I have emailed them to make their own. It '
+            + 'links to this seat when they register.'
+          : 'No account exists for that email yet, and I could not email them, so nobody has been '
+            + 'told. Send them to the sign-up page yourself.')
         : 'No email, so this is a record rather than a login — which is right for a landlord or a '
           + 'vendor who never needs to sign in.'),
     raised,

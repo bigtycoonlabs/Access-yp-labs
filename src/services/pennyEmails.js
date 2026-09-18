@@ -79,6 +79,34 @@ function welcomeEmail(name) {
   return { subject: 'Welcome to Access YP Labs. I\u2019m Penny.', html, text };
 }
 
+// BEING ADDED TO SOMEBODY'S TEAM.
+//
+// They make their own account, always. Nobody is signed up by somebody else: the account is theirs,
+// and what they can see in the other person's business is whatever that owner allowed, nothing more.
+function teamInviteEmail({ name, ownerName, businessName, areas, hasAccount, site }) {
+  const where = (site || 'https://accessyplabs.com').replace(/\/+$/, '');
+  const { html, text } = render({
+    title: (ownerName || 'Someone') + ' added you to ' + (businessName || 'their business'),
+    preheader: 'Your own account, their business.',
+    blocks: [
+      { p: 'Hi ' + firstName(name) + '.' },
+      { p: (ownerName || 'Someone') + ' added you to ' + (businessName || 'their business')
+        + ' on Access YP Labs, where Penny runs the back office.' },
+      ...(areas && areas.length ? [{ p: 'What they have given you:' }, { list: areas.map((a) => ({ text: a })) }] : []),
+      { h: hasAccount ? 'It is on your account already' : 'Make your own account' },
+      { p: hasAccount
+        ? 'Sign in as you normally would and ' + (businessName || 'their business') + ' will be there alongside your own. Your own work stays yours.'
+        : 'Your account is yours, not theirs: you sign up yourself, with your own password. Once you are in, '
+          + (businessName || 'their business') + ' appears alongside anything of your own.' },
+      { button: [hasAccount ? 'Sign in' : 'Create your account', where + (hasAccount ? '/login.html' : '/register.html')] },
+      { p: 'You can only see and do what ' + (ownerName || 'they') + ' allowed, and they can change or end that at any time. '
+        + 'Anything you do for yourself is separate and stays with you.' },
+      { sign: '\u2014 Penny' },
+    ],
+  });
+  return { subject: (ownerName || 'Someone') + ' added you to ' + (businessName || 'their business') + ' on Access YP Labs', html, text };
+}
+
 // The one-time update. `person`: { name, standing: 'staff' | 'paid' | 'free', moved: [business names] }
 const UPDATE_SUBJECT = 'Clay is retiring. Access YP Labs has been reborn.';
 
@@ -124,4 +152,4 @@ function updateEmail(person) {
   return { subject: UPDATE_SUBJECT, html, text };
 }
 
-module.exports = { render, welcomeEmail, updateEmail, UPDATE_SUBJECT, WHAT_I_DO };
+module.exports = { render, welcomeEmail, updateEmail, teamInviteEmail, UPDATE_SUBJECT, WHAT_I_DO };

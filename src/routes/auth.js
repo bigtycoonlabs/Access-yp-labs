@@ -99,6 +99,17 @@ router.post('/register', [
     );
     user = result.rows[0];
     await client.query('INSERT INTO profiles (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [user.id]);
+
+    // A SEAT SOMEBODY ALREADY MADE FOR THEM.
+    //
+    // Being added to a business creates a record against an email address. When that person makes
+    // their own account, it becomes a real seat: their account, their password, and whatever the
+    // owner allowed in that business, nothing more. Without this, somebody was invited, signed up,
+    // and found nothing there.
+    await client.query(
+      `UPDATE relationships SET user_id = $1
+        WHERE user_id IS NULL AND ended_on IS NULL AND lower(email) = lower($2)`,
+      [user.id, email]);
     // Email preferences, with the unsubscribe token that every Clay Weekly issue carries. Created
     // here so a new account can both receive the magazine and leave it in one click from day one.
     await client.query('INSERT INTO user_email_prefs (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [user.id]);
