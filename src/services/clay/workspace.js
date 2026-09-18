@@ -32,6 +32,7 @@ const Keys = require('./keys');
 const Launcher = require('./launcher');
 const Compliance = require('./complianceResearch');
 const Flow = require('./flowLink');
+const Notes = require('./notes');
 
 // Result shapes. Borrowed from Arbo, where they exist because an unread balance once printed as
 // "$0.00" — indistinguishable from the money being gone.
@@ -48,6 +49,26 @@ const TOOLS = {
   whats_coming: {
     irreversible: false, requires_confirmation: false, required: [], optional: ['business_id', 'days'], enums: {},
     summary: 'What falls due over the next stretch of days, in date order. Read-only.',
+  },
+  remember_this: {
+    irreversible: false, requires_confirmation: false,
+    required: ['note'], optional: ['business_id'], enums: {},
+    summary: 'Keep something this person told you, in their own words, so you work that way in every '
+      + 'later conversation: how they like things done, what their business is, what to do without '
+      + 'asking, what never to do. Only what they actually said, never something you worked out about '
+      + 'them. Leave business_id off when it is about them rather than one business.',
+  },
+  what_you_know: {
+    irreversible: false, requires_confirmation: false,
+    required: [], optional: [], enums: {},
+    summary: 'Everything this person has told you to keep in mind, so they can hear it and change it. '
+      + 'Read-only.',
+  },
+  forget_this: {
+    irreversible: false, requires_confirmation: false,
+    required: ['what'], optional: [], enums: {},
+    summary: 'Drop something you were told to keep in mind. what is its id, or enough of its words to '
+      + 'find it. Say what was dropped.',
   },
   connect_flow: {
     irreversible: false, requires_confirmation: false,
@@ -439,6 +460,28 @@ async function add_business(viewer, params = {}) {
     + (assumed ? ' I have noted no employees besides the owner for now; say so if that is wrong, because it changes what is owed.' : ''));
 }
 
+async function remember_this(viewer, params = {}) {
+  const r = await Notes.remember(viewer.id, params.note, params.business_id);
+  if (!r.ok) return r.kind === 'refused' ? refused(r.says) : { status: 'needs_answer', says: r.says };
+  return answered({ note_id: r.id, already_had_it: !!r.already }, r.says);
+}
+
+async function what_you_know(viewer) {
+  const held = await Notes.list(viewer.id, null);
+  if (!held.length) {
+    return empty('You have not told me anything to keep in mind yet. Tell me how you like to work, or '
+      + 'anything about your business I should carry into every conversation, and I will hold it.');
+  }
+  return answered({ notes: held.map((h) => ({ id: h.id, note: h.note, business: h.business || null })) },
+    'Here is everything you have told me to keep in mind.');
+}
+
+async function forget_this(viewer, params = {}) {
+  const r = await Notes.forget(viewer.id, params.what);
+  if (!r.ok) return r.kind === 'empty' ? empty(r.says) : { status: 'needs_answer', says: r.says };
+  return answered({ dropped: r.dropped }, r.says);
+}
+
 async function connect_flow(viewer, params = {}) {
   const r = await Flow.connect(String(params.email || '').trim(), viewer.email);
   if (!r.ok) return r.kind === 'unclear' ? { status: 'needs_answer', says: r.says } : unavailable('flow_not_connected', r.says);
@@ -621,6 +664,6 @@ async function list_files(viewer, params = {}) {
 const EXECUTORS = { whats_due, whats_coming, list_businesses, record_obligation,
   complete_obligation, whats_missing, whats_outstanding_with_customers, start_build, publish_build, list_builds, list_files,
   portal_status, customize_portal, list_keys, launch_build, research_compliance, add_business,
-  connect_flow, flow_status, send_invoice_to_flow };
+  connect_flow, flow_status, send_invoice_to_flow, remember_this, what_you_know, forget_this };
 
 module.exports = { TOOLS, EXECUTORS, answered, empty, unavailable, refused };

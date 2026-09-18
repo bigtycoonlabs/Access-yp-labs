@@ -31,7 +31,9 @@ test('she carries only the workspace tools', () => {
       'whats_missing', 'whats_outstanding_with_customers', 'start_build', 'publish_build', 'list_builds', 'list_files',
       'portal_status', 'customize_portal', 'list_keys', 'launch_build', 'research_compliance', 'add_business',
     // Money is Arbo's: she hands it over rather than telling somebody to retype it (17 Sept 2026).
-    'connect_flow', 'flow_status', 'send_invoice_to_flow']);
+    'connect_flow', 'flow_status', 'send_invoice_to_flow',
+    // She keeps what she is told about how somebody wants to work (17 Sept 2026).
+    'remember_this', 'what_you_know', 'forget_this']);
   // Comment text wraps, so normalise the line breaks rather than guessing where they fall.
   const flat = persona.replace(/\s*\n\s*\/\/\s*/g, ' ');
   assert.match(flat, /A real 429 followed that mistake on Access Your Place/);

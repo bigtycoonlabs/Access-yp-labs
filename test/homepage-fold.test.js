@@ -19,7 +19,7 @@ test('it carries YP Labs branding', () => {
   assert.match(html, /<title>Access YP Labs/);
   assert.match(html, /class="brand"[^>]*>Access YP Labs/);
   assert.ok(!/Penny Desk/.test(html));
-  assert.match(html, /Penny runs the back office/);
+  assert.match(html, /Penny is your business assistant/);
 });
 
 test('the hero says what she is and what to do, and stays short', () => {
