@@ -10,10 +10,10 @@ test('platform take is 20%', () => {
 
 test('$10 price floor is enforced', () => {
   assert.strictEqual(money.PRICE_FLOOR_CENTS, 1000);
-  assert.strictEqual(money.isAboveFloor(1000), true);   // exactly $10 is allowed
-  assert.strictEqual(money.isAboveFloor(999), false);   // $9.99 is not
-  assert.strictEqual(money.isAboveFloor(50000), true);  // higher prices still fine
-  assert.strictEqual(money.isAboveFloor(10.5), false);  // non-integer cents rejected
+  assert.strictEqual(money.isValidBid(1000), true);   // exactly $10 is allowed
+  assert.strictEqual(money.isValidBid(999), false);   // $9.99 is not
+  assert.strictEqual(money.isValidBid(50000), true);  // higher amounts still fine
+  assert.strictEqual(money.isValidBid(10.5), false);  // non-integer cents rejected
 });
 
 test('nothing prices a consultant session any more', () => {

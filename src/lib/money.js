@@ -100,9 +100,8 @@ function planCents(plan) { return PLANS[plan] ? PLANS[plan].cents : null; }
 
 function platformFeeCents(amountCents) { return Math.round(amountCents * PLATFORM_RATE); }
 function sellerNetCents(amountCents) { return amountCents - platformFeeCents(amountCents); }
-function isAboveFloor(amountCents) { return Number.isInteger(amountCents) && amountCents >= PRICE_FLOOR_CENTS; }
-// Separate from isAboveFloor on purpose. Conflating them is how the bid route came to promise the
-// listing floor on a column that enforces a different one.
+// A bid has its own check rather than sharing the listing-floor one. Sharing it is how the bid route
+// came to promise the listing floor on a column that enforces a different one.
 function isValidBid(amountCents) { return Number.isInteger(amountCents) && amountCents >= MIN_BID_CENTS; }
 
 // Affiliate referral commission. A mover who drives a sale through their promo link
@@ -131,6 +130,6 @@ module.exports = {
   TOPUP_CENTS, TOPUPS, BUNDLES, FLOW_TIER_CENTS, bundleSeparateCents, bundleYearlyCents,
   BUILDER_CENTS, DESK_CENTS, OFFICE_CENTS, YEARLY_MONTHS_CHARGED, yearlyCents, FREE_ALLOWANCE, PAID_PLANS,
   FREE_PROJECTS, LEGACY_PLANS, LEGACY_PLAN_CENTS, recordedPlanCents, CONCEPT_ACCESS_DAYS, PLANS, planCents,
-  platformFeeCents, sellerNetCents, isAboveFloor,
+  platformFeeCents, sellerNetCents,
   MOVER_RATE, moverCommissionCents, platformNetAfterMoverCents,
 };
