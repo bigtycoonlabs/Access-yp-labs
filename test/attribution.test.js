@@ -4,7 +4,6 @@ const assert = require('node:assert');
 const fs = require('fs');
 const flat = (s) => s.replace(/\n\s*\/\/\s*/g, ' ').replace(/\s+/g, ' ');
 const attr = fs.readFileSync(require.resolve('../src/services/clay/attribution.js'), 'utf8');
-const listings = fs.readFileSync(require.resolve('../src/routes/listings.js'), 'utf8');
 const a = require('../src/services/clay/attribution');
 
 test('a listing share link carries where it came from', () => {
@@ -27,16 +26,10 @@ test('an unrecognised source is kept, not discarded', () => {
   assert.match(attr, /unattributed_visits/);
 });
 
-test('recording a visit can never break the page', () => {
-  // The listing is what they came for; the counting is ours.
-  assert.match(listings, /attribution must never break a listing page/);
-  assert.match(listings, /\.catch\(\(\) => \{\}\)/);
-});
-
-test('a listing page issues the visitor token itself', () => {
+test('the visitor module exports the token helper a landing page uses to issue the token itself', () => {
   // A listing is often the FIRST page somebody lands on, straight from a shared link. Only the
   // homepage used to mint this, so every visit arriving from a post counted as an anonymous nobody.
-  assert.match(listings, /require\('\.\/visitor'\)\.ensureToken\(req, res\)/);
+  // (The listing route that called it, routes/listings.js, was retired with the marketplace.)
   const visitor = fs.readFileSync(require.resolve('../src/routes/visitor.js'), 'utf8');
   assert.match(visitor, /module\.exports\.ensureToken = ensureToken/);
 });

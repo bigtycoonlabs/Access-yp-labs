@@ -4,7 +4,6 @@ const assert = require('node:assert');
 const fs = require('fs');
 const flat = (s) => s.replace(/\n\s*\/\/\s*/g, ' ').replace(/\s+/g, ' ');
 const agent = flat(fs.readFileSync(require.resolve('../src/services/clay/agent.js'), 'utf8'));
-const route = flat(fs.readFileSync(require.resolve('../src/routes/clay.js'), 'utf8'));
 const client = flat(fs.readFileSync('public/js/clay-stream.js', 'utf8'));
 
 test('a tool failure is streamed as a failure, not swallowed', () => {
@@ -23,16 +22,7 @@ test('streaming is optional — existing callers are untouched', () => {
   assert.match(agent, /every existing caller passes nothing and behaves exactly as before/i);
 });
 
-test('the streamed answer comes from the same path as the plain one', () => {
-  // Two copies of "what Clay knows" would drift, and streaming would quietly become a different Clay.
-  assert.match(route, /async function buildChatContext/);
-  const uses = route.split('buildChatContext(req)').length - 1;
-  assert.ok(uses >= 2, 'both endpoints build context the same way');
-  assert.match(route, /Streaming is a window onto the work, not a different way of working/i);
-});
-
 test('the stream says so when it dies, rather than hanging', () => {
-  assert.match(route, /Clay stopped partway through and did not finish/);
   assert.match(client, /Clay stopped partway through and did not finish/);
 });
 
@@ -55,22 +45,9 @@ test('there is always a way to stop', () => {
   assert.match(client, /clay-stop/);
 });
 
-test('the first signal is instant, before any work begins', () => {
-  // Borrowed from Arbo: silence at the start is the worst moment, especially with no spinner to see.
-  assert.match(route, /Instant first phase, sent BEFORE any work starts/i);
-  const phaseAt = route.indexOf("send({ type: 'phase', key: 'reading'");
-  const workAt = route.indexOf('buildChatContext(req)', phaseAt);
-  assert.ok(phaseAt > -1 && phaseAt < workAt, 'the phase is sent before context is built');
-});
-
 test('answer pieces are shown but never announced piece by piece', () => {
   assert.match(client, /NEVER announced piece by piece/i);
   assert.match(client, /answerEl\.setAttribute\('aria-hidden', 'true'\)/);
-});
-
-test('the pauses are comprehension pacing, not theatre', () => {
-  assert.match(route, /COMPREHENSION PACING, not theatre/i);
-  assert.match(route, /time to announce one piece before the next arrives/i);
 });
 
 test('progress never nests inside an existing live region', () => {

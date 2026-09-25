@@ -5,7 +5,6 @@ const fs = require('fs');
 const flat = (s) => s.replace(/\n\s*(?:\/\/|<!--)\s*/g, ' ').replace(/\s+/g, ' ');
 const js = fs.readFileSync('public/js/concept.js', 'utf8');
 const html = fs.readFileSync('public/concept.html', 'utf8');
-const listings = fs.readFileSync(require.resolve('../src/routes/listings.js'), 'utf8');
 
 test('a creator is shown what their project is worth', () => {
   // The valuation was computed on every project and shown to nobody — a complete tier, range and
@@ -34,21 +33,6 @@ test('what would raise it is named, not left to be inferred', () => {
 test('a failed valuation never blocks somebody seeing their own work', () => {
   assert.match(js, /renderValue\(project\.id\)\.catch\(function\(\)\{\}\)/);
   assert.match(flat(js), /a project page that shouts about a failed sidebar is worse/i);
-});
-
-test('a creator can edit what their listing says', () => {
-  // The existing route changes price and stage and touches the listings table only. The words a
-  // buyer reads live on the project, so a creator could change their price but not fix a typo in
-  // their own title.
-  assert.match(listings, /router\.patch\('\/:id\/story'/);
-  assert.match(listings, /UPDATE concepts SET title=\$2/);
-  assert.match(listings, /AND l\.seller_id = \$2/);
-});
-
-test('editing the words is separate from editing the terms', () => {
-  // Changing what something costs and changing what it says are different acts, and a buyer
-  // watching a listing should be able to tell which happened.
-  assert.match(flat(listings), /Separate from the terms route on purpose/i);
 });
 
 test('the ladder climbs with every distinct kind of material', () => {

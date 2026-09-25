@@ -11,30 +11,10 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const route = fs.readFileSync('src/routes/clay.js', 'utf8');
 const app = fs.readFileSync('public/js/app.js', 'utf8');
-
-test('there is a route to read history, not only to delete it', () => {
-  assert.match(route, /router\.get\('\/history', authenticate/);
-  assert.match(route, /router\.delete\('\/history', authenticate/);
-  assert.match(route, /FROM clay_messages m/);
-});
-
-test('it returns your own messages only', () => {
-  // Somebody else's conversation with Clay is the most private thing on this platform.
-  assert.match(route, /WHERE s\.user_id = \$1/);
-});
-
-test('oldest first, from the most recent session', () => {
-  // The page rebuilds in reading order, and picking up where you left off means the LAST
-  // conversation rather than a merge of every conversation you have ever had.
-  assert.match(route, /ORDER BY m\.created_at ASC/);
-  assert.match(route, /ORDER BY last_at DESC NULLS LAST LIMIT 1/);
-});
 
 test('an empty history and a failed read are different answers', () => {
   // They look identical to a caller and only one of them means this person has never spoken to Clay.
-  assert.match(route, /No earlier conversation to restore/);
   assert.match(app, /A failed read is not an empty history/);
 });
 

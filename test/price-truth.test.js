@@ -76,8 +76,7 @@ test('every surface that shows a price gets format and the starting bid to show 
   // The bug was not one query. The interactive pages branched on format and were right; everything
   // built after them selected price_cents alone. A page cannot tell an auction from a free listing
   // without these two columns, so the fix is only real where they travel.
-  for (const file of ['src/routes/listings.js', 'src/routes/movers.js',
-    'src/routes/seedListings.js', 'src/routes/marketAdmin.js']) {
+  for (const file of ['src/routes/marketAdmin.js']) {
     const s = read(file);
     assert.ok(/starting_bid_cents/.test(s), `${file} must carry the starting bid`);
     assert.ok(/l\.format|\.format/.test(s), `${file} must carry the format`);

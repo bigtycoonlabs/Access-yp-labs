@@ -3,17 +3,7 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const flat = (s) => s.replace(/\n\s*(?:--|\/\/)\s*/g, ' ').replace(/\s+/g, ' ');
-const listings = fs.readFileSync(require.resolve('../src/routes/listings.js'), 'utf8');
 const weekly = fs.readFileSync(require.resolve('../src/services/clay/weekly.js'), 'utf8');
-
-test('a settled auction stops being shown as an open opportunity', () => {
-  // It has a winner and bidding is closed. Leaving it in the market invites someone to get
-  // interested in something already decided.
-  const live = (listings.match(/WHERE l\.status='live'/g) || []).length;
-  const guarded = (listings.match(/AND l\.settled_at IS NULL/g) || []).length;
-  assert.ok(live > 0, 'there are browse queries');
-  assert.strictEqual(guarded, live, 'every one of them excludes settled auctions');
-});
 
 test('an issue delivered to nobody is not recorded as sent', () => {
   // Doubly wrong before: it claimed success, AND stamping sent_at meant the already-sent guard

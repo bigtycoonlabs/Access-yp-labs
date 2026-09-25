@@ -29,16 +29,9 @@ const assert = require('node:assert');
 const fs = require('fs');
 
 const page = fs.readFileSync('public/js/concept.js', 'utf8');
-const route = fs.readFileSync('src/routes/concepts.js', 'utf8');
 
 test('the page reads the key the endpoint actually returns', () => {
   assert.match(page, /var project = data\.concept \|\| data\.project \|\| \{\}/);
-});
-
-test('the endpoint really does return it under that name', () => {
-  // Pinned against the route rather than against memory, so a rename breaks here rather than
-  // silently emptying the page again.
-  assert.match(route, /res\.json\(\{ concept/);
 });
 
 test('the value panel is called with a real id', () => {

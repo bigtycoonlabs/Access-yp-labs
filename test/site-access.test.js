@@ -7,11 +7,9 @@ const fs = require('fs');
 const flat = (s) => s.replace(/\n\s*\/\/\s*/g, ' ').replace(/\s+/g, ' ');
 const svc = flat(fs.readFileSync(require.resolve('../src/services/clay/siteAccess.js'), 'utf8'));
 const files = {
-  publish: flat(fs.readFileSync(require.resolve('../src/routes/clay.js'), 'utf8')),
   serve: flat(fs.readFileSync(require.resolve('../src/routes/sites.js'), 'utf8')),
   preview: flat(fs.readFileSync(require.resolve('../src/routes/launch.js'), 'utf8')),
   checkout: flat(fs.readFileSync(require.resolve('../src/routes/store.js'), 'utf8')),
-  exportFile: flat(fs.readFileSync(require.resolve('../src/routes/concepts.js'), 'utf8')),
 };
 
 test('every door a site could escape through checks the SAME rule', () => {

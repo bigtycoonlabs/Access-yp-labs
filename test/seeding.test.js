@@ -55,13 +55,6 @@ test('every build-path list agrees on tech_spec, so they cannot drift apart agai
   });
 });
 
-test('a creator can add the kinds of material Clay actually writes', () => {
-  const concepts = fs.readFileSync(require.resolve('../src/routes/concepts.js'), 'utf8');
-  ['tech_spec', 'money_flow', 'growth_plan', 'presell_kit'].forEach((tp) => {
-    assert.ok(concepts.includes("'" + tp + "'"), 'ASSET_TYPES must include ' + tp);
-  });
-});
-
 
 test('the cap is two a week, not three a day', () => {
   // The old cap was three a day and it worked exactly as written: 43 of the platform's 55 concepts

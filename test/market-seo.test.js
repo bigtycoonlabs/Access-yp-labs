@@ -11,7 +11,6 @@ const desk = fs.readFileSync(require.resolve('../src/routes/deskPages.js'), 'utf
 // no longer exists tests nothing and fails for the wrong reason.
 const home = fs.existsSync('public/marketplace.html')
   ? fs.readFileSync('public/marketplace.html', 'utf8') : '';
-const listings = fs.readFileSync(require.resolve('../src/routes/listings.js'), 'utf8');
 
 test('every listing has its own title and its own words in the HTML', () => {
   // Every listing shared one title — "Listing — The Exchange" — carried no h1, and rendered
@@ -58,12 +57,4 @@ test('the homepage shows what is for sale before what it costs', { skip: 'the ma
   // The lesson carried forward rather than the assertion: the Penny Desk homepage leads with the
   // product working — pick your state, see your real filings — and states prices plainly below it.
   // Enforced in homepage.test.js against the page that now exists.
-});
-
-test('the shop window needs no account to see', () => {
-  // Requiring a session to find out what is for sale would be exactly backwards.
-  const idx = listings.indexOf("router.get('/recent'");
-  assert.ok(idx > -1);
-  assert.ok(!/authenticate/.test(listings.slice(idx, idx + 120)), 'no auth on the shop window');
-  assert.match(listings, /line: line \? line\.slice\(0, 140\) : null/);
 });
