@@ -35,7 +35,10 @@ app.use(helmet({
     useDefaults: true,
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      // Cloudflare Web Analytics injects its beacon from static.cloudflareinsights.com on every
+      // page. Without it named here the browser refused the script and no visit was ever
+      // recorded, with nothing on screen to say so. It reports over https, which connectSrc allows.
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://static.cloudflareinsights.com'],
       // Google Fonts serves the stylesheet from fonts.googleapis.com and the font files themselves
       // from fonts.gstatic.com. Without BOTH, the page still renders — in the system font — and
       // looks completely fine, which is how a brand typeface silently fails review.
