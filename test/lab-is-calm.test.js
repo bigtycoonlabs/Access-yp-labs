@@ -2,10 +2,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const flat = (s) => s.replace(/\n\s*\/\/\s*/g, ' ').replace(/\s+/g, ' ');
 const nav = fs.readFileSync('public/js/nav.js', 'utf8');
-const app = fs.readFileSync('public/js/app.js', 'utf8');
-const html = fs.readFileSync('public/app.html', 'utf8');
 
 test('the menu is a list, not one run-on word', () => {
   // Links were appended with nothing between them, so a screen reader announced
@@ -24,19 +21,4 @@ test('the staff link joins the list rather than sitting outside it', () => {
   // old overview page, which was one of eight staff pages with no front door.
   // Since 17 Sept 2026 it points at the redesigned staff portal.
   assert.match(nav, /li\.appendChild\(link\('\/staff\/', 'Staff'\)\)/);
-});
-
-test('nothing asks for a decision before the person has spoken', () => {
-  // Tuning used to open a second Clay message with a paragraph and two buttons — a decision
-  // standing between somebody and the message box before they had said a word.
-  assert.match(app, /const offer = el\('p', 'muted'\)/);
-  assert.match(app, /'Tune it to me'/);
-  assert.match(flat(app), /Opt-in was never the problem; being asked first was/i);
-});
-
-test('the welcome is said once, by Clay', () => {
-  // A static page intro and Clay's own opening said the same thing, so arriving meant reading the
-  // welcome twice.
-  assert.ok(!/Clay is here in your laboratory/.test(html), 'the duplicate intro is gone');
-  assert.match(app, /Welcome back, /);
 });

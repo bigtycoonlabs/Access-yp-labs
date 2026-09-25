@@ -54,15 +54,15 @@ async function nowSection() {
            MAX(EXTRACT(EPOCH FROM (now() - created_at)) / 3600)::int AS oldest_hours
       FROM listings WHERE status='in_review'
     UNION ALL
-    SELECT 'Reports to resolve', 'market-control.html', count(*)::int,
+    SELECT 'Reports to resolve', 'staff/', count(*)::int,
            MAX(EXTRACT(EPOCH FROM (now() - created_at)) / 3600)::int
       FROM reports WHERE status='open'
     UNION ALL
-    SELECT 'Desk drafts', 'desk-admin.html', count(*)::int,
+    SELECT 'Desk drafts', 'staff/desk.html', count(*)::int,
            MAX(EXTRACT(EPOCH FROM (now() - created_at)) / 3600)::int
       FROM desk_articles WHERE status='draft'
     UNION ALL
-    SELECT 'Weekly issues waiting', 'weekly-admin.html', count(*)::int,
+    SELECT 'Weekly issues waiting', 'staff/', count(*)::int,
            MAX(EXTRACT(EPOCH FROM (now() - created_at)) / 3600)::int
       FROM weekly_issues WHERE status='draft'
     -- Partner requests are deliberately NOT here. An open one is a creator waiting for another
@@ -74,13 +74,16 @@ async function nowSection() {
     -- Framed as reaching a person rather than clearing a queue, because verification is STRIPE'S
     -- decision and nobody here can grant it. What staff can actually do is notice somebody stuck
     -- and contact them, so the label says that instead of implying an approve button exists.
-    SELECT 'Sellers stuck unverified — worth reaching out', 'people.html', count(*)::int, NULL
+    SELECT 'Sellers stuck unverified — worth reaching out', 'staff/members.html', count(*)::int, NULL
       FROM seller_accounts WHERE kyc_status <> 'verified'
     UNION ALL
     -- Pointed at people.html, which does not show orders at all, so following it left somebody
-    -- looking for money on a page about accounts. Nothing on the platform lists escrow yet, so it
-    -- points at the console's own business section, which does show the held total.
-    SELECT 'Orders holding money', 'console.html#business', count(*)::int,
+    -- looking for money on a page about accounts. The old console is retired, so it points at the
+    -- staff Money page.
+    --
+    -- Every link in this list is a live /staff/ page, never a retired address: the old staff pages
+    -- only redirect now, so a link to one lands somewhere other than where it says.
+    SELECT 'Orders holding money', 'staff/money.html', count(*)::int,
            MAX(EXTRACT(EPOCH FROM (now() - created_at)) / 3600)::int
       FROM orders_transfers WHERE status='in_escrow'
   `);

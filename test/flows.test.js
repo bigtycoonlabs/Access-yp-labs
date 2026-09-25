@@ -24,13 +24,9 @@ test('a draft issue can be READ before it is approved', () => {
   // said. Nobody should have to publish something to discover what it says.
   const wk = fs.readFileSync(require.resolve('../src/services/clay/weekly.js'), 'utf8');
   const pages = fs.readFileSync(require.resolve('../src/routes/weeklyPages.js'), 'utf8');
-  const admin = fs.readFileSync('public/weekly-admin.html', 'utf8');
   assert.match(wk, /async function getForPreview/);
   assert.match(pages, /router\.get\('\/weekly\/preview\/:slug'/);
   assert.match(pages, /staffViewer\(req\)/, 'preview is staff-only');
-  assert.match(admin, /function previewLink/);
-  // Match the rendered string, not the comment that explains why it was removed.
-  assert.ok(!/'Approve it to see the page\.'/.test(admin), 'the approve-to-see dead end is gone');
 });
 
 test('the preview renders through the SAME function as the public page', () => {

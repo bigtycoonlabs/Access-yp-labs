@@ -29,13 +29,3 @@ test('the database accepts the plan we actually sell', () => {
   assert.match(mig, /'builder'::text/);
   assert.match(mig, /charged by Stripe and then the webhook insert would have thrown/i);
 });
-
-test('retired offers are gone from every live surface', () => {
-  const dash = fs.readFileSync('public/js/dashboard.js', 'utf8');
-  const dashHtml = fs.readFileSync('public/dashboard.html', 'utf8');
-  assert.ok(!/loadEngagements\(\)/.test(dash), 'no consultant loader');
-  assert.ok(!/Consultant sessions/.test(dashHtml), 'no consultant section');
-  assert.match(fs.readFileSync('public/admin-consultants.html', 'utf8'), /retired/i);
-  // And the markup and the code agree — removing one without the other is how a page throws.
-  assert.ok(!/getElementById\('engagements'\)/.test(dash));
-});

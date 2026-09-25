@@ -83,20 +83,14 @@ test('every surface that shows a price gets format and the starting bid to show 
   }
 });
 
-test('the browser pages share one definition instead of each rolling its own zero', () => {
+test('the browser has one shared price definition instead of each page rolling its own zero', () => {
   const api = read('public/js/api.js');
   assert.match(api, /priceLabel/);
   assert.match(api, /askingCents/);
   assert.match(api, /window\.Kiln = \{[^}]*priceLabel/);
-
-  // index.html dropped from this list: the Penny Desk homepage shows no marketplace prices, so the
-  // shared zero-state definition it was checking for does not apply to it.
-  for (const page of ['public/console.html', 'public/market-control.html',
-    'public/marketplace.html', 'public/dreamhold.html', 'public/mover.html']) {
-    const s = read(page);
-    assert.ok(/Kiln\.priceLabel/.test(s), `${page} must use the shared price label`);
-    assert.ok(!/\(\s*l\.price_cents\s*\|\|\s*0\s*\)/.test(s), `${page} must not coerce a missing price to zero`);
-  }
+  // The pages that used it (console, market control, marketplace, dreamhold, mover) were retired and
+  // now redirect elsewhere; no live page shows a listing price today. index.html was
+  // dropped earlier: the Penny Desk homepage shows no marketplace prices.
 });
 
 test('a mover is told the rate, not that they earn nothing', () => {
@@ -107,14 +101,4 @@ test('a mover is told the rate, not that they earn nothing', () => {
   assert.match(unknown.label, /5%/);
   // A real price still produces a real dollar figure — that is what movers are shown normally.
   assert.strictEqual(commissionDisplay(20000).label, '$10.00');
-});
-
-test('the staff editor does not demand a price an auction does not have', () => {
-  const ctl = read('public/market-control.html');
-  // The price box used to prefill 0 from a null, and the "$10 minimum" guard then refused every
-  // save — so nobody could fix the title or risk note on an auction listing, and the reason given
-  // blamed a price they had never typed.
-  assert.match(ctl, /l\.format === 'auction'/);
-  assert.match(ctl, /if\(pi\)\{/);
-  assert.ok(!/String\(Math\.round\(\(l\.price_cents\|\|0\)\/100\)\)/.test(ctl));
 });

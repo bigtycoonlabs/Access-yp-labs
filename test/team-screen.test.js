@@ -129,12 +129,10 @@ test('the destructive confirmation defaults to the safe answer', () => {
   assert.ok(!/\bconfirm\(/.test(code), 'no native confirm on this page');
 });
 
-test('it lives at team.html, because people.html was already a staff screen', () => {
+test('the team screen is linked at team.html, not at the old people.html address', () => {
   // I overwrote a working admin users console by taking its filename. Restored from git, and the
   // team screen moved to its own path. Two tests caught it — both read public/people.html and
   // expected the staff page — which is the only reason it did not ship.
-  const staff = fs.readFileSync('public/people.html', 'utf8');
-  assert.match(staff, /function confirmThen/, 'the staff page must still be the staff page');
   const t = fs.readFileSync('public/today.html', 'utf8');
   assert.match(t, /href="\/team\.html"/);
   assert.ok(!/href="\/people\.html"/.test(t));

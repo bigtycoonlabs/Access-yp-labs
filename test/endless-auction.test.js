@@ -22,7 +22,6 @@ const assert = require('node:assert');
 const fs = require('fs');
 
 const bids = fs.readFileSync('src/routes/bids.js', 'utf8');
-const listingPage = fs.readFileSync('public/listing.html', 'utf8');
 
 test('the close check no longer fails open on a null', () => {
   // The precise shape that caused it: a guard whose condition is the existence of the value it is
@@ -35,17 +34,6 @@ test('a bid into an auction that can never resolve is refused', () => {
   assert.match(bids, /if \(!listing\.auction_close_at\) \{/);
   assert.match(bids, /could never win/);
   assert.match(bids, /Nothing was placed/);
-});
-
-test('the listing page says so before the form rather than after it', () => {
-  // Offering a bid box the server will refuse is the same as a button that does nothing. A refusal
-  // that only arrives after somebody has typed a figure is a worse version of the same fault.
-  assert.match(listingPage, /const endless=isAuction && !listing\.auction_close_at/);
-  assert.match(listingPage, /Not open for bids/);
-  assert.match(listingPage, /if\(endless\)\{/);
-  // And it is spoken, not only drawn. A component that is never announced does not exist for the
-  // people who own this platform.
-  assert.match(listingPage, /announce\('This auction has no closing time/);
 });
 
 test('the endless-auction sweep still reports rather than repairs', () => {

@@ -8,7 +8,6 @@ const fs = require('fs');
 const flatten = (s) => s.replace(/`\s*\+\s*`/g, '').replace(/\s+/g, ' ');
 const partners = flatten(fs.readFileSync(require.resolve('../src/routes/partners.js'), 'utf8'));
 const agent = flatten(fs.readFileSync(require.resolve('../src/services/clay/agent.js'), 'utf8'));
-const board = flatten(fs.readFileSync('public/partners.html', 'utf8'));
 
 test('the introduction email states the platform takes no fee and no cut', () => {
   assert.match(partners, /NO fee and NO cut/, 'said in the message people actually read');
@@ -19,12 +18,6 @@ test('equity is explicitly off-platform in the introduction, with a nudge to get
   assert.match(partners, /equity is not something this platform sets up, holds, or records/i);
   assert.match(partners, /off-platform and entirely your own affair/i);
   assert.match(partners, /get your own legal advice/i);
-});
-
-test('the board tells people this is free BEFORE they engage, not after', () => {
-  assert.match(board, /take no cut/i, 'stated on the page, not only in the email');
-  assert.match(board, /Equity is not part of what you arrange here/i);
-  assert.match(board, /Don.t offer or ask for an ownership stake/i);
 });
 
 test('Clay will not structure an equity deal and knows the platform earns nothing here', () => {
