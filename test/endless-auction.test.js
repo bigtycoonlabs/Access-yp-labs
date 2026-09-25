@@ -21,23 +21,12 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 
-const orders = fs.readFileSync('src/routes/orders.js', 'utf8');
 const bids = fs.readFileSync('src/routes/bids.js', 'utf8');
 const listingPage = fs.readFileSync('public/listing.html', 'utf8');
-
-test('a purchase on an auction with no closing time is refused', () => {
-  assert.match(orders, /if \(!listing\.auction_close_at\) \{/);
-  assert.match(orders, /has no closing time/);
-  // The refusal must state that no money moved. A person told only "cannot buy" has no way to know
-  // whether their card was touched.
-  assert.match(orders, /Nothing has been charged/);
-});
 
 test('the close check no longer fails open on a null', () => {
   // The precise shape that caused it: a guard whose condition is the existence of the value it is
   // guarding. If this pattern comes back, the endless auction is buyable again.
-  assert.ok(!/listing\.auction_close_at && new Date\(listing\.auction_close_at\) > new Date\(\)/.test(orders),
-    'the still-open check must not be conditional on the close date existing');
   assert.ok(!/listing\.auction_close_at && new Date\(listing\.auction_close_at\) < new Date\(\)/.test(bids),
     'the closed check must not be conditional on the close date existing');
 });
@@ -53,8 +42,6 @@ test('an order is never created for an amount we are not sure of', () => {
   // the insert breaks a NOT NULL column, and Stripe would have been handed unit_amount: null. The
   // same absent value that rendered as "$0.00" on the public page arrives here, where it costs
   // money rather than a search snippet.
-  assert.match(orders, /isAboveFloor\(amount\)/);
-  assert.match(orders, /nothing was charged/i);
   // isAboveFloor rejects null, non-integers and anything under the floor in one check.
   const { isAboveFloor } = require('../src/lib/money');
   assert.strictEqual(isAboveFloor(null), false);

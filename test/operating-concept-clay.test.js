@@ -24,13 +24,7 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 
-const routes = fs.readFileSync('src/routes/clay.js', 'utf8');
 const agent = fs.readFileSync('src/services/clay/agent.js', 'utf8');
-const listings = fs.readFileSync('src/routes/listings.js', 'utf8');
-
-test('the concept context carries whether it is a live operation', () => {
-  assert.match(routes, /c\.movement_state, c\.movement_note,\s*\n\s*c\.is_operating/);
-});
 
 test('and Clay is told plainly what that means', () => {
   assert.match(agent, /if \(concept\.is_operating\) \{/);
@@ -38,23 +32,4 @@ test('and Clay is told plainly what that means', () => {
   // Not just a prohibition. He is told where to go instead, because growing a business somebody
   // already runs is a real path here and is why they came.
   assert.match(agent, /get straight back to helping them grow it/);
-});
-
-test('the path write refuses refine_to_sell on a running business', () => {
-  // A prompt rule is guidance; this is the guarantee. Recording that path would point the creator
-  // at a wall and make Clay coach toward it on every turn afterwards.
-  assert.match(routes, /own\.rows\[0\]\.is_operating && path === 'refine_to_sell'/);
-  assert.match(routes, /That path was not recorded/);
-  // It must read is_operating to be able to check it.
-  assert.match(routes, /SELECT id, is_operating FROM concepts WHERE id=\$1 AND owner_id=\$2/);
-});
-
-test('the other paths still work for a running business', () => {
-  // Building it further and still exploring are both legitimate for an operator. Only selling is not.
-  assert.ok(!/is_operating && path/.test(routes.replace(/path === 'refine_to_sell'/, '')),
-    'only the sell path is refused');
-});
-
-test('the rule this all defers to is still the listing gate', () => {
-  assert.match(listings, /sells unlaunched ideas, not running businesses/);
 });

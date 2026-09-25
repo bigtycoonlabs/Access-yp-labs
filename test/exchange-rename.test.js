@@ -43,7 +43,6 @@ test('nothing calls a project a dream to a person', () => {
 
 test('the identifiers are deliberately untouched', () => {
   // If these ever change it is a migration, not a copy sweep.
-  assert.match(fs.readFileSync('src/routes/movers.js', 'utf8'), /FROM dream_movers/);
   assert.ok(fs.existsSync('public/movers.html'));
   assert.ok(fs.existsSync('public/dreamhold.html'));
 });

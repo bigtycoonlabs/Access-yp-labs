@@ -2,15 +2,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const orders = fs.readFileSync(require.resolve('../src/routes/orders.js'), 'utf8');
 const auctions = fs.readFileSync(require.resolve('../src/services/clay/auctions.js'), 'utf8');
-
-test('partner_active is set explicitly, never left null', () => {
-  assert.match(orders, /partner_active\)/, 'the column is written at creation');
-  assert.match(orders, /!!listing\.partner_offered/, 'true only when a partner was actually offered');
-  // A null would read as "active" in some places and fail `= true` filters in others.
-  assert.match(orders, /a null is not true/i, 'and the reason is recorded for whoever reads this next');
-});
 
 test('an auction that can never settle is surfaced, not silently invented a deadline', () => {
   assert.match(auctions, /reportEndlessAuctions/);

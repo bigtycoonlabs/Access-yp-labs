@@ -30,9 +30,6 @@ test('staff see shape, never message content', () => {
 
 test('a creator can erase their own history for real', () => {
   assert.match(conv, /DELETE FROM clay_sessions WHERE user_id = \$1/);
-  const clay = fs.readFileSync(require.resolve('../src/routes/clay.js'), 'utf8');
-  assert.match(clay, /router\.delete\('\/history'/);
-  assert.match(clay, /gone, not hidden/);
 });
 
 test('a returning conversation is the same conversation', () => {

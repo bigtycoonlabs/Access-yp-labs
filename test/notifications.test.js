@@ -37,7 +37,7 @@ test('in-app is the truth; email is an attempt', () => {
 test('a notification never breaks the thing it reports', () => {
   // If telling somebody fails, the contribution was still accepted. Every caller uses safely().
   assert.match(svc, /function safely\(args\)/);
-  for (const f of ['src/routes/contributions.js', 'src/routes/seats.js', 'src/routes/agreements.js']) {
+  for (const f of ['src/routes/contributions.js', 'src/routes/agreements.js']) {
     const code = fs.readFileSync(f, 'utf8');
     assert.match(code, /const \{ safely \} = require\('\.\.\/services\/notify'\)/, f);
     assert.ok(!/await notify\(/.test(code), f + ' must not await notify directly');

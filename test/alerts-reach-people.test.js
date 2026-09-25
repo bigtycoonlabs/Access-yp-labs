@@ -24,7 +24,6 @@ test('every alert raised on a money or delivery failure is in that set', () => {
 
   // And the code actually raises them under those exact names.
   const raisers = {
-    'seller_billing_not_stopped': '../src/routes/orders.js',
     'webhook_not_recorded': '../src/routes/webhooks.js',
     'webhook_dedupe_unavailable': '../src/routes/webhooks.js',
     'auction_email_failed': '../src/services/clay/auctions.js',

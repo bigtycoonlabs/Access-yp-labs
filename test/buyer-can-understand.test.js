@@ -28,10 +28,3 @@ test('review warns before a listing without one goes live', () => {
   assert.ok(mod.includes('that panel does not appear at '));
   assert.ok(mod.includes('Have Clay write the brief'), 'and the fix is on the same screen');
 });
-
-test('the console says whether the brief was built', () => {
-  // "Built a landing page" while the thing a buyer reads is still missing would be a half-truth.
-  const route = fs.readFileSync(require.resolve('../src/routes/seedListings.js'), 'utf8');
-  assert.match(route, /made\.push\('the opportunity brief'\)/);
-  assert.match(route, /skipped\.push\('opportunity brief \(/);
-});

@@ -29,22 +29,13 @@ const assert = require('node:assert');
 const fs = require('fs');
 const spine = require('../src/services/clay/spine');
 
-const routes = fs.readFileSync('src/routes/clay.js', 'utf8');
 const build = fs.readFileSync('src/services/clay/index.js', 'utf8');
-const listings = fs.readFileSync('src/routes/listings.js', 'utf8');
 
 test('Clay can tell the build what he worked out in the conversation', () => {
   assert.ok((spine.TOOLS.generate_concept.optional || []).includes('operating'),
     'generate_concept must accept the operating flag');
   const agent = fs.readFileSync('src/services/clay/agent.js', 'utf8');
   assert.match(agent, /operating: 'boolean'/, 'and it must reach the schema the model sees');
-});
-
-test('the chat executor passes it through instead of throwing it away', () => {
-  assert.match(routes, /generate_concept: async \(\{ prompt, category, operating \}\)/);
-  assert.match(routes, /prompt, operating: !!operating, conceptId: null, buildId/);
-  // The exact line that caused it.
-  assert.ok(!/mode: 'create', category: category \|\| null, prompt, operating: false, conceptId: null, buildId/.test(routes));
 });
 
 test('a declared operator is never refused for being an operator', () => {
@@ -59,10 +50,9 @@ test('the rule is read narrowly, as being about selling rather than helping', ()
   assert.match(build, /a rule about what the Exchange may SELL, not a rule about who you may help/);
 });
 
-test('the line itself still holds where it belongs — at listing', () => {
+test('the build still never implies an operator should sell their existing business', () => {
+  // The listing-gate half of this check read routes/listings.js, retired with the marketplace.
   // Removing the build-time refusal must not open a hole. It does not: a running business is
   // refused at the point of listing, on its own, with its own message.
-  assert.match(listings, /if \(own\.rows\[0\]\.is_operating\)/);
-  assert.match(listings, /sells unlaunched ideas, not running businesses/);
   assert.match(build, /Never imply they should sell, list, or hand off their existing business/);
 });

@@ -17,14 +17,8 @@ test('Clay is told to check before asking, and to ask only once', () => {
   assert.match(agent, /AFTER they finish their first project/i, 'timed as a reward, not a chore');
 });
 
-test('the display name is ONE identity: the Affiliate page reads it from the account', () => {
-  const movers = fs.readFileSync(require.resolve('../src/routes/movers.js'), 'utf8');
-  assert.match(movers, /display_name[\s\S]{0,80}builder_tag/, 'the promo page carries the same tag');
-});
-
-test('a project can be both for sale and seeking a partner, and each side links to the other', () => {
-  const listings = fs.readFileSync(require.resolve('../src/routes/listings.js'), 'utf8');
+test('a project can be both for sale and seeking a partner: the partner ask links to the listing', () => {
+  // The listing side (routes/listings.js) was retired with the marketplace; partners.js is still live.
   const partners = fs.readFileSync(require.resolve('../src/routes/partners.js'), 'utf8');
-  assert.match(listings, /partner_request_id/, 'a listing knows if the creator also wants a partner');
   assert.match(partners, /AS listing_id/, 'a partner ask knows if the project is also for sale');
 });

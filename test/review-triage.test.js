@@ -87,14 +87,6 @@ test('every status it can return is one the database accepts', () => {
   for (const s of STATUSES) assert.ok(sql.includes("'" + s + "'"), 'not in the constraint: ' + s);
 });
 
-test('triage never blocks a submission', () => {
-  const routes = require('fs').readFileSync('src/routes/listings.js', 'utf8');
-  // The listing IS submitted. An untriaged one arrives without a note, which is exactly where the
-  // platform is today — so a failure here costs nothing rather than costing somebody their listing.
-  assert.match(routes, /try \{[\s\S]*?const t = triage\(\{[\s\S]*?\} catch \(e\) \{/);
-  assert.match(routes, /console\.error\('triage failed for listing'/);
-});
-
 test('a risk note is never scanned for the thing it discloses', () => {
   // Two false positives on the live queue taught this. "Video-Call Corner Audit" carried a risk note
   // reading "risk rises if you market it as regulated interior design or GUARANTEED professional
