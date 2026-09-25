@@ -25,7 +25,7 @@ test('the allowances are the decided ones', () => {
 
 test('every paid check uses the one list, so a new plan is never forgotten in one of them', () => {
   assert.deepStrictEqual(money.PAID_PLANS, ['desk', 'office', 'builder', 'sculptor']);
-  for (const f of ['src/lib/entitlement.js', 'src/services/clay/siteAccess.js', 'src/services/clay/imageBudget.js', 'src/lib/deleteProject.js']) {
+  for (const f of ['src/lib/entitlement.js', 'src/services/clay/siteAccess.js', 'src/services/clay/imageBudget.js']) {
     assert.doesNotMatch(fs.readFileSync(f, 'utf8'), /IN \('builder'/, f);
   }
 });

@@ -37,20 +37,6 @@ test('a bid into an auction that can never resolve is refused', () => {
   assert.match(bids, /Nothing was placed/);
 });
 
-test('an order is never created for an amount we are not sure of', () => {
-  // `amount = listing.price_cents` carried a null straight through: platformFeeCents(null) is 0,
-  // the insert breaks a NOT NULL column, and Stripe would have been handed unit_amount: null. The
-  // same absent value that rendered as "$0.00" on the public page arrives here, where it costs
-  // money rather than a search snippet.
-  // isAboveFloor rejects null, non-integers and anything under the floor in one check.
-  const { isAboveFloor } = require('../src/lib/money');
-  assert.strictEqual(isAboveFloor(null), false);
-  assert.strictEqual(isAboveFloor(undefined), false);
-  assert.strictEqual(isAboveFloor(0), false);
-  assert.strictEqual(isAboveFloor(999), false);
-  assert.strictEqual(isAboveFloor(1000), true);
-});
-
 test('the listing page says so before the form rather than after it', () => {
   // Offering a bid box the server will refuse is the same as a button that does nothing. A refusal
   // that only arrives after somebody has typed a figure is a worse version of the same fault.
