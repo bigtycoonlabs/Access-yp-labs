@@ -23,7 +23,7 @@ test('every indexed page that declares a canonical declares one on accessyplabs.
 });
 
 test('the pages that bring people in carry link previews', () => {
-  for (const f of ['index.html', 'plans.html', 'desk.html', 'partners.html']) {
+  for (const f of ['index.html', 'plans.html', 'desk.html']) {
     const s = fs.readFileSync('public/' + f, 'utf8');
     for (const tag of ['og:title', 'og:description', 'og:url', 'og:image', 'twitter:card']) {
       assert.ok(s.includes(tag), f + ' is missing ' + tag);

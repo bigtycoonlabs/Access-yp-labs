@@ -4,7 +4,6 @@ const assert = require('node:assert');
 const fs = require('fs');
 const flat = (s) => s.replace(/\n\s*\/\/\s*/g, ' ').replace(/\s+/g, ' ');
 const api = fs.readFileSync(require.resolve('../src/routes/console.js'), 'utf8');
-const page = fs.readFileSync('public/console.html', 'utf8');
 const notify = fs.readFileSync(require.resolve('../src/services/clay/staffNotify.js'), 'utf8');
 
 test('the list shows OPEN alerts only', () => {
@@ -44,19 +43,4 @@ test('resolving requires saying what was done', () => {
 test('an alert cannot be resolved twice', () => {
   assert.match(api, /AND resolved_at IS NULL RETURNING id/);
   assert.match(api, /not open — it may already be resolved/);
-});
-
-test('urgency is stated in words, never colour alone', () => {
-  assert.match(page, /'Needs action — '/);
-  assert.match(page, /somebody is on this/);
-});
-
-test('the resolve box focuses the note and gives focus back', () => {
-  assert.match(page, /inp\.focus\(\)/);
-  assert.match(page, /function restore\(\)/);
-  assert.match(page, /no\.addEventListener\('click', function\(\)\{ box\.remove\(\); restore\(\); \}\)/);
-});
-
-test('an empty list says so plainly', () => {
-  assert.match(page, /No open alerts\. Nothing has gone wrong that you have not already dealt with/);
 });

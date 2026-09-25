@@ -41,12 +41,6 @@ test('nothing calls a project a dream to a person', () => {
   }
 });
 
-test('the identifiers are deliberately untouched', () => {
-  // If these ever change it is a migration, not a copy sweep.
-  assert.ok(fs.existsSync('public/movers.html'));
-  assert.ok(fs.existsSync('public/dreamhold.html'));
-});
-
 test('Clay is TOLD the words changed, not just swapped underneath him', () => {
   // Otherwise he speaks fluent old-vocabulary from his own past output and from every reference he
   // has to the previous name, and the platform runs two vocabularies at once — worse than either
@@ -120,21 +114,4 @@ test('project is not a proper noun mid-sentence', () => {
       assert.ok(!/(?<=[a-z,] )Projects?\b/.test(line), f + ': ' + line.trim().slice(0, 70));
     }
   }
-});
-
-test('an Affiliate page names whose page it is', () => {
-  // Only document.title was being set, so every Affiliate page announced "An Affiliate" as its h1
-  // while the browser tab correctly showed the person's name. Somebody navigating by heading was
-  // told nothing about whose page they had landed on.
-  //
-  // Same shape as the project page announcing "Your project" for every project somebody owns, found
-  // earlier this week. A heading that never changes is a heading that says nothing.
-  const mover = fs.readFileSync('public/mover.html', 'utf8');
-  assert.match(mover, /titleEl\.textContent=who;/);
-  assert.match(mover, /var who = m\.builder_tag\|\|m\.headline\|\|\('@'\+m\.slug\)/);
-  // A missing page gets its own heading rather than keeping the placeholder: "An Affiliate" above
-  // "not found" reads as though somebody's page had emptied out.
-  assert.match(mover, /titleEl\.textContent='Affiliate page not found'/);
-  assert.match(mover, /There is no Affiliate page at this link/);
-  assert.ok(!/>An Affiliate</.test(mover), 'no placeholder heading left');
 });

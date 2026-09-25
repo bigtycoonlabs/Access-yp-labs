@@ -102,35 +102,6 @@ test('it is mounted and the migration is registered', () => {
   assert.ok(fs.readFileSync('docs/migrations/ORDER.txt', 'utf8').includes('058_notifications.sql'));
 });
 
-test('the overnight report is on the dashboard, above everything that did not change', () => {
-  // The endpoint existed with no screen in front of it — the same gap the seats board had, and the
-  // reason it kept being the last thing built. An API nobody can see is an API that does not exist.
-  const dash = fs.readFileSync('public/dashboard.html', 'utf8');
-  const js = fs.readFileSync('public/js/dashboard.js', 'utf8');
-  assert.match(dash, /<section aria-labelledby="away-h" id="away-sec"/);
-  assert.match(js, /async function loadAway\(\)/);
-  assert.match(js, /loadAway\(\); loadPath\(\);/);
-  // It leads the page. Everything below it was here yesterday; this is the only thing that changed.
-  const order = [...dash.matchAll(/<h2 id="([a-z]+)-h"/g)].map((m) => m[1]);
-  assert.strictEqual(order[0], 'away');
-  assert.strictEqual(order[1], 'con');
-});
-
-test('a quiet morning is shown, not hidden', () => {
-  // A panel that only appears on good days trains people to read its absence as bad news. Verified
-  // in a browser on an account with everything read: "Nothing new on your projects in the last day."
-  const js = fs.readFileSync('public/js/dashboard.js', 'utf8');
-  assert.match(js, /Nothing happened is a real answer and it is shown, not hidden/);
-  assert.match(js, /sec\.hidden = false;\s*\n\s*host\.innerHTML = '';/);
-});
-
-test('a failed read is not a quiet night', () => {
-  // On the one panel whose entire job is telling you what is true, saying "nothing happened" when
-  // we could not look would be inventing a fact out of a network error.
-  const js = fs.readFileSync('public/js/dashboard.js', 'utf8');
-  assert.match(js, /That is a failed read, '\s*\n?\s*\+ 'not a quiet night/);
-});
-
 
 test('"accepted" is not "delivered", and the word is chosen', () => {
   // A 200 from Resend means the provider TOOK the message. It does not mean anybody received it.

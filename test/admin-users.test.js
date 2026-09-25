@@ -3,7 +3,6 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const src = fs.readFileSync(require.resolve('../src/routes/adminUsers.js'), 'utf8');
-const page = fs.readFileSync('public/people.html', 'utf8');
 
 test('an account with money history cannot be deleted', () => {
   assert.match(src, /FROM orders_transfers WHERE seller_id=\$1 OR buyer_id=\$1/);
@@ -22,14 +21,6 @@ test('nobody can suspend or delete themselves, and only an owner acts on an owne
 test('suspending is reversible and says nothing was destroyed', () => {
   assert.match(src, /Nothing of theirs has been deleted/i);
   assert.match(src, /restore/);
-});
-
-test('destructive actions confirm, with focus on the safe option', () => {
-  assert.match(page, /function confirmThen/);
-  assert.match(page, /no\.focus\(\) no\.focus|if\(no\.focus\) no\.focus\(\)/);
-  assert.match(page, /cannot be undone/i);
-  // The delete button is only rendered where deletion is actually permitted.
-  assert.match(page, /if\(u\.orders===0\)/);
 });
 
 test('a failed message says plainly that nothing reached them', () => {

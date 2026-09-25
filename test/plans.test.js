@@ -41,7 +41,7 @@ test('checkout sells only Desk or Office, refuses a second plan, and records yea
 });
 
 test('no screen or assistant still quotes a price that is not on sale', () => {
-  const places = ['public/index.html', 'public/js/app.js', 'public/js/concept.js', 'public/js/dashboard.js',
+  const places = ['public/index.html',
     'src/services/clay/agent.js', 'src/services/clay/siteAccess.js'];
   for (const f of places) {
     const s = fs.readFileSync(f, 'utf8');

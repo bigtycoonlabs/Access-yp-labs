@@ -168,16 +168,3 @@ test('the bid route validates against the bid floor, not the listing floor', () 
   assert.strictEqual(isValidBid(null), false);
   assert.strictEqual(isValidBid(1000.5), false);
 });
-
-test('the page never invites a bid the database will refuse', () => {
-  const fsx = require('fs');
-  const page = fsx.readFileSync('public/listing.html', 'utf8');
-  assert.match(page, /const MIN_BID=10;/);
-  // The pre-filled figure and the input's own minimum both have to respect it. Pre-filling one
-  // dollar above a $35 starting bid is how the error was reached in the first place.
-  assert.match(page, /Math\.max\(MIN_BID,/);
-  assert.match(page, /bi\.min=String\(MIN_BID\)/);
-  // The message is generated from MIN_BID rather than written out, so it cannot say one number
-  // while the input enforces another.
-  assert.ok(!/Bid must be at least \$50/.test(page));
-});

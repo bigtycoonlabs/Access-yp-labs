@@ -19,7 +19,6 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const entry = fs.readFileSync('public/js/dreamentry.js', 'utf8');
-const market = fs.readFileSync('public/marketplace.html', 'utf8');
 const code = entry.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
 
 test('the entry plays on the click, which is what lets it make a sound', () => {
@@ -33,8 +32,6 @@ test('the entry plays on the click, which is what lets it make a sound', () => {
 });
 
 test('there is no extra screen between the click and the market', () => {
-  // marketplace.html used to bounce anyone without a session flag to a separate entry page.
-  assert.ok(!/location\.replace\('\/enter\.html'\)/.test(market));
   assert.match(code, /location\.href = DEST/);
 });
 

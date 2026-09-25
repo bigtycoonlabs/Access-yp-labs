@@ -27,11 +27,18 @@ test('every queue links somewhere that shows that queue', () => {
   // "Orders holding money" pointed at people.html, which does not mention escrow at all — so
   // following it left somebody looking for money on a page about accounts.
   assert.ok(!/'Orders holding money', 'people\.html'/.test(consoleApi));
-  assert.match(consoleApi, /'Orders holding money', 'console\.html#business'/);
-  const dest = [...consoleApi.matchAll(/SELECT '([^']+)', '([a-z.#]+)'/g)].map((m) => m[2]);
+  assert.match(consoleApi, /'Orders holding money', 'staff\/money\.html'/);
+  const dest = [...consoleApi.matchAll(/SELECT '([^']+)', '([a-z./#-]+)'/g)].map((m) => m[2]);
+  assert.strictEqual(dest.length, 5, 'every queue is checked');
+  const serverSrc = fs.readFileSync(require.resolve('../src/server.js'), 'utf8');
+  const retired = new Set([...serverSrc.match(/const RETIRED_PAGES = \{([\s\S]*?)\};/)[1].matchAll(/'(\/[^']+\.html)':/g)].map((m) => m[1]));
+  assert.ok(retired.has('/console.html'), 'the retired list was read');
   dest.forEach((d) => {
-    const file = 'public/' + d.split('#')[0];
+    let file = 'public/' + d.split('#')[0];
+    if (file.endsWith('/')) file += 'index.html';
     assert.ok(fs.existsSync(file), d + ' must be a page that exists');
+    // A retired address only redirects, so it never shows the queue it names.
+    assert.ok(!retired.has('/' + d.split('#')[0]), d + ' must not be a retired page');
   });
 });
 
@@ -44,9 +51,6 @@ test('nothing sits in "what needs me" that staff cannot finish', () => {
 
   // It is counted under Growth instead, as a health signal.
   assert.match(consoleApi, /partner_requests: partners\.rows\[0\]/);
-  const page = fs.readFileSync('public/console.html', 'utf8');
-  assert.match(page, /partner asks open/);
-  assert.match(page, /there is nothing for you to/);
 });
 
 test('a queue nobody can clear is labelled for what CAN be done', () => {
